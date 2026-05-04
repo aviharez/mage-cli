@@ -1,0 +1,51 @@
+name: angular-18
+version: "1.0"
+platform: web
+language: typescript
+description: Angular 18 standalone components with signals, typed forms, and OnPush change detection
+
+conventions:
+  always_include:
+    - conventions/architecture.md
+    - conventions/naming.md
+  include_for_review:
+    - review/rules.md
+  include_for_testing:
+    - conventions/architecture.md
+
+generators:
+  component:
+    instruction: generators/component.md
+    examples:
+      - examples/product-list.component.ts
+      - examples/product-list.component.html
+    description: Generate a standalone Angular 18 component with signals and OnPush
+
+  service:
+    instruction: generators/service.md
+    examples:
+      - examples/product.service.ts
+    description: Generate an injectable service using HttpClient with typed responses
+
+  store:
+    instruction: generators/store.md
+    examples:
+      - examples/product.store.ts
+    description: Generate a signal-based store (no NgRx) for feature state management
+
+project_detection:
+  markers:
+    - angular.json
+    - src/app/app.config.ts
+  source_roots:
+    - src/app
+  test_roots:
+    - src/app
+  ignore:
+    - node_modules
+    - dist
+    - .angular
+
+context:
+  max_convention_tokens: 3000
+  max_example_tokens: 2000
