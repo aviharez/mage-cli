@@ -14,6 +14,7 @@ import { useSettings } from "@/context/settings"
 import { useSync } from "@/context/sync"
 import { useTerminal } from "@/context/terminal"
 import { showToast } from "@mybcabisnis/mage-ui/toast"
+import { isDevMode } from "@/utils/dev-mode"
 import { findLast } from "@opencode-ai/shared/util/array"
 import { createSessionTabs } from "@/pages/session/helpers"
 import { extractPromptFromParts } from "@/utils/prompt"
@@ -512,7 +513,7 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
     }),
   ]
 
-  const modelCmds = () => [
+  const modelCmds = () => isDevMode() ? [
     modelCommand({
       id: "model.choose",
       title: language.t("command.model.choose"),
@@ -528,7 +529,7 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
       keybind: "shift+mod+d",
       onSelect: () => local.model.variant.cycle(),
     }),
-  ]
+  ] : []
 
   const mcpCmds = () => [
     mcpCommand({

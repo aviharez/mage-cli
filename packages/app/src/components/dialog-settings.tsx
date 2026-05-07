@@ -1,4 +1,4 @@
-import { Component } from "solid-js"
+import { Component, Show } from "solid-js"
 import { Dialog } from "@mybcabisnis/mage-ui/dialog"
 import { Tabs } from "@mybcabisnis/mage-ui/tabs"
 import { Icon } from "@mybcabisnis/mage-ui/icon"
@@ -8,6 +8,7 @@ import { SettingsGeneral } from "./settings-general"
 import { SettingsKeybinds } from "./settings-keybinds"
 import { SettingsProviders } from "./settings-providers"
 import { SettingsModels } from "./settings-models"
+import { isDevMode } from "@/utils/dev-mode"
 
 export const DialogSettings: Component = () => {
   const language = useLanguage()
@@ -21,7 +22,6 @@ export const DialogSettings: Component = () => {
             <div class="flex flex-col gap-3 w-full pt-3">
               <div class="flex flex-col gap-3">
                 <div class="flex flex-col gap-1.5">
-                  <Tabs.SectionTitle>{language.t("settings.section.desktop")}</Tabs.SectionTitle>
                   <div class="flex flex-col gap-1.5 w-full">
                     <Tabs.Trigger value="general">
                       <Icon name="sliders" />
@@ -31,20 +31,28 @@ export const DialogSettings: Component = () => {
                       <Icon name="keyboard" />
                       {language.t("settings.tab.shortcuts")}
                     </Tabs.Trigger>
+                    <Show when={isDevMode()}>
+                      <Tabs.Trigger value="models">
+                        <Icon name="models" />
+                        {language.t("settings.models.title")}
+                      </Tabs.Trigger>
+                    </Show>
                   </div>
                 </div>
 
                 <div class="flex flex-col gap-1.5">
-                  <Tabs.SectionTitle>{language.t("settings.section.server")}</Tabs.SectionTitle>
+                  {/* <Tabs.SectionTitle>{language.t("settings.section.server")}</Tabs.SectionTitle> */}
                   <div class="flex flex-col gap-1.5 w-full">
                     {/* <Tabs.Trigger value="providers">
                       <Icon name="providers" />
                       {language.t("settings.providers.title")}
                     </Tabs.Trigger> */}
-                    <Tabs.Trigger value="models">
-                      <Icon name="models" />
-                      {language.t("settings.models.title")}
-                    </Tabs.Trigger>
+                    {/* <Show when={isDevMode()}>
+                      <Tabs.Trigger value="models">
+                        <Icon name="models" />
+                        {language.t("settings.models.title")}
+                      </Tabs.Trigger>
+                    </Show> */}
                   </div>
                 </div>
               </div>
@@ -64,9 +72,11 @@ export const DialogSettings: Component = () => {
         {/* <Tabs.Content value="providers" class="no-scrollbar">
           <SettingsProviders />
         </Tabs.Content> */}
-        <Tabs.Content value="models" class="no-scrollbar">
-          <SettingsModels />
-        </Tabs.Content>
+        <Show when={isDevMode()}>
+          <Tabs.Content value="models" class="no-scrollbar">
+            <SettingsModels />
+          </Tabs.Content>
+        </Show>
       </Tabs>
     </Dialog>
   )

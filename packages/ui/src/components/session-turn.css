@@ -86,6 +86,10 @@
     flex-direction: column;
     align-self: stretch;
     gap: 12px;
+    border-left: 2px solid color-mix(in srgb, var(--surface-brand-base) 30%, transparent);
+    padding-left: 12px;
+    animation: mage-fade-in 300ms ease-out;
+    will-change: opacity, transform;
   }
 
   [data-slot="session-turn-diffs"] {
@@ -227,5 +231,5 @@
 }
 
 [data-slot="session-turn-list"] {
-  gap: 24px;
+  gap: 28px;
 }

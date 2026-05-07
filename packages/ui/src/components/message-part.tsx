@@ -31,6 +31,7 @@ import {
   QuestionInfo,
 } from "@mybcabisnis/mage-sdk/v2"
 import { useData } from "../context"
+import { isDevMode } from "../utils/dev-mode"
 import { useFileComponent } from "../context/file"
 import { useDialog } from "../context/dialog"
 import { type UiI18n, useI18n } from "../context/i18n"
@@ -1035,7 +1036,7 @@ export function UserMessageDisplay(props: { message: UserMessage; parts: PartTyp
 
   const metaHead = createMemo(() => {
     const agent = props.message.agent
-    const items = [agent ? agent[0]?.toUpperCase() + agent.slice(1) : "", model()]
+    const items = [agent ? agent[0]?.toUpperCase() + agent.slice(1) : "", isDevMode() ? model() : ""]
     return items.filter((x) => !!x).join("\u00A0\u00B7\u00A0")
   })
 
@@ -1440,7 +1441,7 @@ PART_MAPPING["text"] = function TextPartDisplay(props) {
     const agent = (props.message as AssistantMessage).agent
     const items = [
       agent ? agent[0]?.toUpperCase() + agent.slice(1) : "",
-      model(),
+      isDevMode() ? model() : "",
       duration(),
       interrupted() ? i18n.t("ui.message.interrupted") : "",
     ]

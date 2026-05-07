@@ -167,7 +167,7 @@ export function applyDirectoryEvent(input: {
     }
     case "session.diff": {
       const props = event.properties as { sessionID: string; diff: SnapshotFileDiff[] }
-      input.setStore("session_diff", props.sessionID, reconcile(list(props.diff), { key: "file" }))
+      input.setStore("session_diff", props.sessionID, reconcile(list(props.diff) as SnapshotFileDiff[], { key: "file" }))
       break
     }
     case "todo.updated": {

@@ -6,7 +6,10 @@ type Diff = SnapshotFileDiff | VcsFileDiff
 function diff(value: unknown): value is Diff {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false
   if (!("file" in value) || typeof value.file !== "string") return false
-  if (!("patch" in value) || typeof value.patch !== "string") return false
+  const hasPatch = "patch" in value && typeof value.patch === "string"
+  const hasBeforeAfter =
+    "before" in value && typeof value.before === "string" && "after" in value && typeof value.after === "string"
+  if (!hasPatch && !hasBeforeAfter) return false
   if (!("additions" in value) || typeof value.additions !== "number") return false
   if (!("deletions" in value) || typeof value.deletions !== "number") return false
   if (!("status" in value) || value.status === undefined) return true
@@ -43,7 +46,7 @@ export function message(value: Message): Message {
     summary: {
       ...(title === undefined ? {} : { title }),
       ...(body === undefined ? {} : { body }),
-      diffs: next,
+      diffs: next as SnapshotFileDiff[],
     },
   }
 }

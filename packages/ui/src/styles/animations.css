@@ -1,6 +1,9 @@
 :root {
   --animate-pulse: pulse-opacity 2s ease-in-out infinite;
   --animate-pulse-scale: pulse-scale 1.2s ease-in-out infinite;
+  --animate-mage-fade-in: mage-fade-in 300ms ease-out forwards;
+  --animate-mage-pulse: mage-pulse 2s ease-in-out infinite;
+  --animate-mage-shimmer: mage-shimmer 2s ease-in-out infinite;
 }
 
 @keyframes pulse-opacity {
@@ -138,4 +141,54 @@
   &:nth-child(30) {
     animation-delay: 3s;
   }
+}
+
+@keyframes mage-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes mage-pulse {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 0px transparent);
+  }
+  50% {
+    filter: drop-shadow(0 0 8px var(--surface-brand-base));
+  }
+}
+
+@keyframes mage-shimmer {
+  0% {
+    transform: translateX(-200%);
+  }
+  100% {
+    transform: translateX(200%);
+  }
+}
+
+.mage-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.mage-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--surface-brand-base) 50%,
+    transparent 100%
+  );
+  animation: mage-shimmer 2s ease-in-out infinite;
+  will-change: transform;
+  pointer-events: none;
 }

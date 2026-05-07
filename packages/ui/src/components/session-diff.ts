@@ -25,64 +25,65 @@ export type ViewDiff = {
 
 const cache = new Map<string, FileDiffMetadata>()
 
-function patch(diff: ReviewDiff) {
-  if (typeof diff.patch === "string") {
-    const [patch] = parsePatch(diff.patch)
+function simpleHash(s: string): number {
+  let h = 0
+  for (let i = 0; i < s.length; i++) {
+    h = (Math.imul(31, h) + s.charCodeAt(i)) | 0
+  }
+  return h >>> 0
+}
 
-    const beforeLines = []
-    const afterLines = []
+function extract(diff: ReviewDiff): { before: string; after: string; sourcePatch: string | undefined } {
+  // Fast path: before/after sent directly from backend (new VcsFileDiff format)
+  if ("before" in diff && "after" in diff && typeof diff.before === "string" && typeof diff.after === "string") {
+    return { before: diff.before, after: diff.after, sourcePatch: undefined }
+  }
 
-    for (const hunk of patch.hunks) {
+  // Legacy path: reconstruct from unified patch string (MAX_SAFE_INTEGER context)
+  if ("patch" in diff && typeof diff.patch === "string") {
+    const patchStr = diff.patch
+    const [parsed] = parsePatch(patchStr)
+    const beforeLines: string[] = []
+    const afterLines: string[] = []
+    for (const hunk of parsed.hunks) {
       for (const line of hunk.lines) {
         if (line.startsWith("-")) {
           beforeLines.push(line.slice(1))
         } else if (line.startsWith("+")) {
           afterLines.push(line.slice(1))
         } else {
-          // context line (starts with ' ')
           beforeLines.push(line.slice(1))
           afterLines.push(line.slice(1))
         }
       }
     }
+    return { before: beforeLines.join("\n"), after: afterLines.join("\n"), sourcePatch: patchStr }
+  }
 
-    return { before: beforeLines.join("\n"), after: afterLines.join("\n"), patch: diff.patch }
-  }
-  return {
-    before: "before" in diff && typeof diff.before === "string" ? diff.before : "",
-    after: "after" in diff && typeof diff.after === "string" ? diff.after : "",
-    patch: formatPatch(
-      structuredPatch(
-        diff.file,
-        diff.file,
-        "before" in diff && typeof diff.before === "string" ? diff.before : "",
-        "after" in diff && typeof diff.after === "string" ? diff.after : "",
-        "",
-        "",
-        { context: Number.MAX_SAFE_INTEGER },
-      ),
-    ),
-  }
+  return { before: "", after: "", sourcePatch: undefined }
 }
 
-function file(file: string, patch: string, before: string, after: string) {
-  const hit = cache.get(patch)
+function file(name: string, before: string, after: string) {
+  const key = `${name}:${simpleHash(before)}:${simpleHash(after)}`
+  const hit = cache.get(key)
   if (hit) return hit
-
-  const value = parseDiffFromFile({ name: file, contents: before }, { name: file, contents: after })
-  cache.set(patch, value)
+  const value = parseDiffFromFile({ name, contents: before }, { name, contents: after })
+  cache.set(key, value)
   return value
 }
 
 export function normalize(diff: ReviewDiff): ViewDiff {
-  const next = patch(diff)
+  const { before, after, sourcePatch } = extract(diff)
+  const patch =
+    sourcePatch ??
+    formatPatch(structuredPatch(diff.file, diff.file, before, after, "", "", { context: 3 }))
   return {
     file: diff.file,
-    patch: next.patch,
+    patch,
     additions: diff.additions,
     deletions: diff.deletions,
     status: diff.status,
-    fileDiff: file(diff.file, next.patch, next.before, next.after),
+    fileDiff: file(diff.file, before, after),
   }
 }
 

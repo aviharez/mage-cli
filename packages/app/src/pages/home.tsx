@@ -69,8 +69,16 @@ export default function Home() {
   }
 
   return (
-    <div class="mx-auto mt-55 w-full md:w-auto px-4">
-      <Logo class="md:w-xl opacity-12" />
+    <div class="mx-auto mt-55 w-full md:w-auto px-4 relative">
+      {/* Radial gradient background accent */}
+      <div
+        class="absolute inset-0 pointer-events-none -top-40"
+        style={{
+          background: "radial-gradient(ellipse at center top, var(--surface-brand-base) 0%, transparent 70%)",
+          opacity: "0.06",
+        }}
+      />
+      <Logo class="md:w-xl opacity-25" />
       <Button
         size="large"
         variant="ghost"
@@ -90,7 +98,17 @@ export default function Home() {
           <div class="mt-20 w-full flex flex-col gap-4">
             <div class="flex gap-2 items-center justify-between pl-3">
               <div class="text-14-medium text-text-strong">{language.t("home.recentProjects")}</div>
-              <Button icon="folder-add-left" size="normal" class="pl-2 pr-3" onClick={chooseProject}>
+              <Button
+                icon="folder-add-left"
+                size="normal"
+                class="pl-2 pr-3"
+                onClick={chooseProject}
+                style={{
+                  background: "linear-gradient(135deg, var(--surface-brand-base), var(--surface-brand-hover))",
+                  color: "#fff",
+                  "border-radius": "var(--radius-lg)",
+                }}
+              >
                 {language.t("command.project.open")}
               </Button>
             </div>
@@ -100,7 +118,7 @@ export default function Home() {
                   <Button
                     size="large"
                     variant="ghost"
-                    class="text-14-mono text-left justify-between px-3"
+                    class="text-14-mono text-left justify-between px-4 py-3 rounded-xl border border-border-weak-base hover:border-border-hover transition-all hover:shadow-xs"
                     onClick={() => openProject(project.worktree)}
                   >
                     {project.worktree.replace(homedir(), "~")}
@@ -122,13 +140,26 @@ export default function Home() {
           </div>
         </Match>
         <Match when={true}>
-          <div class="mt-30 mx-auto flex flex-col items-center gap-3">
-            <Icon name="folder-add-left" size="large" />
+          <div class="mt-30 mx-auto flex flex-col items-center gap-4">
+            <div
+              class="w-12 h-12 rounded-xl flex items-center justify-center"
+              style={{ background: "linear-gradient(135deg, var(--surface-brand-base), var(--surface-brand-hover))", opacity: "0.8" }}
+            >
+              <Icon name="folder-add-left" size="large" class="text-white" />
+            </div>
             <div class="flex flex-col gap-1 items-center justify-center">
               <div class="text-14-medium text-text-strong">{language.t("home.empty.title")}</div>
               <div class="text-12-regular text-text-weak">{language.t("home.empty.description")}</div>
             </div>
-            <Button class="px-3 mt-1" onClick={chooseProject}>
+            <Button
+              class="px-4 mt-1"
+              onClick={chooseProject}
+              style={{
+                background: "linear-gradient(135deg, var(--surface-brand-base), var(--surface-brand-hover))",
+                color: "#fff",
+                "border-radius": "var(--radius-lg)",
+              }}
+            >
               {language.t("command.project.open")}
             </Button>
           </div>

@@ -165,8 +165,13 @@ export function Titlebar() {
 
   return (
     <header
-      class="h-10 shrink-0 bg-background-base relative grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center"
-      style={{ "min-height": minHeight() }}
+      class="h-10 shrink-0 relative grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center border-b border-border-weak-base"
+      style={{
+        "min-height": minHeight(),
+        background: "color-mix(in srgb, var(--background-base) 80%, transparent)",
+        "backdrop-filter": "blur(12px)",
+        "-webkit-backdrop-filter": "blur(12px)",
+      }}
       data-tauri-drag-region
       onMouseDown={drag}
       onDblClick={maximize}
@@ -287,9 +292,9 @@ export function Titlebar() {
                   </Tooltip>
                 </div>
               </Show>
-              <div id="opencode-titlebar-left" class="flex items-center gap-3 min-w-0 px-2" />
+              <div id="mage-titlebar-left" class="flex items-center gap-3 min-w-0 px-2" />
               {["beta", "dev"].includes(import.meta.env.VITE_MAGE_CHANNEL) && (
-                <div class="bg-icon-interactive-base text-[#FFF] font-medium px-2 rounded-sm uppercase font-mono">
+                <div class="bg-surface-brand-base text-[#FFF] font-medium px-2 rounded-sm uppercase font-mono">
                   {import.meta.env.VITE_MAGE_CHANNEL.toUpperCase()}
                 </div>
               )}
@@ -299,7 +304,7 @@ export function Titlebar() {
       </div>
 
       <div class="min-w-0 flex items-center justify-center pointer-events-none">
-        <div id="opencode-titlebar-center" class="pointer-events-auto min-w-0 flex justify-center w-fit max-w-full" />
+        <div id="mage-titlebar-center" class="pointer-events-auto min-w-0 flex justify-center w-fit max-w-full" />
       </div>
 
       <div
@@ -310,7 +315,7 @@ export function Titlebar() {
         data-tauri-drag-region
         onMouseDown={drag}
       >
-        <div id="opencode-titlebar-right" class="flex items-center gap-1 shrink-0 justify-end" />
+        <div id="mage-titlebar-right" class="flex items-center gap-1 shrink-0 justify-end" />
         <Show when={windows()}>
           {!tauriApi() && <div class="w-36 shrink-0" />}
           <div data-tauri-decorum-tb class="flex flex-row" />

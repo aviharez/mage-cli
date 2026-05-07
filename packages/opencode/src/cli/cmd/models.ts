@@ -10,7 +10,7 @@ import { Effect } from "effect"
 
 export const ModelsCommand = cmd({
   command: "models [provider]",
-  describe: "list all available models",
+  describe: process.env.MAGE_DEBUG === "1" ? "list all available models" : (false as unknown as string),
   builder: (yargs: Argv) => {
     return yargs
       .positional("provider", {
@@ -28,6 +28,11 @@ export const ModelsCommand = cmd({
       })
   },
   handler: async (args) => {
+    if (process.env.MAGE_DEBUG !== "1") {
+      UI.error("Unknown command: models")
+      process.exit(1)
+      return
+    }
     if (args.refresh) {
       UI.println(UI.Style.TEXT_DIM + "Models cache sync is disabled" + UI.Style.TEXT_NORMAL)
     }

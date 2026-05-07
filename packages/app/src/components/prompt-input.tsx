@@ -30,6 +30,7 @@ import { ModelSelectorPopover } from "@/components/dialog-select-model"
 import { useProviders } from "@/hooks/use-providers"
 import { useCommand } from "@/context/command"
 import { Persist, persisted } from "@/utils/persist"
+import { isDevMode } from "@/utils/dev-mode"
 import { usePermission } from "@/context/permission"
 import { useLanguage } from "@/context/language"
 import { usePlatform } from "@/context/platform"
@@ -1489,7 +1490,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                     </TooltipKeybind>
                   </div>
                 </Show>
-                <Show when={!providersLoading()}>
+                <Show when={!providersLoading() && isDevMode()}>
                   <Show when={store.mode !== "shell"}>
                     <div
                       data-component="prompt-model-control"

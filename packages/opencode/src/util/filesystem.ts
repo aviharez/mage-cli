@@ -132,14 +132,31 @@ export function normalizePathPattern(p: string): string {
 // We cannot rely on path.resolve() here because git.exe may come from Git Bash, Cygwin, or MSYS2, so we need to translate these paths at the boundary.
 // Also resolves symlinks so that callers using the result as a cache key
 // always get the same canonical path for a given physical directory.
+const resolveCache = new Map<string, string>()
+const RESOLVE_CACHE_MAX = 512
+
 export function resolve(p: string): string {
+  const cached = resolveCache.get(p)
+  if (cached !== undefined) return cached
+
   const resolved = pathResolve(windowsPath(p))
+  let result: string
   try {
-    return normalizePath(realpathSync(resolved))
+    result = normalizePath(realpathSync(resolved))
   } catch (e) {
-    if (isEnoent(e)) return normalizePath(resolved)
-    throw e
+    if (isEnoent(e)) {
+      result = normalizePath(resolved)
+    } else {
+      throw e
+    }
   }
+
+  if (resolveCache.size >= RESOLVE_CACHE_MAX) {
+    const firstKey = resolveCache.keys().next().value
+    if (firstKey !== undefined) resolveCache.delete(firstKey)
+  }
+  resolveCache.set(p, result)
+  return result
 }
 
 export function windowsPath(p: string): string {

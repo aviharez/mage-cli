@@ -90,17 +90,36 @@ export const layer = Layer.effect(
           log.info("watcher backend", { directory: Instance.directory, platform: process.platform, backend })
 
           const subs: ParcelWatcher.AsyncSubscription[] = []
-          yield* Effect.addFinalizer(() =>
-            Effect.promise(() => Promise.allSettled(subs.map((sub) => sub.unsubscribe()))),
-          )
+          const pending = new Map<string, { type: string; path: string }>()
+          let flushTimer: ReturnType<typeof setTimeout> | undefined
 
-          const cb: ParcelWatcher.SubscribeCallback = Instance.bind((err, evts) => {
-            if (err) return
+          const flushPending = Instance.bind(() => {
+            flushTimer = undefined
+            const evts = [...pending.values()]
+            pending.clear()
             for (const evt of evts) {
               if (evt.type === "create") void Bus.publish(Event.Updated, { file: evt.path, event: "add" })
               if (evt.type === "update") void Bus.publish(Event.Updated, { file: evt.path, event: "change" })
               if (evt.type === "delete") void Bus.publish(Event.Updated, { file: evt.path, event: "unlink" })
             }
+          })
+
+          yield* Effect.addFinalizer(() => {
+            if (flushTimer !== undefined) {
+              clearTimeout(flushTimer)
+              flushTimer = undefined
+              pending.clear()
+            }
+            return Effect.promise(() => Promise.allSettled(subs.map((sub) => sub.unsubscribe())))
+          })
+
+          const cb: ParcelWatcher.SubscribeCallback = Instance.bind((err, evts) => {
+            if (err) return
+            for (const evt of evts) {
+              pending.set(evt.path, { type: evt.type, path: evt.path })
+            }
+            if (flushTimer !== undefined) clearTimeout(flushTimer)
+            flushTimer = setTimeout(flushPending, 50)
           })
 
           const subscribe = (dir: string, ignore: string[]) => {

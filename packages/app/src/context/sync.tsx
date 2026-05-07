@@ -12,6 +12,7 @@ import {
 import { useGlobalSync } from "./global-sync"
 import { useSDK } from "./sdk"
 import type { Message, Part } from "@mybcabisnis/mage-sdk/v2/client"
+import type { SnapshotFileDiff } from "@mybcabisnis/mage-sdk/v2"
 import { SESSION_CACHE_LIMIT, dropSessionCaches, pickSessionCacheEvictions } from "./global-sync/session-cache"
 import { diffs as list, message as clean } from "@/utils/diffs"
 
@@ -510,7 +511,7 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
           return runInflight(inflightDiff, key, () =>
             retry(() => client.session.diff({ sessionID })).then((diff) => {
               if (!tracked(directory, sessionID)) return
-              setStore("session_diff", sessionID, reconcile(list(diff.data), { key: "file" }))
+              setStore("session_diff", sessionID, reconcile(list(diff.data) as SnapshotFileDiff[], { key: "file" }))
             }),
           )
         },

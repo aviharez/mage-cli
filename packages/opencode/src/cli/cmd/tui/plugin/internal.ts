@@ -21,7 +21,7 @@ export const INTERNAL_TUI_PLUGINS: InternalTuiPlugin[] = [
   SidebarBoilerplate,
   // SidebarContext,
   SidebarMcp,
-  SidebarLsp,
+  // SidebarLsp,
   SidebarTodo,
   SidebarFiles,
   SidebarFooter,

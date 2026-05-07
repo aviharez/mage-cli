@@ -42,7 +42,7 @@
     width: 100%;
     height: 100%;
     border-radius: 999px;
-    background: var(--session-progress-color);
+    background: var(--session-progress-color, var(--surface-brand-base));
     clip-path: inset(0 100% 0 0 round 999px);
     animation: session-progress-whip var(--session-progress-ms, 1800ms) infinite;
     will-change: clip-path;

@@ -21,12 +21,14 @@ import {
   type JSX,
   lazy,
   onCleanup,
+  onMount,
   type ParentProps,
   Show,
   Suspense,
 } from "solid-js"
 import { Dynamic } from "solid-js/web"
 import { CommandProvider } from "@/context/command"
+import { toggleDevMode } from "@/utils/dev-mode"
 import { CommentsProvider } from "@/context/comments"
 import { FileProvider } from "@/context/file"
 import { GlobalSDKProvider } from "@/context/global-sdk"
@@ -130,6 +132,17 @@ function RouterRoot(props: ParentProps<{ appChildren?: JSX.Element }>) {
 }
 
 export function AppBaseProviders(props: ParentProps<{ locale?: Locale }>) {
+  onMount(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "M") {
+        e.preventDefault()
+        toggleDevMode()
+      }
+    }
+    window.addEventListener("keydown", handler)
+    onCleanup(() => window.removeEventListener("keydown", handler))
+  })
+
   return (
     <MetaProvider>
       <Font />
