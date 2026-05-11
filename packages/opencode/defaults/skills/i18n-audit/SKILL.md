@@ -1,71 +1,90 @@
 ---
 name: i18n-audit
-description: Audit and fix internationalization issues across Angular, Kotlin Android, and SwiftUI codebases — find hardcoded strings, missing translations, and locale inconsistencies
+description: Audit and report internationalization issues across Angular, Kotlin Android, and SwiftUI codebases on Windows — find hardcoded strings, missing translations, locale-aware formatting issues, and RTL hazards. Windows-only (PowerShell or CMD).
 ---
 
-# i18n Audit
+# i18n Audit (Windows)
 
-Scan the codebase for internationalization issues and produce a report with specific file references and fix instructions.
+Scan the codebase for internationalization issues and produce a report with specific file references and fix instructions. Run from the project root.
 
-## CONTRACT
+> **Platform:** This skill runs on **Windows only** (PowerShell or CMD). It does not include bash variants. If `process.platform` is not `win32`, stop and tell the user this skill targets Windows.
 
+## CONTRACT — read this first
+
+This task has exactly one completion condition: the file `I18N-AUDIT-[YYYY-MM-DD].md` must exist on disk, written using the **Write tool**.
+
+**ALL output — including the final report — must be written using tool calls (Write/Edit/Bash). Never print findings or the report as a chat message.**
+
+Until that file is written using the Write tool:
+- Do NOT produce any text response to the user.
+- Do NOT summarize findings in text.
+- Do NOT print the report content as a message — use the Write tool instead.
+- Do NOT ask the user anything.
 - Do NOT stop between steps.
-- Do NOT produce any text response until the final report is written.
-- Write intermediate findings to `i18n-scratch.md` using tool calls.
-- Always use FULL file paths when reading files.
-- The task is complete only when `I18N-AUDIT-[YYYY-MM-DD].md` exists on disk.
+- Write intermediate findings and progress to `i18n-scratch.md` using the Write/Edit tool (a tool call, not text).
+- Always use FULL paths when reading files — never bare filenames.
+
+The only acceptable output is tool calls, until `I18N-AUDIT-[YYYY-MM-DD].md` is written to disk.
 
 ---
 
-## Step 0 — Detect OS
+## Step 0 — Confirm Windows + detect shell
 
+**Run:**
 ```
 node -e "console.log(process.platform)"
 ```
 
-- `win32` → **Windows**: use PowerShell commands in every step below.
-- `darwin` / `linux` → **Unix**: use bash commands in every step below.
+- If the result is **not** `win32`, stop immediately. Tell the user: "This skill targets Windows only. Detected platform: [X]." Do NOT proceed.
+- If the result is `win32`, detect the shell:
+  ```
+  node -e "console.log(process.env.PSModulePath ? 'powershell' : 'cmd')"
+  ```
+  - Result `powershell` → write `OS=win32 SHELL=powershell` to `i18n-scratch.md`. Use **PowerShell** commands.
+  - Result `cmd` → write `OS=win32 SHELL=cmd` to `i18n-scratch.md`. Use **CMD** commands.
 
-Write `OS=[result]` to `i18n-scratch.md`. Go to Step 1.
+Go to Step 1.
 
 ---
 
 ## Step 1 — Detect platforms and localization setup
 
-**bash:** `ls`
 **PowerShell:** `Get-ChildItem -Name`
+**CMD:** `dir /b`
 
 ### Check Angular localization
 
-**bash:**
-```
-find src -name "*.xlf" -o -name "messages.*.json" -o -name "*.po" | head -10
-```
 **PowerShell:**
 ```
 Get-ChildItem -Path src -Recurse -Include "*.xlf","messages.*.json","*.po" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName | Select-Object -First 10
 ```
+**CMD:**
+```
+dir /s /b src\*.xlf src\messages.*.json src\*.po 2>nul
+```
 
 ### Check Android localization
 
-**bash:**
-```
-find . -type d -name "values*" | head -20
-```
 **PowerShell:**
 ```
 Get-ChildItem -Recurse -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -like "values*" } | Select-Object -ExpandProperty FullName | Select-Object -First 20
 ```
+**CMD:**
+```
+dir /s /b /ad values* 2>nul
+```
 
 ### Check iOS localization
 
-**bash:**
-```
-find . -name "*.strings" -o -name "*.xcstrings" | head -10
-```
+> iOS development typically requires macOS. On Windows you can still find string files if a Swift package is co-located in the repo, but no build verification is possible. Skip if no `*.swift` / `*.strings` / `*.xcstrings` files are present.
+
 **PowerShell:**
 ```
 Get-ChildItem -Recurse -Include "*.strings","*.xcstrings" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName | Select-Object -First 10
+```
+**CMD:**
+```
+dir /s /b *.strings *.xcstrings 2>nul
 ```
 
 Append all results to `i18n-scratch.md` under `# Setup`. Go to Step 2.
@@ -76,35 +95,35 @@ Append all results to `i18n-scratch.md` under `# Setup`. Go to Step 2.
 
 ### Raw text in HTML elements
 
-**bash:**
-```
-grep -rn ">[a-zA-Z]" src --include="*.html" | grep -v "i18n\|translate\|<!--\|{{\|[@\[(]" | head -30
-```
 **PowerShell:**
 ```
 Get-ChildItem -Path src -Recurse -Include "*.html" -ErrorAction SilentlyContinue | Select-String -Pattern ">[a-zA-Z]" | Where-Object { $_.Line -notmatch "i18n|translate|<!--|{{|[@\[(]" } | Select-Object Path, LineNumber, Line | Select-Object -First 30
 ```
+**CMD:**
+```
+findstr /s /n /r ">[a-zA-Z]" src\*.html 2>nul | findstr /v "i18n translate <!-- {{"
+```
 
 ### Hardcoded UI attribute values
 
-**bash:**
-```
-grep -rn "placeholder=\|aria-label=\|title=\|alt=" src --include="*.html" | grep -v "i18n-\|{{\|\[\|translate" | head -20
-```
 **PowerShell:**
 ```
 Get-ChildItem -Path src -Recurse -Include "*.html" -ErrorAction SilentlyContinue | Select-String -Pattern "placeholder=|aria-label=|title=|alt=" | Where-Object { $_.Line -notmatch "i18n-|{{|\[|translate" } | Select-Object Path, LineNumber, Line | Select-Object -First 20
 ```
+**CMD:**
+```
+findstr /s /n /c:"placeholder=" /c:"aria-label=" /c:"title=" /c:"alt=" src\*.html 2>nul | findstr /v "i18n- {{ translate"
+```
 
 ### Hardcoded strings in TypeScript files
 
-**bash:**
-```
-grep -rn "title\s*=\s*['\"].\|message\s*=\s*['\"].\|label\s*=\s*['\"]." src --include="*.ts" | grep -v "spec\|test\|mock\|//" | head -20
-```
 **PowerShell:**
 ```
 Get-ChildItem -Path src -Recurse -Include "*.ts" -ErrorAction SilentlyContinue | Select-String -Pattern "title\s*=\s*['""]|message\s*=\s*['""]|label\s*=\s*['""]" | Where-Object { $_.Line -notmatch "spec|test|mock|//" } | Select-Object Path, LineNumber, Line | Select-Object -First 20
+```
+**CMD:**
+```
+findstr /s /n /r /c:"title *= *[\"']" /c:"message *= *[\"']" /c:"label *= *[\"']" src\*.ts 2>nul | findstr /v "spec test mock //"
 ```
 
 Append results to `i18n-scratch.md` under `# AngularHardcoded`. Go to Step 3.
@@ -115,33 +134,33 @@ Append results to `i18n-scratch.md` under `# AngularHardcoded`. Go to Step 3.
 
 ### Hardcoded text in XML layouts
 
-**bash:**
-```
-grep -rn "android:text=\"[^@]" app/src/main/res/layout/ | head -20
-```
 **PowerShell:**
 ```
 Get-ChildItem -Path app/src/main/res/layout -Recurse -Include "*.xml" -ErrorAction SilentlyContinue | Select-String -Pattern 'android:text="[^@]' | Select-Object Path, LineNumber, Line | Select-Object -First 20
 ```
+**CMD:**
+```
+findstr /s /n /r /c:"android:text=\"[^@]" app\src\main\res\layout\*.xml 2>nul
+```
 
-**bash:**
-```
-grep -rn "android:hint=\"[^@]\|android:contentDescription=\"[^@]" app/src/main/res/layout/ | head -20
-```
 **PowerShell:**
 ```
 Get-ChildItem -Path app/src/main/res/layout -Recurse -Include "*.xml" -ErrorAction SilentlyContinue | Select-String -Pattern 'android:hint="[^@]|android:contentDescription="[^@]' | Select-Object Path, LineNumber, Line | Select-Object -First 20
 ```
+**CMD:**
+```
+findstr /s /n /r /c:"android:hint=\"[^@]" /c:"android:contentDescription=\"[^@]" app\src\main\res\layout\*.xml 2>nul
+```
 
 ### Hardcoded strings in Kotlin files
 
-**bash:**
-```
-grep -rn "setText(\"\|Toast\.makeText.*\"" app/src/main/java/ --include="*.kt" | head -20
-```
 **PowerShell:**
 ```
 Get-ChildItem -Path app/src/main/java -Recurse -Include "*.kt" -ErrorAction SilentlyContinue | Select-String -Pattern 'setText\("|Toast\.makeText.*"' | Select-Object Path, LineNumber, Line | Select-Object -First 20
+```
+**CMD:**
+```
+findstr /s /n /c:"setText(\"" /c:"Toast.makeText" app\src\main\java\*.kt 2>nul
 ```
 
 Append results to `i18n-scratch.md` under `# AndroidHardcoded`. Go to Step 4.
@@ -150,22 +169,24 @@ Append results to `i18n-scratch.md` under `# AndroidHardcoded`. Go to Step 4.
 
 ## Step 4 — iOS: find hardcoded strings
 
-**bash:**
-```
-grep -rn "Text(\"" . --include="*.swift" | grep -v "LocalizedStringKey\|localized\|NSLocalizedString\|spec\|test" | head -20
-```
+> Skip this step entirely if no `*.swift` files are present. iOS dev is uncommon on Windows.
+
 **PowerShell:**
 ```
 Get-ChildItem -Recurse -Include "*.swift" -ErrorAction SilentlyContinue | Select-String -Pattern 'Text\("' | Where-Object { $_.Line -notmatch "LocalizedStringKey|localized|NSLocalizedString|spec|test" } | Select-Object Path, LineNumber, Line | Select-Object -First 20
 ```
+**CMD:**
+```
+findstr /s /n /c:"Text(\"" *.swift 2>nul | findstr /v "LocalizedStringKey localized NSLocalizedString spec test"
+```
 
-**bash:**
-```
-grep -rn "Label(\"\|\.placeholder(\"" . --include="*.swift" | head -20
-```
 **PowerShell:**
 ```
 Get-ChildItem -Recurse -Include "*.swift" -ErrorAction SilentlyContinue | Select-String -Pattern 'Label\("|\.placeholder\("' | Select-Object Path, LineNumber, Line | Select-Object -First 20
+```
+**CMD:**
+```
+findstr /s /n /c:"Label(\"" /c:".placeholder(\"" *.swift 2>nul
 ```
 
 Append results to `i18n-scratch.md` under `# iOSHardcoded`. Go to Step 5.
@@ -176,37 +197,37 @@ Append results to `i18n-scratch.md` under `# iOSHardcoded`. Go to Step 5.
 
 ### Android: list string keys in default locale
 
-**bash:**
-```
-grep -o "name=\"[^\"]*\"" app/src/main/res/values/strings.xml | head -50
-```
 **PowerShell:**
 ```
 Get-Content app/src/main/res/values/strings.xml -ErrorAction SilentlyContinue | Select-String -Pattern 'name="[^"]*"' | Select-Object -First 50
 ```
+**CMD:**
+```
+findstr /n /r /c:"name=\"[^\"]*\"" app\src\main\res\values\strings.xml 2>nul
+```
 
 ### Android: find locale string directories
 
-**bash:**
-```
-find app/src/main/res -type d -name "values-*" | head -10
-```
 **PowerShell:**
 ```
 Get-ChildItem -Path app/src/main/res -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -like "values-*" } | Select-Object -ExpandProperty FullName | Select-Object -First 10
 ```
+**CMD:**
+```
+dir /b /ad app\src\main\res\values-* 2>nul
+```
 
-Read each `strings.xml` found in the locale directories. Compare key names against the default `strings.xml` and note any that are missing.
+Read each `strings.xml` found in the locale directories using the Read tool. Compare key names against the default `strings.xml` and note any that are missing.
 
 ### Angular: check for locale message files
 
-**bash:**
-```
-find src/locale -name "messages.*.xlf" | head -10
-```
 **PowerShell:**
 ```
 Get-ChildItem -Path src/locale -Include "messages.*.xlf" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName | Select-Object -First 10
+```
+**CMD:**
+```
+dir /b src\locale\messages.*.xlf 2>nul
 ```
 
 Read each locale file found. Compare `id` attributes against the source `messages.xlf` and note missing ones.
@@ -217,48 +238,48 @@ Append results to `i18n-scratch.md` under `# MissingKeys`. Go to Step 6.
 
 ## Step 6 — Check locale-aware formatting
 
-### Angular: hardcoded currency/number formatting
+### Angular: hardcoded currency / number formatting
 
-**bash:**
-```
-grep -rn "Rp \|IDR \|\`Rp\|\`IDR" src --include="*.ts" --include="*.html" | head -20
-```
 **PowerShell:**
 ```
 Get-ChildItem -Path src -Recurse -Include "*.ts","*.html" -ErrorAction SilentlyContinue | Select-String -Pattern "Rp |IDR |``Rp|``IDR" | Select-Object Path, LineNumber, Line | Select-Object -First 20
 ```
+**CMD:**
+```
+findstr /s /n /c:"Rp " /c:"IDR " src\*.ts src\*.html 2>nul
+```
 
 ### Android: hardcoded currency formatting
 
-**bash:**
-```
-grep -rn "\"Rp \|\"IDR \|Rp \$\|IDR \$" app/src --include="*.kt" | head -20
-```
 **PowerShell:**
 ```
 Get-ChildItem -Path app/src -Recurse -Include "*.kt" -ErrorAction SilentlyContinue | Select-String -Pattern '"Rp |"IDR |Rp \$|IDR \$' | Select-Object Path, LineNumber, Line | Select-Object -First 20
 ```
-
-### Angular: check for RTL-incompatible CSS
-
-**bash:**
+**CMD:**
 ```
-grep -rn "margin-left\|padding-left\|text-align: left\|float: left" src --include="*.scss" --include="*.css" | head -20
+findstr /s /n /c:"\"Rp " /c:"\"IDR " app\src\*.kt 2>nul
 ```
+
+### Angular: RTL-incompatible CSS
+
 **PowerShell:**
 ```
 Get-ChildItem -Path src -Recurse -Include "*.scss","*.css" -ErrorAction SilentlyContinue | Select-String -Pattern "margin-left|padding-left|text-align: left|float: left" | Select-Object Path, LineNumber, Line | Select-Object -First 20
 ```
+**CMD:**
+```
+findstr /s /n /c:"margin-left" /c:"padding-left" /c:"text-align: left" /c:"float: left" src\*.scss src\*.css 2>nul
+```
 
 ### Android: hardcoded layout direction
 
-**bash:**
-```
-grep -rn "layout_marginLeft\|layout_marginRight\|gravity=\"left\"\|gravity=\"right\"" app/src/main/res/layout/ | head -20
-```
 **PowerShell:**
 ```
 Get-ChildItem -Path app/src/main/res/layout -Recurse -Include "*.xml" -ErrorAction SilentlyContinue | Select-String -Pattern 'layout_marginLeft|layout_marginRight|gravity="left"|gravity="right"' | Select-Object Path, LineNumber, Line | Select-Object -First 20
+```
+**CMD:**
+```
+findstr /s /n /c:"layout_marginLeft" /c:"layout_marginRight" /c:"gravity=\"left\"" /c:"gravity=\"right\"" app\src\main\res\layout\*.xml 2>nul
 ```
 
 Append results to `i18n-scratch.md` under `# Formatting`. Go to Step 7.
@@ -267,7 +288,20 @@ Append results to `i18n-scratch.md` under `# Formatting`. Go to Step 7.
 
 ## Step 7 — Write the audit report
 
-Read `i18n-scratch.md` in full. Write `I18N-AUDIT-[YYYY-MM-DD].md` at the project root. Delete `i18n-scratch.md`. This is the only step that produces user-visible output.
+**MANDATORY: Use the Write tool to write the file to disk. Do NOT print the report content as a chat message.**
+
+1. Read `i18n-scratch.md` in full using the Read tool.
+2. Call the **Write tool** with `file_path = I18N-AUDIT-[YYYY-MM-DD].md` and the full report as `content`. The file MUST be written to disk.
+3. After the Write tool confirms success, delete `i18n-scratch.md`:
+   - **PowerShell:** `Remove-Item i18n-scratch.md`
+   - **CMD:** `del i18n-scratch.md`
+4. Only after the file exists on disk, post a single short message: `i18n audit written to I18N-AUDIT-[YYYY-MM-DD].md`
+
+Use ONLY information found in actual files. Reference exact file paths and line numbers. Do not flag issues that are already correctly implemented.
+
+---
+
+## Report structure
 
 ```markdown
 # i18n Audit — [Project Name]
@@ -372,3 +406,4 @@ Read `i18n-scratch.md` in full. Write `I18N-AUDIT-[YYYY-MM-DD].md` at the projec
 - Default locale for BCA app is `id` (Indonesian)
 - String keys should be `snake_case` and describe context, not content
 - Run a build after extraction to confirm no broken references
+- This skill is Windows-only. If the user is on macOS or Linux, refer them to a different skill or ask them to run on a Windows machine.

@@ -12,7 +12,6 @@ import { Auth } from "../auth"
 import { Env } from "../env"
 import { applyEdits, modify } from "jsonc-parser"
 import { Instance, type InstanceContext } from "../project/instance"
-import { InstallationLocal, InstallationVersion } from "@/installation/version"
 import { existsSync } from "fs"
 import { GlobalBus } from "@/bus/global"
 import { Event } from "../server/event"
@@ -21,8 +20,7 @@ import { isRecord } from "@/util/record"
 import type { ConsoleState } from "./console-state"
 import { AppFileSystem } from "@opencode-ai/shared/filesystem"
 import { InstanceState } from "@/effect"
-import { Context, Duration, Effect, Exit, Fiber, Layer, Option, Schema } from "effect"
-import { EffectFlock } from "@opencode-ai/shared/util/effect-flock"
+import { Context, Duration, Effect, Layer, Option, Schema } from "effect"
 import { InstanceRef } from "@/effect/instance-ref"
 import { zod, ZodOverride } from "@/util/effect-zod"
 import { ConfigAgent } from "./agent"
@@ -41,7 +39,6 @@ import { ConfigProvider } from "./provider"
 import { ConfigServer } from "./server"
 import { ConfigSkills } from "./skills"
 import { ConfigVariable } from "./variable"
-import { Npm } from "@/npm"
 const log = Log.create({ service: "config" })
 
 // Custom merge function that concatenates array fields instead of replacing them
@@ -282,7 +279,6 @@ export type Info = z.output<typeof Info> & {
 type State = {
   config: Info
   directories: string[]
-  deps: Fiber.Fiber<void, never>[]
   consoleState: ConsoleState
 }
 
@@ -347,7 +343,6 @@ export const layer = Layer.effect(
     const authSvc = yield* Auth.Service
     const accountSvc = yield* Account.Service
     const env = yield* Env.Service
-    const npmSvc = yield* Npm.Service
 
     const readConfigFile = Effect.fnUntraced(function* (filepath: string) {
       return yield* fs.readFileString(filepath).pipe(
@@ -530,8 +525,6 @@ export const layer = Layer.effect(
           log.debug("loading config from MAGE_CONFIG_DIR", { path: Flag.MAGE_CONFIG_DIR })
         }
 
-        const deps: Fiber.Fiber<void, never>[] = []
-
         for (const dir of directories) {
           if (dir.endsWith(".mage") || dir === Flag.MAGE_CONFIG_DIR) {
             for (const file of ["mage.json", "mage.jsonc"]) {
@@ -545,29 +538,6 @@ export const layer = Layer.effect(
           }
 
           yield* ensureGitignore(dir).pipe(Effect.orDie)
-
-          const dep = yield* npmSvc
-            .install(dir, {
-              add: [
-                {
-                  name: "@mybcabisnis/mage-plugin",
-                  version: InstallationLocal ? undefined : InstallationVersion,
-                },
-              ],
-            })
-            .pipe(
-              Effect.exit,
-              Effect.tap((exit) =>
-                Exit.isFailure(exit)
-                  ? Effect.sync(() => {
-                    log.warn("background dependency install failed", { dir, error: String(exit.cause) })
-                  })
-                  : Effect.void,
-              ),
-              Effect.asVoid,
-              Effect.forkDetach,
-            )
-          deps.push(dep)
 
           result.command = mergeDeep(result.command ?? {}, yield* Effect.promise(() => ConfigCommand.load(dir)))
           result.agent = mergeDeep(result.agent ?? {}, yield* Effect.promise(() => ConfigAgent.load(dir)))
@@ -689,7 +659,6 @@ export const layer = Layer.effect(
         return {
           config: result,
           directories,
-          deps,
           consoleState: {
             consoleManagedProviders: Array.from(consoleManagedProviders),
             activeOrgName,
@@ -719,9 +688,7 @@ export const layer = Layer.effect(
     })
 
     const waitForDependencies = Effect.fn("Config.waitForDependencies")(function* () {
-      yield* InstanceState.useEffect(state, (s) =>
-        Effect.forEach(s.deps, Fiber.join, { concurrency: "unbounded" }).pipe(Effect.asVoid),
-      )
+      yield* Effect.void
     })
 
     const update = Effect.fn("Config.update")(function* (config: Info) {
@@ -785,10 +752,8 @@ export const layer = Layer.effect(
 )
 
 export const defaultLayer = layer.pipe(
-  Layer.provide(EffectFlock.defaultLayer),
   Layer.provide(AppFileSystem.defaultLayer),
   Layer.provide(Env.defaultLayer),
   Layer.provide(Auth.defaultLayer),
   Layer.provide(Account.defaultLayer),
-  Layer.provide(Npm.defaultLayer),
 )

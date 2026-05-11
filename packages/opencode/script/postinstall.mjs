@@ -12,59 +12,14 @@ const require = createRequire(import.meta.url)
 
 const DEFAULT_CONFIG = {
   $schema: "https://mage.ai/config.json",
-  model: "merlin/qwen3",
   permission: {
-    edit: "ask",
-    bash: "ask"
+    edit: "ask"
   },
   skills: {
     paths: ["~/.mage/skills"],
   },
-  provider: {
-    merlin: {
-      name: "GAIA",
-      api: "https://gaia-gateway-multimodal-uat.apps.ocpuatgra.dti.co.id/llm-gateway/multimodal",
-      npm: "@mage/merlin-provider",
-      options: {
-        username: "mage-poc",
-        clientId: "MYBCADEV01211231",
-        timeoutMs: 600000,
-      },
-      models: {
-        qwen3: {
-          name: "Qwen3-30B",
-          release_date: "2025-05-01",
-          temperature: true,
-          attachment: false,
-          reasoning: false,
-          tool_call: true,
-          limit: { context: 99999999, output: 99999999 },
-        },
-        deepseek: {
-          name: "DeepSeek R1",
-          release_date: "2025-01-20",
-          temperature: true,
-          attachment: false,
-          reasoning: true,
-          tool_call: true,
-          limit: { context: 99999999, output: 99999999 },
-        },
-        gemini: {
-          name: "Gemini 2.5 Flash",
-          release_date: "2025-05-20",
-          temperature: true,
-          attachment: true,
-          reasoning: false,
-          tool_call: true,
-          limit: { context: 99999999, output: 99999999 },
-        },
-      },
-    },
-  },
   share: "manual"
 }
-
-const MAGE_DIR_EXCLUDES = new Set(["node_modules", "mage.jsonc", "plugin", "tool", "command"])
 
 function copyDirRecursive(src, dest) {
   fs.mkdirSync(dest, { recursive: true })
@@ -124,53 +79,6 @@ function ensureGlobalConfig() {
   }
 }
 
-function injectMageDir() {
-  const bundledMageDir = path.join(__dirname, ".mage")
-  if (!fs.existsSync(bundledMageDir)) return
-
-  const globalMageDir = path.join(os.homedir(), ".mage")
-  fs.mkdirSync(globalMageDir, { recursive: true })
-
-  for (const entry of fs.readdirSync(bundledMageDir, { withFileTypes: true })) {
-    if (MAGE_DIR_EXCLUDES.has(entry.name)) continue
-
-    const src = path.join(bundledMageDir, entry.name)
-    const dest = path.join(globalMageDir, entry.name)
-
-    if (entry.isDirectory()) {
-      copyDirRecursive(src, dest)
-    } else if (entry.isFile()) {
-      fs.copyFileSync(src, dest)
-    }
-    console.log(`Installed .mage/${entry.name} to ${dest}`)
-  }
-}
-
-function injectBundledSkills() {
-  // Skills are bundled in <package-root>/skills/ next to this script's parent dir
-  const bundledSkillsDir = path.join(__dirname, "..", "skills")
-  if (!fs.existsSync(bundledSkillsDir)) return
-
-  const globalSkillsDir = path.join(os.homedir(), ".mage", "skills")
-
-  for (const skillName of fs.readdirSync(bundledSkillsDir)) {
-    const src = path.join(bundledSkillsDir, skillName)
-    if (!fs.statSync(src).isDirectory()) continue
-
-    const dest = path.join(globalSkillsDir, skillName)
-    fs.mkdirSync(dest, { recursive: true })
-
-    for (const file of fs.readdirSync(src)) {
-      const srcFile = path.join(src, file)
-      const destFile = path.join(dest, file)
-      if (fs.statSync(srcFile).isFile()) {
-        fs.copyFileSync(srcFile, destFile)
-      }
-    }
-    console.log(`Installed bundled skill '${skillName}' to ${dest}`)
-  }
-}
-
 function detectPlatformAndArch() {
   // Map platform names
   let platform
@@ -211,7 +119,7 @@ function detectPlatformAndArch() {
 
 function findBinary() {
   const { platform, arch } = detectPlatformAndArch()
-  const packageName = `@mybcabisnis/mage-new-${platform}-${arch}`
+  const packageName = `@mybcabisnis/mage-${platform}-${arch}`
   const binaryName = platform === "windows" ? "mage.exe" : "mage"
 
   try {
@@ -422,8 +330,6 @@ function runMageNpmInstall() {
 async function main() {
   try {
     ensureGlobalConfig()
-    injectMageDir()
-    // injectBundledSkills()
     ensureMageNpmFiles()
     installVendoredPackages()  // install BCA-internal packages from bundled vendor/
     runMageNpmInstall()        // install remaining public transitive deps
@@ -434,22 +340,8 @@ async function main() {
     const nodeModulesDir = path.join(os.homedir(), ".mage", "node_modules")
     if (!fs.existsSync(nodeModulesDir)) fs.mkdirSync(nodeModulesDir, { recursive: true })
 
-    // Remove any plugin .ts files that have a bundled .js counterpart.
-    // The plugin loader matches *.{ts,js} — keeping both causes the plugin to
-    // load twice, which registers duplicate tools and hooks.
-    const pluginDir = path.join(os.homedir(), ".mage", "plugin")
-    if (fs.existsSync(pluginDir)) {
-      for (const f of fs.readdirSync(pluginDir)) {
-        if (!f.endsWith(".ts")) continue
-        if (fs.existsSync(path.join(pluginDir, f.replace(/\.ts$/, ".js")))) {
-          fs.rmSync(path.join(pluginDir, f))
-          console.log(`Removed outdated plugin ${f} (replaced by bundled .js)`)
-        }
-      }
-    }
-
     const { platform, arch } = detectPlatformAndArch()
-    const packageName = `@mybcabisnis/mage-new-${platform}-${arch}`
+    const packageName = `@mybcabisnis/mage-${platform}-${arch}`
     const binaryName = platform === "windows" ? "mage.exe" : "mage"
     const rgName = platform === "windows" ? "rg.exe" : "rg"
 

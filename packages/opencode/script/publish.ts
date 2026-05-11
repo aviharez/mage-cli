@@ -9,7 +9,7 @@ import { fileURLToPath } from "url"
 const dir = fileURLToPath(new URL("..", import.meta.url))
 process.chdir(dir)
 
-const MAGE_DIR_EXCLUDES = new Set(["node_modules", "mage.jsonc", "plugin", "tool", "command"])
+const DEFAULTS_DIR_EXCLUDES = new Set(["node_modules"])
 
 function copyDirExcluding(src: string, dest: string, excludes: Set<string>) {
   fs.mkdirSync(dest, { recursive: true })
@@ -47,16 +47,16 @@ await $`cp -r ./bin ./dist/${pkg.name}/bin`
 await $`cp ./script/postinstall.mjs ./dist/${pkg.name}/postinstall.mjs`
 await Bun.file(`./dist/${pkg.name}/LICENSE`).write(await Bun.file("../../LICENSE").text())
 
-const repoMageDir = path.resolve(dir, "../../.mage")
-if (fs.existsSync(repoMageDir)) {
-  const destMageDir = path.join("./dist", pkg.name, ".mage")
-  copyDirExcluding(repoMageDir, destMageDir, MAGE_DIR_EXCLUDES)
+const defaultsDir = path.resolve(dir, "./defaults")
+if (fs.existsSync(defaultsDir)) {
+  const destDefaultsDir = path.join("./dist", pkg.name, "defaults")
+  copyDirExcluding(defaultsDir, destDefaultsDir, DEFAULTS_DIR_EXCLUDES)
 
   // Bundle each plugin .ts into a self-contained .js using bun build so the
   // installed package has no node_modules dependency — no registry or network
   // access needed on the user's machine at postinstall or first boot.
-  const srcPluginDir = path.join(repoMageDir, "plugin")
-  const destPluginDir = path.join(destMageDir, "plugin")
+  const srcPluginDir = path.join(defaultsDir, "plugin")
+  const destPluginDir = path.join(destDefaultsDir, "plugin")
   if (fs.existsSync(srcPluginDir)) {
     fs.mkdirSync(destPluginDir, { recursive: true })
     for (const f of fs.readdirSync(srcPluginDir)) {
@@ -71,21 +71,7 @@ if (fs.existsSync(repoMageDir)) {
     }
   }
 
-  // Generate a correct package-lock.json from the current package.json.
-  // The repo's lock file is stale (references @opencode-ai/plugin from before
-  // the fork rename) — the dirty check in Npm.install compares declared dep
-  // names against locked names, so a mismatch triggers a full arborist install.
-  const magePkgPath = path.join(repoMageDir, "package.json")
-  if (fs.existsSync(magePkgPath)) {
-    const magePkg = JSON.parse(fs.readFileSync(magePkgPath, "utf8"))
-    const deps = magePkg.dependencies ?? {}
-    fs.writeFileSync(
-      path.join(destMageDir, "package-lock.json"),
-      JSON.stringify({ lockfileVersion: 3, packages: { "": { dependencies: deps } } }, null, 2),
-    )
-  }
-
-  console.log(`Bundled .mage/ into dist package`)
+  console.log(`Bundled defaults/ into dist package`)
 }
 
 // Vendor @mybcabisnis/mage-sdk and @mybcabisnis/mage-plugin so postinstall
@@ -173,7 +159,7 @@ await Bun.file(`./dist/${pkg.name}/package.json`).write(
       publishConfig: (pkg as any).publishConfig,
       optionalDependencies: binaries,
       // Explicitly list files so bun pm pack includes dotfolders like .mage/
-      files: [".mage", "bin", "postinstall.mjs", "LICENSE", "vendor"],
+      files: ["defaults", "bin", "postinstall.mjs", "LICENSE", "vendor"],
     },
     null,
     2,

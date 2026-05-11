@@ -2,7 +2,7 @@ export * as TuiConfig from "./tui"
 
 import z from "zod"
 import { mergeDeep, unique } from "remeda"
-import { Context, Effect, Fiber, Layer } from "effect"
+import { Context, Effect, Layer } from "effect"
 import { ConfigParse } from "@/config/parse"
 import * as ConfigPaths from "@/config/paths"
 import { migrateTuiConfig } from "./tui-migrate"
@@ -14,12 +14,9 @@ import { AppFileSystem } from "@opencode-ai/shared/filesystem"
 import { CurrentWorkingDirectory } from "./cwd"
 import { ConfigPlugin } from "@/config/plugin"
 import { ConfigKeybinds } from "@/config/keybinds"
-import { InstallationLocal, InstallationVersion } from "@/installation/version"
 import { makeRuntime } from "@/effect/runtime"
 import { Filesystem, Log } from "@/util"
 import { ConfigVariable } from "@/config/variable"
-import { Npm } from "@/npm"
-
 const log = Log.create({ service: "tui.config" })
 
 export const Info = TuiInfo
@@ -30,7 +27,6 @@ type Acc = {
 
 type State = {
   config: Info
-  deps: Array<Fiber.Fiber<void, AppFileSystem.Error>>
 }
 
 export type Info = z.output<typeof Info> & {
@@ -151,36 +147,16 @@ export const layer = Layer.effect(
   Service,
   Effect.gen(function* () {
     const directory = yield* CurrentWorkingDirectory
-    const npm = yield* Npm.Service
     const data = yield* loadState({ directory })
-    const deps = yield* Effect.forEach(
-      data.dirs,
-      (dir) =>
-        npm
-          .install(dir, {
-            add: [
-              {
-                name: "@mybcabisnis/mage-plugin",
-                version: InstallationLocal ? undefined : InstallationVersion,
-              },
-            ],
-          })
-          .pipe(Effect.forkScoped),
-      {
-        concurrency: "unbounded",
-      },
-    )
 
     const get = Effect.fn("TuiConfig.get")(() => Effect.succeed(data.config))
 
-    const waitForDependencies = Effect.fn("TuiConfig.waitForDependencies")(() =>
-      Effect.forEach(deps, Fiber.join, { concurrency: "unbounded" }).pipe(Effect.ignore(), Effect.asVoid),
-    )
+    const waitForDependencies = Effect.fn("TuiConfig.waitForDependencies")(() => Effect.void)
     return Service.of({ get, waitForDependencies })
   }).pipe(Effect.withSpan("TuiConfig.layer")),
 )
 
-export const defaultLayer = layer.pipe(Layer.provide(Npm.defaultLayer), Layer.provide(AppFileSystem.defaultLayer))
+export const defaultLayer = layer.pipe(Layer.provide(AppFileSystem.defaultLayer))
 
 const { runPromise } = makeRuntime(Service, defaultLayer)
 

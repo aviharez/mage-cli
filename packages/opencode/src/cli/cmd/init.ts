@@ -108,6 +108,7 @@ export async function runInitWizard(): Promise<void> {
         },
       },
     },
+    model: "merlin/qwen3",
   }
 
   const bp = (boilerplate as string | undefined)?.trim()

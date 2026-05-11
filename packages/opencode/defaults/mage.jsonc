@@ -7,7 +7,6 @@
       "api": "https://gaia-gateway-multimodal-uat.apps.ocpuatgra.dti.co.id/llm-gateway/multimodal",
       "npm": "@mage/merlin-provider",
       "options": {
-        "username": "mage-poc",
         "clientId": "MYBCADEV01211231",
         "timeoutMs": 600000
       },
@@ -56,7 +55,6 @@
       "packages/opencode/migration/*": "deny"
     }
   },
-  "mcp": {},
   "tools": {
     "github-triage": false,
     "github-pr-search": false

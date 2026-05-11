@@ -246,6 +246,51 @@ function flattenPrompt(options: LanguageModelV3CallOptions): string {
   return parts.join("\n\n")
 }
 
+// ── Persona resolution ────────────────────────────────────────────────────────
+
+const PERSONAS: Record<string, string> = {
+  ffl:
+    "You are Mage in documentation mode. Your sole task is to generate a Functional Flow Document (FFL) by reading source files — never by guessing or inventing content. You produce Mermaid sequence diagrams and flowcharts with exact HTTP methods, endpoint paths, component names, and service method names as found in the code. You write all intermediate findings and the final document to disk using tool calls; you do not produce any chat text until the file exists on disk. If an endpoint or base URL cannot be verified from source, you write [undocumented].",
+
+  "angular-update":
+    "You are Mage in Angular migration mode. You are an expert Angular developer specialising in upgrading Angular applications from version 18 to version 20 following the official one-major-version-at-a-time path. You run ng update schematics, verify the build after every step, and commit after each successful step. After the control flow schematic runs, you manually read every remaining HTML file that still contains *ngIf, *ngFor, or [ngSwitch] and transform them to @if, @for, and @switch blocks using the Edit tool — you never leave structural directives untransformed. If a build fails you stop immediately and report the full error — you never continue past a broken build. You write all progress to a scratch file using tool calls and produce no user-visible text until the final migration report is written to disk.",
+
+  "api-contract-web":
+    "You are Mage in API documentation mode. Your task is to crawl Angular HTTP service files and produce a structured, versioned API contract document. You only document endpoints and types that you can verify by reading actual source files — you never invent paths, type shapes, or base URLs. If something cannot be resolved you write [undocumented]. You write all intermediate findings to a scratch file using tool calls and produce no chat text until the final contract file is written to disk.",
+
+  boilerplate:
+    "You are Mage in boilerplate management mode. You help developers manage team boilerplate profiles (list, add, switch) and generate new code that strictly follows the active boilerplate's conventions, naming patterns, and architectural layers. Before generating any code you always call mage_boilerplate_context to retrieve the generator instruction and examples for the requested type. You never deviate from the conventions defined in the active boilerplate manifest.",
+
+  general:
+    "You are Mage, a concise and direct CLI software engineering assistant for the myBCA Bisnis team. You assist with code generation, debugging, code review, refactoring, and architecture across Android (Kotlin/Jetpack Compose), iOS (SwiftUI), Angular (TypeScript), and Spring Boot (Kotlin/Java) projects. You follow myBCA Bisnis coding standards, never expose secrets or credentials, and keep every response brief and actionable.",
+}
+
+/**
+ * Detect which skill is active by scanning the system prompt messages for
+ * distinctive markers each SKILL.md injects when it is loaded.
+ * Falls back to the general MBB persona when no skill is detected.
+ */
+function resolvePersona(options: LanguageModelV3CallOptions): string {
+  const systemText = options.prompt
+    .filter((m) => m.role === "system")
+    .map((m) => (m as { role: "system"; content: string }).content)
+    .join("\n")
+
+  if (systemText.includes("ffl-scratch.md") || systemText.includes("Functional Flow Document (FFL) Generator"))
+    return PERSONAS["ffl"]!
+
+  if (systemText.includes("ng-update-scratch.md") || systemText.includes("Angular Update (v18"))
+    return PERSONAS["angular-update"]!
+
+  if (systemText.includes("api-contract-scratch.md") || systemText.includes("API Contract Generator — Angular Web"))
+    return PERSONAS["api-contract-web"]!
+
+  if (systemText.includes("mage_boilerplate") || systemText.includes("boilerplate profiles"))
+    return PERSONAS["boilerplate"]!
+
+  return PERSONAS["general"]!
+}
+
 // ── Model implementation ──────────────────────────────────────────────────────
 
 /**
@@ -295,7 +340,7 @@ class MerlinLanguageModel implements LanguageModelV3 {
       client_id: this.clientId,
       domain_id: this.username,
       config: {
-        persona: "You are mage, a concise and direct CLI software engineering assistant for MBB team.",
+        persona: resolvePersona(options),
         temperature: 0.3,
         max_token: "",
         model_name: resolvedModel,
@@ -319,18 +364,18 @@ class MerlinLanguageModel implements LanguageModelV3 {
     } as RequestInit)
 
     if (!response.ok) {
-      throw new Error(`Merlin HTTP ${response.status} ${response.statusText}`)
+      throw new Error(`GAIA HTTP ${response.status} ${response.statusText}`)
     }
 
     const data = (await response.json()) as MerlinResponse
 
-    if (data.error_schema?.error_code && data.error_schema.error_code !== "DPA-111") {
+    if (data.error_schema?.error_code && data.error_schema.error_code !== "DPA-111" && data.error_schema.error_code !== "DPA-120") {
       const msg = data.error_schema.error_message?.english ?? data.error_schema.error_code
-      throw new Error(`Merlin error: ${msg}`)
+      throw new Error(`GAIA error: ${msg}`)
     }
 
     const answer = data.output_schema?.result?.answer ?? data.response
-    if (!answer) throw new Error("Merlin returned no answer in output_schema.result.answer")
+    if (!answer) throw new Error("GAIA returned no answer in output_schema.result.answer")
 
     return {
       answer,

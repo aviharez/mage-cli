@@ -1335,13 +1335,6 @@ export function Prompt(props: PromptProps) {
               <Switch>
                 <Match when={store.mode === "normal"}>
                   <Switch>
-                    <Match when={usage()}>
-                      {(item) => (
-                        <text fg={theme.textMuted} wrapMode="none">
-                          {[item().context, item().cost].filter(Boolean).join(" · ")}
-                        </text>
-                      )}
-                    </Match>
                     <Match when={true}>
                       <text fg={theme.text}>
                         {keybind.print("agent_cycle")} <span style={{ fg: theme.textMuted }}>agents</span>

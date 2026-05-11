@@ -6,8 +6,15 @@ const path = require("path")
 const os = require("os")
 
 function run(target) {
+  if (!process.env.MAGE_CONFIG_DIR) {
+    const defaultsDir = path.join(path.dirname(fs.realpathSync(__filename)), "..", "defaults")
+    if (fs.existsSync(defaultsDir)) {
+      process.env.MAGE_CONFIG_DIR = defaultsDir
+    }
+  }
   const result = childProcess.spawnSync(target, process.argv.slice(2), {
     stdio: "inherit",
+    env: process.env,
   })
   if (result.error) {
     console.error(result.error.message)
@@ -50,7 +57,7 @@ let arch = archMap[os.arch()]
 if (!arch) {
   arch = os.arch()
 }
-const base = "mage-new-" + platform + "-" + arch
+const base = "mage-" + platform + "-" + arch
 const binary = platform === "windows" ? "mage.exe" : "mage"
 
 function supportsAvx2() {

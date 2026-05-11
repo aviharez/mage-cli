@@ -25,7 +25,7 @@ const env = {
 }
 // Branches that represent production releases; builds from these use the "latest" dist-tag.
 const PRODUCTION_BRANCHES = new Set(
-  (process.env.MAGE_MAIN_BRANCH ?? "main,master,mage/main").split(",").map((b) => b.trim()),
+  (process.env.MAGE_MAIN_BRANCH ?? "main,master,mage/main,DEV/INIT").split(",").map((b) => b.trim()),
 )
 
 const CHANNEL = await (async () => {
@@ -47,7 +47,7 @@ const VERSION = await (async () => {
     const sanitizedChannel = CHANNEL.replace(/[^a-zA-Z0-9-]/g, "-")
     return `${version}-${sanitizedChannel}-${new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "")}`
   }
-  
+
 
   const [major, minor, patch] = version.split(".").map((x: string) => Number(x) || 0)
   const t = env.MAGE_BUMP?.toLowerCase()
