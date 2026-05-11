@@ -1,6 +1,6 @@
 import { BusEvent } from "@/bus/bus-event"
 import z from "zod"
-import { NamedError } from "@opencode-ai/shared/util/error"
+import { NamedError } from "@mybcabisnis/mage-shared/util/error"
 import { Log } from "../util"
 import { Process } from "@/util"
 

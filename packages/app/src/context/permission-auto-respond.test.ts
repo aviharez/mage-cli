@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import type { PermissionRequest, Session } from "@mybcabisnis/mage-sdk/v2/client"
-import { base64Encode } from "@opencode-ai/shared/util/encode"
+import { base64Encode } from "@mybcabisnis/mage-shared/util/encode"
 import { autoRespondsPermission, isDirectoryAutoAccepting } from "./permission-auto-respond"
 
 const session = (input: { id: string; parentID?: string }) =>

@@ -1,4 +1,4 @@
-import { Glob } from "@opencode-ai/shared/util/glob"
+import { Glob } from "@mybcabisnis/mage-shared/util/glob"
 
 const FOLDERS = new Set([
   "node_modules",

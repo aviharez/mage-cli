@@ -8,7 +8,7 @@ import type {
   Todo,
 } from "@mybcabisnis/mage-sdk/v2/client"
 import { showToast } from "@mybcabisnis/mage-ui/toast"
-import { getFilename } from "@opencode-ai/shared/util/path"
+import { getFilename } from "@mybcabisnis/mage-shared/util/path"
 import { batch, createContext, getOwner, onCleanup, onMount, type ParentProps, untrack, useContext } from "solid-js"
 import { createStore, produce, reconcile, unwrap } from "solid-js/store"
 import { useLanguage } from "@/context/language"

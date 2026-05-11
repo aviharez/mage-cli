@@ -9,7 +9,7 @@ import { Process } from "../util"
 import { LANGUAGE_EXTENSIONS } from "./language"
 import z from "zod"
 import type * as LSPServer from "./server"
-import { NamedError } from "@opencode-ai/shared/util/error"
+import { NamedError } from "@mybcabisnis/mage-shared/util/error"
 import { withTimeout } from "../util/timeout"
 import { Filesystem } from "../util"
 

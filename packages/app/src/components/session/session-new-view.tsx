@@ -5,7 +5,7 @@ import { useSDK } from "@/context/sdk"
 import { useLanguage } from "@/context/language"
 import { Icon } from "@mybcabisnis/mage-ui/icon"
 import { Mark } from "@mybcabisnis/mage-ui/logo"
-import { getDirectory, getFilename } from "@opencode-ai/shared/util/path"
+import { getDirectory, getFilename } from "@mybcabisnis/mage-shared/util/path"
 
 const MAIN_WORKTREE = "main"
 const CREATE_WORKTREE = "create"

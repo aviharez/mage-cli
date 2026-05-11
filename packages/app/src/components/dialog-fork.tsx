@@ -9,7 +9,7 @@ import { List } from "@mybcabisnis/mage-ui/list"
 import { showToast } from "@mybcabisnis/mage-ui/toast"
 import { extractPromptFromParts } from "@/utils/prompt"
 import type { TextPart as SDKTextPart } from "@mybcabisnis/mage-sdk/v2/client"
-import { base64Encode } from "@opencode-ai/shared/util/encode"
+import { base64Encode } from "@mybcabisnis/mage-shared/util/encode"
 import { useLanguage } from "@/context/language"
 
 interface ForkableMessage {

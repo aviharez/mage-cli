@@ -1,4 +1,4 @@
-import { sampledChecksum } from "@opencode-ai/shared/util/encode"
+import { sampledChecksum } from "@mybcabisnis/mage-shared/util/encode"
 import {
   DEFAULT_VIRTUAL_FILE_METRICS,
   type DiffLineAnnotation,

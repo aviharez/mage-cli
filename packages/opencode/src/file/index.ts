@@ -1,7 +1,7 @@
 import { BusEvent } from "@/bus/bus-event"
 import { InstanceState } from "@/effect"
 
-import { AppFileSystem } from "@opencode-ai/shared/filesystem"
+import { AppFileSystem } from "@mybcabisnis/mage-shared/filesystem"
 import { Git } from "@/git"
 import { Effect, Layer, Context, Scope } from "effect"
 import * as Stream from "effect/Stream"

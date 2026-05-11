@@ -1,7 +1,7 @@
 import { batch, createMemo } from "solid-js"
 import { createStore, produce, reconcile } from "solid-js/store"
-import { Binary } from "@opencode-ai/shared/util/binary"
-import { retry } from "@opencode-ai/shared/util/retry"
+import { Binary } from "@mybcabisnis/mage-shared/util/binary"
+import { retry } from "@mybcabisnis/mage-shared/util/retry"
 import { createSimpleContext } from "@mybcabisnis/mage-ui/context"
 import {
   clearSessionPrefetch,

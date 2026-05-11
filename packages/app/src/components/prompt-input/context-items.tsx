@@ -2,7 +2,7 @@ import { Component, For, Show } from "solid-js"
 import { FileIcon } from "@mybcabisnis/mage-ui/file-icon"
 import { IconButton } from "@mybcabisnis/mage-ui/icon-button"
 import { Tooltip } from "@mybcabisnis/mage-ui/tooltip"
-import { getDirectory, getFilename, getFilenameTruncated } from "@opencode-ai/shared/util/path"
+import { getDirectory, getFilename, getFilenameTruncated } from "@mybcabisnis/mage-shared/util/path"
 import type { ContextItem } from "@/context/prompt"
 
 type PromptContextItem = ContextItem & { key: string }

@@ -17,7 +17,7 @@ import { Format } from "../format"
 import { Instance } from "../project/instance"
 import { Snapshot } from "@/snapshot"
 import { assertExternalDirectoryEffect } from "./external-directory"
-import { AppFileSystem } from "@opencode-ai/shared/filesystem"
+import { AppFileSystem } from "@mybcabisnis/mage-shared/filesystem"
 
 function normalizeLineEndings(text: string): string {
   return text.replaceAll("\r\n", "\n")

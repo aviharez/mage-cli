@@ -1,5 +1,5 @@
 import { createSimpleContext } from "@mybcabisnis/mage-ui/context"
-import { base64Encode } from "@opencode-ai/shared/util/encode"
+import { base64Encode } from "@mybcabisnis/mage-shared/util/encode"
 import { useParams } from "@solidjs/router"
 import { batch, createEffect, createMemo } from "solid-js"
 import { createStore } from "solid-js/store"

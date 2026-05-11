@@ -1,7 +1,7 @@
 import z from "zod"
 import { SessionID } from "./schema"
 import { ModelID, ProviderID } from "../provider/schema"
-import { NamedError } from "@opencode-ai/shared/util/error"
+import { NamedError } from "@mybcabisnis/mage-shared/util/error"
 
 export const OutputLengthError = NamedError.create("MessageOutputLengthError", z.object({}))
 export const AuthError = NamedError.create(

@@ -1,4 +1,4 @@
-import { getFilename } from "@opencode-ai/shared/util/path"
+import { getFilename } from "@mybcabisnis/mage-shared/util/path"
 import { type Session } from "@mybcabisnis/mage-sdk/v2/client"
 
 type SessionStore = {

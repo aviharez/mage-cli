@@ -1,6 +1,6 @@
 import { createMemo, For, Show, type Accessor, type JSX } from "solid-js"
 import { createStore } from "solid-js/store"
-import { base64Encode } from "@opencode-ai/shared/util/encode"
+import { base64Encode } from "@mybcabisnis/mage-shared/util/encode"
 import { Button } from "@mybcabisnis/mage-ui/button"
 import { ContextMenu } from "@mybcabisnis/mage-ui/context-menu"
 import { HoverCard } from "@mybcabisnis/mage-ui/hover-card"

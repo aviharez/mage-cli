@@ -1,5 +1,5 @@
 import { Provider } from "../provider"
-import { NamedError } from "@opencode-ai/shared/util/error"
+import { NamedError } from "@mybcabisnis/mage-shared/util/error"
 import { NotFoundError } from "../storage"
 import { Session } from "../session"
 import type { ContentfulStatusCode } from "hono/utils/http-status"

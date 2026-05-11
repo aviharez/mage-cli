@@ -2,7 +2,7 @@ import fs from "fs/promises"
 import path from "path"
 import os from "os"
 import { Filesystem } from "../util"
-import { Flock } from "@opencode-ai/shared/util/flock"
+import { Flock } from "@mybcabisnis/mage-shared/util/flock"
 
 const home = path.join(os.homedir(), ".mage")
 

@@ -1,7 +1,7 @@
 import { Component, For, Match, Show, Switch } from "solid-js"
 import { FileIcon } from "@mybcabisnis/mage-ui/file-icon"
 import { Icon } from "@mybcabisnis/mage-ui/icon"
-import { getDirectory, getFilename } from "@opencode-ai/shared/util/path"
+import { getDirectory, getFilename } from "@mybcabisnis/mage-shared/util/path"
 
 export type AtOption =
   | { type: "agent"; name: string; display: string }

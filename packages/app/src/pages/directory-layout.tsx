@@ -1,6 +1,6 @@
 import { DataProvider } from "@mybcabisnis/mage-ui/context"
 import { showToast } from "@mybcabisnis/mage-ui/toast"
-import { base64Encode } from "@opencode-ai/shared/util/encode"
+import { base64Encode } from "@mybcabisnis/mage-shared/util/encode"
 import { useLocation, useNavigate, useParams } from "@solidjs/router"
 import { createEffect, createMemo, createResource, type ParentProps, Show } from "solid-js"
 import { useLanguage } from "@/context/language"

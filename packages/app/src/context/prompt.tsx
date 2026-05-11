@@ -1,5 +1,5 @@
 import { createSimpleContext } from "@mybcabisnis/mage-ui/context"
-import { checksum } from "@opencode-ai/shared/util/encode"
+import { checksum } from "@mybcabisnis/mage-shared/util/encode"
 import { useParams } from "@solidjs/router"
 import { batch, createMemo, createRoot, getOwner, onCleanup } from "solid-js"
 import { createStore, type SetStoreFunction } from "solid-js/store"

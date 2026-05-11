@@ -1,4 +1,4 @@
-import { NamedError } from "@opencode-ai/shared/util/error"
+import { NamedError } from "@mybcabisnis/mage-shared/util/error"
 import { errorFormat } from "@/util/error"
 
 interface ErrorLike {

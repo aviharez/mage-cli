@@ -11,8 +11,8 @@ import type {
   Todo,
 } from "@mybcabisnis/mage-sdk/v2/client"
 import { showToast } from "@mybcabisnis/mage-ui/toast"
-import { getFilename } from "@opencode-ai/shared/util/path"
-import { retry } from "@opencode-ai/shared/util/retry"
+import { getFilename } from "@mybcabisnis/mage-shared/util/path"
+import { retry } from "@mybcabisnis/mage-shared/util/retry"
 import { batch } from "solid-js"
 import { reconcile, type SetStoreFunction, type Store } from "solid-js/store"
 import type { State, VcsCache } from "./types"

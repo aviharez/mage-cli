@@ -164,8 +164,8 @@ function ensureMageNpmFiles() {
   // Also ensure the new name is always present so the Npm.install dirty-check
   // (which adds "@mybcabisnis/mage-plugin" to declared at boot) always passes.
   let pkgChanged = false
-  if (pkg.dependencies["@opencode-ai/plugin"]) {
-    delete pkg.dependencies["@opencode-ai/plugin"]
+  if (pkg.dependencies["@mybcabisnis/mage-plugin"]) {
+    delete pkg.dependencies["@mybcabisnis/mage-plugin"]
     pkgChanged = true
   }
   if (!pkg.dependencies["@mybcabisnis/mage-plugin"]) {
