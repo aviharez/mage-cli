@@ -23,6 +23,13 @@ function normalizeLineEndings(text: string): string {
   return text.replaceAll("\r\n", "\n")
 }
 
+function stripReadToolMetadata(text: string): string {
+  return text
+    .replace(/\n\n\(End of file - total \d+ lines\)\s*$/, "")
+    .replace(/\n\n\(Output capped at [^\n]+\)\s*$/, "")
+    .replace(/\n\n\(Showing lines \d+-\d+ of \d+\.[^\n]*\)\s*$/, "")
+}
+
 function detectLineEnding(text: string): "\n" | "\r\n" {
   return text.includes("\r\n") ? "\r\n" : "\n"
 }
@@ -72,9 +79,12 @@ export const EditTool = Tool.define(
             throw new Error("No changes to apply: oldString and newString are identical.")
           }
 
-          const filePath = path.isAbsolute(params.filePath)
+          let filePath = path.isAbsolute(params.filePath)
             ? params.filePath
             : path.join(Instance.directory, params.filePath)
+          if (process.platform === "win32") {
+            filePath = AppFileSystem.normalizePath(filePath)
+          }
           yield* assertExternalDirectoryEffect(ctx, filePath)
 
           let diff = ""
@@ -111,7 +121,10 @@ export const EditTool = Tool.define(
               contentOld = yield* afs.readFileString(filePath)
 
               const ending = detectLineEnding(contentOld)
-              const old = convertToLineEnding(normalizeLineEndings(params.oldString), ending)
+              const old = convertToLineEnding(
+                stripReadToolMetadata(normalizeLineEndings(params.oldString)),
+                ending,
+              )
               const next = convertToLineEnding(normalizeLineEndings(params.newString), ending)
 
               contentNew = replace(contentOld, old, next, params.replaceAll)

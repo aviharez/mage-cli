@@ -3,11 +3,11 @@ import { createMerlin } from "./merlin"
 
 describe("createMerlin", () => {
   test("registers provider and returns a LanguageModelV3", () => {
-    const provider = createMerlin({ baseURL: "https://example.com/llm", clientId: "TEST", username: "u", modelName: "qwen3", timeoutMs: 30000 })
-    const model = provider.languageModel("qwen3")
+    const provider = createMerlin({ username: "u" })
+    const model = provider.languageModel("default")
     expect(model.specificationVersion).toBe("v3")
     expect(model.provider).toBe("merlin")
-    expect(model.modelId).toBe("qwen3")
+    expect(model.modelId).toBe("default")
   })
 
   test("doGenerate sends correct Merlin request shape and parses answer", async () => {
@@ -28,14 +28,8 @@ describe("createMerlin", () => {
     globalThis.fetch = fakeFetch as any
 
     try {
-      const provider = createMerlin({
-        baseURL: "https://merlin.test/llm",
-        clientId: "TEST_CLIENT",
-        username: "testuser",
-        modelName: "qwen3",
-        timeoutMs: 30000,
-      })
-      const model = provider.languageModel("qwen3")
+      const model = createMerlin({ baseURL: "https://merlin.test/llm", username: "testuser" }).languageModel("default")
+      // clientId is always hardcoded — cannot be overridden via options
 
       const result = await model.doGenerate({
         prompt: [
@@ -55,11 +49,14 @@ describe("createMerlin", () => {
       // Verify request shape sent to Merlin
       expect(captured).toHaveLength(1)
       const body = JSON.parse(captured[0]!.body as string)
-      expect(body.client_id).toBe("TEST_CLIENT")
+      expect(body.client_id).toBe("MAGEDEV")
       expect(body.domain_id).toBe("testuser")
+      expect(body.service_id).toBe("MBBDSDEV29978319") // general — no skill markers in system prompt
       expect(body.new_session).toBe("True")
       expect(body.file).toBe("")
-      expect(body.config.model_name).toBe("/app/models/qwen3-30b-a3b-instruct-2507") // resolved via MODEL_NAME_MAP
+      expect(body.config).not.toHaveProperty("model_name")
+      expect(body.config).not.toHaveProperty("persona")
+      // prompt is a flattened string
       expect(typeof body.prompt).toBe("string")
       expect(body.prompt).toContain("You are a helpful assistant.")
       expect(body.prompt).toContain("User: Who are you?")
@@ -81,7 +78,7 @@ describe("createMerlin", () => {
     globalThis.fetch = fakeFetch as any
 
     try {
-      const model = createMerlin({ baseURL: "https://x.test", clientId: "TEST", username: "u", modelName: "qwen3", timeoutMs: 30000 }).languageModel("qwen3")
+      const model = createMerlin({ baseURL: "https://x.test", username: "u" }).languageModel("default")
       const { stream } = await model.doStream({
         prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
       } as any)
@@ -124,7 +121,7 @@ describe("createMerlin", () => {
     globalThis.fetch = fakeFetch as any
 
     try {
-      const model = createMerlin({ baseURL: "https://x.test", clientId: "TEST", username: "u", modelName: "qwen3", timeoutMs: 30000 }).languageModel("qwen3")
+      const model = createMerlin({ baseURL: "https://x.test" }).languageModel("default")
       await expect(
         model.doGenerate({ prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }] } as any),
       ).rejects.toThrow("Authentication failed")

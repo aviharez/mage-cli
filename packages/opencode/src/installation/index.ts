@@ -188,7 +188,7 @@ export const layer: Layer.Layer<Service, never, HttpClient.HttpClient | ChildPro
         for (const check of checks) {
           const output = yield* check.command()
           const installedName =
-            check.name === "brew" || check.name === "choco" || check.name === "scoop" ? "opencode" : "opencode-ai"
+            check.name === "brew" || check.name === "choco" || check.name === "scoop" ? "opencode" : "@mybcabisnis/mage"
           if (output.includes(installedName)) {
             return check.name
           }
@@ -217,15 +217,8 @@ export const layer: Layer.Layer<Service, never, HttpClient.HttpClient | ChildPro
         }
 
         if (detectedMethod === "npm" || detectedMethod === "bun" || detectedMethod === "pnpm") {
-          const r = (yield* text(["npm", "config", "get", "registry"])).trim()
-          const reg = r || "https://registry.npmjs.org"
-          const registry = reg.endsWith("/") ? reg.slice(0, -1) : reg
-          const channel = InstallationChannel
-          const response = yield* httpOk.execute(
-            HttpClientRequest.get(`${registry}/opencode-ai/${channel}`).pipe(HttpClientRequest.acceptJson),
-          )
-          const data = yield* HttpClientResponse.schemaBodyJson(NpmPackage)(response)
-          return data.version
+          const out = yield* text(["npm", "view", `@mybcabisnis/mage@${InstallationChannel}`, "version"])
+          return out.trim()
         }
 
         if (detectedMethod === "choco") {
@@ -264,13 +257,13 @@ export const layer: Layer.Layer<Service, never, HttpClient.HttpClient | ChildPro
             result = yield* upgradeCurl(target)
             break
           case "npm":
-            result = yield* run(["npm", "install", "-g", `opencode-ai@${target}`])
+            result = yield* run(["npm", "install", "-g", `@mybcabisnis/mage@${target}`])
             break
           case "pnpm":
-            result = yield* run(["pnpm", "install", "-g", `opencode-ai@${target}`])
+            result = yield* run(["pnpm", "install", "-g", `@mybcabisnis/mage@${target}`])
             break
           case "bun":
-            result = yield* run(["bun", "install", "-g", `opencode-ai@${target}`])
+            result = yield* run(["bun", "install", "-g", `@mybcabisnis/mage@${target}`])
             break
           case "brew": {
             const formula = yield* getBrewFormula()

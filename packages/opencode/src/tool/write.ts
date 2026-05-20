@@ -32,9 +32,12 @@ export const WriteTool = Tool.define(
       }),
       execute: (params: { content: string; filePath: string }, ctx: Tool.Context) =>
         Effect.gen(function* () {
-          const filepath = path.isAbsolute(params.filePath)
+          let filepath = path.isAbsolute(params.filePath)
             ? params.filePath
             : path.join(Instance.directory, params.filePath)
+          if (process.platform === "win32") {
+            filepath = AppFileSystem.normalizePath(filepath)
+          }
           yield* assertExternalDirectoryEffect(ctx, filepath)
 
           const exists = yield* fs.existsSafe(filepath)

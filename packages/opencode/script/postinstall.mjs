@@ -11,14 +11,15 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const require = createRequire(import.meta.url)
 
 const DEFAULT_CONFIG = {
-  $schema: "https://mage.ai/config.json",
+  $schema: "https://opencode.ai/config.json",
   permission: {
     edit: "ask"
   },
   skills: {
     paths: ["~/.mage/skills"],
   },
-  share: "manual"
+  share: "disabled",
+  lsp: true
 }
 
 function copyDirRecursive(src, dest) {

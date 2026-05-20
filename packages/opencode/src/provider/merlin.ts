@@ -7,8 +7,11 @@
  *
  * Request shape (Merlin):
  *   POST <endpoint>
- *   { client_id, domain_id, config: { persona, temperature, max_token, model_name, recommendation },
- *     new_session: 'True', prompt: string, file: '' }
+ *   { client_id, domain_id, service_id,
+ *     config: { temperature, max_token, recommendation },
+ *     new_session: 'True',
+ *     prompt: OpenAI-format message array | string,
+ *     file: '' }
  *
  * Response shape (Merlin):
  *   { output_schema?: { result?: { answer, token_input, token_output } }, error_schema? }
@@ -33,17 +36,25 @@ import type {
   LanguageModelV3StreamPart,
   LanguageModelV3ToolResultOutput,
 } from "@ai-sdk/provider"
+import { Log } from "../util"
+
+const log = Log.create({ service: "merlin" })
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const MERLIN_ENDPOINT =
+  "https://gaia-gateway-multimodal-uat.apps.ocpuatgra.dti.co.id/llm-gateway/multimodal"
+const CLIENT_ID = "MAGEDEV"
 
 // ── Merlin API types ──────────────────────────────────────────────────────────
 
 interface MerlinRequest {
   client_id: string
   domain_id: string
+  service_id: string
   config: {
-    persona: string
     temperature: number
     max_token: string
-    model_name: string
     recommendation: string
   }
   new_session: string
@@ -246,85 +257,52 @@ function flattenPrompt(options: LanguageModelV3CallOptions): string {
   return parts.join("\n\n")
 }
 
-// ── Persona resolution ────────────────────────────────────────────────────────
+// ── Service ID resolution ─────────────────────────────────────────────────────
 
-const PERSONAS: Record<string, string> = {
-  ffl:
-    "You are Mage in documentation mode. Your sole task is to generate a Functional Flow Document (FFL) by reading source files — never by guessing or inventing content. You produce Mermaid sequence diagrams and flowcharts with exact HTTP methods, endpoint paths, component names, and service method names as found in the code. You write all intermediate findings and the final document to disk using tool calls; you do not produce any chat text until the file exists on disk. If an endpoint or base URL cannot be verified from source, you write [undocumented].",
-
-  "angular-update":
-    "You are Mage in Angular migration mode. You are an expert Angular developer specialising in upgrading Angular applications from version 18 to version 20 following the official one-major-version-at-a-time path. You run ng update schematics, verify the build after every step, and commit after each successful step. After the control flow schematic runs, you manually read every remaining HTML file that still contains *ngIf, *ngFor, or [ngSwitch] and transform them to @if, @for, and @switch blocks using the Edit tool — you never leave structural directives untransformed. If a build fails you stop immediately and report the full error — you never continue past a broken build. You write all progress to a scratch file using tool calls and produce no user-visible text until the final migration report is written to disk.",
-
-  "api-contract-web":
-    "You are Mage in API documentation mode. Your task is to crawl Angular HTTP service files and produce a structured, versioned API contract document. You only document endpoints and types that you can verify by reading actual source files — you never invent paths, type shapes, or base URLs. If something cannot be resolved you write [undocumented]. You write all intermediate findings to a scratch file using tool calls and produce no chat text until the final contract file is written to disk.",
-
-  boilerplate:
-    "You are Mage in boilerplate management mode. You help developers manage team boilerplate profiles (list, add, switch) and generate new code that strictly follows the active boilerplate's conventions, naming patterns, and architectural layers. Before generating any code you always call mage_boilerplate_context to retrieve the generator instruction and examples for the requested type. You never deviate from the conventions defined in the active boilerplate manifest.",
-
-  general:
-    "You are Mage, a concise and direct CLI software engineering assistant for the myBCA Bisnis team. You assist with code generation, debugging, code review, refactoring, and architecture across Android (Kotlin/Jetpack Compose), iOS (SwiftUI), Angular (TypeScript), and Spring Boot (Kotlin/Java) projects. You follow myBCA Bisnis coding standards, never expose secrets or credentials, and keep every response brief and actionable.",
+const SERVICE_IDS: Record<string, string> = {
+  ffl: "FFDGDEV662933418",
+  "angular-update": "ANGULARDEV622010",
+  "api-contract-web": "CGDEV77822391003",
+  boilerplate: "BMDEV28894492190",
+  general: "MBBDSDEV29978319",
 }
 
 /**
  * Detect which skill is active by scanning the system prompt messages for
  * distinctive markers each SKILL.md injects when it is loaded.
- * Falls back to the general MBB persona when no skill is detected.
+ * Falls back to the general MBB service ID when no skill is detected.
  */
-function resolvePersona(options: LanguageModelV3CallOptions): string {
+function resolveServiceId(options: LanguageModelV3CallOptions): string {
   const systemText = options.prompt
     .filter((m) => m.role === "system")
     .map((m) => (m as { role: "system"; content: string }).content)
     .join("\n")
 
   if (systemText.includes("ffl-scratch.md") || systemText.includes("Functional Flow Document (FFL) Generator"))
-    return PERSONAS["ffl"]!
-
+    return SERVICE_IDS["ffl"]!
   if (systemText.includes("ng-update-scratch.md") || systemText.includes("Angular Update (v18"))
-    return PERSONAS["angular-update"]!
-
+    return SERVICE_IDS["angular-update"]!
   if (systemText.includes("api-contract-scratch.md") || systemText.includes("API Contract Generator — Angular Web"))
-    return PERSONAS["api-contract-web"]!
-
+    return SERVICE_IDS["api-contract-web"]!
   if (systemText.includes("mage_boilerplate") || systemText.includes("boilerplate profiles"))
-    return PERSONAS["boilerplate"]!
-
-  return PERSONAS["general"]!
+    return SERVICE_IDS["boilerplate"]!
+  return SERVICE_IDS["general"]!
 }
 
 // ── Model implementation ──────────────────────────────────────────────────────
 
-/**
- * Map from config model IDs (used in mage.jsonc) to the exact model_name
- * strings the BCA gateway expects in every request body.
- * If a model ID is not listed here the raw ID is sent as-is.
- */
-const MODEL_NAME_MAP: Record<string, string> = {
-  // Explicit BCA gateway model names
-  "qwen3": "/app/models/qwen3-30b-a3b-instruct-2507",
-  "qwen3-30b": "/app/models/qwen3-30b-a3b-instruct-2507",
-  "deepseek": "DeepSeek-R1",
-  "deepseek-r1": "DeepSeek-R1",
-  "gemini": "gemini-2.5-flash",
-  "gemini-flash": "gemini-2.5-flash",
-  "gemini-2.5-flash": "gemini-2.5-flash",
-}
-
 class MerlinLanguageModel implements LanguageModelV3 {
   readonly specificationVersion = "v3" as const
-  readonly provider: string
-  readonly modelId: string
+  readonly provider = "merlin"
+  readonly modelId = "default"
   readonly supportedUrls = {}
 
   constructor(
     private readonly endpoint: string,
     private readonly clientId: string,
     private readonly username: string,
-    private readonly modelName: string,
     private readonly timeoutMs: number,
-  ) {
-    this.provider = "merlin"
-    this.modelId = modelName
-  }
+  ) {}
 
   private buildPrompt(options: LanguageModelV3CallOptions): string {
     const toolsBlock = renderToolsBlock(options)
@@ -335,21 +313,26 @@ class MerlinLanguageModel implements LanguageModelV3 {
   private async callMerlin(
     options: LanguageModelV3CallOptions,
   ): Promise<{ answer: string; inputTokens: number; outputTokens: number }> {
-    const resolvedModel = MODEL_NAME_MAP[this.modelName.toLowerCase()] ?? this.modelName
     const body: MerlinRequest = {
       client_id: this.clientId,
       domain_id: this.username,
+      service_id: resolveServiceId(options),
       config: {
-        persona: resolvePersona(options),
-        temperature: 0.3,
+        temperature: 0.2,
         max_token: "",
-        model_name: resolvedModel,
         recommendation: "False",
       },
       new_session: "True",
       prompt: this.buildPrompt(options),
       file: "",
     }
+
+    const { prompt: _prompt, ...loggableBody } = body
+    log.info("request", {
+      ...loggableBody,
+      prompt_length: body.prompt.length,
+    })
+    log.info("request_prompt", { prompt: body.prompt })
 
     const signals: AbortSignal[] = [AbortSignal.timeout(this.timeoutMs)]
     if (options.abortSignal) signals.push(options.abortSignal)
@@ -369,7 +352,11 @@ class MerlinLanguageModel implements LanguageModelV3 {
 
     const data = (await response.json()) as MerlinResponse
 
-    if (data.error_schema?.error_code && data.error_schema.error_code !== "DPA-111" && data.error_schema.error_code !== "DPA-120") {
+    if (
+      data.error_schema?.error_code &&
+      data.error_schema.error_code !== "DPA-111" &&
+      data.error_schema.error_code !== "DPA-120"
+    ) {
       const msg = data.error_schema.error_message?.english ?? data.error_schema.error_code
       throw new Error(`GAIA error: ${msg}`)
     }
@@ -413,7 +400,7 @@ class MerlinLanguageModel implements LanguageModelV3 {
     }
 
     return {
-      content: [{ type: "text", text: answer }],
+      content: [{ type: "text", text: stripToolCalls(answer) }],
       finishReason: { unified: "stop", raw: "stop" },
       usage,
       warnings: [],
@@ -456,7 +443,7 @@ class MerlinLanguageModel implements LanguageModelV3 {
     } else {
       const textId = "merlin-0"
       parts.push({ type: "text-start", id: textId })
-      parts.push({ type: "text-delta", id: textId, delta: answer })
+      parts.push({ type: "text-delta", id: textId, delta: stripToolCalls(answer) })
       parts.push({ type: "text-end", id: textId })
       parts.push({ type: "finish", finishReason: { unified: "stop", raw: "stop" }, usage })
     }
@@ -475,16 +462,12 @@ class MerlinLanguageModel implements LanguageModelV3 {
 // ── Factory ───────────────────────────────────────────────────────────────────
 
 export interface MerlinProviderOptions {
-  /** Merlin API endpoint URL */
-  baseURL: string
-  /** BCA client_id for the Merlin gateway */
-  clientId: string
-  /** User's domain username (domain_id in Merlin requests) */
-  username: string
-  /** Default model name to send to Merlin */
-  modelName: string
-  /** Request timeout in milliseconds */
-  timeoutMs: number
+  /** Override Merlin API endpoint URL (defaults to the hardcoded GAIA endpoint) */
+  baseURL?: string
+  /** User's domain username sent as domain_id in every request */
+  username?: string
+  /** Request timeout in milliseconds (defaults to 600 000 ms) */
+  timeoutMs?: number
 }
 
 export interface MerlinProvider {
@@ -493,25 +476,23 @@ export interface MerlinProvider {
 
 /**
  * Create a Merlin provider instance.
+ * All options are optional — endpoint, client_id, and model are hardcoded
+ * for the BCA GAIA gateway and require no external configuration.
  *
- * Usage in OpenCode config:
- *   provider.merlin.npm = "@mage/merlin-provider"
- *   provider.merlin.api = "https://your-merlin-endpoint/..."
- *   provider.merlin.options.username = "your-domain-username"
- *   provider.merlin.options.clientId = "your-client-id"
+ * Optionally set `username` to populate the domain_id field for gateway
+ * user tracking. Can be configured via provider.merlin.options.username
+ * in mage.jsonc if needed.
  */
-export function createMerlin(options: MerlinProviderOptions): MerlinProvider {
+export function createMerlin(options: MerlinProviderOptions = {}): MerlinProvider {
   const {
-    baseURL,
-    clientId,
-    username,
-    modelName = "DeepSeek-R1",
-    timeoutMs = 120_000,
+    baseURL = MERLIN_ENDPOINT,
+    username = "",
+    timeoutMs = 600_000,
   } = options
 
   return {
-    languageModel(modelId: string): LanguageModelV3 {
-      return new MerlinLanguageModel(baseURL, clientId, username, modelId || modelName, timeoutMs)
+    languageModel(_modelId: string): LanguageModelV3 {
+      return new MerlinLanguageModel(baseURL, CLIENT_ID, username, timeoutMs)
     },
   }
 }

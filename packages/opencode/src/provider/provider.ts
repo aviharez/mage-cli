@@ -151,6 +151,8 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
           },
         },
       }),
+    // Merlin/GAIA is always autoloaded — no provider config entry required.
+    merlin: () => Effect.succeed({ autoload: true }),
   }
 }
 
@@ -302,6 +304,42 @@ const layer: Layer.Layer<
         const bridge = yield* EffectBridge.make()
         const cfg = yield* config.get()
         const database = {} as Record<string, Info>
+
+        // Hardcoded Merlin/GAIA provider — always available, no mage.jsonc entry required.
+        // Users may optionally add provider.merlin.options.username to mage.jsonc for domain_id.
+        database["merlin"] = {
+          id: ProviderID.make("merlin"),
+          name: "GAIA",
+          source: "custom",
+          env: [],
+          key: undefined,
+          options: {},
+          models: {
+            default: {
+              id: ModelID.make("default"),
+              providerID: ProviderID.make("merlin"),
+              api: { id: "default", npm: "@mage/merlin-provider", url: "" },
+              name: "Qwen3.5 27B",
+              status: "active",
+              capabilities: {
+                temperature: true,
+                reasoning: false,
+                attachment: false,
+                toolcall: true,
+                input: { text: true, audio: false, image: false, video: false, pdf: false },
+                output: { text: true, audio: false, image: false, video: false, pdf: false },
+                interleaved: false,
+              },
+              cost: { input: 0, output: 0, cache: { read: 0, write: 0 } },
+              options: {},
+              limit: { context: 131072, output: 131072 },
+              headers: {},
+              family: "qwen",
+              release_date: "2025-07-01",
+              variants: {},
+            },
+          },
+        }
 
         const providers: Record<ProviderID, Info> = {} as Record<ProviderID, Info>
         const languages = new Map<string, LanguageModelV3>()

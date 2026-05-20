@@ -23,7 +23,7 @@ a.out
 target
 .scripts
 .direnv/
-.claude/
+.claude/settings.local.json
 
 # Local dev files
 opencode-dev
