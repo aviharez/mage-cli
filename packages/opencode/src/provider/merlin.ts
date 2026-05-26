@@ -111,6 +111,9 @@ When you need to use a tool output EXACTLY this format — no other text on the 
 </tool_call>
 
 Rules:
+- Tool names are CASE-SENSITIVE. Copy them exactly as listed above (e.g. "Edit" not "edit", "Read" not "read", "Bash" not "bash").
+- ALWAYS close every <tool_call> with </tool_call> on its own line. Never leave a <tool_call> tag open.
+- Output valid JSON inside the tag — no comments, no trailing commas, no markdown code fences.
 - You MAY call multiple tools in sequence. Call one at a time and wait for the result.
 - After ALL tool results are returned, synthesise a final answer in plain text.
 - If you do NOT need a tool, reply in plain text only — no <tool_call> tags.`
@@ -118,61 +121,118 @@ Rules:
 
 type ParsedCall = { name: string; callId: string; args: Record<string, unknown> }
 
-/**
- * Parse tool calls from the model response.
- * Handles three formats Qwen3 may emit:
- *   1. Qwen3 native: <tool_call>{"name":"x","arguments":{...}}</tool_call>
- *   2. XML fallback: <tool_call><name>x</name><arguments>{...}</arguments></tool_call>
- *   3. Plain funcName({...}) or funcName(key=val) as a last resort.
- */
-function parseToolCalls(text: string): ParsedCall[] {
-  const results: ParsedCall[] = []
-  let idx = 0
-
-  // Format 1 & 2: anything inside <tool_call>…</tool_call>
-  const tagRegex = /<tool_call>([\s\S]*?)<\/tool_call>/g
-  let match: RegExpExecArray | null
-  while ((match = tagRegex.exec(text)) !== null) {
-    const body = match[1].trim()
-    // Format 1: JSON object { "name": "...", "arguments": {...} }
-    if (body.startsWith("{")) {
-      try {
-        const parsed = JSON.parse(body) as { name?: string; arguments?: Record<string, unknown> }
-        if (parsed.name) {
-          results.push({ name: parsed.name, callId: `merlin-tc-${idx++}`, args: parsed.arguments ?? {} })
-          continue
-        }
-      } catch {
-        // fall through to XML format
-      }
+/** Extract the first balanced-brace JSON object substring, ignoring braces inside strings. */
+function extractBalancedJson(s: string): string | null {
+  const start = s.indexOf("{")
+  if (start < 0) return null
+  let depth = 0
+  let inString = false
+  let escape = false
+  for (let i = start; i < s.length; i++) {
+    const c = s[i]
+    if (escape) { escape = false; continue }
+    if (c === "\\") { escape = true; continue }
+    if (c === '"') { inString = !inString; continue }
+    if (inString) continue
+    if (c === "{") depth++
+    else if (c === "}") {
+      depth--
+      if (depth === 0) return s.slice(start, i + 1)
     }
-    // Format 2: XML sub-elements
-    const nameMatch = /<name>([\s\S]*?)<\/name>/.exec(body)
-    const argsMatch = /<arguments>([\s\S]*?)<\/arguments>/.exec(body)
-    if (nameMatch) {
-      let args: Record<string, unknown> = {}
-      if (argsMatch) {
-        try { args = JSON.parse(argsMatch[1].trim()) } catch { /* ignore */ }
-      }
-      results.push({ name: nameMatch[1].trim(), callId: `merlin-tc-${idx++}`, args })
+  }
+  return null
+}
+
+/** Parse a single tool_call body into {name, args}, or null if unrecognized. */
+function parseToolCallBody(body: string): { name: string; args: Record<string, unknown> } | null {
+  // Strip surrounding markdown code fences if the model wrapped its JSON in them.
+  const stripped = body.replace(/^```(?:json|xml)?\s*/i, "").replace(/\s*```\s*$/, "").trim()
+
+  // Format 1: JSON object — strict parse first, then balanced-brace fallback for
+  // cases where the model appended trailing text after the closing brace.
+  if (stripped.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(stripped) as { name?: string; arguments?: Record<string, unknown> }
+      if (parsed.name) return { name: parsed.name, args: parsed.arguments ?? {} }
+    } catch { /* try balanced extraction */ }
+    const extracted = extractBalancedJson(stripped)
+    if (extracted && extracted !== stripped) {
+      try {
+        const parsed = JSON.parse(extracted) as { name?: string; arguments?: Record<string, unknown> }
+        if (parsed.name) return { name: parsed.name, args: parsed.arguments ?? {} }
+      } catch { /* fall through */ }
     }
   }
 
-  // Format 3 (fallback): funcName({...}) or funcName(key=val, …) on its own line
-  // Only run this if no tag-based calls were found, to avoid double-counting.
+  // Format 2: XML sub-elements
+  const nameMatch = /<name>([\s\S]*?)<\/name>/.exec(stripped)
+  if (nameMatch) {
+    const argsMatch = /<arguments>([\s\S]*?)<\/arguments>/.exec(stripped)
+    let args: Record<string, unknown> = {}
+    if (argsMatch) {
+      try { args = JSON.parse(argsMatch[1].trim()) } catch { /* ignore */ }
+    }
+    return { name: nameMatch[1].trim(), args }
+  }
+  return null
+}
+
+/**
+ * Parse tool calls from the model response.
+ * Handles formats Qwen3.5 may emit:
+ *   1. Closed JSON:   <tool_call>{"name":"x","arguments":{...}}</tool_call>
+ *   2. Closed XML:    <tool_call><name>x</name><arguments>{...}</arguments></tool_call>
+ *   3. Unclosed:      <tool_call>{"name":"x","arguments":{...}}    (model forgot the close tag)
+ *   4. Bare line:     funcName({...})  or  funcName(key=val)
+ *
+ * Tool names are normalized against `availableTools` to recover from case drift —
+ * e.g. when the model emits "edit" but the registered tool is "Edit".
+ */
+function parseToolCalls(
+  text: string,
+  availableTools?: LanguageModelV3CallOptions["tools"],
+): ParsedCall[] {
+  const results: ParsedCall[] = []
+  let idx = 0
+
+  const nameMap = new Map<string, string>()
+  if (availableTools) {
+    for (const t of availableTools) {
+      if (t.type === "function") nameMap.set(t.name.toLowerCase(), t.name)
+    }
+  }
+  const normalizeName = (n: string) => nameMap.get(n.toLowerCase()) ?? n
+
+  // Closed AND unclosed <tool_call> blocks. The `(?:</tool_call>|$)` alternation
+  // falls back to end-of-string when the model omits the closing tag.
+  const tagRegex = /<tool_call>([\s\S]*?)(?:<\/tool_call>|$)/g
+  let match: RegExpExecArray | null
+  while ((match = tagRegex.exec(text)) !== null) {
+    const body = match[1].trim()
+    if (!body) continue
+    const parsed = parseToolCallBody(body)
+    if (parsed) {
+      results.push({
+        name: normalizeName(parsed.name),
+        callId: `merlin-tc-${idx++}`,
+        args: parsed.args,
+      })
+    }
+  }
+
+  // Fallback: bare funcName(...) lines. Only run when no tag-based calls were found,
+  // and only accept names that match a registered tool — keeps prose like "use Edit()"
+  // from being misread as a phantom call.
   if (results.length === 0) {
-    // Match lines like:  glob({"pattern": "..."})
-    //                    grep(pattern="TODO", include="*.ts")
     const lineRegex = /^([a-zA-Z_][a-zA-Z0-9_]*)\(([\s\S]*?)\)\s*$/gm
     while ((match = lineRegex.exec(text)) !== null) {
       const name = match[1]
+      if (nameMap.size > 0 && !nameMap.has(name.toLowerCase())) continue
       const rawArgs = match[2].trim()
       let args: Record<string, unknown> = {}
-      // Try JSON object first
       try {
         args = JSON.parse(rawArgs.startsWith("{") ? rawArgs : `{${rawArgs}}`)
       } catch {
-        // Try key=value pairs: key="val", key=val
         const kvRegex = /([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*("[^"]*"|'[^']*'|[^,)]+)/g
         let kv: RegExpExecArray | null
         while ((kv = kvRegex.exec(rawArgs)) !== null) {
@@ -180,18 +240,19 @@ function parseToolCalls(text: string): ParsedCall[] {
           args[kv[1]] = val
         }
       }
-      results.push({ name, callId: `merlin-tc-${idx++}`, args })
+      results.push({ name: normalizeName(name), callId: `merlin-tc-${idx++}`, args })
     }
   }
 
   return results
 }
 
-/** Strip all tool_call blocks (and plain func-call lines) from the model answer. */
+/** Strip closed, unclosed, and bare func-call traces so they don't leak to the user. */
 function stripToolCalls(text: string): string {
   return text
-    .replace(/<tool_call>[\s\S]*?<\/tool_call>/g, "")
-    .replace(/^[a-zA-Z_][a-zA-Z0-9_]*\([\s\S]*?\)\s*$/gm, "")
+    .replace(/<tool_call>[\s\S]*?<\/tool_call>/g, "")  // closed blocks
+    .replace(/<tool_call>[\s\S]*$/g, "")               // unclosed block to end-of-string
+    .replace(/^[a-zA-Z_][a-zA-Z0-9_]*\([\s\S]*?\)\s*$/gm, "")  // bare func-call lines
     .trim()
 }
 
@@ -239,7 +300,9 @@ function flattenPrompt(options: LanguageModelV3CallOptions): string {
       for (const tc of toolCalls) {
         if (tc.type !== "tool-call") continue
         const inputJson = typeof tc.input === "string" ? tc.input : JSON.stringify(tc.input)
-        const callJson = JSON.stringify({ name: tc.toolName, arguments: JSON.parse(inputJson.trim() || "{}") })
+        let argsObj: unknown = {}
+        try { argsObj = JSON.parse(inputJson.trim() || "{}") } catch { argsObj = inputJson }
+        const callJson = JSON.stringify({ name: tc.toolName, arguments: argsObj })
         parts.push(`Assistant: <tool_call>\n${callJson}\n</tool_call>`)
       }
     } else if (msg.role === "tool") {
@@ -373,7 +436,10 @@ class MerlinLanguageModel implements LanguageModelV3 {
 
   async doGenerate(options: LanguageModelV3CallOptions): Promise<LanguageModelV3GenerateResult> {
     const { answer, inputTokens, outputTokens } = await this.callMerlin(options)
-    const toolCalls = parseToolCalls(answer)
+    const toolCalls = parseToolCalls(answer, options.tools)
+    if (toolCalls.length === 0 && /<tool_call>/i.test(answer)) {
+      log.warn("tool_call_parse_miss", { answer })
+    }
 
     const usage = {
       inputTokens: { total: inputTokens, noCache: inputTokens, cacheRead: undefined, cacheWrite: undefined },
@@ -409,7 +475,10 @@ class MerlinLanguageModel implements LanguageModelV3 {
 
   async doStream(options: LanguageModelV3CallOptions): Promise<LanguageModelV3StreamResult> {
     const { answer, inputTokens, outputTokens } = await this.callMerlin(options)
-    const toolCalls = parseToolCalls(answer)
+    const toolCalls = parseToolCalls(answer, options.tools)
+    if (toolCalls.length === 0 && /<tool_call>/i.test(answer)) {
+      log.warn("tool_call_parse_miss", { answer })
+    }
 
     const usage = {
       inputTokens: { total: inputTokens, noCache: inputTokens, cacheRead: undefined, cacheWrite: undefined },

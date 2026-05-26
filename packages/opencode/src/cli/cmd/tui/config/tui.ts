@@ -120,7 +120,7 @@ const loadState = Effect.fn("TuiConfig.loadState")(function* (ctx: { directory: 
   const dirs = unique(directories).filter((dir) => dir.endsWith(".mage") || dir === Flag.MAGE_CONFIG_DIR)
 
   for (const dir of dirs) {
-    if (!dir.endsWith(".mage") && dir !== Flag.MAGE_CONFIG_DIR) continue
+    if ((!dir.endsWith(".mage") && dir !== Flag.MAGE_CONFIG_DIR) || dir === Global.Path.config) continue
     for (const file of ConfigPaths.fileInDirectory(dir, "tui")) {
       yield* Effect.promise(() => mergeFile(acc, file, ctx)).pipe(Effect.orDie)
     }

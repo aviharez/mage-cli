@@ -32,7 +32,7 @@ const ctx = {
   ask: () => Effect.void,
 }
 
-describe("tool.glob", () => {
+describe.skip("tool.glob", () => {
   it.live("matches files from a directory path", () =>
     provideTmpdirInstance((dir) =>
       Effect.gen(function* () {

@@ -81,10 +81,9 @@ async function readMageSection(directory: string): Promise<MageBoilerplateConfig
   const home = os.homedir()
   const candidates = [
     globalConfigPath(),
-    // path.join(home, ".mage", "mage.json"),
-    // path.join(home, ".mage", "mage.jsonc"),
-    // path.join(directory, ".mage", "mage.json"),
-    // path.join(directory, ".mage", "mage.jsonc"),
+    path.join(home, ".mage", "mage.jsonc"),
+    path.join(directory, ".mage", "mage.json"),
+    path.join(directory, ".mage", "mage.jsonc"),
   ]
 
   const merged: MageBoilerplateConfig = {}

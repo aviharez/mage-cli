@@ -17,11 +17,11 @@ afterEach(async () => {
 })
 
 describe("tool.registry", () => {
-  it.live("loads tools from .opencode/tool (singular)", () =>
+  it.live("loads tools from .mage/tool (singular)", () =>
     provideTmpdirInstance((dir) =>
       Effect.gen(function* () {
-        const opencode = path.join(dir, ".opencode")
-        const tool = path.join(opencode, "tool")
+        const mage = path.join(dir, ".mage")
+        const tool = path.join(mage, "tool")
         yield* Effect.promise(() => fs.mkdir(tool, { recursive: true }))
         yield* Effect.promise(() =>
           Bun.write(
@@ -45,11 +45,11 @@ describe("tool.registry", () => {
     ),
   )
 
-  it.live("loads tools from .opencode/tools (plural)", () =>
+  it.live("loads tools from .mage/tools (plural)", () =>
     provideTmpdirInstance((dir) =>
       Effect.gen(function* () {
-        const opencode = path.join(dir, ".opencode")
-        const tools = path.join(opencode, "tools")
+        const mage = path.join(dir, ".mage")
+        const tools = path.join(mage, "tools")
         yield* Effect.promise(() => fs.mkdir(tools, { recursive: true }))
         yield* Effect.promise(() =>
           Bun.write(
@@ -76,12 +76,12 @@ describe("tool.registry", () => {
   it.live("loads tools with external dependencies without crashing", () =>
     provideTmpdirInstance((dir) =>
       Effect.gen(function* () {
-        const opencode = path.join(dir, ".opencode")
-        const tools = path.join(opencode, "tools")
+        const mage = path.join(dir, ".mage")
+        const tools = path.join(mage, "tools")
         yield* Effect.promise(() => fs.mkdir(tools, { recursive: true }))
         yield* Effect.promise(() =>
           Bun.write(
-            path.join(opencode, "package.json"),
+            path.join(mage, "package.json"),
             JSON.stringify({
               name: "custom-tools",
               dependencies: {
@@ -93,7 +93,7 @@ describe("tool.registry", () => {
         )
         yield* Effect.promise(() =>
           Bun.write(
-            path.join(opencode, "package-lock.json"),
+            path.join(mage, "package-lock.json"),
             JSON.stringify({
               name: "custom-tools",
               lockfileVersion: 3,
@@ -109,7 +109,7 @@ describe("tool.registry", () => {
           ),
         )
 
-        const cowsay = path.join(opencode, "node_modules", "cowsay")
+        const cowsay = path.join(mage, "node_modules", "cowsay")
         yield* Effect.promise(() => fs.mkdir(cowsay, { recursive: true }))
         yield* Effect.promise(() =>
           Bun.write(

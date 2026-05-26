@@ -3,6 +3,7 @@ import fs from "fs/promises"
 import path from "path"
 import { tmpdir } from "../../fixture/fixture"
 import * as App from "../../../src/cli/cmd/tui/app"
+import * as Init from "../../../src/cli/cmd/init"
 import { Rpc } from "../../../src/util"
 import { UI } from "../../../src/cli/ui"
 import * as Timeout from "../../../src/util/timeout"
@@ -38,6 +39,8 @@ function setup() {
     mdnsDomain: "opencode.local",
     cors: [],
   })
+  spyOn(Init, "isFirstRun").mockReturnValue(false)
+  spyOn(Init, "runInitWizard").mockResolvedValue(undefined)
   spyOn(Win32, "win32DisableProcessedInput").mockImplementation(() => {})
   spyOn(Win32, "win32InstallCtrlCGuard").mockReturnValue(undefined)
 }

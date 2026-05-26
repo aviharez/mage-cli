@@ -53,9 +53,7 @@ async function writeFixture() {
   await Bun.write(path.join(FIXTURE_DIR, "examples/user-service.ts"), "export class UserService { /* example */ }")
 }
 
-// Import the plugin's internal helpers by re-exporting them via a test shim
-// We test the logic by exercising the server plugin directly
-const { server } = await import("./boilerplate")
+const { server } = await import("../../defaults/plugin/boilerplate")
 
 describe("boilerplate plugin", () => {
   beforeAll(writeFixture)
@@ -83,10 +81,9 @@ describe("boilerplate plugin", () => {
   })
 
   test("system transform injects conventions when boilerplate is configured", async () => {
-    // Write a mage config pointing to the fixture
     const configDir = path.join(os.tmpdir(), "mage-plugin-test-config")
     await fs.mkdir(path.join(configDir, ".mage"), { recursive: true })
-    const configFile = path.join(configDir, ".mage", "mage.jsonc")
+    const configFile = path.join(configDir, ".mage", "mage.json")
     await Bun.write(configFile, JSON.stringify({ mage: { boilerplate: FIXTURE_DIR } }))
 
     const hooks = await server(
@@ -116,7 +113,7 @@ describe("boilerplate plugin", () => {
     const configDir = path.join(os.tmpdir(), "mage-plugin-test-ctx")
     await fs.mkdir(path.join(configDir, ".mage"), { recursive: true })
     await Bun.write(
-      path.join(configDir, ".mage", "mage.jsonc"),
+      path.join(configDir, ".mage", "mage.json"),
       JSON.stringify({ mage: { boilerplate: FIXTURE_DIR } }),
     )
 
@@ -147,7 +144,7 @@ describe("boilerplate plugin", () => {
     const configDir = path.join(os.tmpdir(), "mage-plugin-test-unk")
     await fs.mkdir(path.join(configDir, ".mage"), { recursive: true })
     await Bun.write(
-      path.join(configDir, ".mage", "mage.jsonc"),
+      path.join(configDir, ".mage", "mage.json"),
       JSON.stringify({ mage: { boilerplate: FIXTURE_DIR } }),
     )
 
@@ -196,7 +193,7 @@ describe("boilerplate plugin", () => {
   test("mage_boilerplate_manage add registers local path as profile", async () => {
     const configDir = path.join(os.tmpdir(), "mage-plugin-test-add")
     await fs.mkdir(path.join(configDir, ".mage"), { recursive: true })
-    await Bun.write(path.join(configDir, ".mage", "mage.jsonc"), JSON.stringify({ mage: {} }))
+    await Bun.write(path.join(configDir, ".mage", "mage.json"), JSON.stringify({ mage: {} }))
 
     const hooks = await server(
       {
@@ -211,12 +208,9 @@ describe("boilerplate plugin", () => {
       {},
     )
 
-    // Simulate add with a local path that has mage.yaml (not a real git clone, just check validation)
-    // We expect it to fail at git clone, which is correct — just verify it doesn't crash with wrong args
     const ctx = { sessionID: "t", messageID: "t", agent: "t", directory: configDir, worktree: configDir, abort: new AbortController().signal, metadata: () => {}, ask: () => { throw new Error() } }
     const result = await (hooks.tool as any)!["mage_boilerplate_manage"]!.execute({ action: "add", name: "my-bp", url: "not-a-real-url" }, ctx)
     const output = typeof result === "string" ? result : result.output
-    // Should fail at git clone, not crash
     expect(output).toContain("Failed to clone")
 
     await fs.rm(configDir, { recursive: true, force: true })
@@ -226,7 +220,7 @@ describe("boilerplate plugin", () => {
     const configDir = path.join(os.tmpdir(), "mage-plugin-test-mgmt")
     await fs.mkdir(path.join(configDir, ".mage"), { recursive: true })
     await Bun.write(
-      path.join(configDir, ".mage", "mage.jsonc"),
+      path.join(configDir, ".mage", "mage.json"),
       JSON.stringify({ mage: { boilerplate: FIXTURE_DIR } }),
     )
 

@@ -4,28 +4,40 @@ import os from "os"
 import { Filesystem } from "../util"
 import { Flock } from "@mybcabisnis/mage-shared/util/flock"
 
-const home = path.join(os.homedir(), ".mage")
+const getHomeDir = () => process.env.MAGE_TEST_HOME || os.homedir()
 
-const data = path.join(home, "data")
-const cache = path.join(home, "cache")
-const config = home
-const state = path.join(home, "state")
+declare const MAGE_AGENTS_MD: string | undefined
 
-export const Path = {
-  // Allow override via MAGE_TEST_HOME for test isolation
-  get home() {
-    return process.env.MAGE_TEST_HOME || os.homedir()
-  },
-  data,
-  bin: path.join(home, "bin"),
-  log: path.join(data, "log"),
-  cache,
-  config,
-  state,
+const _overrides: Record<string, string | undefined> = {}
+function _path(key: string, derive: () => string) {
+  return {
+    get() { return _overrides[key] ?? derive() },
+    set(v: string) { _overrides[key] = v },
+    enumerable: true,
+    configurable: true,
+  }
 }
 
+export const Path: {
+  home: string
+  data: string
+  bin: string
+  log: string
+  cache: string
+  config: string
+  state: string
+} = Object.defineProperties({} as any, {
+  home: _path("home", getHomeDir),
+  data: _path("data", () => path.join(getHomeDir(), ".mage", "data")),
+  bin: _path("bin", () => path.join(getHomeDir(), ".mage", "bin")),
+  log: _path("log", () => path.join(getHomeDir(), ".mage", "data", "log")),
+  cache: _path("cache", () => path.join(getHomeDir(), ".mage", "cache")),
+  config: _path("config", () => path.join(getHomeDir(), ".mage")),
+  state: _path("state", () => path.join(getHomeDir(), ".mage", "state")),
+})
+
 // Initialize Flock with global state path
-Flock.setGlobal({ state })
+Flock.setGlobal({ state: Path.state })
 
 await Promise.all([
   fs.mkdir(Path.data, { recursive: true }),
@@ -35,6 +47,13 @@ await Promise.all([
   fs.mkdir(Path.log, { recursive: true }),
   fs.mkdir(Path.cache, { recursive: true }),
 ])
+
+if (typeof MAGE_AGENTS_MD === "string") {
+  const agentsMdPath = path.join(Path.config, "AGENTS.md")
+  await fs.access(agentsMdPath).catch(() =>
+    fs.writeFile(agentsMdPath, MAGE_AGENTS_MD as string, "utf8"),
+  )
+}
 
 const CACHE_VERSION = "21"
 

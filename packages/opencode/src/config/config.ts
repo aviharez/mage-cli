@@ -526,7 +526,7 @@ export const layer = Layer.effect(
         }
 
         for (const dir of directories) {
-          if (dir.endsWith(".mage") || dir === Flag.MAGE_CONFIG_DIR) {
+          if ((dir.endsWith(".mage") || dir === Flag.MAGE_CONFIG_DIR) && dir !== Global.Path.config) {
             for (const file of ["mage.json", "mage.jsonc"]) {
               const source = path.join(dir, file)
               log.debug(`loading config from ${source}`)

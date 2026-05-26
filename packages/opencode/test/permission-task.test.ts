@@ -146,7 +146,7 @@ describe("Permission.disabled for task tool", () => {
 
 // Integration tests that load permissions from real config files
 describe("permission.task with real config files", () => {
-  test("loads task permissions from opencode.json config", async () => {
+  test("loads task permissions from mage.json config", async () => {
     await using tmp = await tmpdir({
       git: true,
       config: {
@@ -226,8 +226,8 @@ describe("permission.task with real config files", () => {
       git: true,
       config: {
         permission: {
-          bash: "allow",
-          edit: "ask",
+          read: "allow",
+          glob: "ask",
           task: {
             "*": "deny",
             general: "allow",
@@ -246,13 +246,13 @@ describe("permission.task with real config files", () => {
         expect(Permission.evaluate("task", "code-reviewer", ruleset).action).toBe("deny")
 
         // Verify other tool permissions
-        expect(Permission.evaluate("bash", "*", ruleset).action).toBe("allow")
-        expect(Permission.evaluate("edit", "*", ruleset).action).toBe("ask")
+        expect(Permission.evaluate("read", "*", ruleset).action).toBe("allow")
+        expect(Permission.evaluate("glob", "*", ruleset).action).toBe("ask")
 
         // Verify disabled tools
-        const disabled = Permission.disabled(["bash", "edit", "task"], ruleset)
-        expect(disabled.has("bash")).toBe(false)
-        expect(disabled.has("edit")).toBe(false)
+        const disabled = Permission.disabled(["read", "glob", "task"], ruleset)
+        expect(disabled.has("read")).toBe(false)
+        expect(disabled.has("glob")).toBe(false)
         // task is NOT disabled because disabled() uses findLast, and the last rule
         // matching "task" permission is {pattern: "general", action: "allow"}, not pattern: "*"
         expect(disabled.has("task")).toBe(false)

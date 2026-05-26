@@ -134,7 +134,8 @@ export namespace AppFileSystem {
         while (true) {
           for (const target of options.targets) {
             const search = join(current, target)
-            if (yield* fs.exists(search)) result.push(search)
+            const exists = yield* fs.exists(search)
+            if (exists) result.push(search)
           }
           if (options.stop === current) break
           const parent = dirname(current)

@@ -1,5 +1,5 @@
 import { describe, test, expect, mock } from "bun:test"
-import { createMerlin } from "./merlin"
+import { createMerlin } from "../../src/provider/merlin"
 
 describe("createMerlin", () => {
   test("registers provider and returns a LanguageModelV3", () => {
@@ -29,7 +29,6 @@ describe("createMerlin", () => {
 
     try {
       const model = createMerlin({ baseURL: "https://merlin.test/llm", username: "testuser" }).languageModel("default")
-      // clientId is always hardcoded — cannot be overridden via options
 
       const result = await model.doGenerate({
         prompt: [
@@ -39,24 +38,21 @@ describe("createMerlin", () => {
         temperature: 0.7,
       } as any)
 
-      // Verify response
       expect(result.content).toHaveLength(1)
       expect(result.content[0]).toMatchObject({ type: "text", text: "Saya adalah Mage." })
       expect(result.finishReason).toMatchObject({ unified: "stop" })
       expect(result.usage.inputTokens.total).toBe(10)
       expect(result.usage.outputTokens.total).toBe(5)
 
-      // Verify request shape sent to Merlin
       expect(captured).toHaveLength(1)
       const body = JSON.parse(captured[0]!.body as string)
       expect(body.client_id).toBe("MAGEDEV")
       expect(body.domain_id).toBe("testuser")
-      expect(body.service_id).toBe("MBBDSDEV29978319") // general — no skill markers in system prompt
+      expect(body.service_id).toBe("MBBDSDEV29978319")
       expect(body.new_session).toBe("True")
       expect(body.file).toBe("")
       expect(body.config).not.toHaveProperty("model_name")
       expect(body.config).not.toHaveProperty("persona")
-      // prompt is a flattened string
       expect(typeof body.prompt).toBe("string")
       expect(body.prompt).toContain("You are a helpful assistant.")
       expect(body.prompt).toContain("User: Who are you?")

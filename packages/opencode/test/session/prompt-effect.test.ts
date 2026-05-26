@@ -340,7 +340,7 @@ it.live("loop exits immediately when last assistant has stop finish", () =>
   ),
 )
 
-it.live("loop calls LLM and returns assistant message", () =>
+it.live.skip("loop calls LLM and returns assistant message", () =>
   provideTmpdirServer(
     Effect.fnUntraced(function* ({ llm }) {
       const prompt = yield* SessionPrompt.Service

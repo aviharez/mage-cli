@@ -19,6 +19,13 @@ const parameters = z.object({
   timeout: z.number().describe("Optional timeout in seconds (max 120)").optional(),
 })
 
+// Normalize proxy env vars for Bun's native fetch support
+const PROXY_URL = process.env.https_proxy || process.env.HTTPS_PROXY || process.env.http_proxy || process.env.HTTP_PROXY
+if (PROXY_URL) {
+  process.env.HTTPS_PROXY = PROXY_URL
+  process.env.HTTP_PROXY = PROXY_URL
+}
+
 export const WebFetchTool = Tool.define(
   "webfetch",
   Effect.gen(function* () {

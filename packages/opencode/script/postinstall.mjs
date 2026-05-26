@@ -10,10 +10,62 @@ import { createRequire } from "module"
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const require = createRequire(import.meta.url)
 
+const VERBOSE = process.argv.includes("--verbose") || process.env.MAGE_POSTINSTALL_VERBOSE === "1"
+
+// npm v7+ silences lifecycle script stdout by default (requires --foreground-scripts to see it).
+// We write everything to ~/.mage/postinstall.log so users can always inspect what happened.
+// Critical messages (warnings, errors, final status) go to stderr — npm forwards those when
+// the script exits non-zero, and they appear in the npm debug log regardless.
+const LOG_PATH = path.join(os.homedir(), ".mage", "postinstall.log")
+let _logFd = null
+
+function _logFile(line) {
+  try {
+    if (_logFd === null) {
+      fs.mkdirSync(path.dirname(LOG_PATH), { recursive: true })
+      _logFd = fs.openSync(LOG_PATH, "a")
+    }
+    fs.writeSync(_logFd, line + "\n")
+  } catch { /* don't let log failures break the install */ }
+}
+
+function _ts() { return new Date().toISOString() }
+
+const log = {
+  step: (n, total, msg) => {
+    const line = `\n[mage] (${n}/${total}) ${msg}`
+    _logFile(`[${_ts()}] STEP  (${n}/${total}) ${msg}`)
+    process.stderr.write(line + "\n")
+  },
+  info: (...args) => {
+    const msg = args.join(" ")
+    _logFile(`[${_ts()}] INFO  ${msg}`)
+    if (VERBOSE) process.stderr.write(`  [mage] ${msg}\n`)
+  },
+  ok: (msg) => {
+    _logFile(`[${_ts()}] OK    ${msg}`)
+    process.stderr.write(`  [mage] ✓ ${msg}\n`)
+  },
+  warn: (msg) => {
+    _logFile(`[${_ts()}] WARN  ${msg}`)
+    process.stderr.write(`  [mage] ⚠ ${msg}\n`)
+  },
+  error: (msg) => {
+    _logFile(`[${_ts()}] ERROR ${msg}`)
+    process.stderr.write(`  [mage] ✗ ${msg}\n`)
+  },
+  debug: (...args) => {
+    const msg = args.join(" ")
+    _logFile(`[${_ts()}] DEBUG ${msg}`)
+    if (VERBOSE) process.stderr.write(`  [mage:debug] ${msg}\n`)
+  },
+}
+
 const DEFAULT_CONFIG = {
   $schema: "https://opencode.ai/config.json",
   permission: {
-    edit: "ask"
+    edit: "ask",
+    bash: "ask"
   },
   skills: {
     paths: ["~/.mage/skills"],
@@ -65,17 +117,20 @@ function ensureGlobalConfig() {
 
   if (!fs.existsSync(configPath)) {
     fs.writeFileSync(configPath, JSON.stringify(DEFAULT_CONFIG, null, 2), "utf8")
-    console.log(`Created global config at ${configPath}`)
+    log.ok(`Created global config at ${configPath}`)
   } else {
+    log.info(`Existing config found at ${configPath}`)
     try {
       const existing = JSON.parse(fs.readFileSync(configPath, "utf8"))
       const merged = deepMerge(existing, DEFAULT_CONFIG)
       if (JSON.stringify(existing) !== JSON.stringify(merged)) {
         fs.writeFileSync(configPath, JSON.stringify(merged, null, 2), "utf8")
-        console.log(`Updated global config at ${configPath}`)
+        log.ok(`Updated global config at ${configPath}`)
+      } else {
+        log.info("Config is already up-to-date, no changes needed")
       }
-    } catch {
-      // Leave config untouched if it cannot be parsed
+    } catch (err) {
+      log.warn(`Could not parse ${configPath} — leaving untouched (${err.message})`)
     }
   }
 }
@@ -175,7 +230,10 @@ function ensureMageNpmFiles() {
   }
   if (pkgChanged || !fs.existsSync(pkgPath)) {
     fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2), "utf8")
-    console.log(`Updated ~/.mage/package.json`)
+    log.ok("Updated ~/.mage/package.json")
+    log.debug("Dependencies:", JSON.stringify(pkg.dependencies, null, 2))
+  } else {
+    log.info("~/.mage/package.json is already up-to-date")
   }
 
   // Regenerate package-lock.json when any declared dep is absent from packages[""].
@@ -212,7 +270,9 @@ function ensureMageNpmFiles() {
     if (pkg?.devDependencies && Object.keys(pkg.devDependencies).length)
       lockContent.packages[""].devDependencies = pkg.devDependencies
     fs.writeFileSync(lockPath, JSON.stringify(lockContent, null, 2), "utf8")
-    console.log(`Updated ~/.mage/package-lock.json`)
+    log.ok("Updated ~/.mage/package-lock.json")
+  } else {
+    log.info("~/.mage/package-lock.json is already consistent")
   }
 
   // Write .npmrc with BCA registry for @mybcabisnis scope so arborist resolves
@@ -223,7 +283,9 @@ function ensureMageNpmFiles() {
       "@mybcabisnis:registry=https://artifactory.intra.bca.co.id/artifactory/api/npm/MBB-Registry-npm/\n",
       "utf8",
     )
-    console.log(`Created ~/.mage/.npmrc`)
+    log.ok("Created ~/.mage/.npmrc with @mybcabisnis registry")
+  } else {
+    log.info("~/.mage/.npmrc already exists, skipping")
   }
 }
 
@@ -236,7 +298,10 @@ function ensureMageNpmFiles() {
  */
 function installVendoredPackages() {
   const vendorDir = path.join(__dirname, "vendor")
-  if (!fs.existsSync(vendorDir)) return
+  if (!fs.existsSync(vendorDir)) {
+    log.info("No vendor/ directory found, skipping vendored package install")
+    return
+  }
 
   const mageDir = path.join(os.homedir(), ".mage")
   const localPaths = []
@@ -254,7 +319,15 @@ function installVendoredPackages() {
     }
   }
 
-  if (localPaths.length === 0) return
+  if (localPaths.length === 0) {
+    log.info("vendor/ directory is empty, nothing to install")
+    return
+  }
+
+  const pkgNames = localPaths.map((p) => {
+    try { return JSON.parse(fs.readFileSync(path.join(p, "package.json"), "utf8")).name } catch { return path.basename(p) }
+  })
+  log.info(`Found ${localPaths.length} vendored package(s): ${pkgNames.join(", ")}`)
 
   // Install from local paths — no registry credentials needed.
   // npm/bun will also fetch public transitive deps (effect, zod, cross-spawn).
@@ -263,28 +336,43 @@ function installVendoredPackages() {
     ["bun", ["add", "--ignore-scripts", ...localPaths]],
   ]
   for (const [bin, args] of managers) {
-    const result = spawnSync(bin, args, { cwd: mageDir, stdio: "inherit", env: process.env })
+    log.info(`Trying ${bin} to install vendored packages...`)
+    const result = spawnSync(bin, args, {
+      cwd: mageDir,
+      stdio: VERBOSE ? "inherit" : "pipe",
+      env: process.env,
+    })
     if (result.status === 0) {
-      console.log(`Installed vendored packages via ${bin}`)
+      log.ok(`Installed vendored packages via ${bin}: ${pkgNames.join(", ")}`)
       return
     }
-    if (result.error?.code !== "ENOENT") {
-      console.warn(`${bin} failed to install vendored packages, trying next manager...`)
+    if (result.error?.code === "ENOENT") {
+      log.info(`${bin} not found, trying next package manager...`)
+    } else {
+      log.warn(`${bin} failed (exit code ${result.status ?? "unknown"}) to install vendored packages`)
+      if (!VERBOSE && result.stderr) {
+        log.warn(`${bin} stderr:\n${result.stderr.toString().trim()}`)
+      }
+      log.info("Trying next package manager...")
     }
   }
 
   // Final fallback: copy directly to node_modules so at least imports resolve,
   // even if transitive deps are missing.
-  console.warn("Falling back to direct copy for vendored packages")
+  log.warn("All package managers failed — falling back to direct copy (transitive deps may be missing)")
   const nodeModulesDir = path.join(mageDir, "node_modules")
   for (const pkgPath of localPaths) {
+    let pkgName = path.basename(pkgPath)
     try {
       const pkgJson = JSON.parse(fs.readFileSync(path.join(pkgPath, "package.json"), "utf8"))
+      pkgName = pkgJson.name
       const dest = path.join(nodeModulesDir, ...pkgJson.name.split("/"))
       fs.mkdirSync(dest, { recursive: true })
       copyDirRecursive(pkgPath, dest)
-      console.log(`Copied vendored ${pkgJson.name} to ${dest}`)
-    } catch { /* skip on error */ }
+      log.ok(`Copied vendored ${pkgJson.name} → ${dest}`)
+    } catch (err) {
+      log.error(`Failed to copy vendored package "${pkgName}": ${err.message}`)
+    }
   }
 }
 
@@ -314,45 +402,79 @@ function runMageNpmInstall() {
   ]
 
   for (const [bin, args] of managers) {
-    const result = spawnSync(bin, args, { cwd: mageDir, stdio: "inherit", env: process.env })
+    log.info(`Trying ${bin} install in ~/.mage/...`)
+    const result = spawnSync(bin, args, {
+      cwd: mageDir,
+      stdio: VERBOSE ? "inherit" : "pipe",
+      env: process.env,
+    })
     if (result.status === 0) {
-      console.log(`Installed packages in ~/.mage/ via ${bin}`)
+      log.ok(`Installed ~/.mage/ dependencies via ${bin}`)
       return
     }
-    if (result.error?.code !== "ENOENT") {
-      // bin exists but install failed — try next manager
-      console.warn(`${bin} install in ~/.mage/ failed, trying next manager...`)
+    if (result.error?.code === "ENOENT") {
+      log.info(`${bin} not found, trying next package manager...`)
+    } else {
+      log.warn(`${bin} install in ~/.mage/ failed (exit code ${result.status ?? "unknown"})`)
+      if (!VERBOSE && result.stderr) {
+        log.warn(`${bin} stderr:\n${result.stderr.toString().trim()}`)
+      }
+      log.info("Trying next package manager...")
     }
   }
 
-  console.warn("npm/bun install in ~/.mage/ failed — bundled plugins still work, custom plugin deps may be missing")
+  log.warn("npm/bun install in ~/.mage/ failed — bundled plugins still work, custom plugin deps may be missing")
+  log.warn("Tip: run with --verbose or set MAGE_POSTINSTALL_VERBOSE=1 for full output")
 }
 
 async function main() {
+  _logFile(`[${_ts()}] ===== postinstall start (node ${process.version}, verbose=${VERBOSE}) =====`)
+  if (VERBOSE) process.stderr.write("[mage postinstall] verbose mode enabled (MAGE_POSTINSTALL_VERBOSE or --verbose)\n")
+  process.stderr.write(`[mage postinstall] starting setup... (log: ${LOG_PATH})\n`)
+
   try {
+    log.step(1, 3, "Ensuring global config (~/.mage/mage.json)")
     ensureGlobalConfig()
-    ensureMageNpmFiles()
-    installVendoredPackages()  // install BCA-internal packages from bundled vendor/
-    runMageNpmInstall()        // install remaining public transitive deps
 
-    // Create ~/.mage/node_modules/ as a fallback stub so the Npm.install
-    // dirty-check at boot does not trigger a slow arborist network install
-    // when the npm install above was skipped or failed.
-    const nodeModulesDir = path.join(os.homedir(), ".mage", "node_modules")
-    if (!fs.existsSync(nodeModulesDir)) fs.mkdirSync(nodeModulesDir, { recursive: true })
+    // log.step(2, 5, "Ensuring ~/.mage npm files (package.json, lock, .npmrc)")
+    // ensureMageNpmFiles()
 
+    // log.step(3, 5, "Installing vendored BCA-internal packages")
+    // installVendoredPackages()
+
+    // log.step(4, 5, "Installing remaining public dependencies in ~/.mage/")
+    // runMageNpmInstall()
+
+    // // Create ~/.mage/node_modules/ as a fallback stub so the Npm.install
+    // // dirty-check at boot does not trigger a slow arborist network install
+    // // when the npm install above was skipped or failed.
+    // const nodeModulesDir = path.join(os.homedir(), ".mage", "node_modules")
+    // if (!fs.existsSync(nodeModulesDir)) {
+    //   fs.mkdirSync(nodeModulesDir, { recursive: true })
+    //   log.info("Created ~/.mage/node_modules/ stub")
+    // }
+
+    log.step(2, 3, "Setting up mage binary")
     const { platform, arch } = detectPlatformAndArch()
     const packageName = `@mybcabisnis/mage-${platform}-${arch}`
     const binaryName = platform === "windows" ? "mage.exe" : "mage"
     const rgName = platform === "windows" ? "rg.exe" : "rg"
+
+    log.debug(`Platform: ${platform}, arch: ${arch}, package: ${packageName}`)
 
     // Resolve platform package directory
     let packageDir
     try {
       const packageJsonPath = require.resolve(`${packageName}/package.json`)
       packageDir = path.dirname(packageJsonPath)
+      log.info(`Resolved ${packageName} → ${packageDir}`)
     } catch (error) {
-      throw new Error(`Could not find package ${packageName}: ${error.message}`, { cause: error })
+      throw new Error(
+        `Could not find package ${packageName}.\n` +
+        `  Make sure the platform package is installed (e.g. npm install ${packageName}).\n` +
+        `  Original error: ${error.message}`,
+        { cause: error },
+      )
     }
 
     // Copy bundled rg binary to ~/.mage/bin/ so mage never needs to download it
@@ -364,36 +486,51 @@ async function main() {
       try {
         if (fs.existsSync(rgDest)) fs.unlinkSync(rgDest)
         fs.linkSync(rgSrc, rgDest)
+        log.info(`Hard-linked rg: ${rgSrc} → ${rgDest}`)
       } catch {
         fs.copyFileSync(rgSrc, rgDest)
+        log.info(`Copied rg (hard-link failed): ${rgSrc} → ${rgDest}`)
       }
       if (platform !== "windows") fs.chmodSync(rgDest, 0o755)
-      console.log(`Installed bundled rg at ${rgDest}`)
+      log.ok(`Installed bundled rg at ${rgDest}`)
     } else {
-      console.log(`No bundled rg found in ${packageName}, will download on first use`)
+      log.info(`No bundled rg found in ${packageName} (${rgSrc}) — will download on first use`)
     }
 
     if (platform === "windows") {
-      // On Windows, the .exe is already in the package and bin field points to it
-      console.log("Windows detected: mage binary setup not needed (using packaged .exe)")
+      log.ok("Windows: mage binary is already in the package, no extra setup needed")
+      _logFile(`[${_ts()}] ===== postinstall complete =====`)
+      process.stderr.write("\n[mage postinstall] setup complete\n")
       return
     }
 
     // On non-Windows platforms, link/copy the mage binary
     const binaryPath = path.join(packageDir, "bin", binaryName)
     if (!fs.existsSync(binaryPath)) {
-      throw new Error(`Binary not found at ${binaryPath}`)
+      throw new Error(
+        `mage binary not found at expected path: ${binaryPath}\n` +
+        `  Package directory: ${packageDir}\n` +
+        `  Expected binary name: ${binaryName}`,
+      )
     }
     const target = path.join(__dirname, "bin", ".mage")
     if (fs.existsSync(target)) fs.unlinkSync(target)
     try {
       fs.linkSync(binaryPath, target)
+      log.info(`Hard-linked mage: ${binaryPath} → ${target}`)
     } catch {
       fs.copyFileSync(binaryPath, target)
+      log.info(`Copied mage (hard-link failed): ${binaryPath} → ${target}`)
     }
     fs.chmodSync(target, 0o755)
+    log.ok(`mage binary ready at ${target}`)
+    _logFile(`[${_ts()}] ===== postinstall complete =====`)
+    process.stderr.write(`\n[mage postinstall] setup complete — full log: ${LOG_PATH}\n`)
   } catch (error) {
-    console.error("Failed to setup mage binary:", error.message)
+    _logFile(`[${_ts()}] FATAL ${error.message}`)
+    process.stderr.write(`\n[mage postinstall] setup failed: ${error.message}\n`)
+    process.stderr.write(`[mage postinstall] full log: ${LOG_PATH}\n`)
+    if (VERBOSE && error.cause) process.stderr.write(`[mage postinstall] caused by: ${error.cause}\n`)
     process.exit(1)
   }
 }
@@ -401,6 +538,8 @@ async function main() {
 try {
   void main()
 } catch (error) {
-  console.error("Postinstall script error:", error.message)
+  _logFile(`[${_ts()}] FATAL unexpected: ${error.message}`)
+  process.stderr.write(`[mage postinstall] unexpected error: ${error.message}\n`)
+  if (VERBOSE) process.stderr.write(String(error) + "\n")
   process.exit(0)
 }

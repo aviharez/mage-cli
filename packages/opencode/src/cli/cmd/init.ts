@@ -107,8 +107,7 @@ export async function runInitWizard(): Promise<void> {
           username: (username as string).trim(),
         },
       },
-    },
-    model: "merlin/qwen3",
+    }
   }
 
   const bp = (boilerplate as string | undefined)?.trim()

@@ -79,6 +79,8 @@ const createEmbeddedWebUIBundle = async () => {
 const embeddedFileMap = skipEmbedWebUi ? null : await createEmbeddedWebUIBundle()
 const embeddedFileAbsPath = path.join(dir, "mage-web-ui.gen.ts")
 
+const defaultAgentsMd = await Bun.file(path.join(dir, "defaults", "AGENTS.md")).text()
+
 const allTargets: {
   os: string
   arch: "arm64" | "x64"
@@ -238,6 +240,7 @@ for (const item of targets) {
     define: {
       MAGE_VERSION: `'${Script.version}'`,
       MAGE_MIGRATIONS: JSON.stringify(migrations),
+      MAGE_AGENTS_MD: JSON.stringify(defaultAgentsMd),
       OTUI_TREE_SITTER_WORKER_PATH: bunfsRoot + workerRelativePath,
       MAGE_WORKER_PATH: workerPath,
       MAGE_CHANNEL: `'${Script.channel}'`,
