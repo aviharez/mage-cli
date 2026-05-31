@@ -1,6 +1,14 @@
-import type { Message, Session, Part, SnapshotFileDiff, SessionStatus, ProviderListResponse } from "@mybcabisnis/mage-sdk/v2"
+import type { Message, Session, Part, SnapshotFileDiff, SessionStatus, Provider, ProviderListResponse } from "@mybcabisnis/mage-sdk/v2"
 import { createSimpleContext } from "./helper"
 import { PreloadMultiFileDiffResult } from "@pierre/diffs/ssr"
+
+export type NormalizedProviderListResponse = {
+  all: Map<string, Provider>
+  default: {
+    [key: string]: string
+  }
+  connected: Array<string>
+}
 
 type Data = {
   agent?: {

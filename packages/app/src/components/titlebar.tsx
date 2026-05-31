@@ -80,7 +80,8 @@ export function Titlebar() {
   const canBack = createMemo(() => history.index > 0)
   const canForward = createMemo(() => history.index < history.stack.length - 1)
   const hasProjects = createMemo(() => layout.projects.list().length > 0)
-  const nav = createMemo(() => import.meta.env.VITE_MAGE_CHANNEL !== "beta" || settings.general.showNavigation())
+  const useV2Titlebar = createMemo(() => settings.general.newLayoutDesigns())
+  const nav = createMemo(() => (useV2Titlebar() ? settings.general.showNavigation() : true))
 
   const back = () => {
     const next = backPath(history)

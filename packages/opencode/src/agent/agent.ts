@@ -106,8 +106,8 @@ export const layer = Layer.effect(
         const user = Permission.fromConfig(cfg.permission ?? {})
 
         const agents: Record<string, Info> = {
-          build: {
-            name: "build",
+          forge: {
+            name: "forge",
             description: "The default agent. Executes tools based on configured permissions.",
             options: {},
             permission: Permission.merge(
@@ -121,8 +121,8 @@ export const layer = Layer.effect(
             mode: "primary",
             native: true,
           },
-          plan: {
-            name: "plan",
+          oracle: {
+            name: "oracle",
             description: "Plan mode. Disallows all edit tools.",
             options: {},
             permission: Permission.merge(
@@ -144,8 +144,8 @@ export const layer = Layer.effect(
             mode: "primary",
             native: true,
           },
-          general: {
-            name: "general",
+          wisp: {
+            name: "wisp",
             description: `General-purpose agent for researching complex questions and executing multi-step tasks. Use this agent to execute multiple units of work in parallel.`,
             permission: Permission.merge(
               defaults,
@@ -158,8 +158,8 @@ export const layer = Layer.effect(
             mode: "subagent",
             native: true,
           },
-          explore: {
-            name: "explore",
+          seeker: {
+            name: "seeker",
             permission: Permission.merge(
               defaults,
               Permission.fromConfig({

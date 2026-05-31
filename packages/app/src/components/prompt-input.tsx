@@ -1254,7 +1254,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   }
 
   const [agentsQuery, globalProvidersQuery, providersQuery] = useQueries(() => ({
-    queries: [loadAgentsQuery(sdk.directory), loadProvidersQuery(null), loadProvidersQuery(sdk.directory)],
+    queries: [loadAgentsQuery(sdk.directory, sdk.client), loadProvidersQuery(null, sdk.client), loadProvidersQuery(sdk.directory, sdk.client)],
   }))
 
   const agentsLoading = () => agentsQuery.isLoading

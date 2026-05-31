@@ -1,4 +1,6 @@
-import type { Agent, Project, ProviderListResponse } from "@mybcabisnis/mage-sdk/v2/client"
+import type { Agent, Project, Provider, ProviderListResponse } from "@mybcabisnis/mage-sdk/v2/client"
+import type { NormalizedProviderListResponse } from "@mybcabisnis/mage-ui/context"
+export { pathKey as directoryKey, type PathKey as DirectoryKey } from "@/utils/path-key"
 
 export const cmp = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0)
 
@@ -16,13 +18,26 @@ export function normalizeAgentList(input: unknown): Agent[] {
   return Object.values(input).filter(isAgent)
 }
 
+function filterDeprecatedModels(provider: Provider): Provider {
+  return {
+    ...provider,
+    models: Object.fromEntries(Object.entries(provider.models).filter(([, info]) => info.status !== "deprecated")),
+  }
+}
+
+/** Returns array-based ProviderListResponse (compatible with existing global-sync context) */
 export function normalizeProviderList(input: ProviderListResponse): ProviderListResponse {
   return {
     ...input,
-    all: input.all.map((provider) => ({
-      ...provider,
-      models: Object.fromEntries(Object.entries(provider.models).filter(([, info]) => info.status !== "deprecated")),
-    })),
+    all: input.all.map(filterDeprecatedModels),
+  }
+}
+
+/** Returns Map-based NormalizedProviderListResponse (for new server-sync context) */
+export function normalizeProviderListV2(input: ProviderListResponse): NormalizedProviderListResponse {
+  return {
+    ...input,
+    all: new Map(input.all.map((p) => [p.id, filterDeprecatedModels(p)] as const)),
   }
 }
 

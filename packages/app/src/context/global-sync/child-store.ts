@@ -14,16 +14,18 @@ import {
   type VcsCache,
 } from "./types"
 import { canDisposeDirectory, pickDirectoriesToEvict } from "./eviction"
-import { useQuery } from "@tanstack/solid-query"
-import { loadPathQuery } from "./bootstrap"
+import { pathKey } from "@/utils/path-key"
 
 export function createChildStoreManager(input: {
   owner: Owner
   isBooting: (directory: string) => boolean
   isLoadingSessions: (directory: string) => boolean
   onBootstrap: (directory: string) => void
+  onMcp?: (directory: string, setStore: SetStoreFunction<State>) => void
   onDispose: (directory: string) => void
   translate: (key: string, vars?: Record<string, string | number>) => string
+  queryOptions?: unknown
+  global?: unknown
 }) {
   const children: Record<string, [Store<State>, SetStoreFunction<State>]> = {}
   const vcsCache = new Map<string, VcsCache>()
@@ -33,6 +35,7 @@ export function createChildStoreManager(input: {
   const pins = new Map<string, number>()
   const ownerPins = new WeakMap<object, Set<string>>()
   const disposers = new Map<string, () => void>()
+  const mcpDirectories = new Set<string>()
 
   const mark = (directory: string) => {
     if (!directory) return
@@ -80,29 +83,31 @@ export function createChildStoreManager(input: {
   }
 
   function disposeDirectory(directory: string) {
+    const key = pathKey(directory)
     if (
       !canDisposeDirectory({
-        directory,
-        hasStore: !!children[directory],
-        pinned: pinned(directory),
-        booting: input.isBooting(directory),
-        loadingSessions: input.isLoadingSessions(directory),
+        directory: key,
+        hasStore: !!children[key],
+        pinned: pinned(key),
+        booting: input.isBooting(key),
+        loadingSessions: input.isLoadingSessions(key),
       })
     ) {
       return false
     }
 
-    vcsCache.delete(directory)
-    metaCache.delete(directory)
-    iconCache.delete(directory)
-    lifecycle.delete(directory)
-    const dispose = disposers.get(directory)
+    vcsCache.delete(key)
+    metaCache.delete(key)
+    iconCache.delete(key)
+    lifecycle.delete(key)
+    mcpDirectories.delete(key)
+    const dispose = disposers.get(key)
     if (dispose) {
       dispose()
-      disposers.delete(directory)
+      disposers.delete(key)
     }
-    delete children[directory]
-    input.onDispose(directory)
+    delete children[key]
+    input.onDispose(key)
     return true
   }
 
@@ -124,42 +129,42 @@ export function createChildStoreManager(input: {
   }
 
   function ensureChild(directory: string) {
-    if (!directory) console.error("No directory provided")
-    if (!children[directory]) {
+    const key = pathKey(directory)
+    if (!key) console.error("No directory provided")
+    if (!children[key]) {
       const vcs = runWithOwner(input.owner, () =>
         persisted(
-          Persist.workspace(directory, "vcs", ["vcs.v1"]),
+          Persist.workspace(key, "vcs", ["vcs.v1"]),
           createStore({ value: undefined as VcsInfo | undefined }),
         ),
       )
       if (!vcs) throw new Error(input.translate("error.childStore.persistedCacheCreateFailed"))
       const vcsStore = vcs[0]
-      vcsCache.set(directory, { store: vcsStore, setStore: vcs[1], ready: vcs[3] })
+      vcsCache.set(key, { store: vcsStore, setStore: vcs[1], ready: vcs[3] })
 
       const meta = runWithOwner(input.owner, () =>
         persisted(
-          Persist.workspace(directory, "project", ["project.v1"]),
+          Persist.workspace(key, "project", ["project.v1"]),
           createStore({ value: undefined as ProjectMeta | undefined }),
         ),
       )
       if (!meta) throw new Error(input.translate("error.childStore.persistedProjectMetadataCreateFailed"))
-      metaCache.set(directory, { store: meta[0], setStore: meta[1], ready: meta[3] })
+      metaCache.set(key, { store: meta[0], setStore: meta[1], ready: meta[3] })
 
       const icon = runWithOwner(input.owner, () =>
         persisted(
-          Persist.workspace(directory, "icon", ["icon.v1"]),
+          Persist.workspace(key, "icon", ["icon.v1"]),
           createStore({ value: undefined as string | undefined }),
         ),
       )
       if (!icon) throw new Error(input.translate("error.childStore.persistedProjectIconCreateFailed"))
-      iconCache.set(directory, { store: icon[0], setStore: icon[1], ready: icon[3] })
+      iconCache.set(key, { store: icon[0], setStore: icon[1], ready: icon[3] })
 
       const init = () =>
         createRoot((dispose) => {
           const initialMeta = meta[0].value
           const initialIcon = icon[0].value
 
-          const pathQuery = useQuery(() => loadPathQuery(directory))
           const child = createStore<State>({
             project: "",
             projectMeta: initialMeta,
@@ -167,11 +172,7 @@ export function createChildStoreManager(input: {
             provider_ready: false,
             provider: { all: [], connected: [], default: {} },
             config: {},
-            get path() {
-              if (pathQuery.isLoading || !pathQuery.data)
-                return { state: "", config: "", worktree: "", directory: "", home: "" }
-              return pathQuery.data
-            },
+            path: { state: "", config: "", worktree: "", directory: "", home: "" },
             status: "loading" as const,
             agent: [],
             command: [],
@@ -191,13 +192,13 @@ export function createChildStoreManager(input: {
             message: {},
             part: {},
           })
-          children[directory] = child
-          disposers.set(directory, dispose)
+          children[key] = child
+          disposers.set(key, dispose)
 
           const onPersistedInit = (init: Promise<string> | string | null, run: () => void) => {
             if (!(init instanceof Promise)) return
             void init.then(() => {
-              if (children[directory] !== child) return
+              if (children[key] !== child) return
               run()
             })
           }
@@ -221,34 +222,56 @@ export function createChildStoreManager(input: {
 
       runWithOwner(input.owner, init)
     }
-    mark(directory)
-    const childStore = children[directory]
+    mark(key)
+    const childStore = children[key]
     if (!childStore) throw new Error(input.translate("error.childStore.storeCreateFailed"))
     return childStore
   }
 
+  function enableMcp(directory: string, key: string, childStore: [Store<State>, SetStoreFunction<State>]) {
+    if (mcpDirectories.has(key)) return
+    mcpDirectories.add(key)
+    if (childStore[0].status !== "loading") {
+      input.onMcp?.(directory, childStore[1])
+    }
+  }
+
   function child(directory: string, options: ChildOptions = {}) {
+    const key = pathKey(directory)
     const childStore = ensureChild(directory)
-    pinForOwner(directory)
+    pinForOwner(key)
     const shouldBootstrap = options.bootstrap ?? true
     if (shouldBootstrap && childStore[0].status === "loading") {
       input.onBootstrap(directory)
     }
+    if (options.mcp) enableMcp(directory, key, childStore)
     return childStore
   }
 
   function peek(directory: string, options: ChildOptions = {}) {
+    const key = pathKey(directory)
     const childStore = ensureChild(directory)
     const shouldBootstrap = options.bootstrap ?? true
     if (shouldBootstrap && childStore[0].status === "loading") {
       input.onBootstrap(directory)
     }
+    if (options.mcp) enableMcp(directory, key, childStore)
     return childStore
+  }
+
+  function disableMcp(directory: string) {
+    const key = pathKey(directory)
+    mcpDirectories.delete(key)
+  }
+
+  function mcpEnabled(directory: string) {
+    return mcpDirectories.has(pathKey(directory))
   }
 
   function projectMeta(directory: string, patch: ProjectMeta) {
     const [store, setStore] = ensureChild(directory)
-    const cached = metaCache.get(directory)
+    const key = pathKey(directory)
+    const cached = metaCache.get(key)
     if (!cached) return
     const previous = store.projectMeta ?? {}
     const icon = patch.icon ? { ...previous.icon, ...patch.icon } : previous.icon
@@ -265,7 +288,8 @@ export function createChildStoreManager(input: {
 
   function projectIcon(directory: string, value: string | undefined) {
     const [store, setStore] = ensureChild(directory)
-    const cached = iconCache.get(directory)
+    const key = pathKey(directory)
+    const cached = iconCache.get(key)
     if (!cached) return
     if (store.icon === value) return
     cached.setStore("value", value)
@@ -288,5 +312,7 @@ export function createChildStoreManager(input: {
     vcsCache,
     metaCache,
     iconCache,
+    disableMcp,
+    mcp: mcpEnabled,
   }
 }

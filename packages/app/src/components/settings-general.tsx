@@ -719,7 +719,7 @@ export const SettingsGeneral: Component = () => {
           }}
         </Show>
 
-        <Show when={desktop() && import.meta.env.VITE_MAGE_CHANNEL === "beta"}>
+        <Show when={desktop() && settings.general.newLayoutDesigns()}>
           <AdvancedSection />
         </Show>
       </div>

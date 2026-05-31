@@ -1,6 +1,10 @@
 import { createOpencodeClient } from "@mybcabisnis/mage-sdk/v2/client"
 import type { ServerConnection } from "@/context/server"
 
+export function authTokenFromCredentials(input: { username?: string; password: string }) {
+  return btoa(`${input.username ?? "opencode"}:${input.password}`)
+}
+
 export function createSdkForServer({
   server,
   ...config
@@ -10,7 +14,7 @@ export function createSdkForServer({
   const auth = (() => {
     if (!server.password) return
     return {
-      Authorization: `Basic ${btoa(`${server.username ?? "opencode"}:${server.password}`)}`,
+      Authorization: `Basic ${authTokenFromCredentials({ username: server.username, password: server.password })}`,
     }
   })()
 

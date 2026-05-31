@@ -7,14 +7,41 @@ import starlightThemeSix from '@six-tech/starlight-theme-six';
 export default defineConfig({
 	integrations: [
 		starlight({
-			title: 'My Docs',
-			social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/withastro/starlight' }],
+			title: 'Mage',
+			description: 'BCA AI coding assistant for the terminal — powered by GAIA',
+			social: [
+				{ icon: 'github', label: 'GitHub', href: 'https://github.com/anomalyco/opencode' },
+			],
 			sidebar: [
 				{
-					label: 'Guides',
+					label: 'Getting Started',
 					items: [
-						// Each item here is one entry in the navigation menu.
-						{ label: 'Example Guide', slug: 'guides/example' },
+						{ label: 'Introduction', slug: 'index' },
+						{ label: 'Installation', slug: 'guides/installation' },
+						{ label: 'Quickstart', slug: 'guides/quickstart' },
+					],
+				},
+				{
+					label: 'Configuration',
+					items: [
+						{ label: 'Settings', slug: 'guides/settings' },
+						{ label: 'Providers & Models', slug: 'guides/providers' },
+						{ label: 'Custom Instructions', slug: 'guides/custom-instructions' },
+					],
+				},
+				{
+					label: 'IDE Integration',
+					items: [
+						{ label: 'VS Code', slug: 'ai-tools/vscode' },
+						{ label: 'Cursor', slug: 'ai-tools/cursor' },
+						{ label: 'Zed', slug: 'ai-tools/zed' },
+					],
+				},
+				{
+					label: 'Desktop App',
+					items: [
+						{ label: 'Overview', slug: 'desktop/overview' },
+						{ label: 'Building', slug: 'desktop/building' },
 					],
 				},
 				{
@@ -24,13 +51,11 @@ export default defineConfig({
 			],
 			plugins: [
 				starlightThemeSix({
-					navLinks: [{ // optional
-						label: 'Docs',
-						link: '/getting-started',
-					}],
-					footerText: //optional
-						'Built & designed by [Six](https://six.technology).'
-				})
+					navLinks: [
+						{ label: 'Docs', link: '/' },
+					],
+					footerText: 'Built by [BCA](https://bca.co.id).',
+				}),
 			],
 		}),
 	],

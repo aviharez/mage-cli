@@ -49,15 +49,11 @@ export function SessionSidePanel(props: {
   const language = useLanguage()
   const command = useCommand()
   const dialog = useDialog()
-  const { sessionKey, tabs, view } = useSessionLayout()
+  const { sessionKey, tabs, view, params } = useSessionLayout()
 
   const isDesktop = createMediaQuery("(min-width: 768px)")
-  const shown = createMemo(
-    () =>
-      platform.platform !== "desktop" ||
-      import.meta.env.VITE_MAGE_CHANNEL !== "beta" ||
-      settings.general.showFileTree(),
-  )
+  const desktopV2 = () => platform.platform === "desktop" && settings.general.newLayoutDesigns()
+  const shown = createMemo(() => (desktopV2() ? settings.general.showFileTree() : true))
 
   const reviewOpen = createMemo(() => isDesktop() && view().reviewPanel.opened())
   const fileOpen = createMemo(() => isDesktop() && shown() && layout.fileTree.opened())
@@ -200,7 +196,7 @@ export function SessionSidePanel(props: {
   })
 
   return (
-    <Show when={isDesktop()}>
+    <Show when={isDesktop() && !(settings.general.newLayoutDesigns() && !params.id)}>
       <aside
         id="review-panel"
         aria-label={language.t("session.panel.reviewAndFiles")}
@@ -214,6 +210,7 @@ export function SessionSidePanel(props: {
         }}
         style={{ width: panelWidth() }}
       >
+        <Show when={open()}>
         <div class="size-full flex border-l border-border-weaker-base">
           <div
             aria-hidden={!reviewOpen()}
@@ -447,6 +444,7 @@ export function SessionSidePanel(props: {
             </div>
           </Show>
         </div>
+        </Show>
       </aside>
     </Show>
   )
