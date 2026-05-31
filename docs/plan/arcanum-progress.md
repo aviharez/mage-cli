@@ -45,11 +45,35 @@
 
 ---
 
-## Phases B–G — Not yet started
+## Phase B — Onboarding gate + screen + username popup ✅ DONE
+
+**Completed.** Build verified clean (`bun run --filter @mybcabisnis/mage-app build` → exit 0).
+
+### Files created
+
+| File | Contents |
+|------|----------|
+| `packages/app/src/components/arcanum/onboarding-gate.tsx` | `OnboardingGate` — wraps children; shows loading splash while sync not ready; shows `Onboarding` when no username; `submitted` latch prevents flicker during updateConfig reload cycle. |
+| `packages/app/src/components/arcanum/onboarding.tsx` | `Onboarding` — full-viewport screen with `ArcAtmos stars`, summoning rings, `ArcEmblem size={132} glow animate`, serif "mage" wordmark, tagline, three rites cards, "Start Mage" button that opens `UsernameDialog`. |
+| `packages/app/src/components/arcanum/username-dialog.tsx` | `UsernameDialog` — Kobalte dialog card with `ArcEmblem`, serif heading, "Your domain" input, "Bind the name" button + Enter-to-confirm; calls `sync.updateConfig`, `props.onDone()`, `dialog.close()`, navigates to home chat. |
+
+### Files modified
+
+| File | Change |
+|------|--------|
+| `packages/app/src/app.tsx` | Added `OnboardingGate` import; wrapped `RouterRoot` children in `<OnboardingGate>`. |
+
+### Post-completion fixes
+- `Icon` `size` prop takes `"small"|"normal"|"medium"|"large"`, not a number — passing `size={16}` caused icons to render unconstrained (filled entire card). Fixed to `size="small"` throughout. Added `align-self: center` to "Start Mage" button.
+- `UsernameDialog` card rendered beneath the Kobalte overlay (`z-index: 50`) because the card had no explicit z-index (painted at level 0). Fixed by wrapping card in `position: fixed; inset: 0; z-index: 50` centering shell — same pattern as the app's existing `Dialog` component.
+- Removed `@` prefix, "available" status, and suggestion pills from username input. Label changed to "Your domain".
+
+---
+
+## Phases C–G — Not yet started
 
 | Phase | Summary |
 |-------|---------|
-| B | Onboarding gate + screen + username popup |
 | C | `/` redirects to Home chat (retire dashboard) |
 | D | New Arcanum sidebar (session groups by directory) |
 | E | Command bar restyle; optional `ArcComposerChrome` wrap |
