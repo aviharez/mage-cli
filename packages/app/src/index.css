@@ -83,3 +83,42 @@
     }
   }
 }
+
+/* ── Arcanum keyframes ──────────────────────────────────────── */
+@keyframes arc-rot     { to { transform: rotate(360deg); } }
+@keyframes arc-rot-rev { to { transform: rotate(-360deg); } }
+@keyframes arc-breathe { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
+@keyframes arc-trace   { to { stroke-dashoffset: 0; } }
+@keyframes arc-twinkle { 0%, 100% { opacity: .12; } 50% { opacity: .55; } }
+@keyframes arc-aurora  {
+  0%   { transform: translate3d(-4%, -2%, 0) scale(1.05); }
+  50%  { transform: translate3d(4%, 3%, 0) scale(1.18); }
+  100% { transform: translate3d(-4%, -2%, 0) scale(1.05); }
+}
+@keyframes arc-mote {
+  0%   { transform: translateY(10px); opacity: 0; }
+  18%  { opacity: var(--mo, .5); }
+  82%  { opacity: var(--mo, .5); }
+  100% { transform: translateY(-52px); opacity: 0; }
+}
+
+.arc-rot, .arc-rev, .arc-orbit { transform-box: view-box; transform-origin: 50px 50px; }
+.arc-rot     { animation: arc-rot 120s linear infinite; }
+.arc-rev     { animation: arc-rot-rev 96s linear infinite; }
+.arc-orbit   { animation: arc-rot 26s linear infinite; }
+.arc-breathe { animation: arc-breathe 7s ease-in-out infinite; }
+.arc-aurora  { animation: arc-aurora 38s ease-in-out infinite; }
+.arc-trace   { stroke-dasharray: var(--len, 300); stroke-dashoffset: var(--len, 300); animation: arc-trace 2.4s ease-out .2s forwards; }
+.arc-star    { animation: arc-twinkle var(--tw, 5s) ease-in-out infinite; }
+.arc-mote    { position: absolute; border-radius: 50%; animation: arc-mote var(--dur, 9s) linear var(--delay, 0s) infinite; will-change: transform, opacity; }
+
+body[data-arc-motion="off"] .arc-rot,
+body[data-arc-motion="off"] .arc-rev,
+body[data-arc-motion="off"] .arc-orbit,
+body[data-arc-motion="off"] .arc-breathe,
+body[data-arc-motion="off"] .arc-aurora,
+body[data-arc-motion="off"] .arc-star,
+body[data-arc-motion="off"] .arc-mote { animation: none !important; }
+body[data-arc-motion="off"] .arc-trace { stroke-dashoffset: 0; animation: none !important; }
+
+.serif { font-family: "Spectral", Georgia, "Times New Roman", serif; font-weight: 400; }

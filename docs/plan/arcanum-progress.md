@@ -28,19 +28,20 @@
 
 ---
 
-## Phase A — Single Arcanum theme + fonts + keyframes ⬜ TODO
+## Phase A — Single Arcanum theme + fonts + keyframes ✅ DONE
 
-### What needs to happen
+**Completed.** Build verified clean (`bun run --filter @mybcabisnis/mage-app build` → exit 0).
 
-1. **`packages/ui/src/theme/themes/oc-2.json`** — Rewrite with Arcanum palette + overrides; set `"name": "Arcanum"`; duplicate `dark` block into `light` so it's always dark.
-2. **`packages/ui/src/theme/themes/*.json`** — Delete the other 37 theme files; leave only `oc-2.json`. The `import.meta.glob` in `context.tsx` will then yield only `oc-2`.
-3. **`packages/ui/src/theme/context.tsx`** — Trim the `names` map to `{ "oc-2": "Arcanum" }`.
-4. **`packages/app/src/components/settings-general.tsx`** — Remove the theme `SettingsRow` and color-scheme `SettingsRow`; delete now-unused `themeOptions`/`colorSchemeOptions` memos.
-5. **`packages/app/index.html`** — Add Spectral Google Fonts `<link>`; add `data-arc-motion="on"` to `<body>`.
-6. **`packages/app/src/index.css`** — Append Arcanum `@keyframes` (`arc-rot`, `arc-rot-rev`, `arc-breathe`, `arc-trace`, `arc-twinkle`, `arc-aurora`, `arc-mote`), `.arc-*` animation classes, `body[data-arc-motion="off"]` gate, and `.serif` font utility.
+### Files changed
 
-### Checkpoint
-After Phase A: `bun run --filter @mybcabisnis/mage-app build` passes; app opens with violet/arcane colour scheme; Settings shows no theme picker; `.arc-*` animation classes are live (emblem animates in next phases).
+| File | Change |
+|------|--------|
+| `packages/ui/src/theme/themes/oc-2.json` | Rewritten with Arcanum violet palette; `light` = `dark` (always dark). |
+| `packages/ui/src/theme/themes/*.json` | All 37 non-Arcanum theme files deleted; only `oc-2.json` remains. |
+| `packages/ui/src/theme/context.tsx` | `names` map trimmed to `{ "oc-2": "Arcanum" }`. |
+| `packages/app/src/components/settings-general.tsx` | Removed `themeOptions`/`colorSchemeOptions` memos; removed colorScheme and theme `SettingsRow`s; removed `ColorScheme` type import and `ThemeOption` type. |
+| `packages/app/index.html` | Added Spectral `<link>`; added `data-arc-motion="on"` to `<body>`. |
+| `packages/app/src/index.css` | Appended `@keyframes arc-*`, `.arc-*` animation classes, `body[data-arc-motion="off"]` gate, `.serif` utility. |
 
 ---
 
