@@ -87,6 +87,7 @@ import {
 } from "./layout/sidebar-workspace"
 import { ProjectDragOverlay, SortableProject, type ProjectSidebarContext } from "./layout/sidebar-project"
 import { SidebarContent } from "./layout/sidebar-shell"
+import { ArcanumSidebar } from "./layout/arcanum-sidebar"
 
 export default function Layout(props: ParentProps) {
   const [store, setStore, , ready] = persisted(
@@ -1807,7 +1808,7 @@ export default function Layout(props: ParentProps) {
   )
 
   createEffect(() => {
-    const sidebarWidth = layout.sidebar.opened() ? layout.sidebar.width() : 48
+    const sidebarWidth = layout.sidebar.opened() ? layout.sidebar.width() : 0
     document.documentElement.style.setProperty("--dialog-left-margin", `${sidebarWidth}px`)
   })
 
@@ -2387,7 +2388,9 @@ export default function Layout(props: ParentProps) {
                 arm()
               }}
             >
-              <div class="@container w-full h-full contain-strict">{sidebarContent()}</div>
+              <div class="@container w-full h-full contain-strict">
+                <ArcanumSidebar openSettings={openSettings} />
+              </div>
             </nav>
 
             <Show when={layout.sidebar.opened()}>
@@ -2437,7 +2440,7 @@ export default function Layout(props: ParentProps) {
                 }}
                 onClick={(e) => e.stopPropagation()}
               >
-                {sidebarContent(true)}
+                <ArcanumSidebar openSettings={openSettings} mobile />
               </nav>
             </div>
 
@@ -2450,7 +2453,7 @@ export default function Layout(props: ParentProps) {
                   !state.sizing,
               }}
               style={{
-                "--main-left": layout.sidebar.opened() ? `${side()}px` : "4rem",
+                "--main-left": layout.sidebar.opened() ? `${side()}px` : "0px",
               }}
             >
               <main

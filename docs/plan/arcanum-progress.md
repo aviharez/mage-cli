@@ -94,11 +94,39 @@
 
 ---
 
-## Phases D–G — Not yet started
+## Phase D — New Arcanum sidebar ✅ DONE
+
+**Completed.** Build verified clean (`bun run --filter @mybcabisnis/mage-app build` → exit 0). Runtime verified via Playwright headless — sidebar toggles correctly, all top-right portals preserved.
+
+### Files created
+
+| File | Contents |
+|------|----------|
+| `packages/app/src/pages/layout/arcanum-sidebar.tsx` | `ArcanumSidebar` + `FolderGroup` — session list grouped by directory; New-chat button (`space-between` layout with ⌘N shortcut); search input; per-group "+" on hover; active-row highlight; Settings button pinned at bottom. |
+
+### Files modified
+
+| File | Change |
+|------|--------|
+| `packages/app/src/pages/layout.tsx` | Imported `ArcanumSidebar`; replaced both `{sidebarContent()}` call sites (desktop + mobile `<nav>`); `--main-left` → `"0px"` when closed (full hide); `--dialog-left-margin` → `0` when closed. |
+
+### Post-completion fixes
+- Sidebar completely hidden on toggle: `--main-left` changed from `"4rem"` to `"0px"` when `!layout.sidebar.opened()`. Removed mini-rail fallback from `ArcanumSidebar`.
+- Brand (MageWordmark) removed from titlebar — was added then reverted per direction change.
+- New Chat button ⌘N shortcut overflow fixed: replaced `justify-content: center` + `margin-left: auto` with `justify-content: space-between` + `padding: 0 10px`; icon+text grouped in left `<span>`, shortcut in right `<span flex-shrink: 0>`.
+
+### Key implementation notes
+- `sync.peek(dir, { bootstrap: false })` used in `groups` memo to avoid pinning (plan guideline).
+- `onMount(() => sync.project.loadSessions(home()))` ensures Home sessions load; project dirs rely on the controller's existing `loadSessions` effects.
+- Icon names mapped to available set: `magnifying-glass` (search), `plus-small` (new chat & group "+"), `folder` (all dirs; home tinted `A.accentBright`), `settings-gear` (settings), `speech-bubble` (empty state).
+- Old `SidebarContent` / `sidebarContent()` are now unused in JSX but the import and function remain (Phase-G cleanup).
+
+---
+
+## Phases E–G — Not yet started
 
 | Phase | Summary |
 |-------|---------|
-| D | New Arcanum sidebar (session groups by directory) |
 | E | Command bar restyle; optional `ArcComposerChrome` wrap |
 | F | Settings → Arcanum style; username row; Arcane-motion toggle |
 | G | Cleanup — delete dead sidebar helpers, unused imports |
