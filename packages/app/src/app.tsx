@@ -49,7 +49,7 @@ import Layout from "@/pages/layout"
 import { ErrorPage } from "./pages/error"
 import { useCheckServerHealth } from "./utils/server-health"
 
-const HomeRoute = lazy(() => import("@/pages/home"))
+import HomeRedirect from "@/pages/home-redirect"
 const loadSession = () => import("@/pages/session")
 const Session = lazy(loadSession)
 const Loading = () => <div class="size-full" />
@@ -314,7 +314,7 @@ export function AppInterface(props: {
                   component={props.router ?? Router}
                   root={(routerProps) => <RouterRoot appChildren={props.children}>{routerProps.children}</RouterRoot>}
                 >
-                  <Route path="/" component={HomeRoute} />
+                  <Route path="/" component={HomeRedirect} />
                   <Route path="/:dir" component={DirectoryLayout}>
                     <Route path="/" component={SessionIndexRoute} />
                     <Route path="/session/:id?" component={SessionRoute} />

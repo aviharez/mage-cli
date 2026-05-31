@@ -70,11 +70,34 @@
 
 ---
 
-## Phases C–G — Not yet started
+## Phase C — `/` opens Home chat (retire dashboard) ✅ DONE
+
+**Completed.** Build verified clean (`bun run --filter @mybcabisnis/mage-app build` → exit 0). Runtime verified via Playwright headless — `/` redirects to `/<b64(~)>/session`, old dashboard absent, onboarding gate transparent with username set.
+
+### Files created
+
+| File | Contents |
+|------|----------|
+| `packages/app/src/pages/home-redirect.tsx` | `HomeRedirect` — `createEffect` watches `sync.ready` + `sync.data.path.home`; navigates to `/${base64Encode(home)}/session` with `replace: true`; shows `Splash` spinner while waiting. |
+
+### Files modified
+
+| File | Change |
+|------|--------|
+| `packages/app/src/app.tsx` | Replaced `lazy(() => import("@/pages/home"))` with a static `import HomeRedirect`; changed route `path="/"` component to `HomeRedirect`. |
+
+### Files deleted
+
+| File | Reason |
+|------|--------|
+| `packages/app/src/pages/home.tsx` | Dashboard UI retired; no remaining imports. `DialogSelectDirectory`/`DialogSelectServer` are separate files, unaffected. |
+
+---
+
+## Phases D–G — Not yet started
 
 | Phase | Summary |
 |-------|---------|
-| C | `/` redirects to Home chat (retire dashboard) |
 | D | New Arcanum sidebar (session groups by directory) |
 | E | Command bar restyle; optional `ArcComposerChrome` wrap |
 | F | Settings → Arcanum style; username row; Arcane-motion toggle |
