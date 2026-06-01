@@ -10,7 +10,6 @@ import {
   ParentProps,
   Show,
   untrack,
-  type Accessor,
 } from "solid-js"
 import { makeEventListener } from "@solid-primitives/event-listener"
 import { useLocation, useNavigate, useParams } from "@solidjs/router"
@@ -21,17 +20,12 @@ import { base64Encode } from "@mybcabisnis/mage-shared/util/encode"
 import { decode64 } from "@/utils/base64"
 import { ResizeHandle } from "@mybcabisnis/mage-ui/resize-handle"
 import { Button } from "@mybcabisnis/mage-ui/button"
-import { IconButton } from "@mybcabisnis/mage-ui/icon-button"
-import { Tooltip } from "@mybcabisnis/mage-ui/tooltip"
-import { DropdownMenu } from "@mybcabisnis/mage-ui/dropdown-menu"
 import { Dialog } from "@mybcabisnis/mage-ui/dialog"
 import { getFilename } from "@mybcabisnis/mage-shared/util/path"
 import { Session, type Message } from "@mybcabisnis/mage-sdk/v2/client"
 import { usePlatform } from "@/context/platform"
 import { useSettings } from "@/context/settings"
 import { createStore, produce, reconcile } from "solid-js/store"
-import { DragDropProvider, DragDropSensors, DragOverlay, SortableProvider, closestCenter } from "@thisbeyond/solid-dnd"
-import type { DragEvent } from "@thisbeyond/solid-dnd"
 import { useProviders } from "@/hooks/use-providers"
 import { showToast, Toast, toaster } from "@mybcabisnis/mage-ui/toast"
 import { useGlobalSDK } from "@/context/global-sdk"
@@ -51,15 +45,13 @@ import { usePermission } from "@/context/permission"
 import { Binary } from "@mybcabisnis/mage-shared/util/binary"
 import { retry } from "@mybcabisnis/mage-shared/util/retry"
 import { playSoundById } from "@/utils/sound"
-import { createAim } from "@/utils/aim"
 import { setNavigate } from "@/utils/notification-click"
 import { Worktree as WorktreeState } from "@/utils/worktree"
 import { setSessionHandoff } from "@/pages/session/handoff"
 
 import { useDialog } from "@mybcabisnis/mage-ui/context/dialog"
-import { useTheme, type ColorScheme } from "@mybcabisnis/mage-ui/theme/context"
+import { useTheme } from "@mybcabisnis/mage-ui/theme/context"
 import { useCommand, type CommandOption } from "@/context/command"
-import { ConstrainDragXAxis, getDraggableId } from "@/utils/solid-dnd"
 import { DebugBar } from "@/components/debug-bar"
 import { Titlebar } from "@/components/titlebar"
 import { useServer } from "@/context/server"
@@ -78,15 +70,6 @@ import {
   deepLinkEvent,
   drainPendingDeepLinks,
 } from "./layout/deep-links"
-import { createInlineEditorController } from "./layout/inline-editor"
-import {
-  LocalWorkspace,
-  SortableWorkspace,
-  WorkspaceDragOverlay,
-  type WorkspaceSidebarContext,
-} from "./layout/sidebar-workspace"
-import { ProjectDragOverlay, SortableProject, type ProjectSidebarContext } from "./layout/sidebar-project"
-import { SidebarContent } from "./layout/sidebar-shell"
 import { ArcanumSidebar } from "./layout/arcanum-sidebar"
 
 export default function Layout(props: ParentProps) {
@@ -94,8 +77,6 @@ export default function Layout(props: ParentProps) {
     Persist.global("layout.page", ["layout.page.v1"]),
     createStore({
       lastProjectSession: {} as { [directory: string]: { directory: string; id: string; at: number } },
-      activeProject: undefined as string | undefined,
-      activeWorkspace: undefined as string | undefined,
       workspaceOrder: {} as Record<string, string[]>,
       workspaceName: {} as Record<string, string>,
       workspaceBranchName: {} as Record<string, Record<string, string>>,
@@ -141,29 +122,15 @@ export default function Layout(props: ParentProps) {
       dir: store[0].path.directory || dir,
     }
   })
-  const availableThemeEntries = createMemo(() => theme.ids().map((id) => [id, theme.themes()[id]] as const))
-  const colorSchemeOrder: ColorScheme[] = ["system", "light", "dark"]
-  const colorSchemeKey: Record<ColorScheme, "theme.scheme.system" | "theme.scheme.light" | "theme.scheme.dark"> = {
-    system: "theme.scheme.system",
-    light: "theme.scheme.light",
-    dark: "theme.scheme.dark",
-  }
-  const colorSchemeLabel = (scheme: ColorScheme) => language.t(colorSchemeKey[scheme])
   const currentDir = createMemo(() => route().dir)
 
   const [state, setState] = createStore({
     autoselect: !initialDirectory,
     busyWorkspaces: {} as Record<string, boolean>,
-    hoverProject: undefined as string | undefined,
     scrollSessionKey: undefined as string | undefined,
-    nav: undefined as HTMLElement | undefined,
-    sortNow: Date.now(),
     sizing: false,
-    peek: undefined as string | undefined,
-    peeked: false,
   })
 
-  const editor = createInlineEditorController()
   const setBusy = (directory: string, value: boolean) => {
     const key = workspaceKey(directory)
     if (value) {
@@ -178,122 +145,20 @@ export default function Layout(props: ParentProps) {
     )
   }
   const isBusy = (directory: string) => !!state.busyWorkspaces[workspaceKey(directory)]
-  const navLeave = { current: undefined as number | undefined }
-  const sortNow = () => state.sortNow
-  let sizet: number | undefined
-  let sortNowInterval: ReturnType<typeof setInterval> | undefined
-  const sortNowTimeout = setTimeout(
-    () => {
-      setState("sortNow", Date.now())
-      sortNowInterval = setInterval(() => setState("sortNow", Date.now()), 60_000)
-    },
-    60_000 - (Date.now() % 60_000),
-  )
-
-  const aim = createAim({
-    enabled: () => !layout.sidebar.opened(),
-    active: () => state.hoverProject,
-    el: () => state.nav?.querySelector<HTMLElement>("[data-component='sidebar-rail']") ?? state.nav,
-    onActivate: (directory) => {
-      globalSync.child(directory)
-      setState("hoverProject", directory)
-    },
-  })
 
   onCleanup(() => {
     dialogDead = true
     dialogRun += 1
-    if (navLeave.current !== undefined) clearTimeout(navLeave.current)
-    clearTimeout(sortNowTimeout)
-    if (sortNowInterval) clearInterval(sortNowInterval)
     if (sizet !== undefined) clearTimeout(sizet)
-    if (peekt !== undefined) clearTimeout(peekt)
-    aim.reset()
   })
 
   onMount(() => {
     const stop = () => setState("sizing", false)
-    const blur = () => reset()
-    const hide = () => {
-      if (document.visibilityState !== "hidden") return
-      reset()
-    }
     makeEventListener(window, "pointerup", stop)
     makeEventListener(window, "pointercancel", stop)
     makeEventListener(window, "blur", stop)
-    makeEventListener(window, "blur", blur)
-    makeEventListener(document, "visibilitychange", hide)
   })
 
-  const sidebarHovering = createMemo(() => !layout.sidebar.opened() && state.hoverProject !== undefined)
-  const sidebarExpanded = createMemo(() => layout.sidebar.opened() || sidebarHovering())
-  const setHoverProject = (value: string | undefined) => {
-    setState("hoverProject", value)
-    if (value !== undefined) return
-    aim.reset()
-  }
-  const clearHoverProjectSoon = () => queueMicrotask(() => setHoverProject(undefined))
-
-  const disarm = () => {
-    if (navLeave.current === undefined) return
-    clearTimeout(navLeave.current)
-    navLeave.current = undefined
-  }
-
-  const reset = () => {
-    disarm()
-    setHoverProject(undefined)
-  }
-
-  const arm = () => {
-    if (layout.sidebar.opened()) return
-    if (state.hoverProject === undefined) return
-    disarm()
-    navLeave.current = window.setTimeout(() => {
-      navLeave.current = undefined
-      setHoverProject(undefined)
-    }, 300)
-  }
-
-  let peekt: number | undefined
-
-  const hoverProjectData = createMemo(() => {
-    const id = state.hoverProject
-    if (!id) return
-    return layout.projects.list().find((project) => project.worktree === id)
-  })
-
-  const peekProject = createMemo(() => {
-    const id = state.peek
-    if (!id) return
-    return layout.projects.list().find((project) => project.worktree === id)
-  })
-
-  createEffect(() => {
-    const p = hoverProjectData()
-    if (p) {
-      if (peekt !== undefined) {
-        clearTimeout(peekt)
-        peekt = undefined
-      }
-      setState("peek", p.worktree)
-      setState("peeked", true)
-      return
-    }
-
-    setState("peeked", false)
-    if (state.peek === undefined) return
-    if (peekt !== undefined) clearTimeout(peekt)
-    peekt = window.setTimeout(() => {
-      peekt = undefined
-      setState("peek", undefined)
-    }, 180)
-  })
-
-  createEffect(() => {
-    if (!layout.sidebar.opened()) return
-    setHoverProject(undefined)
-  })
 
   createEffect(() => {
     if (!state.autoselect) return
@@ -304,47 +169,12 @@ export default function Layout(props: ParentProps) {
     setState("autoselect", false)
   })
 
-  const editorOpen = editor.editorOpen
-  const openEditor = editor.openEditor
-  const closeEditor = editor.closeEditor
-  const setEditor = editor.setEditor
-  const InlineEditor = editor.InlineEditor
-
-  const clearSidebarHoverState = () => {
-    if (layout.sidebar.opened()) return
-    reset()
-  }
+  const clearSidebarHoverState = () => {}
 
   const navigateWithSidebarReset = (href: string) => {
     clearSidebarHoverState()
     navigate(href)
     layout.mobileSidebar.hide()
-  }
-
-  function cycleTheme(direction = 1) {
-    const ids = availableThemeEntries().map(([id]) => id)
-    if (ids.length === 0) return
-    const currentIndex = ids.indexOf(theme.themeId())
-    const nextIndex = currentIndex === -1 ? 0 : (currentIndex + direction + ids.length) % ids.length
-    const nextThemeId = ids[nextIndex]
-    theme.setTheme(nextThemeId)
-    showToast({
-      title: language.t("toast.theme.title"),
-      description: theme.name(nextThemeId),
-    })
-  }
-
-  function cycleColorScheme(direction = 1) {
-    const current = theme.colorScheme()
-    const currentIndex = colorSchemeOrder.indexOf(current)
-    const nextIndex =
-      currentIndex === -1 ? 0 : (currentIndex + direction + colorSchemeOrder.length) % colorSchemeOrder.length
-    const next = colorSchemeOrder[nextIndex]
-    theme.setColorScheme(next)
-    showToast({
-      title: language.t("toast.scheme.title"),
-      description: colorSchemeLabel(next),
-    })
   }
 
   function setLocale(next: Locale) {
@@ -617,8 +447,6 @@ export default function Layout(props: ParentProps) {
     setStore("workspaceBranchName", projectId, branch, next)
   }
 
-  const workspaceLabel = (directory: string, branch?: string, projectId?: string) =>
-    workspaceName(directory, projectId, branch) ?? branch ?? getFilename(directory)
 
   const workspaceSetting = createMemo(() => {
     const project = currentProject()
@@ -1136,48 +964,7 @@ export default function Layout(props: ParentProps) {
           })
         },
       },
-      {
-        id: "theme.cycle",
-        title: language.t("command.theme.cycle"),
-        category: language.t("command.category.theme"),
-        keybind: "mod+shift+t",
-        onSelect: () => cycleTheme(1),
-      },
     ]
-
-    for (const [id] of availableThemeEntries()) {
-      commands.push({
-        id: `theme.set.${id}`,
-        title: language.t("command.theme.set", { theme: theme.name(id) }),
-        category: language.t("command.category.theme"),
-        onSelect: () => theme.commitPreview(),
-        onHighlight: () => {
-          theme.previewTheme(id)
-          return () => theme.cancelPreview()
-        },
-      })
-    }
-
-    commands.push({
-      id: "theme.scheme.cycle",
-      title: language.t("command.theme.scheme.cycle"),
-      category: language.t("command.category.theme"),
-      keybind: "mod+shift+s",
-      onSelect: () => cycleColorScheme(1),
-    })
-
-    for (const scheme of colorSchemeOrder) {
-      commands.push({
-        id: `theme.scheme.${scheme}`,
-        title: language.t("command.theme.scheme.set", { scheme: colorSchemeLabel(scheme) }),
-        category: language.t("command.category.theme"),
-        onSelect: () => theme.commitPreview(),
-        onHighlight: () => {
-          theme.previewColorScheme(scheme)
-          return () => theme.cancelPreview()
-        },
-      })
-    }
 
     commands.push({
       id: "language.cycle",
@@ -1841,91 +1628,6 @@ export default function Layout(props: ParentProps) {
     ),
   )
 
-  function handleDragStart(event: unknown) {
-    const id = getDraggableId(event)
-    if (!id) return
-    setHoverProject(undefined)
-    setStore("activeProject", id)
-  }
-
-  function handleDragOver(event: DragEvent) {
-    const { draggable, droppable } = event
-    if (draggable && droppable) {
-      const projects = layout.projects.list()
-      const fromIndex = projects.findIndex((p) => p.worktree === draggable.id.toString())
-      const toIndex = projects.findIndex((p) => p.worktree === droppable.id.toString())
-      if (fromIndex !== toIndex && toIndex !== -1) {
-        layout.projects.move(draggable.id.toString(), toIndex)
-      }
-    }
-  }
-
-  function handleDragEnd() {
-    setStore("activeProject", undefined)
-  }
-
-  function workspaceIds(project: LocalProject | undefined) {
-    if (!project) return []
-    const local = project.worktree
-    const dirs = [local, ...(project.sandboxes ?? [])]
-    const active = currentProject()
-    const directory = workspaceKey(active?.worktree ?? "") === workspaceKey(project.worktree) ? currentDir() : undefined
-    const extra =
-      directory &&
-        workspaceKey(directory) !== workspaceKey(local) &&
-        !dirs.some((item) => workspaceKey(item) === workspaceKey(directory))
-        ? directory
-        : undefined
-    const pending = extra ? WorktreeState.get(extra)?.status === "pending" : false
-
-    const ordered = effectiveWorkspaceOrder(local, dirs, store.workspaceOrder[project.worktree])
-    if (pending && extra) return [local, extra, ...ordered.filter((item) => item !== local)]
-    if (!extra) return ordered
-    if (pending) return ordered
-    return [...ordered, extra]
-  }
-
-  const sidebarProject = createMemo(() => {
-    if (layout.sidebar.opened()) return currentProject()
-    const hovered = hoverProjectData()
-    if (hovered) return hovered
-    return currentProject()
-  })
-
-  function handleWorkspaceDragStart(event: unknown) {
-    const id = getDraggableId(event)
-    if (!id) return
-    setStore("activeWorkspace", id)
-  }
-
-  function handleWorkspaceDragOver(event: DragEvent) {
-    const { draggable, droppable } = event
-    if (!draggable || !droppable) return
-
-    const project = sidebarProject()
-    if (!project) return
-
-    const ids = workspaceIds(project)
-    const fromIndex = ids.findIndex((dir) => dir === draggable.id.toString())
-    const toIndex = ids.findIndex((dir) => dir === droppable.id.toString())
-    if (fromIndex === -1 || toIndex === -1) return
-    if (fromIndex === toIndex) return
-
-    const result = ids.slice()
-    const [item] = result.splice(fromIndex, 1)
-    if (!item) return
-    result.splice(toIndex, 0, item)
-    setStore(
-      "workspaceOrder",
-      project.worktree,
-      result.filter((directory) => workspaceKey(directory) !== workspaceKey(project.worktree)),
-    )
-  }
-
-  function handleWorkspaceDragEnd() {
-    setStore("activeWorkspace", undefined)
-  }
-
   const createWorkspace = async (project: LocalProject) => {
     clearSidebarHoverState()
     const created = await globalSDK.client.worktree
@@ -1966,399 +1668,6 @@ export default function Layout(props: ParentProps) {
     navigateWithSidebarReset(`/${base64Encode(created.directory)}/session`)
   }
 
-  const workspaceSidebarCtx: WorkspaceSidebarContext = {
-    currentDir,
-    navList: currentSessions,
-    sidebarExpanded,
-    sidebarHovering,
-    clearHoverProjectSoon,
-    prefetchSession,
-    archiveSession,
-    workspaceName,
-    renameWorkspace,
-    editorOpen,
-    openEditor,
-    closeEditor,
-    setEditor,
-    InlineEditor,
-    isBusy,
-    workspaceExpanded: (directory, local) => store.workspaceExpanded[directory] ?? local,
-    setWorkspaceExpanded: (directory, value) => setStore("workspaceExpanded", directory, value),
-    showResetWorkspaceDialog: (root, directory) =>
-      dialog.show(() => <DialogResetWorkspace root={root} directory={directory} />),
-    showDeleteWorkspaceDialog: (root, directory) =>
-      dialog.show(() => <DialogDeleteWorkspace root={root} directory={directory} />),
-    setScrollContainerRef: (el, mobile) => {
-      if (!mobile) scrollContainerRef = el
-    },
-  }
-
-  const projectSidebarCtx: ProjectSidebarContext = {
-    currentDir,
-    currentProject,
-    sidebarOpened: () => layout.sidebar.opened(),
-    sidebarHovering,
-    hoverProject: () => state.hoverProject,
-    onProjectMouseEnter: (worktree, event) => aim.enter(worktree, event),
-    onProjectMouseLeave: (worktree) => aim.leave(worktree),
-    onProjectFocus: (worktree) => aim.activate(worktree),
-    onHoverOpenChanged: (worktree, hoverOpen) => {
-      if (!hoverOpen && state.hoverProject && state.hoverProject !== worktree) return
-      setState("hoverProject", hoverOpen ? worktree : undefined)
-    },
-    navigateToProject,
-    openSidebar: () => layout.sidebar.open(),
-    closeProject,
-    showEditProjectDialog,
-    toggleProjectWorkspaces,
-    workspacesEnabled: (project) => project.vcs === "git" && layout.sidebar.workspaces(project.worktree)(),
-    workspaceIds,
-    workspaceLabel,
-    sessionProps: {
-      navList: currentSessions,
-      sidebarExpanded,
-      clearHoverProjectSoon,
-      prefetchSession,
-      archiveSession,
-    },
-  }
-
-  const SidebarPanel = (panelProps: {
-    project: Accessor<LocalProject | undefined>
-    mobile?: boolean
-    merged?: boolean
-  }) => {
-    const project = panelProps.project
-    const merged = createMemo(() => panelProps.mobile || (panelProps.merged ?? layout.sidebar.opened()))
-    const hover = createMemo(() => !panelProps.mobile && panelProps.merged === false && !layout.sidebar.opened())
-    const empty = createMemo(() => !params.dir && layout.projects.list().length === 0)
-    const projectName = createMemo(() => {
-      const item = project()
-      if (!item) return ""
-      return item.name || getFilename(item.worktree)
-    })
-    const projectId = createMemo(() => project()?.id ?? "")
-    const worktree = createMemo(() => project()?.worktree ?? "")
-    const slug = createMemo(() => {
-      const dir = worktree()
-      if (!dir) return ""
-      return base64Encode(dir)
-    })
-    const workspaces = createMemo(() => {
-      const item = project()
-      if (!item) return [] as string[]
-      return workspaceIds(item)
-    })
-    const unseenCount = createMemo(() =>
-      workspaces().reduce((total, directory) => total + notification.project.unseenCount(directory), 0),
-    )
-    const clearNotifications = () =>
-      workspaces()
-        .filter((directory) => notification.project.unseenCount(directory) > 0)
-        .forEach((directory) => notification.project.markViewed(directory))
-    const workspacesEnabled = createMemo(() => {
-      const item = project()
-      if (!item) return false
-      if (item.vcs !== "git") return false
-      return layout.sidebar.workspaces(item.worktree)()
-    })
-    const canToggle = createMemo(() => {
-      const item = project()
-      if (!item) return false
-      return item.vcs === "git" || layout.sidebar.workspaces(item.worktree)()
-    })
-    const homedir = createMemo(() => globalSync.data.path.home)
-
-    return (
-      <div
-        classList={{
-          "flex flex-col min-h-0 min-w-0 box-border rounded-tl-[12px] px-3": true,
-          "border border-b-0 border-border-weak-base": !merged(),
-          "border-l border-t border-border-weaker-base": merged(),
-          "bg-background-base": merged() || hover(),
-          "bg-background-stronger": !merged() && !hover(),
-          "flex-1 min-w-0": panelProps.mobile,
-          "max-w-full overflow-hidden": panelProps.mobile,
-        }}
-        style={{
-          width: panelProps.mobile ? undefined : `${panel()}px`,
-        }}
-      >
-        <Show
-          when={project()}
-          fallback={
-            <Show when={empty()}>
-              <div class="flex-1 min-h-0 -mt-4 flex items-center justify-center px-6 pb-64 text-center">
-                <div class="mt-8 flex max-w-60 flex-col items-center gap-6 text-center">
-                  <div class="flex flex-col gap-3">
-                    <div class="text-14-medium text-text-strong">{language.t("sidebar.empty.title")}</div>
-                    <div class="text-14-regular text-text-base" style={{ "line-height": "var(--line-height-normal)" }}>
-                      {language.t("sidebar.empty.description")}
-                    </div>
-                  </div>
-                  <Button size="large" icon="folder-add-left" onClick={chooseProject}>
-                    {language.t("command.project.open")}
-                  </Button>
-                </div>
-              </div>
-            </Show>
-          }
-        >
-          {(project) => (
-            <>
-              <div class="shrink-0 pl-1 py-1">
-                <div class="group/project flex items-start justify-between gap-2 py-2 pl-2 pr-0">
-                  <div class="flex flex-col min-w-0">
-                    <InlineEditor
-                      id={`project:${projectId()}`}
-                      value={projectName}
-                      onSave={(next) => {
-                        const item = project()
-                        if (!item) return
-                        void renameProject(item, next)
-                      }}
-                      class="text-14-medium text-text-strong truncate"
-                      displayClass="text-14-medium text-text-strong truncate"
-                      stopPropagation
-                    />
-
-                    <Tooltip
-                      placement="bottom"
-                      gutter={2}
-                      value={worktree()}
-                      class="shrink-0"
-                      contentStyle={{
-                        "max-width": "640px",
-                        transform: "translate3d(52px, 0, 0)",
-                      }}
-                    >
-                      <span class="text-12-regular text-text-base truncate select-text">
-                        {worktree().replace(homedir(), "~")}
-                      </span>
-                    </Tooltip>
-                  </div>
-
-                  <DropdownMenu modal={!sidebarHovering()}>
-                    <DropdownMenu.Trigger
-                      as={IconButton}
-                      icon="dot-grid"
-                      variant="ghost"
-                      data-action="project-menu"
-                      data-project={slug()}
-                      class="shrink-0 size-6 rounded-md transition-opacity data-[expanded]:bg-surface-base-active"
-                      classList={{
-                        "opacity-100": panelProps.mobile || merged(),
-                        "opacity-0 group-hover/project:opacity-100 group-focus-within/project:opacity-100 data-[expanded]:opacity-100":
-                          !panelProps.mobile && !merged(),
-                      }}
-                      aria-label={language.t("common.moreOptions")}
-                    />
-                    <DropdownMenu.Portal>
-                      <DropdownMenu.Content class="mt-1">
-                        <DropdownMenu.Item
-                          onSelect={() => {
-                            const item = project()
-                            if (!item) return
-                            showEditProjectDialog(item)
-                          }}
-                        >
-                          <DropdownMenu.ItemLabel>{language.t("common.edit")}</DropdownMenu.ItemLabel>
-                        </DropdownMenu.Item>
-                        <DropdownMenu.Item
-                          data-action="project-workspaces-toggle"
-                          data-project={slug()}
-                          disabled={!canToggle()}
-                          onSelect={() => {
-                            const item = project()
-                            if (!item) return
-                            toggleProjectWorkspaces(item)
-                          }}
-                        >
-                          <DropdownMenu.ItemLabel>
-                            {workspacesEnabled()
-                              ? language.t("sidebar.workspaces.disable")
-                              : language.t("sidebar.workspaces.enable")}
-                          </DropdownMenu.ItemLabel>
-                        </DropdownMenu.Item>
-                        <DropdownMenu.Item
-                          data-action="project-clear-notifications"
-                          data-project={slug()}
-                          disabled={unseenCount() === 0}
-                          onSelect={clearNotifications}
-                        >
-                          <DropdownMenu.ItemLabel>
-                            {language.t("sidebar.project.clearNotifications")}
-                          </DropdownMenu.ItemLabel>
-                        </DropdownMenu.Item>
-                        <DropdownMenu.Separator />
-                        <DropdownMenu.Item
-                          data-action="project-close-menu"
-                          data-project={slug()}
-                          onSelect={() => {
-                            const dir = worktree()
-                            if (!dir) return
-                            closeProject(dir)
-                          }}
-                        >
-                          <DropdownMenu.ItemLabel>{language.t("common.close")}</DropdownMenu.ItemLabel>
-                        </DropdownMenu.Item>
-                      </DropdownMenu.Content>
-                    </DropdownMenu.Portal>
-                  </DropdownMenu>
-                </div>
-              </div>
-
-              <div class="flex-1 min-h-0 flex flex-col">
-                <Show
-                  when={workspacesEnabled()}
-                  fallback={
-                    <>
-                      <div class="shrink-0 py-4">
-                        <Button
-                          size="large"
-                          icon="new-session"
-                          class="w-full"
-                          onClick={() => {
-                            const dir = worktree()
-                            if (!dir) return
-                            navigateWithSidebarReset(`/${base64Encode(dir)}/session`)
-                          }}
-                        >
-                          {language.t("command.session.new")}
-                        </Button>
-                      </div>
-                      <div class="flex-1 min-h-0">
-                        <LocalWorkspace
-                          ctx={workspaceSidebarCtx}
-                          project={project()}
-                          sortNow={sortNow}
-                          mobile={panelProps.mobile}
-                        />
-                      </div>
-                    </>
-                  }
-                >
-                  <>
-                    <div class="shrink-0 py-4">
-                      <Button
-                        size="large"
-                        icon="plus-small"
-                        class="w-full"
-                        onClick={() => {
-                          const item = project()
-                          if (!item) return
-                          void createWorkspace(item)
-                        }}
-                      >
-                        {language.t("workspace.new")}
-                      </Button>
-                    </div>
-                    <div class="relative flex-1 min-h-0">
-                      <DragDropProvider
-                        onDragStart={handleWorkspaceDragStart}
-                        onDragEnd={handleWorkspaceDragEnd}
-                        onDragOver={handleWorkspaceDragOver}
-                        collisionDetector={closestCenter}
-                      >
-                        <DragDropSensors />
-                        <ConstrainDragXAxis />
-                        <div
-                          ref={(el) => {
-                            if (!panelProps.mobile) scrollContainerRef = el
-                          }}
-                          class="size-full flex flex-col py-2 gap-4 overflow-y-auto no-scrollbar [overflow-anchor:none]"
-                        >
-                          <SortableProvider ids={workspaces()}>
-                            <For each={workspaces()}>
-                              {(directory) => (
-                                <SortableWorkspace
-                                  ctx={workspaceSidebarCtx}
-                                  directory={directory}
-                                  project={project()}
-                                  sortNow={sortNow}
-                                  mobile={panelProps.mobile}
-                                />
-                              )}
-                            </For>
-                          </SortableProvider>
-                        </div>
-                        <DragOverlay>
-                          <WorkspaceDragOverlay
-                            sidebarProject={sidebarProject}
-                            activeWorkspace={() => store.activeWorkspace}
-                            workspaceLabel={workspaceLabel}
-                          />
-                        </DragOverlay>
-                      </DragDropProvider>
-                    </div>
-                  </>
-                </Show>
-              </div>
-            </>
-          )}
-        </Show>
-
-        <div
-          class="shrink-0 px-3 py-3"
-          classList={{
-            hidden: store.gettingStartedDismissed || !(providers.all().length > 0 && providers.paid().length === 0),
-          }}
-        >
-          <div class="rounded-xl bg-background-base shadow-xs-border-base" data-component="getting-started">
-            <div class="p-3 flex flex-col gap-6">
-              <div class="flex flex-col gap-2">
-                <div class="text-14-medium text-text-strong">{language.t("sidebar.gettingStarted.title")}</div>
-                <div class="text-14-regular text-text-base" style={{ "line-height": "var(--line-height-normal)" }}>
-                  {language.t("sidebar.gettingStarted.line1")}
-                </div>
-                <div class="text-14-regular text-text-base" style={{ "line-height": "var(--line-height-normal)" }}>
-                  {language.t("sidebar.gettingStarted.line2")}
-                </div>
-              </div>
-              <div data-component="getting-started-actions">
-                <Button size="large" icon="plus-small" onClick={connectProvider}>
-                  {language.t("command.provider.connect")}
-                </Button>
-                <Button size="large" variant="ghost" onClick={() => setStore("gettingStartedDismissed", true)}>
-                  {language.t("toast.update.action.notYet")}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  const projects = () => layout.projects.list()
-  const projectOverlay = () => <ProjectDragOverlay projects={projects} activeProject={() => store.activeProject} />
-  const sidebarContent = (mobile?: boolean) => (
-    <SidebarContent
-      mobile={mobile}
-      opened={() => layout.sidebar.opened()}
-      aimMove={aim.move}
-      projects={projects}
-      renderProject={(project) => (
-        <SortableProject ctx={projectSidebarCtx} project={project} sortNow={sortNow} mobile={mobile} />
-      )}
-      handleDragStart={handleDragStart}
-      handleDragEnd={handleDragEnd}
-      handleDragOver={handleDragOver}
-      openProjectLabel={language.t("command.project.open")}
-      openProjectKeybind={() => command.keybind("project.open")}
-      onOpenProject={chooseProject}
-      renderProjectOverlay={projectOverlay}
-      settingsLabel={() => language.t("sidebar.settings")}
-      settingsKeybind={() => command.keybind("settings.open")}
-      onOpenSettings={openSettings}
-      helpLabel={() => language.t("sidebar.help")}
-      onOpenHelp={() => platform.openLink("https://opencode.ai/desktop-feedback")}
-      renderPanel={() =>
-        mobile ? <SidebarPanel project={currentProject} mobile /> : <SidebarPanel project={currentProject} merged />
-      }
-    />
-  )
-
   return (
     <div class="relative bg-background-base flex-1 min-h-0 min-w-0 flex flex-col select-none [&_input]:select-text [&_textarea]:select-text [&_[contenteditable]]:select-text">
       {autoselecting() ?? ""}
@@ -2375,18 +1684,6 @@ export default function Layout(props: ParentProps) {
                 "z-10": true,
               }}
               style={{ width: `${side()}px` }}
-              ref={(el) => {
-                setState("nav", el)
-              }}
-              onMouseEnter={() => {
-                disarm()
-              }}
-              onMouseLeave={() => {
-                aim.reset()
-                if (!sidebarHovering()) return
-
-                arm()
-              }}
             >
               <div class="@container w-full h-full contain-strict">
                 <ArcanumSidebar openSettings={openSettings} />
@@ -2467,43 +1764,6 @@ export default function Layout(props: ParentProps) {
               </main>
             </div>
 
-            <div
-              classList={{
-                "hidden xl:flex absolute inset-y-0 left-16 z-30": true,
-                "opacity-100 translate-x-0 pointer-events-auto": state.peeked && !layout.sidebar.opened(),
-                "opacity-0 -translate-x-2 pointer-events-none": !state.peeked || layout.sidebar.opened(),
-                "transition-[opacity,transform] motion-reduce:transition-none": true,
-                "duration-180 ease-out": state.peeked && !layout.sidebar.opened(),
-                "duration-120 ease-in": !state.peeked || layout.sidebar.opened(),
-              }}
-              onMouseMove={disarm}
-              onMouseEnter={() => {
-                disarm()
-                aim.reset()
-              }}
-              onPointerDown={disarm}
-              onMouseLeave={() => {
-                arm()
-              }}
-            >
-              <Show when={peekProject()}>
-                <SidebarPanel project={peekProject} merged={false} />
-              </Show>
-            </div>
-
-            <div
-              classList={{
-                "hidden xl:block pointer-events-none absolute inset-y-0 right-0 z-25 overflow-hidden": true,
-                "opacity-100 translate-x-0": state.peeked && !layout.sidebar.opened(),
-                "opacity-0 -translate-x-2": !state.peeked || layout.sidebar.opened(),
-                "transition-[opacity,transform] motion-reduce:transition-none": true,
-                "duration-180 ease-out": state.peeked && !layout.sidebar.opened(),
-                "duration-120 ease-in": !state.peeked || layout.sidebar.opened(),
-              }}
-              style={{ left: `calc(4rem + ${panel()}px)` }}
-            >
-              <div class="h-full w-px" style={{ "box-shadow": "var(--shadow-sidebar-overlay)" }} />
-            </div>
           </div>
         </div>
         {import.meta.env.DEV && <DebugBar />}

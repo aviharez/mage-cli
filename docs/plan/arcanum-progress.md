@@ -164,8 +164,40 @@
 
 ---
 
-## Phase G — Not yet started
+## Phase G — Cleanup ✅ DONE
 
-| Phase | Summary |
-|-------|---------|
-| G | Cleanup — delete dead sidebar helpers, unused imports |
+**Completed.** Build verified clean (`bun run --filter @mybcabisnis/mage-app build` → exit 0).
+
+### Removed from `layout.tsx`
+
+| Dead code | What was removed |
+|-----------|-----------------|
+| Imports | `Accessor`, `IconButton`, `Tooltip`, `DropdownMenu` (UI-only in dead panel); entire `@thisbeyond/solid-dnd` imports; `createAim`; `ColorScheme` type; `ConstrainDragXAxis`/`getDraggableId`; `createInlineEditorController`; `sidebar-workspace`, `sidebar-project`, `sidebar-shell` imports |
+| Theme commands | `theme.cycle`, `theme.set.*` loop, `theme.scheme.cycle`, `theme.scheme.*` loop + `cycleTheme`/`cycleColorScheme` functions + `availableThemeEntries`/`colorSchemeOrder`/`colorSchemeKey`/`colorSchemeLabel` memos |
+| Hover/rail/peek system | `aim`, `navLeave`, `hoverProject`/`peek`/`peeked`/`nav`/`sortNow` state fields; `setHoverProject`, `clearHoverProjectSoon`, `sidebarHovering`, `sidebarExpanded`, `disarm`, `reset`, `arm`, `peekt`, `hoverProjectData`, `peekProject`, two peek `createEffect`s; nav `ref`/mouse event handlers; peek overlay divs |
+| Dead sort helpers | `sortNow` function, `sortNowTimeout`, `sortNowInterval` |
+| Dead editor aliases | `editor`, `editorOpen`, `openEditor`, `closeEditor`, `setEditor`, `InlineEditor` (all only used in dead sidebar context) |
+| Dead drag handlers | `handleDragStart/Over/End` (project drag); `handleWorkspaceDragStart/Over/End`; `sidebarProject` memo |
+| Dead contexts | `workspaceSidebarCtx`, `projectSidebarCtx`, `workspaceLabel` function |
+| `SidebarPanel` component | Entire ~300-line component (workspace list UI) |
+| `sidebarContent` + `projectOverlay` | Old sidebar content renderer + DnD project overlay |
+| Persisted store | Removed `activeProject`, `activeWorkspace` fields (never written after cleanup) |
+
+### Files deleted
+
+| File | Reason |
+|------|--------|
+| `packages/app/src/pages/layout/sidebar-workspace.tsx` | No remaining imports |
+| `packages/app/src/pages/layout/sidebar-project.tsx` | No remaining imports |
+| `packages/app/src/pages/layout/sidebar-shell.tsx` | No remaining imports |
+
+### Files kept
+
+| File | Reason |
+|------|--------|
+| `packages/app/src/pages/layout/sidebar-items.tsx` | Still imported by `dialog-edit-project.tsx` (`getProjectAvatarSource`) |
+
+### Key notes
+- `navigateWithSidebarReset` kept (used in 10+ places for navigation); `clearSidebarHoverState` simplified to a no-op `() => {}`.
+- `workspaceIds` kept (still used by `visibleSessionDirs` for session loading).
+- `createWorkspace` kept (still wired to `workspace.new` command `⌘⇧W`).
