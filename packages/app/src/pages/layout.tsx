@@ -91,6 +91,7 @@ export default function Layout(props: ParentProps) {
   let scrollContainerRef: HTMLDivElement | undefined
   let dialogRun = 0
   let dialogDead = false
+  let sizet: number | undefined
 
   const params = useParams()
   const globalSDK = useGlobalSDK()
@@ -463,7 +464,12 @@ export default function Layout(props: ParentProps) {
     if (!workspaceSetting()) return [project.worktree]
 
     const activeDir = currentDir()
-    return workspaceIds(project).filter((directory) => {
+    const dirs = effectiveWorkspaceOrder(
+      project.worktree,
+      [project.worktree, ...(project.sandboxes ?? [])],
+      store.workspaceOrder[project.worktree],
+    )
+    return dirs.filter((directory) => {
       const expanded = store.workspaceExpanded[directory] ?? directory === project.worktree
       const active = workspaceKey(directory) === workspaceKey(activeDir)
       return expanded || active

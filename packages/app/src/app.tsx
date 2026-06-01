@@ -5,7 +5,6 @@ import { FileComponentProvider } from "@mybcabisnis/mage-ui/context/file"
 import { MarkedProvider } from "@mybcabisnis/mage-ui/context/marked"
 import { File } from "@mybcabisnis/mage-ui/file"
 import { Font } from "@mybcabisnis/mage-ui/font"
-import { Splash } from "@mybcabisnis/mage-ui/logo"
 import { ThemeProvider } from "@mybcabisnis/mage-ui/theme/context"
 import { MetaProvider } from "@solidjs/meta"
 import { type BaseRouterProps, Navigate, Route, Router } from "@solidjs/router"
@@ -33,6 +32,7 @@ import { CommentsProvider } from "@/context/comments"
 import { FileProvider } from "@/context/file"
 import { GlobalSDKProvider } from "@/context/global-sdk"
 import { GlobalSyncProvider } from "@/context/global-sync"
+import { ArcEmblem } from "@/components/arcanum/emblem"
 import { OnboardingGate } from "@/components/arcanum/onboarding-gate"
 import { OnboardingProvider } from "@/components/arcanum/onboarding-context"
 import { HighlightsProvider } from "@/context/highlights"
@@ -202,7 +202,7 @@ function ConnectionGate(props: ParentProps<{ disableHealthCheck?: boolean }>) {
     <Suspense
       fallback={
         <div class="h-dvh w-screen flex flex-col items-center justify-center bg-background-base">
-          <Splash class="w-16 h-20 opacity-50 animate-pulse" />
+          <ArcEmblem size={72} glow animate />
         </div>
       }
     >
@@ -210,7 +210,7 @@ function ConnectionGate(props: ParentProps<{ disableHealthCheck?: boolean }>) {
         when={checkMode() === "blocking" ? !startupHealthCheck.loading : startupHealthCheck.state !== "pending"}
         fallback={
           <div class="h-dvh w-screen flex flex-col items-center justify-center bg-background-base">
-            <Splash class="w-16 h-20 opacity-50 animate-pulse" />
+            <ArcEmblem size={72} glow animate />
           </div>
         }
       >*/}
@@ -251,7 +251,9 @@ function ConnectionError(props: { onRetry?: () => void; onServerSelected?: (key:
   return (
     <div class="h-dvh w-screen flex flex-col items-center justify-center bg-background-base gap-6 p-6">
       <div class="flex flex-col items-center max-w-md text-center">
-        <Splash class="w-12 h-15 mb-4" />
+        <div class="mb-4">
+          <ArcEmblem size={56} glow animate />
+        </div>
         <p class="text-14-regular text-text-base">
           {unreachable()[0]}
           <span class="text-text-strong font-medium">{name()}</span>

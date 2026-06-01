@@ -1,6 +1,6 @@
 import { Show, type ParentProps } from "solid-js"
-import { Splash } from "@mybcabisnis/mage-ui/logo"
 import { useGlobalSync } from "@/context/global-sync"
+import { ArcEmblem } from "./emblem"
 import { useOnboarding } from "./onboarding-context"
 import { Onboarding } from "./onboarding"
 
@@ -12,7 +12,7 @@ export function OnboardingGate(props: ParentProps) {
       when={sync.ready}
       fallback={
         <div class="h-dvh w-screen flex items-center justify-center bg-background-base">
-          <Splash class="w-16 h-20 opacity-50 animate-pulse" />
+          <ArcEmblem size={72} glow animate />
         </div>
       }
     >
