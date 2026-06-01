@@ -30,6 +30,7 @@ import { Button } from "@mybcabisnis/mage-ui/button"
 import { showToast } from "@mybcabisnis/mage-ui/toast"
 import { checksum, base64Encode } from "@mybcabisnis/mage-shared/util/encode"
 import { useNavigate, useSearchParams } from "@solidjs/router"
+import { ArcAtmos } from "@/components/arcanum/atmos"
 import { ArcComposerChrome } from "@/components/arcanum/composer-chrome"
 import { ComposerFolderRibbon } from "@/components/arcanum/composer-folder-ribbon"
 import { NewSessionDesignView, NewSessionView, SessionHeader } from "@/components/session"
@@ -1894,7 +1895,8 @@ export default function Page() {
             width: sessionPanelWidth(),
           }}
         >
-          <div class="flex-1 min-h-0 overflow-hidden">
+          <div class="relative flex-1 min-h-0 overflow-hidden">
+            <ArcAtmos motes={false} />
             <Switch>
               <Match when={params.id}>
                 <Show when={messagesReady()}>
@@ -1942,7 +1944,10 @@ export default function Page() {
               </Match>
               <Match when={true}>
                 <Show when={newSessionDesign()} fallback={<NewSessionView worktree={newSessionWorktree()} />}>
-                  <NewSessionDesignView>
+                  <NewSessionDesignView
+                    currentDir={sdk.directory}
+                    homeDir={globalSync.data.path.home ?? ""}
+                  >
                     <ArcComposerChrome big>
                       <ComposerFolderRibbon
                         currentDir={sdk.directory}
