@@ -12,7 +12,10 @@ import { usePlatform } from "@/context/platform"
 import { useCommand } from "@/context/command"
 import { useLanguage } from "@/context/language"
 import { useSettings } from "@/context/settings"
+import { useGlobalSync } from "@/context/global-sync"
 import { applyPath, backPath, forwardPath } from "./titlebar-history"
+import { A } from "@/components/arcanum/palette"
+import { decode64 } from "@/utils/base64"
 
 type TauriDesktopWindow = {
   startDragging?: () => Promise<void>
@@ -47,6 +50,7 @@ export function Titlebar() {
   const location = useLocation()
   const params = useParams()
 
+  const sync = useGlobalSync()
   const mac = createMemo(() => platform.platform === "desktop" && platform.os === "macos")
   const windows = createMemo(() => platform.platform === "desktop" && platform.os === "windows")
   const web = createMemo(() => platform.platform === "web")
@@ -82,6 +86,13 @@ export function Titlebar() {
   const hasProjects = createMemo(() => layout.projects.list().length > 0)
   const useV2Titlebar = createMemo(() => settings.general.newLayoutDesigns())
   const nav = createMemo(() => (useV2Titlebar() ? settings.general.showNavigation() : true))
+  const crumb = createMemo(() => {
+    if (!params.dir) return ""
+    const d = decode64(params.dir)
+    if (!d) return ""
+    if (d === sync.data.path.home) return "~"
+    return d.split("/").filter(Boolean).at(-1) ?? d
+  })
 
   const back = () => {
     const next = backPath(history)
@@ -166,23 +177,17 @@ export function Titlebar() {
 
   return (
     <header
-      class="h-10 shrink-0 relative grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center border-b border-border-weak-base"
+      class="h-10 shrink-0 relative grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center border-b"
       style={{
         "min-height": minHeight(),
-        background: "color-mix(in srgb, var(--background-base) 80%, transparent)",
-        "backdrop-filter": "blur(12px)",
-        "-webkit-backdrop-filter": "blur(12px)",
+        background: A.bgInk,
+        "border-bottom-color": A.border,
       }}
       data-tauri-drag-region
       onMouseDown={drag}
       onDblClick={maximize}
     >
-      <div
-        classList={{
-          "flex items-center min-w-0": true,
-          "pl-2": !mac(),
-        }}
-      >
+      <div class="flex items-center min-w-0">
         <Show when={mac()}>
           <div class="h-full shrink-0" style={{ width: `${72 / zoom()}px` }} />
           <div class="xl:hidden w-10 shrink-0 flex items-center justify-center">
@@ -210,7 +215,7 @@ export function Titlebar() {
         </Show>
         <div class="flex items-center gap-1 shrink-0">
           <TooltipKeybind
-            class={web() ? "hidden xl:flex shrink-0 ml-14" : "hidden xl:flex shrink-0 ml-2"}
+            class="hidden xl:flex shrink-0 pl-[22px]"
             placement="bottom"
             title={language.t("command.sidebar.toggle")}
             keybind={command.keybind("sidebar.toggle")}
@@ -291,6 +296,14 @@ export function Titlebar() {
                       aria-label={language.t("common.goForward")}
                     />
                   </Tooltip>
+                </div>
+              </Show>
+              <Show when={crumb()}>
+                <div class="flex items-center gap-1.5 pl-1 shrink-0" style={{ color: A.fgMuted }}>
+                  <Icon size="small" name="folder" style={{ color: A.accentBright }} />
+                  <span style={{ "font-size": "11px", "font-family": "var(--font-mono)", "white-space": "nowrap" }}>
+                    {crumb()}
+                  </span>
                 </div>
               </Show>
               <div id="mage-titlebar-left" class="flex items-center gap-3 min-w-0 px-2" />

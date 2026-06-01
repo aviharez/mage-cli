@@ -122,3 +122,17 @@ body[data-arc-motion="off"] .arc-mote { animation: none !important; }
 body[data-arc-motion="off"] .arc-trace { stroke-dashoffset: 0; animation: none !important; }
 
 .serif { font-family: "Spectral", Georgia, "Times New Roman", serif; font-weight: 400; }
+
+/* Phase E: arcanum pill for titlebar center search button */
+#mage-titlebar-center > button {
+  background: #0b0918 !important;
+  border-color: rgba(165, 148, 255, 0.10) !important;
+  color: #5b5388 !important;
+  border-radius: 10px !important;
+  font-size: 12.5px !important;
+}
+#mage-titlebar-center > button:hover {
+  background: #0f0c1d !important;
+  border-color: rgba(165, 148, 255, 0.22) !important;
+  color: #9b90c8 !important;
+}

@@ -123,10 +123,31 @@
 
 ---
 
-## Phases E–G — Not yet started
+## Phase E — Command bar restyle ✅ DONE
+
+**Completed.** Build verified clean (`bun run --filter @mybcabisnis/mage-app build` → exit 0).
+
+### Files modified
+
+| File | Change |
+|------|--------|
+| `packages/app/src/components/titlebar.tsx` | Solid `A.bgInk` background (removes blur); inline `border-bottom-color: A.border`; accent folder icon + mono crumb breadcrumb in left area; `useGlobalSync` + `decode64` wired for home-aware crumb. |
+| `packages/app/src/index.css` | `#mage-titlebar-center > button` overrides: `A.bgInput` bg, `A.border` border-color, `A.fgDim` text, `border-radius: 10px`; hover lifts to `A.bgRaised` + `A.borderStrong`. |
+
+### Key notes
+- `#mage-titlebar-center` portal untouched (session-header.tsx not modified); CSS targets the injected button only.
+- Breadcrumb shows `~` when in home dir, otherwise the last path segment; rendered only when `params.dir` is set (hidden on root).
+- Grid layout, all three portal ids, `data-tauri-drag-region`, mac/windows spacer logic all preserved.
+
+### Post-completion tweaks
+- Sidebar toggle moved to flush left (removed outer `pl-2` and `ml-2`/`ml-14` from toggle wrapper) then aligned with `pl-[22px]` — matches the New Chat button icon position (sidebar container 12px + button inner-left 10px = 22px).
+- Sidebar default state changed `opened: false` → `opened: true` in layout context initial store so fresh sessions open with the sidebar visible.
+
+---
+
+## Phases F–G — Not yet started
 
 | Phase | Summary |
 |-------|---------|
-| E | Command bar restyle; optional `ArcComposerChrome` wrap |
 | F | Settings → Arcanum style; username row; Arcane-motion toggle |
 | G | Cleanup — delete dead sidebar helpers, unused imports |
