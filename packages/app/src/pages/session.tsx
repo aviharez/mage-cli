@@ -28,8 +28,10 @@ import { createAutoScroll } from "@mybcabisnis/mage-ui/hooks"
 import { previewSelectedLines } from "@mybcabisnis/mage-ui/pierre/selection-bridge"
 import { Button } from "@mybcabisnis/mage-ui/button"
 import { showToast } from "@mybcabisnis/mage-ui/toast"
-import { checksum } from "@mybcabisnis/mage-shared/util/encode"
-import { useSearchParams } from "@solidjs/router"
+import { checksum, base64Encode } from "@mybcabisnis/mage-shared/util/encode"
+import { useNavigate, useSearchParams } from "@solidjs/router"
+import { ArcComposerChrome } from "@/components/arcanum/composer-chrome"
+import { ComposerFolderRibbon } from "@/components/arcanum/composer-folder-ribbon"
 import { NewSessionDesignView, NewSessionView, SessionHeader } from "@/components/session"
 import { useComments } from "@/context/comments"
 import { shouldUseV2NewSessionPage } from "@/pages/session/new-session-layout"
@@ -1940,7 +1942,15 @@ export default function Page() {
               </Match>
               <Match when={true}>
                 <Show when={newSessionDesign()} fallback={<NewSessionView worktree={newSessionWorktree()} />}>
-                  <NewSessionDesignView>{composerRegion("inline")}</NewSessionDesignView>
+                  <NewSessionDesignView>
+                    <ArcComposerChrome big>
+                      <ComposerFolderRibbon
+                        currentDir={sdk.directory}
+                        homeDir={globalSync.data.path.home ?? ""}
+                      />
+                      {composerRegion("inline")}
+                    </ArcComposerChrome>
+                  </NewSessionDesignView>
                 </Show>
               </Match>
             </Switch>

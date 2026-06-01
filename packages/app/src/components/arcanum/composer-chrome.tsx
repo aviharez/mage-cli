@@ -1,17 +1,9 @@
 import { type ParentProps } from "solid-js"
 import { A } from "./palette"
-import { ARC_RUNES, RuneMark } from "./emblem"
 
 // Decorative shell for the session composer — glowing border box + four corner rune marks.
 // Wrap the real composer content with this; it adds only visual chrome, no logic.
 export function ArcComposerChrome(props: ParentProps & { big?: boolean }) {
-  const corners: [number | null, number | null, number][] = [
-    [8, 8, 0],
-    [null, 8, 1],
-    [8, null, 2],
-    [null, null, 3],
-  ]
-
   return (
     <div
       style={{
@@ -23,23 +15,6 @@ export function ArcComposerChrome(props: ParentProps & { big?: boolean }) {
         padding: props.big ? "16px" : "13px",
       }}
     >
-      {corners.map(([l, tp, runeIdx]) => (
-        <span
-          class="arc-breathe"
-          style={{
-            position: "absolute",
-            left: l != null ? `${l}px` : "auto",
-            right: l == null ? "8px" : "auto",
-            top: tp != null ? `${tp}px` : "auto",
-            bottom: tp == null ? "8px" : "auto",
-            color: A.accent,
-            opacity: "0.5",
-            "pointer-events": "none",
-          }}
-        >
-          <RuneMark d={ARC_RUNES[runeIdx]} size={11} />
-        </span>
-      ))}
       {props.children}
     </div>
   )
