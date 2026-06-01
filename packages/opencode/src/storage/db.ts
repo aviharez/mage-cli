@@ -11,7 +11,6 @@ import z from "zod"
 import path from "path"
 import { readFileSync, readdirSync, existsSync } from "fs"
 import { Flag } from "../flag/flag"
-import { InstallationChannel } from "../installation/version"
 import { InstanceState } from "@/effect"
 import { iife } from "@/util/iife"
 import { init } from "#db"
@@ -28,10 +27,10 @@ export const NotFoundError = NamedError.create(
 const log = Log.create({ service: "db" })
 
 export function getChannelPath() {
-  if (["latest", "beta", "prod"].includes(InstallationChannel) || Flag.MAGE_DISABLE_CHANNEL_DB)
-    return path.join(Global.Path.data, "mage.db")
-  const safe = InstallationChannel.replace(/[^a-zA-Z0-9._-]/g, "-")
-  return path.join(Global.Path.data, `mage-${safe}.db`)
+  // Fork: every build channel (local, dev, mage-main, beta, prod, …) shares a
+  // single database so the CLI, web, and desktop always see the same session
+  // list. Use the MAGE_DB env var to point at a different file explicitly.
+  return path.join(Global.Path.data, "mage.db")
 }
 
 export const Path = iife(() => {
