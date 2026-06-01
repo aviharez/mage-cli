@@ -49,6 +49,17 @@ function normalize(id: string | null | undefined) {
   return id === "oc-1" ? "oc-2" : id
 }
 
+// Collapse a *persisted* theme id to "oc-2" when it can no longer be resolved
+// (e.g. a theme JSON that was deleted). Without this, the boot preload restores
+// the deleted theme's cached CSS and nothing ever overrides it, since load()
+// can't find the missing file. Only used for the saved/default id, not for
+// runtime-registered custom themes.
+function resolveSavedTheme(raw: string | null | undefined) {
+  const next = normalize(raw)
+  if (!next || next === "oc-2") return "oc-2"
+  return getFiles()[`./themes/${next}.json`] ? next : "oc-2"
+}
+
 function read(key: string) {
   if (typeof localStorage !== "object") return null
   try {
@@ -127,7 +138,7 @@ function cacheThemeVariants(theme: DesktopTheme, themeId: string) {
 export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
   name: "Theme",
   init: (props: { defaultTheme?: string; onThemeApplied?: (theme: DesktopTheme, mode: "light" | "dark") => void }) => {
-    const themeId = normalize(read(STORAGE_KEYS.THEME_ID) ?? props.defaultTheme) ?? "oc-2"
+    const themeId = resolveSavedTheme(read(STORAGE_KEYS.THEME_ID) ?? props.defaultTheme)
     const colorScheme = (read(STORAGE_KEYS.COLOR_SCHEME) as ColorScheme | null) ?? "system"
     const mode = colorScheme === "system" ? getSystemMode() : colorScheme
     const [store, setStore] = createStore({
@@ -213,11 +224,12 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
       makeEventListener(mediaQuery, "change", onMedia)
 
       const rawTheme = read(STORAGE_KEYS.THEME_ID)
-      const savedTheme = normalize(rawTheme ?? props.defaultTheme) ?? "oc-2"
+      const savedTheme = resolveSavedTheme(rawTheme ?? props.defaultTheme)
       const savedScheme = (read(STORAGE_KEYS.COLOR_SCHEME) as ColorScheme | null) ?? "system"
       if (rawTheme && rawTheme !== savedTheme) {
         write(STORAGE_KEYS.THEME_ID, savedTheme)
         clear()
+        document.getElementById("oc-theme-preload")?.remove()
       }
       if (savedTheme !== store.themeId) setStore("themeId", savedTheme)
       if (savedScheme !== store.colorScheme) setStore("colorScheme", savedScheme)

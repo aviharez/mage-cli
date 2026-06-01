@@ -59,7 +59,12 @@ interface MerlinRequest {
   }
   new_session: string
   prompt: string
-  file: string
+  /**
+   * Attached file(s) as base64. Per the GAIA multimodal docs this may be a
+   * single base64 string or an array of base64 strings. We always send an
+   * array (empty when there are no attachments) for a consistent shape.
+   */
+  file: string | string[]
 }
 
 interface MerlinResponse {
@@ -320,6 +325,57 @@ function flattenPrompt(options: LanguageModelV3CallOptions): string {
   return parts.join("\n\n")
 }
 
+// ── File attachment extraction ─────────────────────────────────────────────────
+
+/**
+ * A LanguageModelV3 file content part. The AI SDK delivers user-uploaded
+ * attachments here: a `data:<mime>;base64,…` URL from the web composer is
+ * decoded by `convertToModelMessages` into a bare base64 string in `data`,
+ * while binary attachments may arrive as a Uint8Array or, for un-downloaded
+ * remote assets, a URL.
+ */
+type FilePart = {
+  type: "file"
+  mediaType: string
+  filename?: string
+  data: string | Uint8Array | ArrayBuffer | URL
+}
+
+/** Convert a single file part's data into a bare base64 string, or null if it can't be inlined. */
+function filePartToBase64(data: FilePart["data"]): string | null {
+  if (typeof data === "string") {
+    // Already base64, or a data: URL we need to strip the prefix from.
+    if (data.startsWith("data:")) {
+      const comma = data.indexOf(",")
+      return comma === -1 ? null : data.slice(comma + 1)
+    }
+    return data
+  }
+  if (data instanceof Uint8Array) return Buffer.from(data).toString("base64")
+  if (data instanceof ArrayBuffer) return Buffer.from(new Uint8Array(data)).toString("base64")
+  // A bare URL (e.g. an un-downloaded remote asset) can't be inlined as base64.
+  return null
+}
+
+/**
+ * Collect every uploaded attachment across the conversation as base64 strings,
+ * to populate Merlin's `file` field. Walks user messages for file content parts
+ * — the same parts the prompt composer produces from the file-picker / paste /
+ * drag-drop flows in packages/app.
+ */
+function extractFiles(options: LanguageModelV3CallOptions): string[] {
+  const files: string[] = []
+  for (const msg of options.prompt) {
+    if (msg.role !== "user") continue
+    for (const part of msg.content) {
+      if (part.type !== "file") continue
+      const base64 = filePartToBase64((part as FilePart).data)
+      if (base64) files.push(base64)
+    }
+  }
+  return files
+}
+
 // ── Service ID resolution ─────────────────────────────────────────────────────
 
 const SERVICE_IDS: Record<string, string> = {
@@ -376,6 +432,8 @@ class MerlinLanguageModel implements LanguageModelV3 {
   private async callMerlin(
     options: LanguageModelV3CallOptions,
   ): Promise<{ answer: string; inputTokens: number; outputTokens: number }> {
+    const files = extractFiles(options)
+
     const body: MerlinRequest = {
       client_id: this.clientId,
       domain_id: this.username,
@@ -387,13 +445,15 @@ class MerlinLanguageModel implements LanguageModelV3 {
       },
       new_session: "True",
       prompt: this.buildPrompt(options),
-      file: "",
+      file: files,
     }
 
-    const { prompt: _prompt, ...loggableBody } = body
+    const { prompt: _prompt, file: _file, ...loggableBody } = body
     log.info("request", {
       ...loggableBody,
       prompt_length: body.prompt.length,
+      file_count: files.length,
+      file_bytes: files.reduce((sum, f) => sum + f.length, 0),
     })
     log.info("request_prompt", { prompt: body.prompt })
 

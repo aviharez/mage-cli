@@ -1,8 +1,13 @@
 ;(function () {
   var key = "opencode-theme-id"
+  // Must mirror the theme JSONs shipped in packages/ui/src/theme/themes/.
+  // Any saved id not in this set (a renamed/removed theme such as the old
+  // "oc-1" or the deleted built-ins) is reset to the default below so we never
+  // paint with a deleted theme's cached CSS.
+  var KNOWN_THEMES = ["oc-2"]
   var themeId = localStorage.getItem(key) || "oc-2"
 
-  if (themeId === "oc-1") {
+  if (themeId !== "oc-2" && KNOWN_THEMES.indexOf(themeId) === -1) {
     themeId = "oc-2"
     localStorage.setItem(key, themeId)
     localStorage.removeItem("opencode-theme-css-light")
