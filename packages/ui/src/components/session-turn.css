@@ -92,6 +92,13 @@
     will-change: opacity, transform;
   }
 
+  [data-slot="session-turn-assistant-label"] {
+    display: flex;
+    align-items: center;
+    margin-bottom: -4px;
+    opacity: 0.75;
+  }
+
   [data-slot="session-turn-diffs"] {
     width: 100%;
     min-width: 0;
@@ -223,6 +230,24 @@
     overflow-x: hidden;
     scrollbar-width: none;
     -ms-overflow-style: none;
+    border-radius: 0 0 10px 10px;
+  }
+
+  [data-component="session-turn-diffs-content"] [data-slot="accordion-item"] {
+    border: 1px solid var(--border-weak-base);
+    border-radius: 10px;
+    overflow: clip;
+    margin-bottom: 6px;
+
+    [data-slot="accordion-trigger"] {
+      background: var(--surface-raised-base);
+      border-radius: 10px;
+      padding: 0 12px;
+
+      &[aria-expanded="true"] {
+        border-radius: 10px 10px 0 0;
+      }
+    }
   }
 
   [data-slot="session-turn-diff-view"]::-webkit-scrollbar {
