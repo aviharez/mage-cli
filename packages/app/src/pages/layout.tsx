@@ -71,6 +71,7 @@ import {
   drainPendingDeepLinks,
 } from "./layout/deep-links"
 import { ArcanumSidebar } from "./layout/arcanum-sidebar"
+import { useOnboarding } from "@/components/arcanum/onboarding-context"
 
 export default function Layout(props: ParentProps) {
   const [store, setStore, , ready] = persisted(
@@ -108,6 +109,7 @@ export default function Layout(props: ParentProps) {
   const command = useCommand()
   const theme = useTheme()
   const language = useLanguage()
+  const onboarding = useOnboarding()
   const initialDirectory = decode64(params.dir)
   const location = useLocation()
   const route = createMemo(() => {
@@ -1671,24 +1673,28 @@ export default function Layout(props: ParentProps) {
   return (
     <div class="relative bg-background-base flex-1 min-h-0 min-w-0 flex flex-col select-none [&_input]:select-text [&_textarea]:select-text [&_[contenteditable]]:select-text">
       {autoselecting() ?? ""}
-      <Titlebar />
+      <Show when={!onboarding.needsOnboarding()}>
+        <Titlebar />
+      </Show>
       <div class="flex-1 min-h-0 min-w-0 flex">
         <div class="flex-1 min-h-0 relative">
           <div class="size-full relative overflow-x-hidden">
-            <nav
-              aria-label={language.t("sidebar.nav.projectsAndSessions")}
-              data-component="sidebar-nav-desktop"
-              classList={{
-                "hidden xl:block": true,
-                "absolute inset-y-0 left-0": true,
-                "z-10": true,
-              }}
-              style={{ width: `${side()}px` }}
-            >
-              <div class="@container w-full h-full contain-strict">
-                <ArcanumSidebar openSettings={openSettings} />
-              </div>
-            </nav>
+            <Show when={!onboarding.needsOnboarding()}>
+              <nav
+                aria-label={language.t("sidebar.nav.projectsAndSessions")}
+                data-component="sidebar-nav-desktop"
+                classList={{
+                  "hidden xl:block": true,
+                  "absolute inset-y-0 left-0": true,
+                  "z-10": true,
+                }}
+                style={{ width: `${side()}px` }}
+              >
+                <div class="@container w-full h-full contain-strict">
+                  <ArcanumSidebar openSettings={openSettings} />
+                </div>
+              </nav>
+            </Show>
 
             <Show when={layout.sidebar.opened()}>
               <div
@@ -1716,30 +1722,32 @@ export default function Layout(props: ParentProps) {
               style={{ left: "calc(4rem + 12px)" }}
             />
 
-            <div class="xl:hidden">
-              <div
-                classList={{
-                  "fixed inset-x-0 top-10 bottom-0 z-40 transition-opacity duration-200": true,
-                  "opacity-100 pointer-events-auto": layout.mobileSidebar.opened(),
-                  "opacity-0 pointer-events-none": !layout.mobileSidebar.opened(),
-                }}
-                onClick={(e) => {
-                  if (e.target === e.currentTarget) layout.mobileSidebar.hide()
-                }}
-              />
-              <nav
-                aria-label={language.t("sidebar.nav.projectsAndSessions")}
-                data-component="sidebar-nav-mobile"
-                classList={{
-                  "@container fixed top-10 bottom-0 left-0 z-50 w-full max-w-[400px] overflow-hidden border-r border-border-weaker-base bg-background-base transition-transform duration-200 ease-out": true,
-                  "translate-x-0": layout.mobileSidebar.opened(),
-                  "-translate-x-full": !layout.mobileSidebar.opened(),
-                }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <ArcanumSidebar openSettings={openSettings} mobile />
-              </nav>
-            </div>
+            <Show when={!onboarding.needsOnboarding()}>
+              <div class="xl:hidden">
+                <div
+                  classList={{
+                    "fixed inset-x-0 top-10 bottom-0 z-40 transition-opacity duration-200": true,
+                    "opacity-100 pointer-events-auto": layout.mobileSidebar.opened(),
+                    "opacity-0 pointer-events-none": !layout.mobileSidebar.opened(),
+                  }}
+                  onClick={(e) => {
+                    if (e.target === e.currentTarget) layout.mobileSidebar.hide()
+                  }}
+                />
+                <nav
+                  aria-label={language.t("sidebar.nav.projectsAndSessions")}
+                  data-component="sidebar-nav-mobile"
+                  classList={{
+                    "@container fixed top-10 bottom-0 left-0 z-50 w-full max-w-[400px] overflow-hidden border-r border-border-weaker-base bg-background-base transition-transform duration-200 ease-out": true,
+                    "translate-x-0": layout.mobileSidebar.opened(),
+                    "-translate-x-full": !layout.mobileSidebar.opened(),
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <ArcanumSidebar openSettings={openSettings} mobile />
+                </nav>
+              </div>
+            </Show>
 
             <div
               classList={{
@@ -1750,12 +1758,13 @@ export default function Layout(props: ParentProps) {
                   !state.sizing,
               }}
               style={{
-                "--main-left": layout.sidebar.opened() ? `${side()}px` : "0px",
+                "--main-left": onboarding.needsOnboarding() ? "0px" : layout.sidebar.opened() ? `${side()}px` : "0px",
               }}
             >
               <main
                 classList={{
-                  "size-full overflow-x-hidden flex flex-col items-start contain-strict border-t border-border-weak-base bg-background-base xl:border-l xl:rounded-tl-[12px]": true,
+                  "size-full overflow-x-hidden flex flex-col items-start contain-strict border-t border-border-weak-base bg-background-base": true,
+                  "xl:border-l xl:rounded-tl-[12px]": !onboarding.needsOnboarding(),
                 }}
               >
                 <Show when={!autoselecting.loading} fallback={<div class="size-full" />}>

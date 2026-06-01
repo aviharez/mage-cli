@@ -4,6 +4,7 @@ import { base64Encode } from "@mybcabisnis/mage-shared/util/encode"
 import { Icon } from "@mybcabisnis/mage-ui/icon"
 import { useDialog } from "@mybcabisnis/mage-ui/context/dialog"
 import { useGlobalSync } from "@/context/global-sync"
+import { useOnboarding } from "./onboarding-context"
 import { A } from "./palette"
 import { ArcEmblem } from "./emblem"
 
@@ -11,12 +12,14 @@ export function UsernameDialog(props: { onDone: () => void }) {
   const sync = useGlobalSync()
   const dialog = useDialog()
   const navigate = useNavigate()
+  const { markSubmitted } = useOnboarding()
   const [value, setValue] = createSignal(sync.data.config.username ?? "")
 
   async function confirm() {
     const name = value().trim()
     if (!name) return
     await sync.updateConfig({ ...sync.data.config, username: name })
+    markSubmitted()
     props.onDone()
     dialog.close()
     navigate(`/${base64Encode(sync.data.path.home)}/session`)

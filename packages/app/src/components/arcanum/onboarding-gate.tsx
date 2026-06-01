@@ -1,14 +1,12 @@
-import { createMemo, createSignal, Show, type ParentProps } from "solid-js"
+import { Show, type ParentProps } from "solid-js"
 import { Splash } from "@mybcabisnis/mage-ui/logo"
 import { useGlobalSync } from "@/context/global-sync"
+import { useOnboarding } from "./onboarding-context"
 import { Onboarding } from "./onboarding"
 
 export function OnboardingGate(props: ParentProps) {
   const sync = useGlobalSync()
-  const [submitted, setSubmitted] = createSignal(false)
-  const needsOnboarding = createMemo(
-    () => sync.ready && !submitted() && !sync.data.config.username?.trim(),
-  )
+  const { needsOnboarding, markSubmitted } = useOnboarding()
   return (
     <Show
       when={sync.ready}
@@ -18,7 +16,7 @@ export function OnboardingGate(props: ParentProps) {
         </div>
       }
     >
-      <Show when={!needsOnboarding()} fallback={<Onboarding onDone={() => setSubmitted(true)} />}>
+      <Show when={!needsOnboarding()} fallback={<Onboarding onDone={markSubmitted} />}>
         {props.children}
       </Show>
     </Show>
