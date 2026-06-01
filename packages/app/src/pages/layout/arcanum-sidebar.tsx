@@ -1,4 +1,4 @@
-import { createMemo, createSignal, For, onMount, Show } from "solid-js"
+import { createEffect, createMemo, createSignal, For, Show } from "solid-js"
 import { useNavigate, useParams } from "@solidjs/router"
 import { DateTime } from "luxon"
 import { base64Encode } from "@mybcabisnis/mage-shared/util/encode"
@@ -47,8 +47,17 @@ export function ArcanumSidebar(props: { openSettings: () => void; mobile?: boole
   const home = () => sync.data.path.home ?? ""
   const activeDir = () => decode64(params.dir ?? "") || home()
 
-  onMount(() => {
-    void sync.project.loadSessions(home())
+  const loadedDirs = new Set<string>()
+  createEffect(() => {
+    if (!sync.ready) return
+    const h = home()
+    if (!h) return
+    const dirs = new Set<string>([h, ...sync.data.project.map((p) => p.worktree)])
+    for (const dir of dirs) {
+      if (!dir || loadedDirs.has(dir)) continue
+      loadedDirs.add(dir)
+      void sync.project.loadSessions(dir)
+    }
   })
 
   const groups = createMemo<GroupedDir[]>(() => {
