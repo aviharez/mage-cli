@@ -16,6 +16,8 @@ import type { SessionComposerState } from "@/pages/session/composer/session-comp
 import { SessionTodoDock } from "@/pages/session/composer/session-todo-dock"
 import type { FollowupDraft } from "@/components/prompt-input/submit"
 import { createResizeObserver } from "@solid-primitives/resize-observer"
+import { ArcComposerChrome } from "@/components/arcanum/composer-chrome"
+import { ComposerFolderRibbon } from "@/components/arcanum/composer-folder-ribbon"
 
 export function SessionComposerRegion(props: {
   state: SessionComposerState
@@ -24,6 +26,8 @@ export function SessionComposerRegion(props: {
   inputRef: (el: HTMLDivElement) => void
   newSessionWorktree: string
   onNewSessionWorktreeReset: () => void
+  arcane?: boolean
+  folder?: { currentDir: string; homeDir: string }
   onSubmit: () => void
   onResponseSubmit: () => void
   followup?: {
@@ -135,11 +139,29 @@ export function SessionComposerRegion(props: {
     update()
   })
 
+  const promptInput = () => (
+    <PromptInput
+      ref={props.inputRef}
+      arcane={props.arcane}
+      newSessionWorktree={props.newSessionWorktree}
+      onNewSessionWorktreeReset={props.onNewSessionWorktreeReset}
+      edit={props.followup?.edit}
+      onEditLoaded={props.followup?.onEditLoaded}
+      shouldQueue={props.followup?.queue}
+      onQueue={props.followup?.onQueue}
+      onAbort={props.followup?.onAbort}
+      onSubmit={props.onSubmit}
+    />
+  )
+
   return (
     <div
       ref={props.setPromptDockRef}
       data-component="session-prompt-dock"
-      class="shrink-0 w-full pb-3 flex flex-col justify-center items-center bg-background-stronger pointer-events-none"
+      classList={{
+        "shrink-0 w-full pb-3 flex flex-col justify-center items-center pointer-events-none": true,
+        "bg-background-stronger": !props.arcane,
+      }}
     >
       <div
         classList={{
@@ -250,17 +272,20 @@ export function SessionComposerRegion(props: {
                 when={child()}
                 fallback={
                   <Show when={!props.state.blocked()}>
-                    <PromptInput
-                      ref={props.inputRef}
-                      newSessionWorktree={props.newSessionWorktree}
-                      onNewSessionWorktreeReset={props.onNewSessionWorktreeReset}
-                      edit={props.followup?.edit}
-                      onEditLoaded={props.followup?.onEditLoaded}
-                      shouldQueue={props.followup?.queue}
-                      onQueue={props.followup?.onQueue}
-                      onAbort={props.followup?.onAbort}
-                      onSubmit={props.onSubmit}
-                    />
+                    <Show when={props.arcane} fallback={promptInput()}>
+                      <div data-arcane-composer>
+                        <ArcComposerChrome big>
+                          <Show when={props.folder}>
+                            <ComposerFolderRibbon
+                              currentDir={props.folder!.currentDir}
+                              homeDir={props.folder!.homeDir}
+                              clickable={!route.params.id}
+                            />
+                          </Show>
+                          {promptInput()}
+                        </ArcComposerChrome>
+                      </div>
+                    </Show>
                   </Show>
                 }
               >

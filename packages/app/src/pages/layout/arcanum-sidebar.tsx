@@ -1,5 +1,5 @@
 import { createEffect, createMemo, createSignal, For, Show } from "solid-js"
-import { createStore } from "solid-js/store"
+import { createStore, produce } from "solid-js/store"
 import { useNavigate, useParams } from "@solidjs/router"
 import { DateTime } from "luxon"
 import { base64Encode } from "@mybcabisnis/mage-shared/util/encode"
@@ -7,10 +7,20 @@ import { decode64 } from "@/utils/base64"
 import { getFilename } from "@mybcabisnis/mage-shared/util/path"
 import { type Session } from "@mybcabisnis/mage-sdk/v2/client"
 import { useGlobalSync } from "@/context/global-sync"
+import { useGlobalSDK } from "@/context/global-sdk"
 import { useLayout } from "@/context/layout"
+import { useLanguage } from "@/context/language"
 import { Icon } from "@mybcabisnis/mage-ui/icon"
+import { IconButton } from "@mybcabisnis/mage-ui/icon-button"
+import { DropdownMenu } from "@mybcabisnis/mage-ui/dropdown-menu"
+import { Spinner } from "@mybcabisnis/mage-ui/spinner"
+import { Dialog } from "@mybcabisnis/mage-ui/dialog"
+import { Button } from "@mybcabisnis/mage-ui/button"
+import { showToast } from "@mybcabisnis/mage-ui/toast"
+import { useDialog } from "@mybcabisnis/mage-ui/context/dialog"
 
 import { A } from "@/components/arcanum/palette"
+import { IconPaperPlane } from "@/components/arcanum/composer-icons"
 
 type GroupedDir = { dir: string; sessions: Session[] }
 
@@ -136,7 +146,7 @@ export function ArcanumSidebar(props: { openSettings: () => void; mobile?: boole
           }}
         >
           <span style={{ display: "flex", "align-items": "center", gap: "6px" }}>
-            <Icon name="plus-small" size="small" />
+            <IconPaperPlane size={14} />
             New chat
           </span>
           <span style={{ "font-size": "10px", opacity: "0.65", "font-family": "monospace", "flex-shrink": "0" }}>
@@ -309,44 +319,279 @@ function FolderGroup(props: {
 
       <Show when={!props.collapsed}>
         <For each={props.group.sessions}>
-          {(session) => {
-            const active = () => props.isActiveSession(session)
-            const updated = session.time.updated ?? session.time.created
-            return (
-              <div
-                onClick={() => props.onOpenSession(session)}
-                style={{
-                  display: "flex",
-                  gap: "6px",
-                  padding: "6px 10px 6px 30px",
-                  "font-size": "12.5px",
-                  "border-radius": "7px",
-                  margin: "1px 2px",
-                  background: active() ? A.accentSoft : "transparent",
-                  color: active() ? A.fg : A.fgMuted,
-                  "border-left": active() ? `2px solid ${A.accent}` : "2px solid transparent",
-                  "box-shadow": active() ? `0 0 16px ${A.accentSoft}` : "none",
-                  cursor: "pointer",
-                }}
-              >
-                <span
-                  style={{
-                    flex: "1",
-                    overflow: "hidden",
-                    "text-overflow": "ellipsis",
-                    "white-space": "nowrap",
-                  }}
-                >
-                  {session.title}
-                </span>
-                <span style={{ "font-size": "10px", color: A.fgDim, "font-family": "monospace" }}>
-                  {relTime(updated)}
-                </span>
-              </div>
-            )
-          }}
+          {(session) => (
+            <SessionRow
+              session={session}
+              dir={props.group.dir}
+              active={props.isActiveSession(session)}
+              onOpen={() => props.onOpenSession(session)}
+            />
+          )}
         </For>
       </Show>
     </div>
+  )
+}
+
+function SessionRow(props: { session: Session; dir: string; active: boolean; onOpen: () => void }) {
+  const sync = useGlobalSync()
+  const globalSDK = useGlobalSDK()
+  const navigate = useNavigate()
+  const language = useLanguage()
+  const dialog = useDialog()
+
+  const [editing, setEditing] = createSignal(false)
+  const [draft, setDraft] = createSignal("")
+  const [pendingRename, setPendingRename] = createSignal(false)
+  let inputRef: HTMLInputElement | undefined
+
+  const updated = () => props.session.time.updated ?? props.session.time.created
+  const working = createMemo(() => {
+    const [store] = sync.peek(props.dir, { bootstrap: false })
+    return (store?.session_status?.[props.session.id]?.type ?? "idle") !== "idle"
+  })
+
+  const reportError = (err: unknown) =>
+    showToast({
+      variant: "error",
+      title: language.t("common.requestFailed"),
+      description: err instanceof Error ? err.message : String(err),
+    })
+
+  const startRename = () => {
+    setDraft(props.session.title)
+    setEditing(true)
+    requestAnimationFrame(() => {
+      inputRef?.focus()
+      inputRef?.select()
+    })
+  }
+
+  const commitRename = async () => {
+    const next = draft().trim()
+    setEditing(false)
+    if (!next || next === props.session.title) return
+    try {
+      const client = globalSDK.createClient({ directory: props.dir, throwOnError: true })
+      await client.session.update({ sessionID: props.session.id, title: next })
+      const [, setStore] = sync.child(props.dir, { bootstrap: false })
+      setStore(
+        "session",
+        produce((sessions: Session[]) => {
+          const index = sessions.findIndex((s) => s.id === props.session.id)
+          if (index !== -1) sessions[index].title = next
+        }),
+      )
+    } catch (err) {
+      reportError(err)
+    }
+  }
+
+  const archive = async () => {
+    try {
+      const client = globalSDK.createClient({ directory: props.dir, throwOnError: true })
+      await client.session.update({ sessionID: props.session.id, time: { archived: Date.now() } })
+      const [, setStore] = sync.child(props.dir, { bootstrap: false })
+      setStore(
+        "session",
+        produce((sessions: Session[]) => {
+          const index = sessions.findIndex((s) => s.id === props.session.id)
+          if (index !== -1) sessions.splice(index, 1)
+        }),
+      )
+      if (props.active) navigate(`/${base64Encode(props.dir)}/session`)
+    } catch (err) {
+      reportError(err)
+    }
+  }
+
+  const remove = async () => {
+    try {
+      const client = globalSDK.createClient({ directory: props.dir, throwOnError: true })
+      await client.session.delete({ sessionID: props.session.id })
+      const [, setStore] = sync.child(props.dir, { bootstrap: false })
+      setStore(
+        "session",
+        produce((sessions: Session[]) => {
+          const removed = new Set<string>([props.session.id])
+          let added = true
+          while (added) {
+            added = false
+            for (const s of sessions) {
+              if (s.parentID && removed.has(s.parentID) && !removed.has(s.id)) {
+                removed.add(s.id)
+                added = true
+              }
+            }
+          }
+          for (let i = sessions.length - 1; i >= 0; i--) {
+            if (removed.has(sessions[i].id)) sessions.splice(i, 1)
+          }
+        }),
+      )
+      if (props.active) navigate(`/${base64Encode(props.dir)}/session`)
+    } catch (err) {
+      reportError(err)
+    }
+  }
+
+  return (
+    <div
+      class="group/session relative"
+      onClick={() => {
+        if (editing()) return
+        props.onOpen()
+      }}
+      style={{
+        display: "flex",
+        "align-items": "center",
+        gap: "6px",
+        padding: "6px 10px 6px 30px",
+        "font-size": "12.5px",
+        "border-radius": "7px",
+        margin: "1px 2px",
+        background: props.active ? A.accentSoft : "transparent",
+        color: props.active ? A.fg : A.fgMuted,
+        "border-left": props.active ? `2px solid ${A.accent}` : "2px solid transparent",
+        "box-shadow": props.active ? `0 0 16px ${A.accentSoft}` : "none",
+        cursor: "pointer",
+      }}
+    >
+      <Show when={working()}>
+        <Spinner class="size-3.5 shrink-0" style={{ color: A.accentBright }} />
+      </Show>
+
+      <Show
+        when={editing()}
+        fallback={
+          <span
+            style={{
+              flex: "1",
+              "min-width": "0",
+              overflow: "hidden",
+              "text-overflow": "ellipsis",
+              "white-space": "nowrap",
+            }}
+          >
+            {props.session.title}
+          </span>
+        }
+      >
+        <input
+          ref={inputRef}
+          value={draft()}
+          onClick={(e) => e.stopPropagation()}
+          onInput={(e) => setDraft(e.currentTarget.value)}
+          onBlur={() => void commitRename()}
+          onKeyDown={(e) => {
+            e.stopPropagation()
+            if (e.key === "Enter") {
+              e.preventDefault()
+              void commitRename()
+            } else if (e.key === "Escape") {
+              e.preventDefault()
+              setEditing(false)
+            }
+          }}
+          style={{
+            flex: "1",
+            "min-width": "0",
+            "font-size": "12.5px",
+            color: A.fg,
+            background: A.bgInput,
+            border: `1px solid ${A.accentRing}`,
+            "border-radius": "5px",
+            padding: "1px 6px",
+            outline: "none",
+          }}
+        />
+      </Show>
+
+      <Show when={!editing()}>
+        <div class="relative flex items-center shrink-0" style={{ "margin-left": "auto" }}>
+          <span
+            class="transition-opacity"
+            classList={{ "group-hover/session:opacity-0": props.active }}
+            style={{ "font-size": "10px", color: A.fgDim, "font-family": "monospace" }}
+          >
+            {relTime(updated())}
+          </span>
+          <Show when={props.active}>
+            <div
+              class="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover/session:opacity-100 transition-opacity"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <DropdownMenu gutter={4} placement="bottom-end">
+                <DropdownMenu.Trigger
+                  as={IconButton}
+                  icon="dot-grid"
+                  variant="ghost"
+                  class="size-6 rounded-md data-[expanded]:bg-surface-base-active"
+                  aria-label={language.t("common.moreOptions")}
+                />
+                <DropdownMenu.Portal>
+                  <DropdownMenu.Content
+                    style={{ "min-width": "104px" }}
+                    onCloseAutoFocus={(event) => {
+                      if (!pendingRename()) return
+                      event.preventDefault()
+                      setPendingRename(false)
+                      startRename()
+                    }}
+                  >
+                    <DropdownMenu.Item onSelect={() => setPendingRename(true)}>
+                      <DropdownMenu.ItemLabel>{language.t("common.rename")}</DropdownMenu.ItemLabel>
+                    </DropdownMenu.Item>
+                    <DropdownMenu.Item onSelect={() => void archive()}>
+                      <DropdownMenu.ItemLabel>{language.t("common.archive")}</DropdownMenu.ItemLabel>
+                    </DropdownMenu.Item>
+                    <DropdownMenu.Separator />
+                    <DropdownMenu.Item
+                      onSelect={() =>
+                        dialog.show(() => (
+                          <DialogDeleteSession
+                            name={props.session.title || language.t("command.session.new")}
+                            onConfirm={async () => {
+                              await remove()
+                              dialog.close()
+                            }}
+                            onCancel={() => dialog.close()}
+                          />
+                        ))
+                      }
+                    >
+                      <DropdownMenu.ItemLabel>{language.t("common.delete")}</DropdownMenu.ItemLabel>
+                    </DropdownMenu.Item>
+                  </DropdownMenu.Content>
+                </DropdownMenu.Portal>
+              </DropdownMenu>
+            </div>
+          </Show>
+        </div>
+      </Show>
+    </div>
+  )
+}
+
+function DialogDeleteSession(props: { name: string; onConfirm: () => void | Promise<void>; onCancel: () => void }) {
+  const language = useLanguage()
+  return (
+    <Dialog title={language.t("session.delete.title")} fit>
+      <div class="flex flex-col gap-4 pl-6 pr-2.5 pb-3">
+        <div class="flex flex-col gap-1">
+          <span class="text-14-regular text-text-strong">
+            {language.t("session.delete.confirm", { name: props.name })}
+          </span>
+        </div>
+        <div class="flex justify-end gap-2">
+          <Button variant="ghost" size="large" onClick={props.onCancel}>
+            {language.t("common.cancel")}
+          </Button>
+          <Button variant="primary" size="large" onClick={() => void props.onConfirm()}>
+            {language.t("session.delete.button")}
+          </Button>
+        </div>
+      </div>
+    </Dialog>
   )
 }

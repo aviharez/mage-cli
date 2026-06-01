@@ -57,6 +57,7 @@ import { promptPlaceholder } from "./prompt-input/placeholder"
 import { ImagePreview } from "@mybcabisnis/mage-ui/image-preview"
 import { useQueries } from "@tanstack/solid-query"
 import { loadAgentsQuery, loadProvidersQuery } from "@/context/global-sync/bootstrap"
+import { ArcComposerToolbar } from "@/components/arcanum/composer-toolbar"
 
 interface PromptInputProps {
   class?: string
@@ -69,6 +70,9 @@ interface PromptInputProps {
   onQueue?: (draft: FollowupDraft) => void
   onAbort?: () => void
   onSubmit?: () => void
+  /** Render the arcane new-session toolbar (mode pill · actions · Cast) instead
+   *  of the default dock tray. Used only by the inline new-session composer. */
+  arcane?: boolean
 }
 
 const EXAMPLES = [
@@ -123,8 +127,10 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   let slashPopoverRef!: HTMLDivElement
 
   const mirror = { input: false }
-  const inset = 56
-  const space = `${inset}px`
+  // Bottom breathing room under the editor. The new-session composer keeps the
+  // tall, spacious inset; an in-thread (existing session) composer is shorter.
+  const inset = () => (params.id ? 24 : 56)
+  const space = () => `${inset()}px`
 
   const scrollCursorIntoView = () => {
     const container = scrollRef
@@ -154,8 +160,8 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
       return
     }
 
-    if (bottom > container.scrollTop + container.clientHeight - inset) {
-      container.scrollTop = bottom - container.clientHeight + inset
+    if (bottom > container.scrollTop + container.clientHeight - inset()) {
+      container.scrollTop = bottom - container.clientHeight + inset()
     }
   }
 
@@ -1333,7 +1339,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
           <div
             class="relative max-h-[240px] overflow-y-auto no-scrollbar"
             ref={(el) => (scrollRef = el)}
-            style={{ "scroll-padding-bottom": space }}
+            style={{ "scroll-padding-bottom": space() }}
           >
             <div
               data-component="prompt-input"
@@ -1364,12 +1370,12 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                 "[&_[data-type=agent]]:text-syntax-type": true,
                 "font-mono!": store.mode === "shell",
               }}
-              style={{ "padding-bottom": space }}
+              style={{ "padding-bottom": space() }}
             />
             <div
               class="absolute top-0 inset-x-0 pl-3 pr-2 pt-2 text-14-regular text-text-weak pointer-events-none whitespace-nowrap truncate"
               classList={{ "font-mono!": store.mode === "shell" }}
-              style={{ "padding-bottom": space, display: prompt.dirty() ? "none" : undefined }}
+              style={{ "padding-bottom": space(), display: prompt.dirty() ? "none" : undefined }}
             >
               {placeholder()}
             </div>
@@ -1379,7 +1385,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
             aria-hidden="true"
             class="pointer-events-none absolute inset-x-0 bottom-0"
             style={{
-              height: space,
+              height: space(),
               background:
                 "linear-gradient(to top, var(--surface-raised-stronger-non-alpha) calc(100% - 20px), transparent)",
             }}
@@ -1399,21 +1405,23 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
               }}
             />
 
-            <div class="flex items-center gap-1 pointer-events-auto">
-              <Tooltip placement="top" inactive={!working() && blank()} value={tip()}>
-                <IconButton
-                  data-action="prompt-submit"
-                  type="submit"
-                  disabled={store.mode !== "normal" || (!working() && blank())}
-                  tabIndex={store.mode === "normal" ? undefined : -1}
-                  icon={stopping() ? "stop" : "arrow-up"}
-                  variant="primary"
-                  class="size-8"
-                  style={buttons()}
-                  aria-label={stopping() ? language.t("prompt.action.stop") : language.t("prompt.action.send")}
-                />
-              </Tooltip>
-            </div>
+            <Show when={!props.arcane}>
+              <div class="flex items-center gap-1 pointer-events-auto">
+                <Tooltip placement="top" inactive={!working() && blank()} value={tip()}>
+                  <IconButton
+                    data-action="prompt-submit"
+                    type="submit"
+                    disabled={store.mode !== "normal" || (!working() && blank())}
+                    tabIndex={store.mode === "normal" ? undefined : -1}
+                    icon={stopping() ? "stop" : "arrow-up"}
+                    variant="primary"
+                    class="size-8"
+                    style={buttons()}
+                    aria-label={stopping() ? language.t("prompt.action.stop") : language.t("prompt.action.send")}
+                  />
+                </Tooltip>
+              </div>
+            </Show>
           </div>
 
           {/* <div class="pointer-events-none absolute bottom-2 left-2">
@@ -1447,7 +1455,51 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
           </div> */}
         </div>
       </DockShellForm>
-      <Show when={store.mode === "normal" || store.mode === "shell"}>
+      <Show when={(store.mode === "normal" || store.mode === "shell") && props.arcane}>
+        <DockTray attach="top">
+          <ArcComposerToolbar
+            modeControl={
+              <Show when={!agentsLoading()}>
+                <div
+                  data-component="prompt-agent-control"
+                  style={agentsShouldFadeIn() ? { animation: "fade-in 0.3s" } : undefined}
+                >
+                  <TooltipKeybind
+                    placement="top"
+                    gutter={4}
+                    title={language.t("command.agent.cycle")}
+                    keybind={command.keybind("agent.cycle")}
+                  >
+                    <Select
+                      size="normal"
+                      options={agentNames()}
+                      current={local.agent.current()?.name ?? ""}
+                      onSelect={(value) => {
+                        local.agent.set(value)
+                        restoreFocus()
+                      }}
+                      class="capitalize max-w-[160px] text-text-base"
+                      valueClass="truncate text-13-regular text-text-base"
+                      triggerStyle={{ height: "28px" }}
+                      triggerProps={{ "data-action": "prompt-agent" }}
+                      variant="ghost"
+                    />
+                  </TooltipKeybind>
+                </div>
+              </Show>
+            }
+            onAttach={pick}
+            onTerminal={() => setMode(store.mode === "shell" ? "normal" : "shell")}
+            onCast={(event) => void handleSubmit(event)}
+            hint="↵ to cast"
+            castLabel="Cast"
+            stopLabel={language.t("prompt.action.stop")}
+            stopping={stopping()}
+            disabled={!working() && blank()}
+          />
+        </DockTray>
+      </Show>
+      <Show when={(store.mode === "normal" || store.mode === "shell") && !props.arcane}>
         <DockTray attach="top">
           <div class="px-1.75 pt-5.5 pb-2 flex items-center gap-2 min-w-0">
             <div class="flex items-center gap-1.5 min-w-0 flex-1 relative">

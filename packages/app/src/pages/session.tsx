@@ -31,8 +31,6 @@ import { showToast } from "@mybcabisnis/mage-ui/toast"
 import { checksum, base64Encode } from "@mybcabisnis/mage-shared/util/encode"
 import { useNavigate, useSearchParams } from "@solidjs/router"
 import { ArcAtmos } from "@/components/arcanum/atmos"
-import { ArcComposerChrome } from "@/components/arcanum/composer-chrome"
-import { ComposerFolderRibbon } from "@/components/arcanum/composer-folder-ribbon"
 import { NewSessionDesignView, NewSessionView, SessionHeader } from "@/components/session"
 import { useComments } from "@/context/comments"
 import { shouldUseV2NewSessionPage } from "@/pages/session/new-session-layout"
@@ -1806,6 +1804,8 @@ export default function Page() {
       state={composer}
       ready={!store.deferRender && messagesReady()}
       centered={placement === "dock" && centered()}
+      arcane
+      folder={{ currentDir: sdk.directory, homeDir: globalSync.data.path.home ?? "" }}
       inputRef={(el) => {
         inputRef = el
       }}
@@ -1948,13 +1948,7 @@ export default function Page() {
                     currentDir={sdk.directory}
                     homeDir={globalSync.data.path.home ?? ""}
                   >
-                    <ArcComposerChrome big>
-                      <ComposerFolderRibbon
-                        currentDir={sdk.directory}
-                        homeDir={globalSync.data.path.home ?? ""}
-                      />
-                      {composerRegion("inline")}
-                    </ArcComposerChrome>
+                    {composerRegion("inline")}
                   </NewSessionDesignView>
                 </Show>
               </Match>

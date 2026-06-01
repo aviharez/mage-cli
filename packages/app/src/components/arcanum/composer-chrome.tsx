@@ -1,7 +1,7 @@
 import { type ParentProps } from "solid-js"
 import { A } from "./palette"
 
-// Decorative shell for the session composer — glowing border box + four corner rune marks.
+// Decorative shell for the session composer — glowing violet border box.
 // Wrap the real composer content with this; it adds only visual chrome, no logic.
 export function ArcComposerChrome(props: ParentProps & { big?: boolean }) {
   return (
