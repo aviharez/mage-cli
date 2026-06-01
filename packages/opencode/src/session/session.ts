@@ -713,10 +713,18 @@ export function* list(input?: {
   if (input?.workspaceID) {
     conditions.push(eq(SessionTable.workspace_id, input.workspaceID))
   }
-  if (!Flag.MAGE_EXPERIMENTAL_WORKSPACES) {
-    if (input?.directory) {
-      conditions.push(eq(SessionTable.directory, input.directory))
-    }
+  // Sessions are scoped by project (the git worktree) only. `input.directory`
+  // still selects which project/instance this request resolves to (see the
+  // instance middleware), but we intentionally do NOT additionally filter by
+  // exact directory — otherwise sessions created from a subdirectory (e.g. a
+  // CLI run from packages/opencode) would be hidden when browsing the repo
+  // root in the app. This keeps the CLI, web, and desktop session lists in sync.
+  //
+  // Exception: the `global` pseudo-project is the catch-all for every non-git
+  // directory, so project scoping alone would lump unrelated folders (e.g.
+  // ~/ and /) into one list. Keep those separated by their actual directory.
+  if (input?.directory && project.id === ProjectID.global) {
+    conditions.push(eq(SessionTable.directory, input.directory))
   }
   if (input?.roots) {
     conditions.push(isNull(SessionTable.parent_id))
