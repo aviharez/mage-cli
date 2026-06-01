@@ -188,7 +188,11 @@ export function createChildStoreManager(input: {
             lsp_ready: false,
             lsp: [],
             vcs: vcsStore.value,
-            limit: 5,
+            // Initial per-folder session page size. The sidebar has no
+            // "show more"/infinite scroll and store.limit never grows, so this
+            // is the only lever for how many sessions are visible. Keep it >=
+            // the CLI's effective cap (100) so all three clients stay in sync.
+            limit: 100,
             message: {},
             part: {},
           })
