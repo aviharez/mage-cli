@@ -145,9 +145,27 @@
 
 ---
 
-## Phases F–G — Not yet started
+## Phase F — Settings → Arcanum style + username + Arcane-motion ✅ DONE
+
+**Completed.** Build verified clean (`bun run --filter @mybcabisnis/mage-app build` → exit 0).
+
+### Files modified
+
+| File | Change |
+|------|--------|
+| `packages/app/src/context/settings.tsx` | Added `arcMotion: boolean` to `Settings.general`; default `true`; `createEffect` drives `document.body.dataset.arcMotion`; exposed `arcMotion` accessor + `setArcMotion` setter. |
+| `packages/app/src/components/settings-general.tsx` | Added `useGlobalSync` import + `A` palette import; added `ArcanumSection` with username text field (Save button + Enter-to-confirm → `sync.updateConfig`) and Arcane-motion toggle; inserted `<ArcanumSection />` at top of settings content; updated sticky header to serif 26px arcane style; updated `SettingsRow` separator to use `A.border`. |
+| `packages/app/src/components/dialog-settings.tsx` | Added `A` palette import; `bgInk` left nav with `border-right: A.border`; serif uppercase "Settings" label; `A.bg` content area background for all tab panels. |
+
+### Key notes
+- Username input initialises from `sync.data.config.username`; saves via `sync.updateConfig({ ...config, username })` with a success toast.
+- `arcMotion` effect runs at settings init and reactively — `data-arc-motion` on `<body>` gates all `.arc-*` animations and `ArcAtmos`/emblem `animate` props.
+- `SettingsRow` border now uses `A.border` (rgba violet hairline) instead of the CSS-var border token, consistent with the rest of the arcane chrome.
+
+---
+
+## Phase G — Not yet started
 
 | Phase | Summary |
 |-------|---------|
-| F | Settings → Arcanum style; username row; Arcane-motion toggle |
 | G | Cleanup — delete dead sidebar helpers, unused imports |

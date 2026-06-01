@@ -33,6 +33,7 @@ export interface Settings {
     editToolPartsExpanded: boolean
     showSessionProgressBar: boolean
     newLayoutDesigns?: boolean
+    arcMotion: boolean
   }
   updates: {
     startup: boolean
@@ -119,6 +120,7 @@ const defaultSettings: Settings = {
     shellToolPartsExpanded: false,
     editToolPartsExpanded: false,
     showSessionProgressBar: true,
+    arcMotion: true,
   },
   updates: {
     startup: true,
@@ -167,6 +169,12 @@ export const { use: useSettings, provider: SettingsProvider } = createSimpleCont
     createEffect(() => {
       if (store.general?.followup !== "queue") return
       setStore("general", "followup", "steer")
+    })
+
+    createEffect(() => {
+      if (typeof document === "undefined") return
+      const on = store.general?.arcMotion ?? defaultSettings.general.arcMotion
+      document.body.dataset.arcMotion = on ? "on" : "off"
     })
 
     return {
@@ -241,6 +249,10 @@ export const { use: useSettings, provider: SettingsProvider } = createSimpleCont
         newLayoutDesigns: withFallback(() => store.general?.newLayoutDesigns, newLayoutDesignsDefault),
         setNewLayoutDesigns(value: boolean) {
           setStore("general", "newLayoutDesigns", value)
+        },
+        arcMotion: withFallback(() => store.general?.arcMotion, defaultSettings.general.arcMotion),
+        setArcMotion(value: boolean) {
+          setStore("general", "arcMotion", value)
         },
       },
       updates: {

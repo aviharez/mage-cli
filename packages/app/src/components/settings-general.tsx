@@ -1,4 +1,4 @@
-import { Component, Show, createMemo, createResource, onMount, type JSX } from "solid-js"
+import { Component, Show, createMemo, createResource, createSignal, onMount, type JSX } from "solid-js"
 import { createStore } from "solid-js/store"
 import { Button } from "@mybcabisnis/mage-ui/button"
 import { Icon } from "@mybcabisnis/mage-ui/icon"
@@ -24,8 +24,10 @@ import {
   terminalInput,
   useSettings,
 } from "@/context/settings"
+import { useGlobalSync } from "@/context/global-sync"
 import { decode64 } from "@/utils/base64"
 import { playSoundById, SOUND_OPTIONS } from "@/utils/sound"
+import { A } from "@/components/arcanum/palette"
 import { Link } from "./link"
 import { SettingsList } from "./settings-list"
 
@@ -69,6 +71,9 @@ export const SettingsGeneral: Component = () => {
   const platform = usePlatform()
   const params = useParams()
   const settings = useSettings()
+  const sync = useGlobalSync()
+  const [username, setUsername] = createSignal(sync.data.config.username ?? "")
+  const [savingUsername, setSavingUsername] = createSignal(false)
 
   onMount(() => {
     void theme.loadThemes()
@@ -202,6 +207,59 @@ export const SettingsGeneral: Component = () => {
     size: "small" as const,
     triggerVariant: "settings" as const,
   })
+
+  const saveUsername = async () => {
+    const name = username().trim()
+    if (!name || savingUsername()) return
+    setSavingUsername(true)
+    await sync.updateConfig({ ...sync.data.config, username: name }).catch(() => null)
+    setSavingUsername(false)
+    showToast({ variant: "success", icon: "circle-check", title: "Username updated" })
+  }
+
+  const ArcanumSection = () => (
+    <div class="flex flex-col gap-1">
+      <h3 class="text-14-medium text-text-strong pb-2" style={{ "font-family": '"Spectral", Georgia, serif', "letter-spacing": "0.03em" }}>Arcanum</h3>
+      <SettingsList>
+        <SettingsRow
+          title="Username"
+          description="Your display name in conversations."
+        >
+          <div class="flex items-center gap-2 w-full sm:w-auto">
+            <div class="w-full sm:w-[180px]">
+              <TextField
+                label="Username"
+                hideLabel
+                type="text"
+                value={username()}
+                onChange={setUsername}
+                onKeyDown={(e: KeyboardEvent) => { if (e.key === "Enter") void saveUsername() }}
+                spellcheck={false}
+                autocorrect="off"
+                autocomplete="off"
+                autocapitalize="off"
+                class="text-12-regular"
+              />
+            </div>
+            <Button size="small" variant="secondary" disabled={savingUsername()} onClick={() => void saveUsername()}>
+              Save
+            </Button>
+          </div>
+        </SettingsRow>
+        <SettingsRow
+          title="Arcane motion"
+          description="Animated emblem rotations and atmospheric particles."
+        >
+          <div data-action="settings-arc-motion">
+            <Switch
+              checked={settings.general.arcMotion()}
+              onChange={(checked) => settings.general.setArcMotion(checked)}
+            />
+          </div>
+        </SettingsRow>
+      </SettingsList>
+    </div>
+  )
 
   const GeneralSection = () => (
     <div class="flex flex-col gap-1">
@@ -572,13 +630,20 @@ export const SettingsGeneral: Component = () => {
   console.log(import.meta.env)
   return (
     <div class="flex flex-col h-full overflow-y-auto no-scrollbar px-4 pb-10 sm:px-10 sm:pb-10">
-      <div class="sticky top-0 z-10 bg-[linear-gradient(to_bottom,var(--surface-stronger-non-alpha)_calc(100%_-_24px),transparent)]">
+      <div class="sticky top-0 z-10" style={{ background: `linear-gradient(to bottom, ${A.bg} calc(100% - 24px), transparent)` }}>
         <div class="flex flex-col gap-1 pt-6 pb-8">
-          <h2 class="text-16-medium text-text-strong">{language.t("settings.tab.general")}</h2>
+          <h2 style={{ "font-family": A.serif, "font-size": "26px", color: A.fgInk, "font-weight": "400", "letter-spacing": "-0.01em" }}>
+            {language.t("settings.tab.general")}
+          </h2>
+          <p style={{ "font-size": "13px", color: A.fgMuted, "margin-top": "2px" }}>
+            How mage behaves across every circle.
+          </p>
         </div>
       </div>
 
       <div class="flex flex-col gap-8 w-full">
+        <ArcanumSection />
+
         <GeneralSection />
 
         <AppearanceSection />
@@ -669,10 +734,11 @@ interface SettingsRowProps {
 
 const SettingsRow: Component<SettingsRowProps> = (props) => {
   return (
-    <div class="flex flex-wrap items-center gap-4 py-3 border-b border-border-weak-base last:border-none sm:flex-nowrap">
+    <div class="flex flex-wrap items-center gap-4 py-3 last:border-none sm:flex-nowrap"
+      style={{ "border-bottom": `1px solid ${A.border}` }}>
       <div class="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span class="text-14-medium text-text-strong">{props.title}</span>
-        <span class="text-12-regular text-text-weak">{props.description}</span>
+        <span class="text-14-medium" style={{ color: A.fg }}>{props.title}</span>
+        <span class="text-12-regular" style={{ color: A.fgMuted }}>{props.description}</span>
       </div>
       <div class="flex w-full justify-end sm:w-auto sm:shrink-0">{props.children}</div>
     </div>
