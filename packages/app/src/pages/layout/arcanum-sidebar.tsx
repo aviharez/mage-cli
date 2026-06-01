@@ -1,4 +1,5 @@
 import { createEffect, createMemo, createSignal, For, Show } from "solid-js"
+import { createStore } from "solid-js/store"
 import { useNavigate, useParams } from "@solidjs/router"
 import { DateTime } from "luxon"
 import { base64Encode } from "@mybcabisnis/mage-shared/util/encode"
@@ -92,6 +93,9 @@ export function ArcanumSidebar(props: { openSettings: () => void; mobile?: boole
   })
 
   const hasAnySessions = () => groups().some((g) => g.sessions.length > 0)
+
+  const [collapsed, setCollapsed] = createStore<Record<string, boolean>>({})
+  const toggle = (dir: string) => setCollapsed(dir, (v) => !v)
 
   const isActiveSession = (s: Session) =>
     decode64(params.dir ?? "") === s.directory && params.id === s.id
@@ -200,6 +204,8 @@ export function ArcanumSidebar(props: { openSettings: () => void; mobile?: boole
                 isActiveSession={isActiveSession}
                 onOpenSession={(s) => navigate(`/${base64Encode(s.directory)}/session/${s.id}`)}
                 onNewChat={() => navigate(`/${base64Encode(group.dir)}/session`)}
+                collapsed={!!collapsed[group.dir]}
+                onToggle={() => toggle(group.dir)}
               />
             )}
           </For>
@@ -245,6 +251,8 @@ function FolderGroup(props: {
   isActiveSession: (s: Session) => boolean
   onOpenSession: (s: Session) => void
   onNewChat: () => void
+  collapsed: boolean
+  onToggle: () => void
 }) {
   const isHome = () => props.group.dir === props.home
   const label = () => (isHome() ? "Home" : getFilename(props.group.dir) || props.group.dir)
@@ -253,6 +261,7 @@ function FolderGroup(props: {
     <div style={{ "margin-top": "10px" }}>
       <div
         class="group/folder"
+        onClick={props.onToggle}
         style={{
           display: "flex",
           "align-items": "center",
@@ -260,8 +269,14 @@ function FolderGroup(props: {
           gap: "7px",
           color: A.fgMuted,
           "font-size": "11.5px",
+          cursor: "pointer",
         }}
       >
+        <Icon
+          name={props.collapsed ? "chevron-right" : "chevron-down"}
+          size="small"
+          style={{ color: A.fgDim }}
+        />
         <Icon
           name="folder"
           size="small"
@@ -272,7 +287,7 @@ function FolderGroup(props: {
           {props.group.sessions.length}
         </span>
         <button
-          onClick={props.onNewChat}
+          onClick={(e) => { e.stopPropagation(); props.onNewChat() }}
           class="opacity-0 group-hover/folder:opacity-100 transition-opacity"
           style={{
             width: "18px",
@@ -292,44 +307,46 @@ function FolderGroup(props: {
         </button>
       </div>
 
-      <For each={props.group.sessions}>
-        {(session) => {
-          const active = () => props.isActiveSession(session)
-          const updated = session.time.updated ?? session.time.created
-          return (
-            <div
-              onClick={() => props.onOpenSession(session)}
-              style={{
-                display: "flex",
-                gap: "6px",
-                padding: "6px 10px 6px 30px",
-                "font-size": "12.5px",
-                "border-radius": "7px",
-                margin: "1px 2px",
-                background: active() ? A.accentSoft : "transparent",
-                color: active() ? A.fg : A.fgMuted,
-                "border-left": active() ? `2px solid ${A.accent}` : "2px solid transparent",
-                "box-shadow": active() ? `0 0 16px ${A.accentSoft}` : "none",
-                cursor: "pointer",
-              }}
-            >
-              <span
+      <Show when={!props.collapsed}>
+        <For each={props.group.sessions}>
+          {(session) => {
+            const active = () => props.isActiveSession(session)
+            const updated = session.time.updated ?? session.time.created
+            return (
+              <div
+                onClick={() => props.onOpenSession(session)}
                 style={{
-                  flex: "1",
-                  overflow: "hidden",
-                  "text-overflow": "ellipsis",
-                  "white-space": "nowrap",
+                  display: "flex",
+                  gap: "6px",
+                  padding: "6px 10px 6px 30px",
+                  "font-size": "12.5px",
+                  "border-radius": "7px",
+                  margin: "1px 2px",
+                  background: active() ? A.accentSoft : "transparent",
+                  color: active() ? A.fg : A.fgMuted,
+                  "border-left": active() ? `2px solid ${A.accent}` : "2px solid transparent",
+                  "box-shadow": active() ? `0 0 16px ${A.accentSoft}` : "none",
+                  cursor: "pointer",
                 }}
               >
-                {session.title}
-              </span>
-              <span style={{ "font-size": "10px", color: A.fgDim, "font-family": "monospace" }}>
-                {relTime(updated)}
-              </span>
-            </div>
-          )
-        }}
-      </For>
+                <span
+                  style={{
+                    flex: "1",
+                    overflow: "hidden",
+                    "text-overflow": "ellipsis",
+                    "white-space": "nowrap",
+                  }}
+                >
+                  {session.title}
+                </span>
+                <span style={{ "font-size": "10px", color: A.fgDim, "font-family": "monospace" }}>
+                  {relTime(updated)}
+                </span>
+              </div>
+            )
+          }}
+        </For>
+      </Show>
     </div>
   )
 }
