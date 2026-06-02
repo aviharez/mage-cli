@@ -113,8 +113,11 @@ export const layer = Layer.effect(
         const hooks: Hooks[] = []
         const bridge = yield* EffectBridge.make()
 
+        // Emit a log warning only — a plugin failing to load is not a session error
+        // and should not surface as one in the renderer. Existing call-site log.error()
+        // calls already record the failure with full context.
         function publishPluginError(message: string) {
-          bridge.fork(bus.publish(Session.Event.Error, { error: new NamedError.Unknown({ message }).toObject() }))
+          log.warn("plugin error", { message })
         }
 
         const { Server } = yield* Effect.promise(() => import("../server/server"))

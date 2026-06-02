@@ -27,3 +27,7 @@ out/
 resources/opencode-cli*
 resources/icons
 resources/*.metainfo.xml
+resources/plugin-shim/
+resources/dep-shim/
+resources/rg/
+.rg-cache/
