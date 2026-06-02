@@ -33,6 +33,9 @@ const getBase = (): Configuration => ({
     buildResources: "resources",
   },
   files: ["out/**/*", "resources/**/*"],
+  // Native prebuilt modules must live outside the asar so their .node/.dll/.exe
+  // siblings (e.g. node-pty's conpty.dll + OpenConsole.exe) can be loaded at runtime.
+  asarUnpack: ["**/node_modules/@lydell/node-pty-*/**", "**/node_modules/@parcel/watcher-*/**"],
   extraResources: [
     {
       from: "native/",

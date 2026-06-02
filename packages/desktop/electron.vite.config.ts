@@ -12,7 +12,12 @@ const channel = (() => {
   return "dev"
 })()
 
-const nodePtyPkg = `@lydell/node-pty-${process.platform}-${process.arch}`
+// Allow targeting a platform/arch different from the build host (e.g. building a
+// Windows app from macOS). The matching prebuilt native module is staged into
+// node_modules by scripts/stage-native.ts before packaging.
+const targetPlatform = process.env.MAGE_TARGET_PLATFORM ?? process.platform
+const targetArch = process.env.MAGE_TARGET_ARCH ?? process.arch
+const nodePtyPkg = `@lydell/node-pty-${targetPlatform}-${targetArch}`
 
 const sentry =
   process.env.SENTRY_AUTH_TOKEN && process.env.SENTRY_ORG && process.env.SENTRY_PROJECT
