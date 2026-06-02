@@ -55,6 +55,14 @@ export function setWslConfig(config: WslConfig) {
   getStore().set(WSL_ENABLED_KEY, config.enabled)
 }
 
+// Path to the shipped default config dir (command/, skills/, agent, themes, AGENTS.md).
+// Packaged: copied into Resources/defaults via electron-builder extraResources.
+// Dev: the source dir in the opencode package, relative to out/main (mirrors iconsDir()).
+function bundledDefaultsDir() {
+  const root = dirname(fileURLToPath(import.meta.url))
+  return app.isPackaged ? join(process.resourcesPath, "defaults") : join(root, "../../../opencode/defaults")
+}
+
 export function preferAppEnv(userDataPath: string) {
   const shell = process.platform === "win32" ? null : getUserShell()
   Object.assign(process.env, {
@@ -63,6 +71,10 @@ export function preferAppEnv(userDataPath: string) {
     OPENCODE_EXPERIMENTAL_FILEWATCHER: "true",
     OPENCODE_CLIENT: "desktop",
     XDG_STATE_HOME: process.env.XDG_STATE_HOME ?? userDataPath,
+    // Point the bundled server at the shipped defaults so /boilerplate, /generate, etc.
+    // load the same as the web dev server (which sets MAGE_CONFIG_DIR=.../defaults).
+    // Additive — ~/.mage and project .mage are still scanned; a user override wins.
+    MAGE_CONFIG_DIR: process.env.MAGE_CONFIG_DIR ?? bundledDefaultsDir(),
   })
 }
 

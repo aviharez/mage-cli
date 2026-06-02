@@ -1113,4 +1113,50 @@ describe("session.message-v2.fromError", () => {
 
     expect(result.name).toBe("MessageAbortedError")
   })
+
+  // On the desktop sidecar (Electron's Node runtime) fetch() throws a generic
+  // "fetch failed" TypeError with the real reason buried in error.cause, whereas
+  // Bun (CLI/web) surfaces a friendly message directly. Both must resolve to the
+  // same retryable APIError so the gateway-unreachable message is consistent.
+  test("classifies Node 'fetch failed' (cause chain) as retryable connection APIError", () => {
+    const cause = Object.assign(new Error("getaddrinfo ENOTFOUND gateway.internal"), {
+      code: "ENOTFOUND",
+      syscall: "getaddrinfo",
+    })
+    const error = new TypeError("fetch failed", { cause })
+
+    const result = MessageV2.fromError(error, { providerID })
+
+    expect(MessageV2.APIError.isInstance(result)).toBe(true)
+    const data = (result as MessageV2.APIError).data
+    expect(data.isRetryable).toBe(true)
+    expect(data.message).toBe("Unable to connect. Is the computer able to access the url?")
+    expect(data.metadata?.code).toBe("ENOTFOUND")
+    expect(data.metadata?.syscall).toBe("getaddrinfo")
+  })
+
+  test("classifies ECONNREFUSED buried in fetch cause as retryable connection APIError", () => {
+    const cause = Object.assign(new Error("connect ECONNREFUSED 127.0.0.1:8080"), {
+      code: "ECONNREFUSED",
+      syscall: "connect",
+    })
+    const error = new TypeError("fetch failed", { cause })
+
+    const result = MessageV2.fromError(error, { providerID })
+
+    expect(MessageV2.APIError.isInstance(result)).toBe(true)
+    expect((result as MessageV2.APIError).data.metadata?.code).toBe("ECONNREFUSED")
+  })
+
+  test("classifies Bun-style ConnectionRefused as retryable connection APIError", () => {
+    const error = Object.assign(new Error("Unable to connect. Is the computer able to access the url?"), {
+      code: "ConnectionRefused",
+    })
+
+    const result = MessageV2.fromError(error, { providerID })
+
+    expect(MessageV2.APIError.isInstance(result)).toBe(true)
+    expect((result as MessageV2.APIError).data.isRetryable).toBe(true)
+    expect((result as MessageV2.APIError).data.metadata?.code).toBe("ConnectionRefused")
+  })
 })

@@ -50,7 +50,7 @@ describe("createMerlin", () => {
       expect(body.domain_id).toBe("testuser")
       expect(body.service_id).toBe("MBBDSDEV29978319")
       expect(body.new_session).toBe("True")
-      expect(body.file).toBe("")
+      expect(body.file).toEqual([])
       expect(body.config).not.toHaveProperty("model_name")
       expect(body.config).not.toHaveProperty("persona")
       expect(typeof body.prompt).toBe("string")

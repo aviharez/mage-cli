@@ -46,6 +46,40 @@ const MERLIN_ENDPOINT =
   "https://gaia-gateway-multimodal-uat.apps.ocpuatgra.dti.co.id/llm-gateway/multimodal"
 const CLIENT_ID = "MAGEDEV"
 
+// ── TLS bypass for the internal self-signed GAIA gateway ───────────────────────
+
+const isBun = typeof (globalThis as { Bun?: unknown }).Bun !== "undefined"
+
+/**
+ * The GAIA UAT gateway serves a self-signed certificate, so TLS verification has
+ * to be disabled for the Merlin request. The two runtimes that host the server
+ * need different mechanisms:
+ *
+ *   - Bun (CLI / `bun run dev` web backend) honors a per-request `tls` option on
+ *     fetch — see `bunFetchTlsOption`.
+ *   - Node (the Electron desktop sidecar in packages/desktop) runs the prebuilt
+ *     dist/node bundle and uses undici's fetch, which SILENTLY IGNORES the `tls`
+ *     option. Without an undici dispatcher the desktop fails with "fetch failed"
+ *     on the self-signed cert. We lazily build an Agent that skips verification.
+ */
+const bunFetchTlsOption = isBun ? { tls: { rejectUnauthorized: false } } : {}
+
+let nodeDispatcher: unknown
+let nodeDispatcherInit = false
+
+async function getNodeInsecureDispatcher(): Promise<unknown> {
+  if (isBun) return undefined
+  if (nodeDispatcherInit) return nodeDispatcher
+  nodeDispatcherInit = true
+  try {
+    const { Agent } = await import("undici")
+    nodeDispatcher = new Agent({ connect: { rejectUnauthorized: false } })
+  } catch (error) {
+    log.warn("undici_dispatcher_unavailable", { error: String(error) })
+  }
+  return nodeDispatcher
+}
+
 // ── Merlin API types ──────────────────────────────────────────────────────────
 
 interface MerlinRequest {
@@ -460,13 +494,16 @@ class MerlinLanguageModel implements LanguageModelV3 {
     const signals: AbortSignal[] = [AbortSignal.timeout(this.timeoutMs)]
     if (options.abortSignal) signals.push(options.abortSignal)
 
+    // Disable TLS verification for the internal self-signed GAIA endpoint. Bun
+    // reads the `tls` option; Node (desktop sidecar) needs an undici dispatcher.
+    const dispatcher = await getNodeInsecureDispatcher()
     const response = await fetch(this.endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
       signal: AbortSignal.any(signals),
-      // Disable TLS verification for internal self-signed endpoints (Bun-specific)
-      tls: { rejectUnauthorized: false },
+      ...bunFetchTlsOption,
+      ...(dispatcher ? { dispatcher } : {}),
     } as RequestInit)
 
     if (!response.ok) {

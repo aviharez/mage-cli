@@ -39,6 +39,13 @@ const getBase = (): Configuration => ({
       to: "native/",
       filter: ["index.js", "index.d.ts", "build/Release/mac_window.node", "swift-build/**"],
     },
+    {
+      // Ship the default config dir so the bundled server can load default commands,
+      // skills, agents, and themes (see MAGE_CONFIG_DIR in src/main/server.ts).
+      from: "../opencode/defaults",
+      to: "defaults",
+      filter: ["**/*", "!**/node_modules/**", "!**/.DS_Store"],
+    },
   ],
   mac: {
     category: "public.app-category.developer-tools",

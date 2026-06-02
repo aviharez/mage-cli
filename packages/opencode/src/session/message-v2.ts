@@ -25,6 +25,47 @@ interface FetchDecompressionError extends Error {
   path: string
 }
 
+/**
+ * Connection-establishment failures (DNS / refused / unreachable / timeout).
+ * Bun surfaces these directly on the error (`code: "ConnectionRefused"`, etc.),
+ * but Node's fetch() throws a generic `TypeError: fetch failed` and hides the
+ * real reason in `error.cause` — so on the desktop sidecar (Electron's Node
+ * runtime) the user would otherwise just see "fetch failed". We walk the cause
+ * chain to recover the code and present the same message as the Bun runtime.
+ */
+const CONNECTION_ERROR_CODES = new Set([
+  // Node / libuv
+  "ENOTFOUND",
+  "ECONNREFUSED",
+  "ETIMEDOUT",
+  "EAI_AGAIN",
+  "EHOSTUNREACH",
+  "ENETUNREACH",
+  "EAI_FAIL",
+  // undici
+  "UND_ERR_CONNECT_TIMEOUT",
+  "UND_ERR_SOCKET",
+  // Bun
+  "ConnectionRefused",
+  "ConnectionClosed",
+  "ConnectionTimeout",
+  "FailedToOpenSocket",
+])
+
+function connectionError(e: unknown): { code: string; syscall?: string; message: string } | undefined {
+  const seen = new Set<unknown>()
+  let current: unknown = e
+  while (current instanceof Error && !seen.has(current)) {
+    seen.add(current)
+    const code = (current as SystemError).code
+    if (typeof code === "string" && CONNECTION_ERROR_CODES.has(code)) {
+      return { code, syscall: (current as SystemError).syscall, message: current.message }
+    }
+    current = current.cause
+  }
+  return undefined
+}
+
 export const SYNTHETIC_ATTACHMENT_PROMPT = "Attached image(s) from tool result:"
 export { isMedia }
 
@@ -1028,6 +1069,21 @@ export function fromError(
         },
         { cause: e },
       ).toObject()
+    case connectionError(e) !== undefined: {
+      const detail = connectionError(e)!
+      return new APIError(
+        {
+          message: "Unable to connect. Is the computer able to access the url?",
+          isRetryable: true,
+          metadata: {
+            code: detail.code,
+            ...(detail.syscall ? { syscall: detail.syscall } : {}),
+            message: detail.message,
+          },
+        },
+        { cause: e },
+      ).toObject()
+    }
     case e instanceof Error:
       return new NamedError.Unknown({ message: errorMessage(e) }, { cause: e }).toObject()
     default:
