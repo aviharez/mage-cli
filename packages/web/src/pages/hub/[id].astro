@@ -1,0 +1,35 @@
+---
+import StarlightPage from "@astrojs/starlight/components/StarlightPage.astro"
+import HubDetail from "../../components/HubDetail.tsx"
+import { HUB_ITEMS } from "../../components/hub-data"
+
+const { id } = Astro.params
+const item = HUB_ITEMS.find(i => i.name === id)
+
+if (!item) {
+  return new Response(null, { status: 404, statusText: "Not found" })
+}
+---
+
+<StarlightPage
+  hasSidebar={false}
+  frontmatter={{
+    title: `${item.name} · Hub`,
+    pagefind: false,
+    template: "splash",
+    tableOfContents: false,
+  }}
+>
+  <HubDetail item={item} client:load />
+</StarlightPage>
+
+<style is:global>
+  /* Hide the PageTitle panel; remove padding so detail-wrap handles its own spacing */
+  body > .page > .main-frame .main-pane > main > .content-panel:first-of-type {
+    display: none;
+  }
+  body > .page > .main-frame .main-pane > main > .content-panel + .content-panel {
+    padding: 0;
+    border-top: none !important;
+  }
+</style>

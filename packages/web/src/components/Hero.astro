@@ -3,9 +3,15 @@ import Default from '@astrojs/starlight/components/Hero.astro';
 import Lander from './Lander.astro';
 
 const { slug } = Astro.locals.starlightRoute.entry;
+// Root page (en: "" | id: "id/index" or similar top-level index)
+const isHome = slug === "" || slug === "index";
+// Hub page manages its own full-bleed layout — skip the default Starlight hero wrapper
+const isHub = slug === "hub";
 ---
 
-{ slug === ""
+{ isHome
   ? <Lander {...Astro.props} />
-  : <Default {...Astro.props}><slot /></Default>
+  : isHub
+    ? <slot />
+    : <Default {...Astro.props}><slot /></Default>
 }
