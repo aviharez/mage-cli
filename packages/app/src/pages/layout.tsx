@@ -71,6 +71,7 @@ import {
   drainPendingDeepLinks,
 } from "./layout/deep-links"
 import { ArcanumSidebar } from "./layout/arcanum-sidebar"
+import { ArcEmblem } from "@/components/arcanum/emblem"
 import { useOnboarding } from "@/components/arcanum/onboarding-context"
 
 export default function Layout(props: ParentProps) {
@@ -412,9 +413,14 @@ export default function Layout(props: ParentProps) {
     return projects.find((p) => p.worktree === root)
   })
 
+  // Give persist-readiness awaits a maximum of 5 s so the main pane can't
+  // remain blank forever if a packaged sidecar never signals ready.
+  const withTimeout = (p: Promise<unknown> | undefined, ms = 5000) =>
+    p ? Promise.race([p, new Promise<void>((r) => setTimeout(r, ms))]) : Promise.resolve()
+
   const [autoselecting] = createResource(async () => {
-    await ready.promise
-    await layout.ready.promise
+    await withTimeout(ready.promise)
+    await withTimeout(layout.ready.promise)
     if (!untrack(() => state.autoselect)) return
 
     const list = layout.projects.list()
@@ -1773,7 +1779,16 @@ export default function Layout(props: ParentProps) {
                   "xl:border-l xl:rounded-tl-[12px]": !onboarding.needsOnboarding(),
                 }}
               >
-                <Show when={!autoselecting.loading} fallback={<div class="size-full" />}>
+                {/* Skip the autoselect wait once a dir is already in the route —
+                    prevents a stuck-loading resource from permanently blanking the pane. */}
+                <Show
+                  when={!autoselecting.loading || !!params.dir}
+                  fallback={
+                    <div class="size-full flex items-center justify-center">
+                      <ArcEmblem size={72} glow animate />
+                    </div>
+                  }
+                >
                   {props.children}
                 </Show>
               </main>

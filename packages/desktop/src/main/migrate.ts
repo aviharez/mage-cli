@@ -23,12 +23,12 @@ function tauriDir(id: string) {
 
 // The Tauri app identifier changes between dev/beta/prod builds.
 const TAURI_APP_IDS: Record<string, string> = {
-  dev: "id.bca.mage.desktop.dev",
-  beta: "id.bca.mage.desktop.beta",
-  prod: "id.bca.mage.desktop",
+  dev: "id.mbb.mage.desktop.dev",
+  beta: "id.mbb.mage.desktop.beta",
+  prod: "id.mbb.mage.desktop",
 }
 function tauriAppId() {
-  return app.isPackaged ? TAURI_APP_IDS[CHANNEL] : "id.bca.mage.desktop.dev"
+  return app.isPackaged ? TAURI_APP_IDS[CHANNEL] : "id.mbb.mage.desktop.dev"
 }
 
 // Migrate a single Tauri .dat file into the corresponding electron-store.

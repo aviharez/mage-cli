@@ -114,19 +114,8 @@ function useLanguageModel(sdk: any) {
   return sdk.responses === undefined && sdk.chat === undefined
 }
 
-function custom(dep: CustomDep): Record<string, CustomLoader> {
+function custom(_dep: CustomDep): Record<string, CustomLoader> {
   return {
-    llmgateway: () =>
-      Effect.succeed({
-        autoload: false,
-        options: {
-          headers: {
-            "HTTP-Referer": "https://mage.ai/",
-            "X-Title": "mage",
-            "X-Source": "mage",
-          },
-        },
-      }),
     // Merlin/GAIA is always autoloaded — no provider config entry required.
     merlin: () => Effect.succeed({ autoload: true }),
   }

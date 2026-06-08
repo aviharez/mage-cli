@@ -627,7 +627,6 @@ export const SettingsGeneral: Component = () => {
   //   </div>
   // )
 
-  console.log(import.meta.env)
   return (
     <div class="flex flex-col h-full overflow-y-auto no-scrollbar px-4 pb-10 sm:px-10 sm:pb-10">
       <div class="sticky top-0 z-10" style={{ background: `linear-gradient(to bottom, ${A.bg} calc(100% - 24px), transparent)` }}>

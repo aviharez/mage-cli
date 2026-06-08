@@ -9,7 +9,7 @@
     "dev": "MAGE_CONFIG_DIR=$PWD/packages/opencode/defaults bun run --cwd packages/opencode --conditions=browser src/index.ts",
     "dev:web": "bun --cwd packages/app dev",
     "dev:desktop": "bun --cwd packages/desktop dev",
-    "dev:web-docs": "bun --cwd packages/web dev",
+    "dev:docs": "bun --cwd packages/web dev",
     "dev:serve": "MAGE_CONFIG_DIR=$PWD/packages/opencode/defaults MAGE_DISABLE_MODELS_FETCH=true bun run --cwd packages/opencode --conditions=browser src/index.ts serve --port 4096",
     "lint": "oxlint",
     "typecheck": "bun turbo typecheck",

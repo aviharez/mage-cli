@@ -91,15 +91,6 @@ export async function runInitWizard(): Promise<void> {
     process.exit(0)
   }
 
-  const boilerplate = await prompts.text({
-    message: "Team boilerplate path (optional)",
-    placeholder: "local/path or https://git-url — leave empty to skip",
-  })
-  if (prompts.isCancel(boilerplate)) {
-    prompts.cancel("Setup cancelled")
-    process.exit(0)
-  }
-
   const updates: Record<string, any> = {
     provider: {
       merlin: {
@@ -108,11 +99,6 @@ export async function runInitWizard(): Promise<void> {
         },
       },
     }
-  }
-
-  const bp = (boilerplate as string | undefined)?.trim()
-  if (bp) {
-    updates.mage = { boilerplate: bp }
   }
 
   const configPath = path.join(Global.Path.config, CONFIG_FILE)

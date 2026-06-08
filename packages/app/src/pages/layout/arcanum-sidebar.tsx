@@ -76,6 +76,7 @@ export function ArcanumSidebar(props: { openSettings: () => void; mobile?: boole
     const dirs = new Set<string>([h, ...sync.data.project.map((p) => p.worktree)])
     const out: GroupedDir[] = []
     for (const dir of dirs) {
+      if (!dir) continue  // home() can be "" before the server responds
       const [store] = sync.peek(dir, { bootstrap: false })
       const sessions = (store?.session ?? []).filter((s) => !s.parentID)
       out.push({ dir, sessions: sortByRecent(sessions) })

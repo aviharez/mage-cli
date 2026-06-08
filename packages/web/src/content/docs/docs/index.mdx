@@ -1,0 +1,71 @@
+---
+title: Getting started
+description: Install mage, sign in to the gateway, and open your first session.
+eyebrow: Docs · 3 min
+---
+
+import { Tabs, TabItem } from "@astrojs/starlight/components"
+
+mage ships as a single static binary that talks to your internal LLM gateway instead of upstream providers. Same agent, same workflows — your keys, your usage caps, your audit log.
+
+## Install
+
+Pick the install path that matches your machine.
+
+```bash title="macOS · Homebrew"
+brew install mage-cli/tap/mage
+```
+
+```bash title="Linux · curl"
+curl -fsSL https://get.mage.dev/install.sh | sh
+```
+
+```powershell title="Windows · scoop"
+scoop bucket add mage https://github.com/mage-cli/scoop
+scoop install mage
+```
+
+Verify:
+
+```bash
+mage --version
+```
+
+## Sign in to the gateway
+
+mage uses your internal LLM gateway — not a direct provider connection. The first time you run `auth login`, mage opens your browser, you sign in with SSO, and a session token lands in the system keychain.
+
+```bash
+mage auth login
+```
+
+:::note[No personal API keys]
+This is the main divergence from upstream OpenCode. All model calls flow through the gateway so usage is attributed and audited.
+:::
+
+## Open your first session
+
+`cd` into any project and run `mage`. It indexes the repo, spins up the default agent, and drops you into the TUI.
+
+```bash
+cd ~/code/myproject
+mage
+```
+
+From the TUI: `?` for keybinds · `/mcp` to list servers · `Ctrl+C` to interrupt · `Ctrl+D` to exit.
+
+## Add tools (MCP)
+
+mage ships with `filesystem`, `shell`, `git`, and `lsp` built in. Anything else comes from the hub.
+
+```bash
+mage mcp add github
+mage mcp add postgres
+```
+
+## Next steps
+
+- [Config](/docs/config) — agent definitions, per-project overrides, model pinning.
+- [CLI reference](/docs/cli) — every subcommand and flag.
+- [Providers](/docs/providers) — model gateway configuration.
+- [Hub](/hub/) — browse and install MCP servers, skills, and plugins.

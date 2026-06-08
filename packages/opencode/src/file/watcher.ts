@@ -73,27 +73,37 @@ export const layer = Layer.effect(
 
     const state = yield* InstanceState.make(
       Effect.fn("FileWatcher.state")(
-        function* () {
+        function* (ctx) {
           if (yield* Flag.MAGE_EXPERIMENTAL_DISABLE_FILEWATCHER) return
 
-          log.info("init", { directory: Instance.directory })
+          // Bind callbacks that fire outside the Effect fiber (parcel-watcher
+          // native callbacks, timers) back into this instance's ALS context.
+          // `Instance.bind` cannot be used here: the cache lookup runs on the
+          // Effect runtime where the ALS context is not established, so reading
+          // `Instance.directory` directly would throw "No context found for
+          // instance". The context is carried by the Effect `InstanceRef` and
+          // handed to us as `ctx` — use it explicitly.
+          const bindCtx = <F extends (...args: any[]) => any>(fn: F): F =>
+            ((...args: any[]) => Instance.restore(ctx, () => fn(...args))) as F
+
+          log.info("init", { directory: ctx.directory })
 
           const backend = getBackend()
           if (!backend) {
-            log.error("watcher backend not supported", { directory: Instance.directory, platform: process.platform })
+            log.error("watcher backend not supported", { directory: ctx.directory, platform: process.platform })
             return
           }
 
           const w = watcher()
           if (!w) return
 
-          log.info("watcher backend", { directory: Instance.directory, platform: process.platform, backend })
+          log.info("watcher backend", { directory: ctx.directory, platform: process.platform, backend })
 
           const subs: ParcelWatcher.AsyncSubscription[] = []
           const pending = new Map<string, { type: string; path: string }>()
           let flushTimer: ReturnType<typeof setTimeout> | undefined
 
-          const flushPending = Instance.bind(() => {
+          const flushPending = bindCtx(() => {
             flushTimer = undefined
             const evts = [...pending.values()]
             pending.clear()
@@ -113,7 +123,7 @@ export const layer = Layer.effect(
             return Effect.promise(() => Promise.allSettled(subs.map((sub) => sub.unsubscribe())))
           })
 
-          const cb: ParcelWatcher.SubscribeCallback = Instance.bind((err, evts) => {
+          const cb: ParcelWatcher.SubscribeCallback = bindCtx((err, evts) => {
             if (err) return
             for (const evt of evts) {
               pending.set(evt.path, { type: evt.type, path: evt.path })
@@ -141,19 +151,15 @@ export const layer = Layer.effect(
           const cfgIgnores = cfg.watcher?.ignore ?? []
 
           if (yield* Flag.MAGE_EXPERIMENTAL_FILEWATCHER) {
-            yield* subscribe(Instance.directory, [
-              ...FileIgnore.PATTERNS,
-              ...cfgIgnores,
-              ...protecteds(Instance.directory),
-            ])
+            yield* subscribe(ctx.directory, [...FileIgnore.PATTERNS, ...cfgIgnores, ...protecteds(ctx.directory)])
           }
 
-          if (Instance.project.vcs === "git") {
+          if (ctx.project.vcs === "git") {
             const result = yield* git.run(["rev-parse", "--git-dir"], {
-              cwd: Instance.project.worktree,
+              cwd: ctx.project.worktree,
             })
             const vcsDir =
-              result.exitCode === 0 ? path.resolve(Instance.project.worktree, result.text().trim()) : undefined
+              result.exitCode === 0 ? path.resolve(ctx.project.worktree, result.text().trim()) : undefined
             if (vcsDir && !cfgIgnores.includes(".git") && !cfgIgnores.includes(vcsDir)) {
               const ignore = (yield* Effect.promise(() => readdir(vcsDir).catch(() => []))).filter(
                 (entry) => entry !== "HEAD",

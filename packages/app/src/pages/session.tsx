@@ -31,6 +31,7 @@ import { showToast } from "@mybcabisnis/mage-ui/toast"
 import { checksum, base64Encode } from "@mybcabisnis/mage-shared/util/encode"
 import { useNavigate, useSearchParams } from "@solidjs/router"
 import { ArcAtmos } from "@/components/arcanum/atmos"
+import { ArcEmblem } from "@/components/arcanum/emblem"
 import { NewSessionDesignView, NewSessionView, SessionHeader } from "@/components/session"
 import { useComments } from "@/context/comments"
 import { shouldUseV2NewSessionPage } from "@/pages/session/new-session-layout"
@@ -338,6 +339,9 @@ export default function Page() {
   const terminal = useTerminal()
   const [searchParams, setSearchParams] = useSearchParams<{ prompt?: string }>()
   const { params, sessionKey, tabs, view } = useSessionLayout()
+  // Diagnostic: confirms Session chunk was loaded and Page() mounted.
+  // TODO: remove once root cause confirmed.
+  console.info("[mage] session mounted", { id: params.id ?? "(new)" })
 
   createEffect(() => {
     if (!prompt.ready()) return
@@ -1899,7 +1903,14 @@ export default function Page() {
             <ArcAtmos motes={false} />
             <Switch>
               <Match when={params.id}>
-                <Show when={messagesReady()}>
+                <Show
+                  when={messagesReady()}
+                  fallback={
+                    <div class="size-full flex items-center justify-center">
+                      <ArcEmblem size={56} glow animate />
+                    </div>
+                  }
+                >
                   <MessageTimeline
                     mobileChanges={mobileChanges()}
                     mobileFallback={reviewContent({

@@ -9,7 +9,11 @@ export default function HomeRedirect() {
   const navigate = useNavigate()
   createEffect(() => {
     const home = sync.data.path.home
+    // Diagnostic: visible in renderer.log via spyRendererConsole.
+    // TODO: remove once root cause confirmed.
+    console.info("[mage] home-redirect", { ready: sync.ready, home })
     if (!sync.ready || !home) return
+    console.info("[mage] home-redirect navigating", { home })
     navigate(`/${base64Encode(home)}/session`, { replace: true })
   })
   return (

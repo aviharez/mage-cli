@@ -1,721 +1,696 @@
 ---
-import { Image } from 'astro:assets';
 import { getRelativeLocaleUrl } from 'astro:i18n';
 import config from "virtual:starlight/user-config";
 
-import CopyIcon from "../assets/lander/copy.svg";
-import CheckIcon from "../assets/lander/check.svg";
-import TuiScreenshot from "../assets/lander/screenshot-splash.png";
-import VscodeScreenshot from "../assets/lander/screenshot-vscode.png";
-import GithubScreenshot from "../assets/lander/screenshot-github.png";
-
-const { data } = Astro.locals.starlightRoute.entry;
-const { title = data.title, tagline, image, actions = [] } = data.hero || {};
-
-const imageAttrs = {
-    loading: 'eager' as const,
-    decoding: 'async' as const,
-    width: 400,
-    alt: image?.alt || '',
-};
-
-const github = (config.social || []).filter(s => s.icon === 'github')[0];
-const discord = (config.social || []).filter(s => s.icon === 'discord')[0];
 const locale = Astro.currentLocale || 'root';
 const t = Astro.locals.t as (key: string) => string;
-const docsHref = getRelativeLocaleUrl(locale, "")
-const docsCliHref = getRelativeLocaleUrl(locale, "cli")
-const docsIdeHref = getRelativeLocaleUrl(locale, "ide")
-const docsGithubHref = getRelativeLocaleUrl(locale, "github")
+const docsHref = getRelativeLocaleUrl(locale, "");
+const github = (config.social || []).find(s => s.icon === 'github');
 
-const command = "curl -fsSL"
-const protocol = "https://"
-const url = "opencode.ai/install"
-const bash = "| bash"
-
-let darkImage: ImageMetadata | undefined;
-let lightImage: ImageMetadata | undefined;
-let rawHtml: string | undefined;
-if (image) {
-    if ('file' in image) {
-        darkImage = image.file;
-    } else if ('dark' in image) {
-        darkImage = image.dark;
-        lightImage = image.light;
-    } else {
-        rawHtml = image.html;
-  }
-}
+const installCmd = "brew install mage-cli/tap/mage";
 ---
-<div class="hero">
-    <section class="top">
-      <div class="logo">
-        {darkImage && (
-          <Image
-            src={darkImage}
-            {...imageAttrs}
-            class:list={{ 'light:sl-hidden': Boolean(lightImage) }}
-          />
-        )}
-        {lightImage && <Image src={lightImage} {...imageAttrs} class="dark:sl-hidden" />}
-      </div>
-      <h1>{t('app.lander.hero.title')}</h1>
-    </section>
 
-    <section class="cta">
-      <div class="col1">
-        <a href={docsHref}>{t('app.lander.cta.getStarted')}</a>
-      </div>
-      <div class="col2">
-      <button class="command" data-command={`${command} ${protocol}${url} ${bash}`}>
-          <code>
-            <span>{command}&nbsp;</span><span class="protocol">{protocol}</span><span class="highlight">{url}</span>&nbsp;{bash}
-          </code>
-          <span class="copy">
-            <CopyIcon />
-            <CheckIcon />
-          </span>
-        </button>
-      </div>
-    </section>
+<div class="lander">
 
-    <section class="content">
-      <ul>
-        <li><b>{t('app.lander.features.native_tui.title')}</b>: {t('app.lander.features.native_tui.description')}</li>
-        <li><b>{t('app.lander.features.lsp_enabled.title')}</b>: {t('app.lander.features.lsp_enabled.description')}</li>
-        <li><b>{t('app.lander.features.multi_session.title')}</b>: {t('app.lander.features.multi_session.description')}</li>
-        <li><b>{t('app.lander.features.shareable_links.title')}</b>: {t('app.lander.features.shareable_links.description')}</li>
-        <li><b>GitHub Copilot</b>: {t('app.lander.features.github_copilot.description')}</li>
-        <li><b>ChatGPT Plus/Pro</b>: {t('app.lander.features.chatgpt_plus_pro.description')}</li>
-        <li><b>{t('app.lander.features.use_any_model.title')}</b>: {t('app.lander.features.use_any_model.prefix')} <a href="https://models.dev">Models.dev</a>, {t('app.lander.features.use_any_model.suffix')}</li>
-      </ul>
-    </section>
+  <!-- ===== HERO ===== -->
+  <header class="hero">
+    <div class="hero-left">
+      <span class="hero-eyebrow">
+        <span class="dot"></span>
+        <span>{t('app.lander.eyebrow')}</span>
+      </span>
 
-    <section class="alternatives">
-      <div class="col1">
-        <h3>npm</h3>
-        <button class="command" data-command="npm install -g opencode-ai">
-          <code>
-            <span>npm install -g</span> <span class="highlight">opencode-ai</span>
-          </code>
-          <span class="copy">
-            <CopyIcon />
-            <CheckIcon />
-          </span>
-        </button>
-      </div>
-      <div class="col2">
-        <h3>Bun</h3>
-        <button class="command" data-command="bun install -g opencode-ai">
-          <code>
-            <span>bun install -g</span> <span class="highlight">opencode-ai</span>
-          </code>
-          <span class="copy">
-            <CopyIcon />
-            <CheckIcon />
-          </span>
-        </button>
-      </div>
-      <div class="col3">
-        <h3>Homebrew</h3>
-        <button class="command" data-command="brew install opencode">
-          <code>
-            <span>brew install</span> <span class="highlight">opencode</span>
-          </code>
-          <span class="copy">
-            <CopyIcon />
-            <CheckIcon />
-          </span>
-        </button>
-      </div>
-      <div class="col4">
-        <h3>Paru</h3>
-        <button class="command" data-command="paru -S opencode-bin">
-          <code>
-            <span>paru -S</span> <span class="highlight">opencode-bin</span>
-          </code>
-          <span class="copy">
-            <CopyIcon />
-            <CheckIcon />
-          </span>
-        </button>
-      </div>
-      <div class="col4">
-        <h3>Mise</h3>
-        <button class="command" data-command="mise use -g github:anomalyco/opencode">
-          <code>
-            <span>mise use -g</span> <span class="highlight">github:anomalyco/opencode</span>
-          </code>
-          <span class="copy">
-            <CopyIcon />
-            <CheckIcon />
-          </span>
-        </button>
-      </div>
-    </section>
+      <h1>
+        {t('app.lander.hero.line1')}<br/>
+        {t('app.lander.hero.line2')}<br/>
+        {t('app.lander.hero.line3')} <span class="ampersand">{t('app.lander.hero.accent')}</span><br/>
+        {t('app.lander.hero.line4')}
+      </h1>
 
-    <section class="images">
-      <div class="left">
-        <figure>
-          <figcaption>{t('app.lander.images.tui.caption')}</figcaption>
-          <a href={docsCliHref}>
-            <Image src={TuiScreenshot} alt={t('app.lander.images.tui.alt')} />
+      <p class="lede">
+        <strong>mage</strong> {t('app.lander.hero.lede')}
+      </p>
+
+      <div class="hero-cta">
+        <a class="btn primary" href={docsHref}>
+          <span>{t('app.lander.cta.getStarted')}</span>
+          <svg class="arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+        </a>
+        <div class="dl-group">
+          <a class="btn dl" href={github?.href ?? '#'}>
+            <svg class="os-ico" viewBox="0 0 24 24" fill="currentColor"><path d="M16.3 1.4c.1 1-.3 2-.9 2.8-.6.8-1.6 1.4-2.6 1.3-.1-1 .4-2 1-2.7.6-.8 1.7-1.3 2.5-1.4zM18.9 8.3c-.6.4-1.5 1.2-1.5 2.7 0 1.7 1.5 2.4 1.6 2.4 0 .1-.2.9-.8 1.8-.5.8-1 1.5-1.8 1.5s-1-.4-1.9-.4-1.2.4-1.9.5c-.7 0-1.3-.8-1.8-1.5-1.1-1.6-2-4.5-.8-6.5.6-1 1.6-1.6 2.7-1.6.8 0 1.5.5 1.9.5s1.3-.6 2.2-.5c.4 0 1.5.2 2.1 1.1z"/></svg>
+            <span>{t('app.lander.cta.macos')}</span>
           </a>
-        </figure>
-      </div>
-      <div class="right">
-        <div class="row1">
-          <figure>
-            <figcaption>{t('app.lander.images.vscode.caption')}</figcaption>
-            <a href={docsIdeHref}>
-              <Image src={VscodeScreenshot} alt={t('app.lander.images.vscode.alt')} />
-            </a>
-          </figure>
-        </div>
-        <div class="row2">
-          <figure>
-            <figcaption>{t('app.lander.images.github.caption')}</figcaption>
-            <a href={docsGithubHref}>
-              <Image src={GithubScreenshot} alt={t('app.lander.images.github.alt')} />
-            </a>
-          </figure>
+          <a class="btn dl" href={github?.href ?? '#'}>
+            <svg class="os-ico" viewBox="0 0 24 24" fill="currentColor"><path d="M3 5.1 10.4 4v7.3H3zM10.4 12.7v7.3L3 18.9v-6.2zM11.4 3.9 21 2.5v8.8h-9.6zM21 12.7v8.8l-9.6-1.4v-7.4z"/></svg>
+            <span>{t('app.lander.cta.windows')}</span>
+          </a>
         </div>
       </div>
-    </section>
 
-    <section class="footer">
-      <div class="col1">
-        <a href={github.href} target="_blank" rel="noopener noreferrer">GitHub</a>
+      <button class="hero-install" id="hero-install" data-cmd={installCmd}>
+        <span class="prompt">$</span>
+        <span>{installCmd}</span>
+        <span class="copy-ico" id="hero-copy-ico">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+        </span>
+      </button>
+    </div>
+
+    <!-- Animated terminal -->
+    <div class="term" id="hero-term">
+      <div class="term-head">
+        <span class="term-dot"></span>
+        <span class="term-dot"></span>
+        <span class="term-dot"></span>
+        <span class="term-title">~/proj/api · mage</span>
       </div>
-      <div class="col2">
-        <a href={discord.href} target="_blank" rel="noopener noreferrer">Discord</a>
+      <div class="term-body" id="term-body"></div>
+    </div>
+  </header>
+
+  <!-- ===== CAPABILITY BAND ===== -->
+  <section class="band">
+    <div class="band-inner">
+      <h2>{t('app.lander.band1.title')}</h2>
+      <p class="band-lede">{t('app.lander.band1.lede')}</p>
+
+      <div class="cap-grid">
+        <div class="cap">
+          <svg class="cap-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4h16v6H4zM4 14h16v6H4z"/><circle cx="8" cy="7" r="1" fill="currentColor"/><circle cx="8" cy="17" r="1" fill="currentColor"/></svg>
+          <div><h3>{t('app.lander.cap.auth.title')}</h3><p>{t('app.lander.cap.auth.desc')}</p></div>
+        </div>
+        <div class="cap">
+          <svg class="cap-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          <div><h3>{t('app.lander.cap.tools.title')}</h3><p>{t('app.lander.cap.tools.desc')}</p></div>
+        </div>
+        <div class="cap">
+          <svg class="cap-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+          <div><h3>{t('app.lander.cap.model.title')}</h3><p>{t('app.lander.cap.model.desc')}</p></div>
+        </div>
+        <div class="cap">
+          <svg class="cap-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 6h18M3 12h18M3 18h12"/><circle cx="20" cy="18" r="2"/></svg>
+          <div><h3>{t('app.lander.cap.audit.title')}</h3><p>{t('app.lander.cap.audit.desc')}</p></div>
+        </div>
+        <div class="cap">
+          <svg class="cap-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>
+          <div><h3>{t('app.lander.cap.compat.title')}</h3><p>{t('app.lander.cap.compat.desc')}</p></div>
+        </div>
+        <div class="cap">
+          <svg class="cap-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><circle cx="9" cy="10" r="0.8" fill="currentColor"/><circle cx="12" cy="10" r="0.8" fill="currentColor"/><circle cx="15" cy="10" r="0.8" fill="currentColor"/></svg>
+          <div><h3>{t('app.lander.cap.multi.title')}</h3><p>{t('app.lander.cap.multi.desc')}</p></div>
+        </div>
       </div>
-      <div class="col3">
-      <span>&copy;2025 <a href="https://anoma.ly" target="_blank" rel="noopener noreferrer">Anomaly Innovations</a></span>
+    </div>
+  </section>
+
+  <!-- ===== PULL QUOTE ===== -->
+  <section class="pull">
+    <div class="pull-inner">
+      <blockquote>
+        <em>&ldquo;{t('app.lander.quote')}&rdquo;</em>
+      </blockquote>
+      <div class="attrib">{t('app.lander.quote.attrib')}</div>
+    </div>
+  </section>
+
+  <!-- ===== STEPS BAND ===== -->
+  <section class="band">
+    <div class="band-inner">
+      <div class="eyebrow">{t('app.lander.steps.eyebrow')}</div>
+      <h2>{t('app.lander.steps.title')}</h2>
+      <p class="band-lede">{t('app.lander.steps.lede')}</p>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">{t('app.lander.steps.01.num')}</div>
+          <h4>{t('app.lander.steps.01.title')}</h4>
+          <p>{t('app.lander.steps.01.desc')}</p>
+          <pre>{t('app.lander.steps.01.code')}</pre>
+        </div>
+        <div class="step">
+          <div class="step-num">{t('app.lander.steps.02.num')}</div>
+          <h4>{t('app.lander.steps.02.title')}</h4>
+          <p>{t('app.lander.steps.02.desc')}</p>
+          <pre>{t('app.lander.steps.02.code')}</pre>
+        </div>
+        <div class="step">
+          <div class="step-num">{t('app.lander.steps.03.num')}</div>
+          <h4>{t('app.lander.steps.03.title')}</h4>
+          <p>{t('app.lander.steps.03.desc')}</p>
+          <pre>{t('app.lander.steps.03.code')}</pre>
+        </div>
+        <div class="step">
+          <div class="step-num">{t('app.lander.steps.04.num')}</div>
+          <h4>{t('app.lander.steps.04.title')}</h4>
+          <p>{t('app.lander.steps.04.desc')}</p>
+          <pre>{t('app.lander.steps.04.code')}</pre>
+        </div>
       </div>
-    </section>
+    </div>
+  </section>
+
 </div>
 
 <style>
+/* ---- Layout ---- */
+.lander {
+  width: 100%;
+  overflow-x: hidden;
+}
+
+/* ---- Hero ---- */
 .hero {
-  --padding: 3rem;
-  --vertical-padding: 1.5rem;
-  --heading-font-size: var(--sl-text-3xl);
-
-  margin: 1rem;
-  border: 2px solid var(--sl-color-border);
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 80px 56px 60px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: 72px;
+  align-items: start;
 }
-@media (max-width: 30rem) {
+
+.hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 4px 6px;
+  background: var(--mg-accent-dim);
+  border: 1px solid var(--mg-accent-line);
+  border-radius: 999px;
+  font-family: var(--mg-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--mg-accent-bright);
+  margin-bottom: 22px;
+}
+.hero-eyebrow .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--mg-accent);
+  animation: glow 2s infinite;
+}
+@keyframes glow {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+.hero-left h1 {
+  font-family: var(--mg-font-serif) !important;
+  font-style: italic !important;
+  font-weight: 400 !important;
+  font-size: 76px !important;
+  line-height: 0.98 !important;
+  letter-spacing: -0.025em !important;
+  margin: 0 0 22px !important;
+  text-transform: none !important;
+  color: var(--mg-text) !important;
+}
+.hero-left h1 .ampersand {
+  color: var(--mg-accent);
+}
+
+.lede {
+  font-size: 18px;
+  line-height: 1.55;
+  color: var(--mg-text-muted);
+  max-width: 50ch;
+  margin: 0 0 32px;
+  text-wrap: pretty;
+}
+.lede strong {
+  color: var(--mg-text) !important;
+  font-weight: 500 !important;
+}
+
+.hero-cta {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: var(--mg-radius);
+  border: 1px solid var(--mg-border);
+  background: var(--mg-bg-elev);
+  color: var(--mg-text) !important;
+  cursor: pointer;
+  text-decoration: none !important;
+  border-bottom: none !important;
+  transition: border-color .15s, background .15s;
+}
+.btn:hover {
+  border-color: var(--mg-border-strong);
+  background: var(--mg-bg-elev-2);
+  border-bottom: none !important;
+}
+.btn.primary {
+  background: var(--mg-accent);
+  color: #15101f !important;
+  border-color: var(--mg-accent);
+}
+.btn.primary:hover {
+  background: var(--mg-accent-bright);
+  border-color: var(--mg-accent-bright);
+}
+.btn .arrow {
+  transition: transform .2s;
+}
+.btn:hover .arrow {
+  transform: translateX(2px);
+}
+
+.dl-group {
+  display: inline-flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.btn.dl {
+  gap: 9px;
+  padding: 9px 14px;
+}
+.btn.dl .os-ico {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+/* Install command */
+.hero-install {
+  all: unset;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  font-family: var(--mg-font-mono);
+  font-size: 13px;
+  background: var(--mg-bg-elev);
+  border: 1px solid var(--mg-border);
+  border-radius: var(--mg-radius);
+  color: var(--mg-text);
+  cursor: pointer;
+  transition: border-color .15s;
+}
+.hero-install:hover {
+  border-color: var(--mg-border-strong);
+}
+.hero-install.copied {
+  border-color: var(--mg-success);
+}
+.prompt {
+  color: var(--mg-text-dim);
+}
+.copy-ico {
+  margin-left: 8px;
+  color: var(--mg-text-dim);
+}
+.hero-install:hover .copy-ico {
+  color: var(--mg-accent);
+}
+.hero-install.copied .copy-ico {
+  color: var(--mg-success);
+}
+
+/* ---- Terminal mockup ---- */
+.term {
+  background: var(--mg-bg-elev);
+  border: 1px solid var(--mg-border-strong);
+  border-radius: var(--mg-radius-lg);
+  overflow: hidden;
+  box-shadow: 0 30px 80px -20px rgba(167, 139, 250, 0.15),
+              0 0 0 1px rgba(167, 139, 250, 0.05);
+  font-family: var(--mg-font-mono);
+  font-size: 13px;
+  line-height: 1.65;
+}
+.term-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--mg-border);
+  background: var(--mg-bg-elev-2);
+}
+.term-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--mg-border-strong);
+}
+.term-title {
+  margin-left: auto;
+  font-family: var(--mg-font-mono);
+  font-size: 11px;
+  color: var(--mg-text-dim);
+  letter-spacing: 0.04em;
+}
+.term-body {
+  padding: 16px 18px 20px;
+  min-height: 360px;
+  color: var(--mg-text);
+  white-space: pre-wrap;
+  overflow: hidden;
+}
+/* Terminal line classes injected by JS */
+:global(.term-body .ln) { display: block; }
+:global(.term-body .t-prompt) { color: var(--mg-accent); }
+:global(.term-body .t-dim) { color: var(--mg-text-dim); }
+:global(.term-body .t-accent) { color: var(--mg-accent-bright); }
+:global(.term-body .t-ok) { color: var(--mg-success); }
+:global(.term-body .t-ai) {
+  border-left: 2px solid var(--mg-accent);
+  padding-left: 10px;
+  margin-left: 2px;
+  color: var(--mg-text);
+}
+:global(.term-body .t-ai .tag) {
+  color: var(--mg-accent);
+  font-style: italic;
+  font-family: var(--mg-font-serif);
+  font-size: 14px;
+}
+:global(.term-body .cursor) {
+  display: inline-block;
+  width: 7px;
+  height: 14px;
+  background: var(--mg-accent);
+  vertical-align: -2px;
+  margin-left: 1px;
+  animation: blink 1s steps(2) infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+/* ---- Sections / bands ---- */
+.band {
+  border-top: 1px solid var(--mg-border);
+}
+.band-inner {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 88px 56px;
+}
+.band-inner h2 {
+  font-family: var(--mg-font-serif) !important;
+  font-style: italic !important;
+  font-weight: 400 !important;
+  font-size: 44px !important;
+  line-height: 1.05 !important;
+  letter-spacing: -0.02em !important;
+  margin: 0 0 18px !important;
+  color: var(--mg-text) !important;
+  text-transform: none !important;
+}
+.band-lede {
+  color: var(--mg-text-muted);
+  font-size: 17px;
+  max-width: 55ch;
+  margin: 0 0 48px;
+}
+.eyebrow {
+  font-family: var(--mg-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--mg-accent);
+  margin-bottom: 12px;
+}
+
+/* ---- Capability grid ---- */
+.cap-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.cap {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  padding: 18px 20px;
+  background: var(--mg-bg-elev);
+  border: 1px solid var(--mg-border);
+  border-radius: var(--mg-radius-lg);
+  transition: border-color .15s;
+}
+.cap:hover {
+  border-color: var(--mg-accent-line);
+}
+.cap-ico {
+  width: 20px;
+  height: 20px;
+  color: var(--mg-accent);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.cap h3 {
+  font-size: 14.5px !important;
+  margin: 0 0 3px !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.005em !important;
+  color: var(--mg-text) !important;
+  text-transform: none !important;
+  font-style: normal !important;
+  font-family: var(--mg-font-sans) !important;
+}
+.cap p {
+  margin: 0 !important;
+  color: var(--mg-text-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+/* ---- Pull quote ---- */
+.pull {
+  border-top: 1px solid var(--mg-border);
+  border-bottom: 1px solid var(--mg-border);
+}
+.pull-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 100px 56px;
+  text-align: center;
+}
+.pull-inner blockquote {
+  margin: 0;
+  font-family: var(--mg-font-serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 56px;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  color: var(--mg-text);
+  text-wrap: balance;
+}
+.attrib {
+  margin-top: 28px;
+  font-family: var(--mg-font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mg-text-dim);
+}
+
+/* ---- Steps ---- */
+.steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 28px;
+}
+.step {
+  border-top: 1px solid var(--mg-border);
+  padding-top: 20px;
+}
+.step-num {
+  font-family: var(--mg-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--mg-accent);
+  margin-bottom: 8px;
+}
+.step h4 {
+  font-size: 16px !important;
+  margin: 0 0 8px !important;
+  font-weight: 600 !important;
+  color: var(--mg-text) !important;
+  text-transform: none !important;
+  font-style: normal !important;
+  font-family: var(--mg-font-sans) !important;
+}
+.step p {
+  margin: 0 !important;
+  color: var(--mg-text-muted);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+.step pre {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  background: var(--mg-bg-elev);
+  border: 1px solid var(--mg-border);
+  border-radius: var(--mg-radius-sm);
+  font-family: var(--mg-font-mono);
+  font-size: 11.5px;
+  color: var(--mg-accent-bright);
+  overflow-x: auto;
+  white-space: pre;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 960px) {
   .hero {
-    --padding: 1rem;
-    --vertical-padding: 0.75rem;
-    --heading-font-size: var(--sl-text-2xl);
-
-    margin: 0.5rem;
-  }
-}
-
-section.top {
-  padding: var(--padding);
-
-  h1 {
-    margin-top: calc(var(--vertical-padding) / 8);
-    font-size: var(--heading-font-size);
-    line-height: 1.25;
-    text-transform: uppercase;
-  }
-
-  img {
-    height: auto;
-    width: clamp(200px, 70vw, 400px);
-  }
-}
-
-section.cta {
-  display: flex;
-  flex-direction: row;
-  justify-content: flex-start;
-  align-items: stretch;
-  border-top: 2px solid var(--sl-color-border);
-
-  @media (max-width: 50rem) {
-    flex-direction: column;
-  }
-
-  & > div {
-    line-height: 1.4;
-    padding: var(--vertical-padding) var(--padding);
-
-    a {
-      font-size: 1rem;
-    }
-  }
-  & > div.col1 {
-    flex: 0 0 auto;
-    text-align: center;
-    text-transform: uppercase;
-
-    @media (max-width: 50rem) {
-      padding-bottom: calc(var(--vertical-padding) + 4px);
-    }
-  }
-  & > div.col2 {
-    flex: 1;
-    padding-left: 1rem;
-    padding-right: 1rem;
-  }
-
-  & > div + div {
-    border-left: 2px solid var(--sl-color-border);
-
-    @media (max-width: 50rem) {
-      border-left: none;
-      border-top: 2px solid var(--sl-color-border);
-    }
-  }
-
-  .command {
-    all: unset;
-    display: flex;
-    align-items: center;
-    gap: 0.625rem;
-    justify-content: center;
-    cursor: pointer;
-    width: 100%;
-
-    code {
-      color: var(--sl-color-text-secondary);
-      font-size: 1.125rem;
-
-      @media (max-width: 24rem) {
-        font-size: 0.875rem;
-      }
-      @media (max-width: 30rem) {
-        span.protocol {
-          display: none;
-        }
-      }
-      @media (max-width: 43rem) {
-        text-align: center;
-        span:first-child {
-          display: block;
-        }
-      }
-    }
-    code .highlight {
-      color: var(--sl-color-text);
-      font-weight: 500;
-    }
-
-    .copy {
-      line-height: 1;
-      padding: 0;
-      @media (max-width: 43rem) {
-        display: none;
-      }
-    }
-    .copy svg {
-      width: 1rem;
-      height: 1rem;
-      vertical-align: middle;
-    }
-    .copy svg:first-child {
-      color: var(--sl-color-text-dimmed);
-    }
-    .copy svg:last-child {
-      color: var(--sl-color-text);
-      display: none;
-    }
-    &.success .copy {
-      pointer-events: none;
-    }
-    &.success .copy svg:first-child {
-      display: none;
-    }
-    &.success .copy svg:last-child {
-      display: inline;
-    }
-  }
-}
-
-section.content {
-  border-top: 2px solid var(--sl-color-border);
-  padding: var(--padding);
-
-  ul {
-    padding-left: 1rem;
-
-    li + li {
-      margin-top: calc(var(--vertical-padding) / 2);
-    }
-
-    li b {
-      text-transform: uppercase;
-    }
-  }
-}
-
-section.images {
-  --images-height: 600px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: var(--images-height);
-  border-top: 2px solid var(--sl-color-border);
-
-  & > div.left {
-    display: flex;
-    grid-row: 1;
-    grid-column: 1;
-  }
-
-  & > div.right {
-    display: grid;
-    grid-template-rows: 1fr 1fr;
-    grid-row: 1;
-    grid-column: 2;
-    border-left: 2px solid var(--sl-color-border);
-
-    & > div.row1 {
-      display: flex;
-      grid-row: 1;
-      border-bottom: 2px solid var(--sl-color-border);
-      height: calc(var(--images-height) / 2);
-    }
-
-    & > div.row2 {
-      display: flex;
-      grid-row: 2;
-      height: calc(var(--images-height) / 2);
-    }
-  }
-
-  figure {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: calc(var(--padding) / 4);
-    padding: calc(var(--padding) / 2);
-    border-width: 0;
-    border-style: solid;
-    border-color: var(--sl-color-border);
-    min-height: 0;
-    overflow: hidden;
-
-    & > div, figcaption {
-      display: flex;
-      align-items: center;
-    }
-
-    & > div {
-      flex: 1;
-      min-height: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    a {
-      display: flex;
-      flex: 1;
-      min-height: 0;
-      align-items: center;
-      justify-content: center;
-      width: 100%;
-      height: 100%;
-    }
-
-    figcaption {
-      letter-spacing: -0.03125rem;
-      text-transform: uppercase;
-      color: var(--sl-color-text-dimmed);
-      flex-shrink: 0;
-
-      @media (max-width: 30rem) {
-        font-size: 0.75rem;
-      }
-    }
-  }
-
-  & > div.left figure {
-    height: var(--images-height);
-    box-sizing: border-box;
-  }
-
-  & > div.right figure {
-    height: calc(var(--images-height) / 2);
-    box-sizing: border-box;
-  }
-
-  & > div.left img {
-    width: 100%;
-    height: 100%;
-    min-width: 0;
-    object-fit: contain;
-  }
-
-  & > div.right img {
-    width: 100%;
-    height: calc(100% - 2rem);
-    object-fit: contain;
-    display: block;
-  }
-
-  @media (max-width: 30rem) {
-    & {
-      --images-height: auto;
-      grid-template-columns: 1fr;
-      grid-template-rows: auto auto;
-    }
-
-    & > div.left {
-      grid-row: 1;
-      grid-column: 1;
-    }
-
-    & > div.right {
-      grid-row: 2;
-      grid-column: 1;
-      border-left: none;
-      border-top: 2px solid var(--sl-color-border);
-
-      & > div.row1,
-      & > div.row2 {
-        height: auto;
-      }
-    }
-
-    & > div.left figure,
-    & > div.right figure {
-      height: auto;
-    }
-
-    & > div.left img,
-    & > div.right img {
-      width: 100%;
-      height: auto;
-      max-height: none;
-    }
-  }
-}
-
-section.alternatives {
-  border-top: 2px solid var(--sl-color-border);
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
-
-  @media (max-width: 40rem) {
     grid-template-columns: 1fr;
-    grid-template-rows: auto;
+    padding: 40px 20px;
+    gap: 36px;
   }
-
-  & > div {
-    display: flex;
-    flex-direction: column;
-    padding: calc(var(--vertical-padding) / 2) calc(var(--padding) / 2) calc(var(--vertical-padding) / 2 + 0.125rem);
-    text-align: left;
-    gap: 0.5rem;
-
-    @media (max-width: 30rem) {
-      gap: 0.3125rem;
-    }
-
-    @media (max-width: 40rem) {
-      text-align: left;
-    }
+  .hero-left h1 {
+    font-size: 52px !important;
   }
-
-  & > div.col1 {
-    border-bottom: 2px solid var(--sl-color-border);
-
-    @media (max-width: 40rem) {
-      border-bottom: none;
-    }
+  .band-inner {
+    padding: 56px 20px;
   }
-
-  & > div.col2 {
-    border-left: 2px solid var(--sl-color-border);
-    border-bottom: 2px solid var(--sl-color-border);
-
-    @media (max-width: 40rem) {
-      border-left: none;
-      border-bottom: none;
-      border-top: 2px solid var(--sl-color-border);
-    }
+  .band-inner h2 {
+    font-size: 32px !important;
   }
-
-  & > div.col3 {
-    @media (max-width: 40rem) {
-      border-top: 2px solid var(--sl-color-border);
-    }
+  .cap-grid {
+    grid-template-columns: 1fr;
   }
-
-  & > div.col4 {
-    border-left: 2px solid var(--sl-color-border);
-    @media (max-width: 40rem) {
-      border-left: none;
-      border-top: 2px solid var(--sl-color-border);
-    }
+  .steps {
+    grid-template-columns: 1fr 1fr;
   }
-
-  h3 {
-    letter-spacing: -0.03125rem;
-    text-transform: uppercase;
-    color: var(--sl-color-text-dimmed);
-    font-weight: normal;
-    font-size: 1rem;
-    flex-shrink: 0;
-
-    @media (max-width: 30rem) {
-      font-size: 0.75rem;
-    }
+  .pull-inner {
+    padding: 60px 20px;
   }
-
-  .command {
-    all: unset;
-    display: flex;
-    align-items: center;
-    gap: 0.625rem;
-    justify-content: flex-start;
-    cursor: pointer;
-    width: 100%;
-
-    @media (max-width: 40rem) {
-      justify-content: flex-start;
-    }
-
-    @media (max-width: 30rem) {
-      justify-content: center;
-    }
-
-    code {
-      color: var(--sl-color-text-secondary);
-      font-size: 1rem;
-
-      @media (max-width: 24rem) {
-        font-size: 0.875rem;
-      }
-    }
-
-    code .highlight {
-      color: var(--sl-color-text);
-      font-weight: 500;
-    }
-
-    .copy {
-      line-height: 1;
-      padding: 0;
-
-      @media (max-width: 40rem) {
-        display: none;
-      }
-    }
-
-    .copy svg {
-      width: 1rem;
-      height: 1rem;
-      vertical-align: middle;
-    }
-
-    .copy svg:first-child {
-      color: var(--sl-color-text-dimmed);
-    }
-
-    .copy svg:last-child {
-      color: var(--sl-color-text);
-      display: none;
-    }
-
-    &.success .copy {
-      pointer-events: none;
-    }
-
-    &.success .copy svg:first-child {
-      display: none;
-    }
-
-    &.success .copy svg:last-child {
-      display: inline;
-    }
+  .pull-inner blockquote {
+    font-size: 36px;
   }
 }
-
-section.footer {
-  border-top: 2px solid var(--sl-color-border);
-  display: flex;
-  flex-direction: row;
-
-  & > div {
-    flex: 1;
-    text-align: center;
-    text-transform: uppercase;
-    padding: var(--vertical-padding) 0.5rem;
-  }
-
-  & > div + div {
-    border-left: 2px solid var(--sl-color-border);
-  }
-
-  /* Below 800px: first two columns shrink to content, third expands */
-  @media (max-width: 50rem) {
-    & > div.col1,
-    & > div.col2 {
-      flex: 0 0 auto;
-      padding-left: calc(var(--padding) / 2);
-      padding-right: calc(var(--padding) / 2);
-    }
-
-    & > div.col3 {
-      flex: 1;
-    }
-  }
-
-  /* Mobile: third column on its own row */
-  @media (max-width: 30rem) {
-    flex-wrap: wrap;
-
-    & > div.col1,
-    & > div.col2 {
-      flex: 1;
-    }
-
-    & > div.col3 {
-      flex: 1 0 100%;
-      border-left: none;
-      border-top: 2px solid var(--sl-color-border);
-    }
+@media (max-width: 480px) {
+  .steps {
+    grid-template-columns: 1fr;
   }
 }
 </style>
 
-<style is:global>
-:root[data-has-hero] {
-  header.header {
-    display: none;
-  }
-  .main-frame {
-    padding-top: 0;
 
-    .main-pane > main {
-      padding: 0;
+<script is:inline>
+(function () {
+  // ---- Install copy ----
+  const btn = document.getElementById('hero-install');
+  if (btn) {
+    btn.addEventListener('click', () => {
+      navigator.clipboard.writeText(btn.dataset.cmd || '');
+      btn.classList.add('copied');
+      setTimeout(() => btn.classList.remove('copied'), 1400);
+    });
+  }
+
+  // ---- Terminal animation ----
+  const TERM_SCRIPT = [
+    { t: 'cmd',  text: 'mage' },
+    { t: 'wait', ms: 400 },
+    { t: 'sys',  text: '◆ mage v0.4.2  ·  gateway: merlin-prod  ·  model: merlin/default' },
+    { t: 'sys',  text: '◆ indexed 528 files (src/, api/, tests/)' },
+    { t: 'wait', ms: 300 },
+    { t: 'user', text: 'refactor api/checkout.ts to use the new gateway client' },
+    { t: 'wait', ms: 500 },
+    { t: 'ai',   tag: 'mage', text: "I'll trace usages, swap the import, and update the two callers." },
+    { t: 'wait', ms: 300 },
+    { t: 'tool', text: '→ grep "from \'@/lib/api\'" · 14 matches' },
+    { t: 'tool', text: '→ edit api/checkout.ts · +12 −8' },
+    { t: 'tool', text: '→ edit api/checkout.test.ts · +4 −2' },
+    { t: 'wait', ms: 400 },
+    { t: 'ok',   text: '✓ 3 files changed · 0 lint errors · diff ready' },
+    { t: 'wait', ms: 500 },
+    { t: 'prompt', text: '' },
+  ];
+
+  const body = document.getElementById('term-body');
+  if (!body) return;
+  let cursorEl = null;
+
+  function appendLine(cls, txt) {
+    const ln = document.createElement('span');
+    ln.className = 'ln ' + cls;
+    if (txt) ln.appendChild(document.createTextNode(txt));
+    body.appendChild(ln);
+    return ln;
+  }
+
+  async function typeText(el, text, speed) {
+    speed = speed || 14;
+    for (let i = 0; i < text.length; i++) {
+      el.appendChild(document.createTextNode(text[i]));
+      await sleep(speed + Math.random() * 12);
     }
   }
-  main > .content-panel .sl-markdown-content {
-    margin-top: 0;
+
+  function sleep(ms) { return new Promise(function(r) { setTimeout(r, ms); }); }
+
+  function setCursorAt(el) {
+    if (cursorEl) cursorEl.remove();
+    cursorEl = document.createElement('span');
+    cursorEl.className = 'cursor';
+    el.appendChild(cursorEl);
   }
-}
-</style>
 
-<script>
-  const buttons = document.querySelectorAll("button.command") as NodeListOf<HTMLButtonElement>
+  async function runTerm() {
+    body.innerHTML = '';
+    for (const step of TERM_SCRIPT) {
+      if (step.t === 'wait') { await sleep(step.ms); continue; }
+      if (step.t === 'cmd') {
+        const ln = appendLine('', '');
+        const p = document.createElement('span');
+        p.className = 't-prompt';
+        p.textContent = '$ ';
+        ln.appendChild(p);
+        setCursorAt(ln);
+        await typeText(ln, step.text, 50);
+        ln.appendChild(document.createTextNode('\n'));
+      } else if (step.t === 'sys' || step.t === 'tool') {
+        appendLine('t-dim', step.text + '\n');
+      } else if (step.t === 'user') {
+        const ln = appendLine('', '');
+        const p = document.createElement('span');
+        p.className = 't-accent';
+        p.textContent = '> ';
+        ln.appendChild(p);
+        setCursorAt(ln);
+        await typeText(ln, step.text, 22);
+        ln.appendChild(document.createTextNode('\n'));
+      } else if (step.t === 'ai') {
+        const ln = appendLine('t-ai', '');
+        const tagEl = document.createElement('span');
+        tagEl.className = 'tag';
+        tagEl.textContent = (step.tag || 'mage') + ' › ';
+        ln.appendChild(tagEl);
+        setCursorAt(ln);
+        await typeText(ln, step.text, 14);
+        ln.appendChild(document.createTextNode('\n'));
+      } else if (step.t === 'ok') {
+        appendLine('t-ok', step.text + '\n');
+      } else if (step.t === 'prompt') {
+        const ln = appendLine('', '');
+        const p = document.createElement('span');
+        p.className = 't-accent';
+        p.textContent = '> ';
+        ln.appendChild(p);
+        setCursorAt(ln);
+      }
+    }
+    await sleep(4000);
+    runTerm();
+  }
 
-  buttons.forEach(button => {
-    button.addEventListener("click", () => {
-      navigator.clipboard.writeText(button.dataset.command!)
-      button.classList.toggle("success")
-      setTimeout(() => {
-        button.classList.toggle("success");
-      }, 1500)
-    })
-  })
+  runTerm();
+})();
 </script>

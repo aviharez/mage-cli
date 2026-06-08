@@ -1,3 +1,5 @@
+import { chmodSync, copyFileSync, existsSync, mkdirSync, statSync, writeFileSync } from "node:fs"
+import { homedir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { app, utilityProcess } from "electron"
@@ -76,6 +78,67 @@ export function preferAppEnv(userDataPath: string) {
     // Additive — ~/.mage and project .mage are still scanned; a user override wins.
     MAGE_CONFIG_DIR: process.env.MAGE_CONFIG_DIR ?? bundledDefaultsDir(),
   })
+}
+
+// Mirrors the DEFAULT_CONFIG the CLI's postinstall.mjs seeds into ~/.mage/mage.json.
+const DEFAULT_GLOBAL_CONFIG = {
+  $schema: "https://opencode.ai/config.json",
+  permission: { edit: "ask", bash: "ask" },
+  skills: { paths: ["~/.mage/skills"] },
+  share: "disabled",
+  lsp: true,
+}
+
+// Seed ~/.mage/mage.json on first launch. The desktop app never runs the npm
+// package's postinstall.mjs (that script only runs on `npm/bun install` of the
+// CLI distribution), so a fresh profile otherwise has no global config until the
+// first UI save — which used to create ~/.mage/mage.jsonc. Writing mage.json here
+// keeps the desktop aligned with the CLI `init` wizard and globalConfigFile().
+// No-op if any global config already exists (json or legacy jsonc), so existing
+// setups are never touched. Best-effort: a failed seed just defers creation to
+// the first config save.
+export function ensureGlobalConfig() {
+  const configDir = join(homedir(), ".mage")
+  const jsonPath = join(configDir, "mage.json")
+  const jsoncPath = join(configDir, "mage.jsonc")
+  if (existsSync(jsonPath) || existsSync(jsoncPath)) return
+  try {
+    mkdirSync(configDir, { recursive: true })
+    writeFileSync(jsonPath, JSON.stringify(DEFAULT_GLOBAL_CONFIG, null, 2) + "\n", "utf8")
+  } catch {
+    /* best effort */
+  }
+}
+
+// Path to the ripgrep binary bundled at build time (scripts/download-rg.ts →
+// electron-builder extraResources). Packaged: <resourcesPath>/rg. Dev: the
+// desktop package's resources/rg dir, relative to out/main (mirrors bundledDefaultsDir).
+function bundledRgDir() {
+  const root = dirname(fileURLToPath(import.meta.url))
+  return app.isPackaged ? join(process.resourcesPath, "rg") : join(root, "../../resources/rg")
+}
+
+// Copy the bundled ripgrep binary into ~/.mage/bin on launch so the bundled
+// server resolves it locally (opencode src/file/ripgrep.ts checks Global.Path.bin
+// = ~/.mage/bin before downloading from GitHub). Mirrors the CLI postinstall.mjs,
+// which the desktop app never runs. Best-effort and idempotent: re-copies only
+// when the destination is missing or a different size (e.g. an app update bumped
+// the bundled rg version). If the bundle is missing, the server still works by
+// downloading rg at runtime.
+export function ensureRipgrepBinary() {
+  const rgName = process.platform === "win32" ? "rg.exe" : "rg"
+  const source = join(bundledRgDir(), rgName)
+  if (!existsSync(source)) return
+  const binDir = join(homedir(), ".mage", "bin")
+  const dest = join(binDir, rgName)
+  try {
+    if (existsSync(dest) && statSync(dest).size === statSync(source).size) return
+    mkdirSync(binDir, { recursive: true })
+    copyFileSync(source, dest)
+    if (process.platform !== "win32") chmodSync(dest, 0o755)
+  } catch {
+    /* best effort */
+  }
 }
 
 export async function spawnLocalServer(

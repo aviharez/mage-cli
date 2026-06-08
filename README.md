@@ -1,6 +1,6 @@
 # Mage
 
-AI coding assistant for the terminal, powered by Merlin — BCA's internal LLM gateway.
+AI coding assistant for the terminal, powered by GAIA — BCA's internal LLM gateway.
 
 ---
 
@@ -25,7 +25,7 @@ bun run dev
 
 When you run `mage` for the first time, the onboarding wizard launches automatically. It collects:
 
-1. **Domain username** — used to identify your requests to the Merlin gateway
+1. **Domain username** — used to identify your requests to the GAIA gateway
 2. **Team boilerplate path** — local path or git URL (optional)
 
 Config is saved to `~/.mage/mage.jsonc`.

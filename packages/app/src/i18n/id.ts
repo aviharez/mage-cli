@@ -695,7 +695,7 @@ export const dict = {
   "debugBar.mem.tipUnavailable": "Heap JS yang digunakan vs batas heap. Hanya Chromium.",
   "debugBar.mem.tip": "Heap JS yang digunakan vs batas heap. {{used}} dari {{limit}}.",
 
-  "app.name.desktop": "Mage Web",
+  "app.name.desktop": "Mage Desktop",
 
   "settings.section.desktop": "Desktop",
   "settings.section.server": "Server",

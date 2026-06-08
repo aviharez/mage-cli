@@ -19,6 +19,8 @@ import { exportDebugLogs, initCrashReporter, initLogging, startNetLog, write as 
 import { parseMarkdown } from "./markdown"
 import { createMenu } from "./menu"
 import {
+  ensureGlobalConfig,
+  ensureRipgrepBinary,
   getDefaultServerUrl,
   getWslConfig,
   preferAppEnv,
@@ -45,9 +47,9 @@ const APP_NAMES: Record<string, string> = {
   prod: "Mage",
 }
 const APP_IDS: Record<string, string> = {
-  dev: "id.bca.mage.desktop.dev",
-  beta: "id.bca.mage.desktop.beta",
-  prod: "id.bca.mage.desktop",
+  dev: "id.mbb.mage.desktop.dev",
+  beta: "id.mbb.mage.desktop.beta",
+  prod: "id.mbb.mage.desktop",
 }
 const TEST_ONBOARDING = process.env.OPENCODE_TEST_ONBOARDING === "1"
 const jsCallStackFeature = "DocumentPolicyIncludeJSCallStacksInCrashReports"
@@ -119,7 +121,7 @@ const main = Effect.gen(function* () {
 
   process.env.OPENCODE_DISABLE_EMBEDDED_WEB_UI = "true"
 
-  const appId = app.isPackaged ? APP_IDS[CHANNEL] : "id.bca.mage.desktop.dev"
+  const appId = app.isPackaged ? APP_IDS[CHANNEL] : "id.mbb.mage.desktop.dev"
   const onboardingTestRoot = ((): string | undefined => {
     if (!TEST_ONBOARDING) return
 
@@ -170,6 +172,8 @@ const main = Effect.gen(function* () {
   }
 
   preferAppEnv(app.getPath("userData"))
+  ensureGlobalConfig()
+  ensureRipgrepBinary()
 
   app.on("second-instance", (_event: Event, argv: string[]) => {
     const urls = argv.filter((arg: string) => arg.startsWith("mage://"))
@@ -369,7 +373,13 @@ const main = Effect.gen(function* () {
   yield* Fiber.await(loadingTask)
   setInitStep({ phase: "done" })
 
-  if (overlay) yield* Deferred.await(loadingComplete)
+  // Don't deadlock the launch if the overlay never acks (e.g. its renderer
+  // missed the completion signal): cap the wait and proceed to the main window.
+  if (overlay)
+    yield* Deferred.await(loadingComplete).pipe(
+      Effect.timeout("15 seconds"),
+      Effect.catch(() => Effect.void),
+    )
 
   mainWindow = createMainWindow()
   if (mainWindow) {

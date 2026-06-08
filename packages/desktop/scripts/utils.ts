@@ -5,7 +5,9 @@ export type Channel = "dev" | "beta" | "prod"
 export function resolveChannel(): Channel {
   const raw = Bun.env.MAGE_CHANNEL
   if (raw === "dev" || raw === "beta" || raw === "prod") return raw
-  return "dev"
+  // Default to prod so a bare `bun run build` produces the same artifact/appId
+  // as `package:win` (which sets MAGE_CHANNEL=prod). dev/beta channels are opt-in.
+  return "prod"
 }
 
 export const SIDECAR_BINARIES: Array<{ rustTarget: string; ocBinary: string; assetExt: string }> = [

@@ -24,7 +24,18 @@ render(() => {
     return Math.max(25, Math.min(100, percent()))
   })
 
-  window.api.awaitInitialization((next) => setStep(next as InitStep)).catch(() => undefined)
+  // Completion must hang off the awaitInitialization promise (resolves with
+  // ServerReadyData once the sidecar is up) — the same reliable signal the main
+  // window uses (renderer/index.tsx). The step callback never delivers phase
+  // "done" (main removes its step listener when serverReady resolves, before
+  // "done" is emitted), and the sqlite "Done" IPC is a one-shot that races the
+  // onMount listener below (lost on a fast fresh-install migration). Relying on
+  // either alone leaves the loading window frozen and deadlocks the main process
+  // on Deferred.await(loadingComplete).
+  window.api
+    .awaitInitialization((next) => setStep(next as InitStep))
+    .then(() => setStep({ phase: "done" }))
+    .catch(() => undefined)
 
   onMount(() => {
     setLine(0)

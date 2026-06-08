@@ -3,6 +3,7 @@ import { showToast } from "@mybcabisnis/mage-ui/toast"
 import { base64Encode } from "@mybcabisnis/mage-shared/util/encode"
 import { useLocation, useNavigate, useParams } from "@solidjs/router"
 import { createEffect, createMemo, createResource, type ParentProps, Show } from "solid-js"
+import { ArcEmblem } from "@/components/arcanum/emblem"
 import { useLanguage } from "@/context/language"
 import { LocalProvider } from "@/context/local"
 import { SDKProvider } from "@/context/sdk"
@@ -53,8 +54,12 @@ export default function Layout(props: ParentProps) {
 
   createEffect(() => {
     const dir = params.dir
+    const res = resolved()
+    // Diagnostic: visible in renderer.log via spyRendererConsole.
+    // TODO: remove once root cause confirmed.
+    console.info("[mage] directory-layout", { dir, resolved: res })
     if (!dir) return
-    if (resolved()) {
+    if (res) {
       invalid = ""
       return
     }
@@ -69,7 +74,15 @@ export default function Layout(props: ParentProps) {
   })
 
   return (
-    <Show when={resolved()} keyed>
+    <Show
+      when={resolved()}
+      keyed
+      fallback={
+        <div class="size-full flex items-center justify-center">
+          <ArcEmblem size={72} glow animate />
+        </div>
+      }
+    >
       {(resolved) => (
         <SDKProvider directory={() => resolved}>
           <SyncProvider>

@@ -9,7 +9,12 @@ const channel = (() => {
   const raw = process.env.MAGE_CHANNEL
   if (raw === "dev" || raw === "beta" || raw === "prod") return raw
   if (process.env.MAGE_CHANNEL === "latest") return "prod"
-  return "dev"
+  // Default to prod so a bare `bun run build` behaves the same as package:win.
+  // Note: newLayoutDesignsDefault in context/settings.tsx is now unconditionally
+  // true (arcanum V2 is the only UI in this fork), so this channel value no
+  // longer controls which layout ships — it only affects Sentry environment and
+  // auto-updater channel tagging.
+  return "prod"
 })()
 
 // Allow targeting a platform/arch different from the build host (e.g. building a
@@ -85,6 +90,15 @@ export default defineConfig({
     },
   },
   renderer: {
+    define: {
+      // The renderer reads both `MAGE_CHANNEL` (sentry filter in index.tsx) and
+      // `VITE_MAGE_CHANNEL` (channel badge in the app package).
+      // Without injecting these they are `undefined` in packaged builds.
+      // Note: newLayoutDesignsDefault is now hardcoded to true in
+      // context/settings.tsx, so VITE_MAGE_CHANNEL no longer drives layout choice.
+      "import.meta.env.MAGE_CHANNEL": JSON.stringify(channel),
+      "import.meta.env.VITE_MAGE_CHANNEL": JSON.stringify(channel),
+    },
     plugins: [appPlugin, sentry],
     publicDir: "../../../app/public",
     root: "src/renderer",

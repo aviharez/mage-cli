@@ -6,7 +6,14 @@ import en from "./content/i18n/en.json"
 const custom = Object.fromEntries(Object.keys(en).map((key) => [key, z.string()]))
 
 export const collections = {
-  docs: defineCollection({ loader: docsLoader(), schema: docsSchema() }),
+  docs: defineCollection({
+    loader: docsLoader(),
+    schema: docsSchema({
+      extend: z.object({
+        eyebrow: z.string().optional(),
+      }),
+    }),
+  }),
   i18n: defineCollection({
     loader: i18nLoader(),
     schema: i18nSchema({

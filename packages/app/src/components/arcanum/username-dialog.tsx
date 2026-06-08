@@ -4,6 +4,7 @@ import { base64Encode } from "@mybcabisnis/mage-shared/util/encode"
 import { Icon } from "@mybcabisnis/mage-ui/icon"
 import { useDialog } from "@mybcabisnis/mage-ui/context/dialog"
 import { useGlobalSync } from "@/context/global-sync"
+import { readMerlinUsername, withMerlinUsername } from "@/utils/merlin-username"
 import { useOnboarding } from "./onboarding-context"
 import { A } from "./palette"
 import { ArcEmblem } from "./emblem"
@@ -13,12 +14,14 @@ export function UsernameDialog(props: { onDone: () => void }) {
   const dialog = useDialog()
   const navigate = useNavigate()
   const { markSubmitted } = useOnboarding()
-  const [value, setValue] = createSignal(sync.data.config.username ?? "")
+  const [value, setValue] = createSignal(readMerlinUsername(sync.data.config))
 
   async function confirm() {
     const name = value().trim()
     if (!name) return
-    await sync.updateConfig({ ...sync.data.config, username: name })
+    // Store the udomain at provider.merlin.options.username (gateway domain_id),
+    // matching the CLI `init` wizard — not the top-level display username.
+    await sync.updateConfig(withMerlinUsername(sync.data.config, name))
     markSubmitted()
     props.onDone()
     dialog.close()
@@ -60,10 +63,10 @@ export function UsernameDialog(props: { onDone: () => void }) {
           <ArcEmblem size={52} glow />
           <div style={{ display: "flex", "flex-direction": "column", "align-items": "center", gap: "8px", "text-align": "center" }}>
             <div class="serif" style={{ "font-size": "27px", "line-height": "1.1", color: A.fgInk }}>
-              What name shall we inscribe?
+              What udomain shall we inscribe?
             </div>
             <div style={{ "font-size": "13.5px", color: A.fgMuted, "line-height": "1.55", "max-width": "340px" }}>
-              Your work is bound to a name. Choose one for your familiar — you can change it later in Settings.
+              Your work is bound to a udomain. Choose one for your familiar — you can change it later in Settings.
             </div>
           </div>
         </div>
@@ -71,7 +74,7 @@ export function UsernameDialog(props: { onDone: () => void }) {
         {/* name field */}
         <div style={{ display: "flex", "flex-direction": "column", gap: "8px" }}>
           <span style={{ "font-size": "11px", "letter-spacing": "0.12em", "text-transform": "uppercase", color: A.fgDim }}>
-            Your domain
+            Your udomain
           </span>
           <div style={{
             display: "flex", "align-items": "center",
@@ -104,7 +107,7 @@ export function UsernameDialog(props: { onDone: () => void }) {
             "box-shadow": `0 0 20px ${A.accentSoft}`,
           }}
         >
-          Bind the name
+          Bind the udomain
           <Icon name="arrow-right" size="small" style={{ color: A.accentInk }} />
         </button>
 

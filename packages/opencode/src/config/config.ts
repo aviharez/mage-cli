@@ -296,7 +296,12 @@ export interface Interface {
 export class Service extends Context.Service<Service, Interface>()("@opencode/Config") { }
 
 function globalConfigFile() {
-  const candidates = ["mage.jsonc", "mage.json", "config.json"].map((file) =>
+  // mage.json first so a fresh ~/.mage (nothing seeded — the desktop app does not
+  // run postinstall's ensureGlobalConfig) creates mage.json, matching the CLI
+  // `init` wizard (CONFIG_FILE = "mage.json") and postinstall.mjs. Previously the
+  // first candidate was mage.jsonc, so the desktop's first updateConfig created
+  // ~/.mage/mage.jsonc instead of mage.json.
+  const candidates = ["mage.json", "mage.jsonc", "config.json"].map((file) =>
     path.join(Global.Path.config, file),
   )
   for (const file of candidates) {

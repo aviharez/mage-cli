@@ -88,6 +88,12 @@ interface MerlinRequest {
   service_id: string
   config: {
     temperature: number
+    // Gateway currently only honors `temperature`; re-enable when supported.
+    // top_p: number
+    // top_k: number
+    // min_p: number
+    // presence_penalty: number
+    // repetition_penalty: number
     max_token: string
     recommendation: string
   }
@@ -472,8 +478,18 @@ class MerlinLanguageModel implements LanguageModelV3 {
       client_id: this.clientId,
       domain_id: this.username,
       service_id: resolveServiceId(options),
+      // temperature 0.6 = Qwen3.6-27B (thinking) official "precise coding" preset.
+      // The GAIA gateway currently only honors `temperature`; the LLM team leaves
+      // the remaining sampling params at the vLLM defaults. The Qwen3.6-recommended
+      // values are kept here (commented) for when the gateway accepts them:
+      //   top_p 0.95, top_k 20, min_p 0, presence_penalty 0, repetition_penalty 1.0
       config: {
         temperature: 0.2,
+        // top_p: 0.95,
+        // top_k: 20,
+        // min_p: 0,
+        // presence_penalty: 0,
+        // repetition_penalty: 1.0,
         max_token: "",
         recommendation: "False",
       },

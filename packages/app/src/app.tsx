@@ -53,7 +53,6 @@ import { useCheckServerHealth } from "./utils/server-health"
 import HomeRedirect from "@/pages/home-redirect"
 const loadSession = () => import("@/pages/session")
 const Session = lazy(loadSession)
-const Loading = () => <div class="size-full" />
 
 if (typeof location === "object" && /\/session(?:\/|$)/.test(location.pathname)) {
   void loadSession()
@@ -126,10 +125,20 @@ function RouterRoot(props: ParentProps<{ appChildren?: JSX.Element }>) {
   return (
     <AppShellProviders>
       <OnboardingGate>
-        {/*<Suspense fallback={<Loading />}>*/}
         {props.appChildren}
-        {props.children}
-        {/*</Suspense>*/}
+        {/* Suspense catches lazy-chunk suspension; ErrorBoundary catches render errors.
+            Both are scoped to the main pane so the sidebar is never affected. */}
+        <ErrorBoundary fallback={(error) => <ErrorPage error={error} />}>
+          <Suspense
+            fallback={
+              <div class="size-full flex items-center justify-center">
+                <ArcEmblem size={72} glow animate />
+              </div>
+            }
+          >
+            {props.children}
+          </Suspense>
+        </ErrorBoundary>
       </OnboardingGate>
     </AppShellProviders>
   )

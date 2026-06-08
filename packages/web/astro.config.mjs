@@ -9,10 +9,62 @@ import { rehypeHeadingIds } from "@astrojs/markdown-remark"
 import rehypeAutolinkHeadings from "rehype-autolink-headings"
 import { spawnSync } from "child_process"
 
+/**
+ * Expressive Code plugin — adds a persistent lang label in the code-block
+ * header for blocks that have no explicit title. Matches the reference design's
+ * code-head (`.code-head .code-lang` on left side of every block).
+ */
+function ecLangLabelPlugin() {
+  return {
+    name: "mage-lang-label",
+    hooks: {
+      postprocessRenderedBlock(/** @type {any} */ context) {
+        const { codeBlock, renderData } = context
+        // Don't add label when an explicit title was already set by the author
+        if (codeBlock.props.title) return
+        const lang = codeBlock.language
+        if (!lang || ["plaintext", "txt", "text", ""].includes(lang)) return
+
+        const figureEl = renderData.blockAst
+        if (!figureEl || figureEl.type !== "element") return
+
+        const langLabel = {
+          type: "element",
+          tagName: "span",
+          properties: { className: ["mage-lang-label"] },
+          children: [{ type: "text", value: lang }],
+        }
+
+        // Find or create the figcaption.header
+        const figcaptionIdx = (figureEl.children || []).findIndex(
+          (/** @type {any} */ c) => c.type === "element" && c.tagName === "figcaption"
+        )
+
+        if (figcaptionIdx === -1) {
+          // No header at all — inject one as the first child
+          figureEl.children = [
+            {
+              type: "element",
+              tagName: "figcaption",
+              properties: { className: ["header"] },
+              children: [langLabel],
+            },
+            ...(figureEl.children || []),
+          ]
+        } else {
+          const figcaption = figureEl.children[figcaptionIdx]
+          // Prepend lang label to existing header (e.g. terminal frames already have sr-only text)
+          figcaption.children = [langLabel, ...(figcaption.children || [])]
+        }
+      },
+    },
+  }
+}
+
 // https://astro.build/config
 export default defineConfig({
   site: config.url,
-  base: "/docs",
+  base: "/",
   output: "server",
   adapter: cloudflare({
     imageService: "passthrough",
@@ -39,94 +91,33 @@ export default defineConfig({
           lang: "en",
           dir: "ltr",
         },
-        ar: {
-          label: "العربية",
-          lang: "ar",
-          dir: "rtl",
-        },
-        bs: {
-          label: "Bosanski",
-          lang: "bs-BA",
-          dir: "ltr",
-        },
-        da: {
-          label: "Dansk",
-          lang: "da-DK",
-          dir: "ltr",
-        },
-        de: {
-          label: "Deutsch",
-          lang: "de-DE",
-          dir: "ltr",
-        },
-        es: {
-          label: "Espa\u00f1ol",
-          lang: "es-ES",
-          dir: "ltr",
-        },
-        fr: {
-          label: "Fran\u00e7ais",
-          lang: "fr-FR",
-          dir: "ltr",
-        },
-        it: {
-          label: "Italiano",
-          lang: "it-IT",
-          dir: "ltr",
-        },
-        ja: {
-          label: "日本語",
-          lang: "ja-JP",
-          dir: "ltr",
-        },
-        ko: {
-          label: "한국어",
-          lang: "ko-KR",
-          dir: "ltr",
-        },
-        nb: {
-          label: "Norsk Bokm\u00e5l",
-          lang: "nb-NO",
-          dir: "ltr",
-        },
-        pl: {
-          label: "Polski",
-          lang: "pl-PL",
-          dir: "ltr",
-        },
-        "pt-br": {
-          label: "Portugu\u00eas (Brasil)",
-          lang: "pt-BR",
-          dir: "ltr",
-        },
-        ru: {
-          label: "Русский",
-          lang: "ru-RU",
-          dir: "ltr",
-        },
-        th: {
-          label: "ไทย",
-          lang: "th-TH",
-          dir: "ltr",
-        },
-        tr: {
-          label: "T\u00fcrk\u00e7e",
-          lang: "tr-TR",
-          dir: "ltr",
-        },
-        "zh-cn": {
-          label: "简体中文",
-          lang: "zh-CN",
-          dir: "ltr",
-        },
-        "zh-tw": {
-          label: "繁體中文",
-          lang: "zh-TW",
+        id: {
+          label: "Bahasa Indonesia",
+          lang: "id-ID",
           dir: "ltr",
         },
       },
       favicon: "/favicon.svg",
       head: [
+        {
+          tag: "link",
+          attrs: { rel: "preconnect", href: "https://fonts.googleapis.com" },
+        },
+        {
+          tag: "link",
+          attrs: {
+            rel: "preconnect",
+            href: "https://fonts.gstatic.com",
+            crossorigin: "",
+          },
+        },
+        {
+          tag: "link",
+          attrs: {
+            rel: "stylesheet",
+            href: "https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap",
+          },
+        },
         {
           tag: "link",
           attrs: {
@@ -154,13 +145,16 @@ export default defineConfig({
         },
       ],
       lastUpdated: true,
-      expressiveCode: { themes: ["github-light", "github-dark"] },
+      expressiveCode: {
+        themes: ["github-light", "github-dark"],
+        plugins: [ecLangLabelPlugin()],
+      },
       social: [
         { icon: "github", label: "GitHub", href: config.github },
-        { icon: "discord", label: "Discord", href: config.discord },
+        ...(config.discord ? /** @type {any} */ ([{ icon: "discord", label: "Discord", href: config.discord }]) : []),
       ],
       editLink: {
-        baseUrl: `${config.github}/edit/dev/packages/web/`,
+        baseUrl: `${config.github}/edit/dev/packages/web/src/content/`,
       },
       markdown: {
         headingLinks: false,
@@ -172,124 +166,50 @@ export default defineConfig({
         replacesTitle: true,
       },
       sidebar: [
-        "",
-        "config",
-        "providers",
-        "network",
-        "enterprise",
-        "troubleshooting",
+        // Docs section — all pages under /docs/
+        "docs",
+        "docs/config",
+        "docs/providers",
+        "docs/network",
+        "docs/enterprise",
+        "docs/troubleshooting",
         {
           label: "Windows",
-          translations: {
-            en: "Windows",
-            ar: "Windows",
-            "bs-BA": "Windows",
-            "da-DK": "Windows",
-            "de-DE": "Windows",
-            "es-ES": "Windows",
-            "fr-FR": "Windows",
-            "it-IT": "Windows",
-            "ja-JP": "Windows",
-            "ko-KR": "Windows",
-            "nb-NO": "Windows",
-            "pl-PL": "Windows",
-            "pt-BR": "Windows",
-            "ru-RU": "Windows",
-            "th-TH": "Windows",
-            "tr-TR": "Windows",
-            "zh-CN": "Windows",
-            "zh-TW": "Windows",
-          },
-          link: "windows-wsl",
+          translations: { en: "Windows", "id-ID": "Windows" },
+          link: "docs/windows-wsl",
         },
         {
           label: "Usage",
-          translations: {
-            en: "Usage",
-            ar: "الاستخدام",
-            "bs-BA": "Korištenje",
-            "da-DK": "Brug",
-            "de-DE": "Nutzung",
-            "es-ES": "Uso",
-            "fr-FR": "Utilisation",
-            "it-IT": "Utilizzo",
-            "ja-JP": "使い方",
-            "ko-KR": "사용",
-            "nb-NO": "Bruk",
-            "pl-PL": "Użycie",
-            "pt-BR": "Uso",
-            "ru-RU": "Использование",
-            "th-TH": "การใช้งาน",
-            "tr-TR": "Kullanım",
-            "zh-CN": "使用",
-            "zh-TW": "使用",
-          },
-          items: ["go", "tui", "cli", "web", "ide", "zen", "share", "github", "gitlab"],
-        },
-
-        {
-          label: "Configure",
-          translations: {
-            en: "Configure",
-            ar: "الإعداد",
-            "bs-BA": "Podešavanje",
-            "da-DK": "Konfiguration",
-            "de-DE": "Konfiguration",
-            "es-ES": "Configuración",
-            "fr-FR": "Configuration",
-            "it-IT": "Configurazione",
-            "ja-JP": "設定",
-            "ko-KR": "구성",
-            "nb-NO": "Konfigurasjon",
-            "pl-PL": "Konfiguracja",
-            "pt-BR": "Configuração",
-            "ru-RU": "Настройка",
-            "th-TH": "การกำหนดค่า",
-            "tr-TR": "Yapılandırma",
-            "zh-CN": "配置",
-            "zh-TW": "設定",
-          },
+          translations: { en: "Usage", "id-ID": "Penggunaan" },
           items: [
-            "tools",
-            "rules",
-            "agents",
-            "models",
-            "themes",
-            "keybinds",
-            "commands",
-            "formatters",
-            "permissions",
-            "lsp",
-            "mcp-servers",
-            "acp",
-            "skills",
-            "custom-tools",
+            "docs/go", "docs/tui", "docs/cli", "docs/web",
+            "docs/ide", "docs/zen", "docs/share", "docs/github", "docs/gitlab",
           ],
         },
-
+        {
+          label: "Configure",
+          translations: { en: "Configure", "id-ID": "Konfigurasi" },
+          items: [
+            "docs/tools",
+            "docs/rules",
+            "docs/agents",
+            "docs/models",
+            "docs/themes",
+            "docs/keybinds",
+            "docs/commands",
+            "docs/formatters",
+            "docs/permissions",
+            "docs/lsp",
+            "docs/mcp-servers",
+            "docs/acp",
+            "docs/skills",
+            "docs/custom-tools",
+          ],
+        },
         {
           label: "Develop",
-          translations: {
-            en: "Develop",
-            ar: "التطوير",
-            "bs-BA": "Razvoj",
-            "da-DK": "Udvikling",
-            "de-DE": "Entwicklung",
-            "es-ES": "Desarrollo",
-            "fr-FR": "Développement",
-            "it-IT": "Sviluppo",
-            "ja-JP": "開発",
-            "ko-KR": "개발",
-            "nb-NO": "Utvikling",
-            "pl-PL": "Rozwój",
-            "pt-BR": "Desenvolvimento",
-            "ru-RU": "Разработка",
-            "th-TH": "การพัฒนา",
-            "tr-TR": "Geliştirme",
-            "zh-CN": "开发",
-            "zh-TW": "開發",
-          },
-          items: ["sdk", "server", "plugins", "ecosystem"],
+          translations: { en: "Develop", "id-ID": "Pengembangan" },
+          items: ["docs/sdk", "docs/server", "docs/plugins", "docs/ecosystem"],
         },
       ],
       components: {
@@ -298,6 +218,8 @@ export default defineConfig({
         Header: "./src/components/Header.astro",
         Footer: "./src/components/Footer.astro",
         SiteTitle: "./src/components/SiteTitle.astro",
+        ThemeSelect: "./src/components/ThemeSelect.astro",
+        PageTitle: "./src/components/PageTitle.astro",
       },
       plugins: [
         theme({
