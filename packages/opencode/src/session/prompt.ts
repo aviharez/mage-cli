@@ -289,11 +289,11 @@ Goal: Gain a comprehensive understanding of the user's request by reading throug
 
 1. Focus on understanding the user's request and the code associated with their request
 
-2. **Launch up to 3 explore agents IN PARALLEL** (single message, multiple tool calls) to efficiently explore the codebase.
+2. Launch explore agents ONE AT A TIME to explore the codebase. Never call the task tool more than once per message.
  - Use 1 agent when the task is isolated to known files, the user provided specific file paths, or you're making a small targeted change.
- - Use multiple agents when: the scope is uncertain, multiple areas of the codebase are involved, or you need to understand existing patterns before planning.
+ - Use multiple agents sequentially when: the scope is uncertain, multiple areas of the codebase are involved, or you need to understand existing patterns before planning.
  - Quality over quantity - 3 agents maximum, but you should try to use the minimum number of agents necessary (usually just 1)
- - If using multiple agents: Provide each agent with a specific search focus or area to explore. Example: One agent searches for existing implementations, another explores related components, a third investigates testing patterns
+ - If using multiple agents: Run each agent one at a time; provide each with a specific search focus or area to explore.
 
 3. After exploring the code, use the question tool to clarify ambiguities in the user request up front.
 

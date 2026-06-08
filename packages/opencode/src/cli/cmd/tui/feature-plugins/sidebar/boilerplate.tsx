@@ -51,14 +51,14 @@ function View(props: { api: TuiPluginApi; session_id: string }) {
   })
 
   return (
-    <box>
-      <text fg={theme().text}>
-        <b>Boilerplate</b>
-      </text>
-      <Show when={name()} fallback={<text fg={theme().textMuted}>No active boilerplate</text>}>
+    <Show when={name()}>
+      <box>
+        <text fg={theme().text}>
+          <b>Boilerplate</b>
+        </text>
         <text fg={theme().success}>● {name()}</text>
-      </Show>
-    </box>
+      </box>
+    </Show>
   )
 }
 

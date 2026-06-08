@@ -35,6 +35,8 @@ Need full type signatures or the class declaration for one item?
 **Step 4 — Fill gaps with standard Angular.**
 If part of the UI has no matching library component, build that part with plain Angular and use library components for everything that is covered.
 
+**Companion skill:** Always load the `angular-developer` skill alongside this one. It governs scaffolding, signals, DI, routing, and all non-library Angular concerns.
+
 ## Hard rules
 
 - Never invent a selector, input, or output absent from the catalog.

@@ -1,31 +1,63 @@
-# CRITICAL RULES - MUST FOLLOW
+Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
 
-## RESPONSES
+**Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
 
-- Keep responses concise and to the point - unless the user asks otherwise
+## 1. Think Before Coding
 
-## PLANNING MODE
+**Don't assume. Don't hide confusion. Surface tradeoffs.**
 
-- Always ask clarifying questions
-- Never assume design, tech stack or features
-- Use deep-dive sub-agents to assist with research
-- Use deep-dive sub-agents to review the different aspects of your plan before presenting to the user
+Before implementing:
+- State your assumptions explicitly. If uncertain, ask.
+- If multiple interpretations exist, present them - don't pick silently.
+- If a simpler approach exists, say so. Push back when warranted.
+- If something is unclear, stop. Name what's confusing. Ask.
 
-## CHANGE / EDIT MODE
+## 2. Simplicity First
 
-- Never implement features yourself when possible - use sub-agents!
-- Identify changes from the plan that can be implemented in parallel, and use sub-agents to implement the features efficiently
-- When using sub-agents to implement features, act as a coordinator only
-- Use the best model for the task - premium models for complex tasks (like coding) and mid-tier models for simpler tasks, like documentation
-- After completing features (large or small), always run commands like lint, type check and next build to check code quality
+**Minimum code that solves the problem. Nothing speculative.**
 
-## DATABASE SCHEMA CHANGES
+- No features beyond what was asked.
+- No abstractions for single-use code.
+- No "flexibility" or "configurability" that wasn't requested.
+- No error handling for impossible scenarios.
+- If you write 200 lines and it could be 50, rewrite it.
 
-- Whenever you make changes to the database schema, ALWAYS run the drizzle generate and migrate commands
-- NEVER run drizzle push!
+Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
 
-## TESTING
+## 3. Surgical Changes
 
-- Use any testing tools, libraries available to the project for testing your changes
-- Never assume your changes simply work, always test!
-- If the project does not have any testing tools, scripts, MCP tools, skills, etc. available for testing, ask the user whether testing should be skipped.
+**Touch only what you must. Clean up only your own mess.**
+
+When editing existing code:
+- Don't "improve" adjacent code, comments, or formatting.
+- Don't refactor things that aren't broken.
+- Match existing style, even if you'd do it differently.
+- If you notice unrelated dead code, mention it - don't delete it.
+
+When your changes create orphans:
+- Remove imports/variables/functions that YOUR changes made unused.
+- Don't remove pre-existing dead code unless asked.
+
+The test: Every changed line should trace directly to the user's request.
+
+## 4. Goal-Driven Execution
+
+**Define success criteria. Loop until verified.**
+
+Transform tasks into verifiable goals:
+- "Add validation" → "Write tests for invalid inputs, then make them pass"
+- "Fix the bug" → "Write a test that reproduces it, then make it pass"
+- "Refactor X" → "Ensure tests pass before and after"
+
+For multi-step tasks, state a brief plan:
+```
+1. [Step] → verify: [check]
+2. [Step] → verify: [check]
+3. [Step] → verify: [check]
+```
+
+Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
+
+---
+
+**These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
