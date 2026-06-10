@@ -135,7 +135,7 @@ const InfoSchema = Schema.Struct({
   }),
   default_agent: Schema.optional(Schema.String).annotate({
     description:
-      "Default agent to use when none is specified. Must be a primary agent. Falls back to 'build' if not set or if the specified agent is invalid.",
+      "Default agent to use when none is specified. Must be a primary agent. Falls back to 'forge' if not set or if the specified agent is invalid.",
   }),
   username: Schema.optional(Schema.String).annotate({
     description: "Custom username to display in conversations instead of system username",
@@ -153,11 +153,11 @@ const InfoSchema = Schema.Struct({
     Schema.StructWithRest(
       Schema.Struct({
         // primary
-        plan: Schema.optional(AgentRef),
-        build: Schema.optional(AgentRef),
+        oracle: Schema.optional(AgentRef),
+        forge: Schema.optional(AgentRef),
         // subagent
-        general: Schema.optional(AgentRef),
-        explore: Schema.optional(AgentRef),
+        wisp: Schema.optional(AgentRef),
+        seeker: Schema.optional(AgentRef),
         // specialized
         title: Schema.optional(AgentRef),
         summary: Schema.optional(AgentRef),
@@ -654,6 +654,13 @@ export const layer = Layer.effect(
 
         if (Flag.MAGE_DISABLE_AUTOCOMPACT) {
           result.compaction = { ...result.compaction, auto: false }
+        }
+        // Enable pruning by default — erases old completed tool-output parts beyond
+        // the PRUNE_PROTECT (40k) window, freeing context accumulated from large
+        // file-read scans (e.g. FFL skill) without affecting "skill" outputs which
+        // are already in PRUNE_PROTECTED_TOOLS.
+        if (result.compaction?.prune === undefined) {
+          result.compaction = { ...result.compaction, prune: true }
         }
         if (Flag.MAGE_DISABLE_PRUNE) {
           result.compaction = { ...result.compaction, prune: false }

@@ -284,7 +284,7 @@ const layer: Layer.Layer<
               id: ModelID.make("default"),
               providerID: ProviderID.make("merlin"),
               api: { id: "default", npm: "@mage/merlin-provider", url: "" },
-              name: "Qwen3.5 27B",
+              name: "Qwen3.6 27B",
               status: "active",
               capabilities: {
                 temperature: true,
@@ -297,7 +297,7 @@ const layer: Layer.Layer<
               },
               cost: { input: 0, output: 0, cache: { read: 0, write: 0 } },
               options: {},
-              limit: { context: 131072, output: 131072 },
+              limit: { context: 262144, output: 32000 },
               headers: {},
               family: "qwen",
               release_date: "2025-07-01",
