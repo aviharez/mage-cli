@@ -976,7 +976,7 @@ div.right-sidebar .sl-container ul li ul li a {
    Content panel — reduce top padding on splash pages so
    the lander hero doesn't have extra gap above it
    ========================================================= */
-:root:not([data-has-sidebar]) .content-panel:first-child {
+:root[data-has-hero]:not([data-has-sidebar]) .content-panel:first-child {
   padding-top: 0 !important;
 }
 
@@ -1010,14 +1010,14 @@ div.right-sidebar .sl-container ul li ul li a {
 :root:not([data-has-sidebar]) main > .content-panel {
   padding-bottom: 0 !important;
 }
-:root:not([data-has-sidebar]) main > .content-panel > .sl-container {
+:root[data-has-hero]:not([data-has-sidebar]) main > .content-panel > .sl-container {
   display: flex;
   flex-direction: column;
   min-height: calc(100vh - var(--sl-nav-height, 3.5rem));
 }
 /* margin-top: auto pushes footer to viewport bottom on short pages (e.g. /hub);
    collapses to 0 on tall pages (e.g. landing) — no visual change there. */
-:root:not([data-has-sidebar]) .sl-container > footer.site-footer {
+:root[data-has-hero]:not([data-has-sidebar]) .sl-container > footer.site-footer {
   margin-top: auto;
 }
 

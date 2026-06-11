@@ -2,7 +2,6 @@
 import appConfig from "../../config.mjs"
 import starlightConfig from "virtual:starlight/user-config"
 import { getRelativeLocaleUrl } from "astro:i18n"
-import { Icon } from "@astrojs/starlight/components"
 import Search from "virtual:starlight/components/Search"
 import SiteTitle from "virtual:starlight/components/SiteTitle"
 import ThemeSelect from "virtual:starlight/components/ThemeSelect"
@@ -12,8 +11,6 @@ const locale = Astro.currentLocale || "root"
 const route = Astro.locals.starlightRoute
 const t = Astro.locals.t as (key: string, fallback?: string) => string
 const headerLinks = (appConfig as any).headerLinks as { name: string; url: string }[]
-const socialLinks = starlightConfig.social || []
-const github = socialLinks.find((s: any) => s.icon === "github")
 
 const shouldRenderSearch =
   starlightConfig.pagefind ||
@@ -58,11 +55,6 @@ function label(name: string): string {
   <div class="sl-hidden md:sl-flex right-group">
     {shouldRenderSearch && <Search {...route} />}
     <ThemeSelect {...route} />
-    {github && (
-      <a class="icon-btn" href={github.href} target="_blank" rel="me" aria-label="GitHub">
-        <Icon name="github" size="1rem" />
-      </a>
-    )}
   </div>
 </div>
 
@@ -116,27 +108,6 @@ function label(name: string): string {
   }
   a.links.active {
     color: var(--mg-text, var(--sl-color-white));
-  }
-
-  /* GitHub icon button */
-  a.icon-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    border-radius: var(--mg-radius-sm, 4px);
-    color: var(--mg-text-muted, var(--sl-color-gray-6));
-    border-bottom: none !important;
-    flex-shrink: 0;
-  }
-  a.icon-btn:hover {
-    color: var(--mg-text, var(--sl-color-white));
-    background: var(--mg-bg-elev, var(--sl-color-gray-1));
-    border-bottom: none !important;
-  }
-  a.icon-btn :global(svg) {
-    color: inherit;
   }
 
   /* Reference nav is a flat flex row — no grid, no sidebar-aligned offset.

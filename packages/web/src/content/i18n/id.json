@@ -1,12 +1,12 @@
 {
   "app.head.titleSuffix": "Asisten coding AI untuk tim BCA",
   "app.header.docs": "Dokumentasi",
-  "app.header.catalog": "Katalog MCP",
-  "app.header.changelog": "Perubahan",
+  "app.header.catalog": "Katalog",
+  "app.header.changelog": "Changelog",
   "app.footer.issueLink": "Temukan bug? Buka isu",
   "app.footer.discordLink": "Bergabung dengan komunitas Discord kami",
 
-  "app.lander.eyebrow": "v0.4.2 — Tersedia sekarang",
+  "app.lander.eyebrow": "v1.2.3 — Now Available",
   "app.lander.hero.line1": "Asisten coding",
   "app.lander.hero.line2": "AI terminal,",
   "app.lander.hero.line3": "ditenagai oleh",

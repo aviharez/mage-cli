@@ -144,10 +144,6 @@ export default defineConfig({
         themes: ["github-light", "github-dark"],
         plugins: [ecLangLabelPlugin()],
       },
-      social: [
-        { icon: "github", label: "GitHub", href: config.github },
-        ...(config.discord ? /** @type {any} */ ([{ icon: "discord", label: "Discord", href: config.discord }]) : []),
-      ],
       editLink: {
         baseUrl: `${config.github}/edit/dev/packages/web/src/content/`,
       },
@@ -175,6 +171,7 @@ export default defineConfig({
         {
           label: "Referensi",
           items: [
+            "docs/agent",
             "docs/konfigurasi",
             "docs/troubleshooting",
           ],

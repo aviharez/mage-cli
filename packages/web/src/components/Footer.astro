@@ -4,9 +4,6 @@ import { Icon } from "@astrojs/starlight/components"
 
 const { lang, editUrl, lastUpdated, entry } = Astro.locals.starlightRoute
 const template = entry.data.template
-const issueLink = Astro.locals.t("app.footer.issueLink", "Temukan bug? Buka isu")
-
-const github = config.social?.find((item) => item.icon === "github")
 const changelogUrl = "/changelog/"
 ---
 
@@ -19,12 +16,6 @@ const changelogUrl = "/changelog/"
           <a href={editUrl} target="_blank" rel="noopener noreferrer" class="sl-flex">
             <Icon name="pencil" size="1em" />
             {Astro.locals.t("page.editLink")}
-          </a>
-        )}
-        {github && (
-          <a href={`${github.href}/issues/new`} target="_blank" rel="noopener noreferrer" class="sl-flex">
-            <Icon name={github.icon} size="1em" />
-            {issueLink}
           </a>
         )}
       </div>
@@ -60,9 +51,6 @@ const changelogUrl = "/changelog/"
   </span>
   <span class="sf-spacer"></span>
   <a href={changelogUrl}>Perubahan</a>
-  {github && (
-    <a href={github.href} target="_blank" rel="noopener noreferrer">GitHub</a>
-  )}
 </footer>
 
 <style>
