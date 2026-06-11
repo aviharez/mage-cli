@@ -11,6 +11,6 @@ export default {
   headerLinks: [
     { name: "app.header.docs",      url: "/docs/" },
     { name: "app.header.catalog",   url: "/hub/" },
-    { name: "app.header.changelog", url: `${github}/releases` },
+    { name: "app.header.changelog", url: "/changelog/" },
   ],
 }

@@ -6,7 +6,6 @@ import { Icon } from "@astrojs/starlight/components"
 import Search from "virtual:starlight/components/Search"
 import SiteTitle from "virtual:starlight/components/SiteTitle"
 import ThemeSelect from "virtual:starlight/components/ThemeSelect"
-import LanguageSelect from "@astrojs/starlight/components/LanguageSelect.astro"
 
 const path = Astro.url.pathname
 const locale = Astro.currentLocale || "root"
@@ -64,9 +63,6 @@ function label(name: string): string {
         <Icon name="github" size="1rem" />
       </a>
     )}
-    <div class="lang-select-wrap">
-      <LanguageSelect />
-    </div>
   </div>
 </div>
 
@@ -141,30 +137,6 @@ function label(name: string): string {
   }
   a.icon-btn :global(svg) {
     color: inherit;
-  }
-
-  /* Language select — compact globe-style dropdown in the right group */
-  .lang-select-wrap :global(starlight-lang-select) {
-    display: inline-flex;
-    align-items: center;
-  }
-  .lang-select-wrap :global(starlight-lang-select select) {
-    background: transparent;
-    border: 1px solid var(--mg-border, var(--sl-color-hairline));
-    border-radius: var(--mg-radius-sm, 4px);
-    color: var(--mg-text-muted, var(--sl-color-gray-6));
-    font-size: 12px;
-    font-family: var(--mg-font-mono, ui-monospace, monospace);
-    padding: 4px 6px;
-    cursor: pointer;
-    appearance: none;
-    -webkit-appearance: none;
-    outline: none;
-    height: 28px;
-  }
-  .lang-select-wrap :global(starlight-lang-select select:hover) {
-    border-color: var(--mg-border-strong, var(--sl-color-hairline-shade));
-    color: var(--mg-text, var(--sl-color-white));
   }
 
   /* Reference nav is a flat flex row — no grid, no sidebar-aligned offset.

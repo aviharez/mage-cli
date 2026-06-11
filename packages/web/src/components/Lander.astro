@@ -4,10 +4,9 @@ import config from "virtual:starlight/user-config";
 
 const locale = Astro.currentLocale || 'root';
 const t = Astro.locals.t as (key: string) => string;
-const docsHref = getRelativeLocaleUrl(locale, "");
-const github = (config.social || []).find(s => s.icon === 'github');
+const docsHref = getRelativeLocaleUrl(locale, "docs");
 
-const installCmd = "brew install mage-cli/tap/mage";
+const installCmd = "curl -fsSL https://mage.apps.ocpdevgra.dti.co.id/install | bash";
 ---
 
 <div class="lander">
@@ -36,16 +35,6 @@ const installCmd = "brew install mage-cli/tap/mage";
           <span>{t('app.lander.cta.getStarted')}</span>
           <svg class="arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
         </a>
-        <div class="dl-group">
-          <a class="btn dl" href={github?.href ?? '#'}>
-            <svg class="os-ico" viewBox="0 0 24 24" fill="currentColor"><path d="M16.3 1.4c.1 1-.3 2-.9 2.8-.6.8-1.6 1.4-2.6 1.3-.1-1 .4-2 1-2.7.6-.8 1.7-1.3 2.5-1.4zM18.9 8.3c-.6.4-1.5 1.2-1.5 2.7 0 1.7 1.5 2.4 1.6 2.4 0 .1-.2.9-.8 1.8-.5.8-1 1.5-1.8 1.5s-1-.4-1.9-.4-1.2.4-1.9.5c-.7 0-1.3-.8-1.8-1.5-1.1-1.6-2-4.5-.8-6.5.6-1 1.6-1.6 2.7-1.6.8 0 1.5.5 1.9.5s1.3-.6 2.2-.5c.4 0 1.5.2 2.1 1.1z"/></svg>
-            <span>{t('app.lander.cta.macos')}</span>
-          </a>
-          <a class="btn dl" href={github?.href ?? '#'}>
-            <svg class="os-ico" viewBox="0 0 24 24" fill="currentColor"><path d="M3 5.1 10.4 4v7.3H3zM10.4 12.7v7.3L3 18.9v-6.2zM11.4 3.9 21 2.5v8.8h-9.6zM21 12.7v8.8l-9.6-1.4v-7.4z"/></svg>
-            <span>{t('app.lander.cta.windows')}</span>
-          </a>
-        </div>
       </div>
 
       <button class="hero-install" id="hero-install" data-cmd={installCmd}>
@@ -69,83 +58,87 @@ const installCmd = "brew install mage-cli/tap/mage";
     </div>
   </header>
 
-  <!-- ===== CAPABILITY BAND ===== -->
-  <section class="band">
-    <div class="band-inner">
-      <h2>{t('app.lander.band1.title')}</h2>
-      <p class="band-lede">{t('app.lander.band1.lede')}</p>
-
-      <div class="cap-grid">
-        <div class="cap">
-          <svg class="cap-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4h16v6H4zM4 14h16v6H4z"/><circle cx="8" cy="7" r="1" fill="currentColor"/><circle cx="8" cy="17" r="1" fill="currentColor"/></svg>
-          <div><h3>{t('app.lander.cap.auth.title')}</h3><p>{t('app.lander.cap.auth.desc')}</p></div>
-        </div>
-        <div class="cap">
-          <svg class="cap-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-          <div><h3>{t('app.lander.cap.tools.title')}</h3><p>{t('app.lander.cap.tools.desc')}</p></div>
-        </div>
-        <div class="cap">
-          <svg class="cap-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-          <div><h3>{t('app.lander.cap.model.title')}</h3><p>{t('app.lander.cap.model.desc')}</p></div>
-        </div>
-        <div class="cap">
-          <svg class="cap-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 6h18M3 12h18M3 18h12"/><circle cx="20" cy="18" r="2"/></svg>
-          <div><h3>{t('app.lander.cap.audit.title')}</h3><p>{t('app.lander.cap.audit.desc')}</p></div>
-        </div>
-        <div class="cap">
-          <svg class="cap-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>
-          <div><h3>{t('app.lander.cap.compat.title')}</h3><p>{t('app.lander.cap.compat.desc')}</p></div>
-        </div>
-        <div class="cap">
-          <svg class="cap-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><circle cx="9" cy="10" r="0.8" fill="currentColor"/><circle cx="12" cy="10" r="0.8" fill="currentColor"/><circle cx="15" cy="10" r="0.8" fill="currentColor"/></svg>
-          <div><h3>{t('app.lander.cap.multi.title')}</h3><p>{t('app.lander.cap.multi.desc')}</p></div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ===== PULL QUOTE ===== -->
-  <section class="pull">
-    <div class="pull-inner">
-      <blockquote>
-        <em>&ldquo;{t('app.lander.quote')}&rdquo;</em>
-      </blockquote>
-      <div class="attrib">{t('app.lander.quote.attrib')}</div>
-    </div>
-  </section>
-
-  <!-- ===== STEPS BAND ===== -->
+  <!-- ===== QUICKSTART STEPS ===== -->
   <section class="band">
     <div class="band-inner">
       <div class="eyebrow">{t('app.lander.steps.eyebrow')}</div>
       <h2>{t('app.lander.steps.title')}</h2>
       <p class="band-lede">{t('app.lander.steps.lede')}</p>
 
-      <div class="steps">
-        <div class="step">
-          <div class="step-num">{t('app.lander.steps.01.num')}</div>
-          <h4>{t('app.lander.steps.01.title')}</h4>
-          <p>{t('app.lander.steps.01.desc')}</p>
-          <pre>{t('app.lander.steps.01.code')}</pre>
-        </div>
-        <div class="step">
-          <div class="step-num">{t('app.lander.steps.02.num')}</div>
-          <h4>{t('app.lander.steps.02.title')}</h4>
-          <p>{t('app.lander.steps.02.desc')}</p>
-          <pre>{t('app.lander.steps.02.code')}</pre>
-        </div>
-        <div class="step">
-          <div class="step-num">{t('app.lander.steps.03.num')}</div>
-          <h4>{t('app.lander.steps.03.title')}</h4>
-          <p>{t('app.lander.steps.03.desc')}</p>
-          <pre>{t('app.lander.steps.03.code')}</pre>
-        </div>
-        <div class="step">
-          <div class="step-num">{t('app.lander.steps.04.num')}</div>
-          <h4>{t('app.lander.steps.04.title')}</h4>
-          <p>{t('app.lander.steps.04.desc')}</p>
-          <pre>{t('app.lander.steps.04.code')}</pre>
-        </div>
+      <ol class="steps">
+        <li class="step">
+          <span class="step-marker" aria-hidden="true">01</span>
+          <div class="step-body">
+            <div class="step-num">{t('app.lander.steps.01.num')}</div>
+            <h4>{t('app.lander.steps.01.title')}</h4>
+            <p>{t('app.lander.steps.01.desc')}</p>
+            <pre>{t('app.lander.steps.01.code')}</pre>
+          </div>
+        </li>
+        <li class="step">
+          <span class="step-marker" aria-hidden="true">02</span>
+          <div class="step-body">
+            <div class="step-num">{t('app.lander.steps.02.num')}</div>
+            <h4>{t('app.lander.steps.02.title')}</h4>
+            <p>{t('app.lander.steps.02.desc')}</p>
+            <pre>{t('app.lander.steps.02.code')}</pre>
+          </div>
+        </li>
+        <li class="step">
+          <span class="step-marker" aria-hidden="true">03</span>
+          <div class="step-body">
+            <div class="step-num">{t('app.lander.steps.03.num')}</div>
+            <h4>{t('app.lander.steps.03.title')}</h4>
+            <p>{t('app.lander.steps.03.desc')}</p>
+            <pre>{t('app.lander.steps.03.code')}</pre>
+          </div>
+        </li>
+        <li class="step">
+          <span class="step-marker" aria-hidden="true">04</span>
+          <div class="step-body">
+            <div class="step-num">{t('app.lander.steps.04.num')}</div>
+            <h4>{t('app.lander.steps.04.title')}</h4>
+            <p>{t('app.lander.steps.04.desc')}</p>
+            <pre>{t('app.lander.steps.04.code')}</pre>
+          </div>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ===== LEARN MORE ROW ===== -->
+  <section class="band">
+    <div class="band-inner learn-inner">
+      <p class="learn-label">{t('app.lander.learn.label')}</p>
+      <div class="learn-grid">
+        <a class="learn-card" href={getRelativeLocaleUrl(locale, "docs/slash-commands")}>
+          <svg class="learn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 9l4-4 4 4M8 15l4 4 4-4"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg>
+          <div>
+            <h3>{t('app.lander.learn.slash.title')}</h3>
+            <p>{t('app.lander.learn.slash.desc')}</p>
+          </div>
+        </a>
+        <a class="learn-card" href={getRelativeLocaleUrl(locale, "docs/skills")}>
+          <svg class="learn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2l3 6.5L22 9l-5 4.8L18.2 21 12 17.5 5.8 21 7 13.8 2 9l7-.5z"/></svg>
+          <div>
+            <h3>{t('app.lander.learn.skills.title')}</h3>
+            <p>{t('app.lander.learn.skills.desc')}</p>
+          </div>
+        </a>
+        <a class="learn-card" href={getRelativeLocaleUrl(locale, "docs/penggunaan") + "#versi-web"}>
+          <svg class="learn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>
+          <div>
+            <h3>{t('app.lander.learn.web.title')}</h3>
+            <p>{t('app.lander.learn.web.desc')}</p>
+          </div>
+        </a>
+        <a class="learn-card" href={getRelativeLocaleUrl(locale, "docs/instalasi")}>
+          <svg class="learn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3v12M8 11l4 4 4-4M5 21h14"/></svg>
+          <div>
+            <h3>{t('app.lander.learn.install.title')}</h3>
+            <p>{t('app.lander.learn.install.desc')}</p>
+          </div>
+        </a>
       </div>
     </div>
   </section>
@@ -228,7 +221,6 @@ const installCmd = "brew install mage-cli/tap/mage";
   display: flex;
   gap: 10px;
   margin-bottom: 28px;
-  flex-wrap: wrap;
   align-items: center;
 }
 
@@ -270,22 +262,6 @@ const installCmd = "brew install mage-cli/tap/mage";
   transform: translateX(2px);
 }
 
-.dl-group {
-  display: inline-flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.btn.dl {
-  gap: 9px;
-  padding: 9px 14px;
-}
-.btn.dl .os-ico {
-  width: 15px;
-  height: 15px;
-  flex-shrink: 0;
-  opacity: 0.9;
-}
-
 /* Install command */
 .hero-install {
   all: unset;
@@ -301,6 +277,8 @@ const installCmd = "brew install mage-cli/tap/mage";
   color: var(--mg-text);
   cursor: pointer;
   transition: border-color .15s;
+  max-width: 100%;
+  overflow: hidden;
 }
 .hero-install:hover {
   border-color: var(--mg-border-strong);
@@ -310,10 +288,17 @@ const installCmd = "brew install mage-cli/tap/mage";
 }
 .prompt {
   color: var(--mg-text-dim);
+  flex-shrink: 0;
+}
+.hero-install > span:nth-child(2) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .copy-ico {
   margin-left: 8px;
   color: var(--mg-text-dim);
+  flex-shrink: 0;
 }
 .hero-install:hover .copy-ico {
   color: var(--mg-accent);
@@ -426,100 +411,64 @@ const installCmd = "brew install mage-cli/tap/mage";
   margin-bottom: 12px;
 }
 
-/* ---- Capability grid ---- */
-.cap-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-}
-.cap {
-  display: flex;
-  align-items: flex-start;
-  gap: 13px;
-  padding: 18px 20px;
-  background: var(--mg-bg-elev);
-  border: 1px solid var(--mg-border);
-  border-radius: var(--mg-radius-lg);
-  transition: border-color .15s;
-}
-.cap:hover {
-  border-color: var(--mg-accent-line);
-}
-.cap-ico {
-  width: 20px;
-  height: 20px;
-  color: var(--mg-accent);
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-.cap h3 {
-  font-size: 14.5px !important;
-  margin: 0 0 3px !important;
-  font-weight: 600 !important;
-  letter-spacing: -0.005em !important;
-  color: var(--mg-text) !important;
-  text-transform: none !important;
-  font-style: normal !important;
-  font-family: var(--mg-font-sans) !important;
-}
-.cap p {
-  margin: 0 !important;
-  color: var(--mg-text-muted);
-  font-size: 13px;
-  line-height: 1.45;
-}
-
-/* ---- Pull quote ---- */
-.pull {
-  border-top: 1px solid var(--mg-border);
-  border-bottom: 1px solid var(--mg-border);
-}
-.pull-inner {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 100px 56px;
-  text-align: center;
-}
-.pull-inner blockquote {
-  margin: 0;
-  font-family: var(--mg-font-serif);
-  font-style: italic;
-  font-weight: 400;
-  font-size: 56px;
-  line-height: 1.08;
-  letter-spacing: -0.02em;
-  color: var(--mg-text);
-  text-wrap: balance;
-}
-.attrib {
-  margin-top: 28px;
-  font-family: var(--mg-font-mono);
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--mg-text-dim);
-}
-
-/* ---- Steps ---- */
+/* ---- Steps (vertical timeline) ---- */
 .steps {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 28px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-width: 640px;
 }
 .step {
-  border-top: 1px solid var(--mg-border);
-  padding-top: 20px;
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  gap: 0 24px;
+  position: relative;
+}
+/* Connecting line between steps */
+.step:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 22px;
+  top: 44px;
+  bottom: 0;
+  width: 1px;
+  background: var(--mg-border);
+}
+.step-marker {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--mg-accent-line);
+  background: var(--mg-accent-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mg-font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--mg-accent-bright);
+  flex-shrink: 0;
+  z-index: 1;
+}
+.step-body {
+  padding-bottom: 36px;
+}
+.step:last-child .step-body {
+  padding-bottom: 0;
 }
 .step-num {
   font-family: var(--mg-font-mono);
-  font-size: 11px;
-  letter-spacing: 0.08em;
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   color: var(--mg-accent);
-  margin-bottom: 8px;
+  margin-bottom: 6px;
+  padding-top: 12px;
 }
 .step h4 {
   font-size: 16px !important;
-  margin: 0 0 8px !important;
+  margin: 0 0 6px !important;
   font-weight: 600 !important;
   color: var(--mg-text) !important;
   text-transform: none !important;
@@ -533,16 +482,76 @@ const installCmd = "brew install mage-cli/tap/mage";
   line-height: 1.5;
 }
 .step pre {
-  margin: 14px 0 0;
-  padding: 10px 12px;
+  margin: 12px 0 0;
+  padding: 10px 14px;
   background: var(--mg-bg-elev);
   border: 1px solid var(--mg-border);
   border-radius: var(--mg-radius-sm);
   font-family: var(--mg-font-mono);
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--mg-accent-bright);
-  overflow-x: auto;
-  white-space: pre;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-width: 520px;
+}
+
+/* ---- Learn more row ---- */
+.learn-inner {
+  padding-top: 56px;
+  padding-bottom: 56px;
+}
+.learn-label {
+  font-family: var(--mg-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--mg-accent);
+  margin: 0 0 20px;
+}
+.learn-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+.learn-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  padding: 18px 20px;
+  background: var(--mg-bg-elev);
+  border: 1px solid var(--mg-border);
+  border-radius: var(--mg-radius-lg);
+  transition: border-color .15s;
+  text-decoration: none !important;
+  border-bottom: none !important;
+  color: inherit;
+}
+.learn-card:hover {
+  border-color: var(--mg-accent-line);
+  border-bottom: none !important;
+}
+.learn-ico {
+  width: 20px;
+  height: 20px;
+  color: var(--mg-accent);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.learn-card h3 {
+  font-size: 14.5px !important;
+  margin: 0 0 3px !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.005em !important;
+  color: var(--mg-text) !important;
+  text-transform: none !important;
+  font-style: normal !important;
+  font-family: var(--mg-font-sans) !important;
+}
+.learn-card p {
+  margin: 0 !important;
+  color: var(--mg-text-muted);
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 /* ---- Responsive ---- */
@@ -561,21 +570,31 @@ const installCmd = "brew install mage-cli/tap/mage";
   .band-inner h2 {
     font-size: 32px !important;
   }
-  .cap-grid {
-    grid-template-columns: 1fr;
-  }
   .steps {
+    max-width: 100%;
+  }
+  .step pre {
+    max-width: 100%;
+  }
+  .learn-grid {
     grid-template-columns: 1fr 1fr;
-  }
-  .pull-inner {
-    padding: 60px 20px;
-  }
-  .pull-inner blockquote {
-    font-size: 36px;
   }
 }
 @media (max-width: 480px) {
-  .steps {
+  .step {
+    grid-template-columns: 36px 1fr;
+    gap: 0 16px;
+  }
+  .step-marker {
+    width: 36px;
+    height: 36px;
+    font-size: 10px;
+  }
+  .step:not(:last-child)::before {
+    left: 18px;
+    top: 36px;
+  }
+  .learn-grid {
     grid-template-columns: 1fr;
   }
 }

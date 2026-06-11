@@ -1,71 +1,77 @@
 ---
-title: Getting started
-description: Install mage, sign in to the gateway, and open your first session.
-eyebrow: Docs · 3 min
+title: Memulai
+description: Panduan singkat untuk menginstal Mage dan membuka sesi pertama Anda.
+eyebrow: Dokumentasi · 3 menit
 ---
 
 import { Tabs, TabItem } from "@astrojs/starlight/components"
 
-mage ships as a single static binary that talks to your internal LLM gateway instead of upstream providers. Same agent, same workflows — your keys, your usage caps, your audit log.
+**Mage** adalah asisten coding AI berbasis terminal yang terhubung ke **GAIA** — gateway LLM internal BCA. Mage adalah fork dari [OpenCode](https://opencode.ai) yang disesuaikan untuk infrastruktur BCA: tanpa API key pribadi, dengan log audit bawaan.
 
-## Install
+## Prasyarat
 
-Pick the install path that matches your machine.
+Node.js **≥ 18** harus sudah terinstal. Unduh di [nodejs.org](https://nodejs.org/en/download).
 
-```bash title="macOS · Homebrew"
-brew install mage-cli/tap/mage
+## Instalasi cepat
+
+<Tabs>
+  <TabItem label="macOS / Linux">
+    ```bash
+    curl -fsSL https://mage.apps.ocpdevgra.dti.co.id/install | bash
+    ```
+  </TabItem>
+  <TabItem label="Windows PowerShell">
+    ```powershell
+    irm https://mage.apps.ocpdevgra.dti.co.id/install.ps1 | iex
+    ```
+  </TabItem>
+</Tabs>
+
+Installer mengonfigurasi `~/.npmrc` untuk BCA Artifactory secara otomatis, lalu menginstal `@mybcabisnis/mage` secara global.
+
+Untuk opsi instalasi lengkap (Windows cmd, manual `.npmrc`, dari source), lihat [Instalasi](/docs/instalasi).
+
+## Setup pertama
+
+Jalankan `mage` untuk pertama kalinya. Wizard setup akan muncul otomatis dan meminta **username udomain BCA** Anda (format `u0…`):
+
+```
+$ mage
+
+  █▄ ▄█ ▄▀▀▄ █▀▀▀ █▀▀▀
+  █ ▀ █ ████ █  █ █▀▀▀
+  ▀   ▀ ▀  ▀ ▀▀▀▀ ▀▀▀▀
+
+◆ Mage setup
+│
+◆ BCA udomain username
+│  u0johndoe
+└  Config saved → ~/.mage/mage.json
 ```
 
-```bash title="Linux · curl"
-curl -fsSL https://get.mage.dev/install.sh | sh
-```
+Wizard hanya berjalan sekali. Jalankan `mage init` kapan saja untuk mengulang konfigurasi.
 
-```powershell title="Windows · scoop"
-scoop bucket add mage https://github.com/mage-cli/scoop
-scoop install mage
-```
+## Buka sesi
 
-Verify:
-
-```bash
-mage --version
-```
-
-## Sign in to the gateway
-
-mage uses your internal LLM gateway — not a direct provider connection. The first time you run `auth login`, mage opens your browser, you sign in with SSO, and a session token lands in the system keychain.
-
-```bash
-mage auth login
-```
-
-:::note[No personal API keys]
-This is the main divergence from upstream OpenCode. All model calls flow through the gateway so usage is attributed and audited.
-:::
-
-## Open your first session
-
-`cd` into any project and run `mage`. It indexes the repo, spins up the default agent, and drops you into the TUI.
+`cd` ke direktori proyek dan jalankan `mage`:
 
 ```bash
 cd ~/code/myproject
 mage
 ```
 
-From the TUI: `?` for keybinds · `/mcp` to list servers · `Ctrl+C` to interrupt · `Ctrl+D` to exit.
+Mage mengindeks repository Anda dan membuka TUI. Di dalam TUI:
 
-## Add tools (MCP)
+| Shortcut | Aksi |
+|----------|------|
+| `?` | Tampilkan daftar shortcut |
+| `Ctrl+C` | Interrupt agent |
+| `Ctrl+D` | Keluar |
 
-mage ships with `filesystem`, `shell`, `git`, and `lsp` built in. Anything else comes from the hub.
+## Langkah selanjutnya
 
-```bash
-mage mcp add github
-mage mcp add postgres
-```
-
-## Next steps
-
-- [Config](/docs/config) — agent definitions, per-project overrides, model pinning.
-- [CLI reference](/docs/cli) — every subcommand and flag.
-- [Providers](/docs/providers) — model gateway configuration.
-- [Hub](/hub/) — browse and install MCP servers, skills, and plugins.
+- [Instalasi](/docs/instalasi) — semua metode instalasi termasuk Windows dan manual.
+- [Setup Awal](/docs/setup) — detail wizard, file konfigurasi, dan `mage init`.
+- [Penggunaan](/docs/penggunaan) — semua subcommand, TUI, dan versi web.
+- [Slash Commands](/docs/slash-commands) — daftar lengkap perintah `/` di TUI.
+- [Skill](/docs/skills) — 30 skill bawaan dan cara membuat skill kustom.

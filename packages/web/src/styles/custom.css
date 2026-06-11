@@ -1001,6 +1001,27 @@ div.right-sidebar .sl-container ul li ul li a {
 }
 
 /* =========================================================
+   Splash pages — flush footer, no gap below, sticky on short pages
+   Scoped to :not([data-has-sidebar]) so doc pages are untouched.
+   ========================================================= */
+:root:not([data-has-sidebar]) main {
+  padding-bottom: 0;
+}
+:root:not([data-has-sidebar]) main > .content-panel {
+  padding-bottom: 0 !important;
+}
+:root:not([data-has-sidebar]) main > .content-panel > .sl-container {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - var(--sl-nav-height, 3.5rem));
+}
+/* margin-top: auto pushes footer to viewport bottom on short pages (e.g. /hub);
+   collapses to 0 on tall pages (e.g. landing) — no visual change there. */
+:root:not([data-has-sidebar]) .sl-container > footer.site-footer {
+  margin-top: auto;
+}
+
+/* =========================================================
    Hub detail page — pixel-matched to reference github.html
    ========================================================= */
 .det-wrap {

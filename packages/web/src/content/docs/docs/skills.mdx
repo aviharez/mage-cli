@@ -1,222 +1,141 @@
 ---
-title: "Agent Skills"
-description: "Define reusable behavior via SKILL.md definitions"
+title: Skill
+description: Cara kerja skill di Mage — skill bawaan, cara memicunya, dan cara membuat skill kustom di .mage.
+eyebrow: Dokumentasi
 ---
 
-Agent skills let Mage discover reusable instructions from your repo or home directory.
-Skills are loaded on-demand via the native `skill` tool—agents see available skills and can load the full content when needed.
-
----
-
-## Place files
-
-Create one folder per skill name and put a `SKILL.md` inside it.
-Mage searches these locations:
-
-- Project config: `.mage/skills/<name>/SKILL.md`
-- Global config: `~/.config/mage/skills/<name>/SKILL.md`
-- Project Claude-compatible: `.claude/skills/<name>/SKILL.md`
-- Global Claude-compatible: `~/.claude/skills/<name>/SKILL.md`
-- Project agent-compatible: `.agents/skills/<name>/SKILL.md`
-- Global agent-compatible: `~/.agents/skills/<name>/SKILL.md`
+**Skill** adalah instruksi dan alur kerja khusus yang dimuat model secara otomatis ketika prompt Anda cocok dengan deskripsi skill tersebut. Tidak ada perintah khusus yang perlu diingat — cukup tuliskan apa yang ingin Anda lakukan dalam bahasa natural.
 
 ---
 
-## Understand discovery
+## Cara memicu skill
 
-For project-local paths, Mage walks up from your current working directory until it reaches the git worktree.
-It loads any matching `skills/*/SKILL.md` in `.mage/` and any matching `.claude/skills/*/SKILL.md` or `.agents/skills/*/SKILL.md` along the way.
+Tulis prompt natural yang mendeskripsikan tugas Anda. Model akan mencocokkan prompt dengan deskripsi skill yang tersedia dan memuat skill yang relevan sebelum mulai mengerjakan.
 
-Global definitions are also loaded from `~/.config/mage/skills/*/SKILL.md`, `~/.claude/skills/*/SKILL.md`, and `~/.agents/skills/*/SKILL.md`.
+### Contoh trigger (English & Indonesia)
 
----
+| Skill | Contoh prompt (EN) | Contoh prompt (ID) |
+|-------|-------------------|-------------------|
+| **angular-developer** | "Migrate this project to Angular standalone components" | "Migrasikan proyek ini ke Angular standalone components" |
+| **mbb-lib** | "Build a login form using the BCA component library" | "Buat form login menggunakan library komponen BCA" |
+| **functional-flow** | "Generate a functional flow diagram for the checkout feature" | "Buat diagram functional flow untuk fitur checkout" |
+| **readme** | "Generate a README for this project" | "Buatkan README untuk proyek ini" |
+| **verify** | "Verify that the payment feature works correctly" | "Verifikasi bahwa fitur pembayaran berjalan dengan benar" |
+| **code-review-and-quality** | "Review this code before I merge it" | "Review kode ini sebelum saya merge" |
 
-## Write frontmatter
-
-Each `SKILL.md` must start with YAML frontmatter.
-Only these fields are recognized:
-
-- `name` (required)
-- `description` (required)
-- `license` (optional)
-- `compatibility` (optional)
-- `metadata` (optional, string-to-string map)
-
-Unknown frontmatter fields are ignored.
+:::tip[Browse skill secara manual]
+Ketikkan `/skills` di TUI untuk membuka dialog browser skill — Anda bisa melihat semua skill yang tersedia dan mengaktifkannya secara manual jika diperlukan.
+:::
 
 ---
 
-## Validate names
+## Skill bawaan
 
-`name` must:
+Mage menyertakan **30 skill bawaan**. Berikut beberapa yang paling relevan untuk penggunaan sehari-hari:
 
-- Be 1–64 characters
-- Be lowercase alphanumeric with single hyphen separators
-- Not start or end with `-`
-- Not contain consecutive `--`
-- Match the directory name that contains `SKILL.md`
+| Skill | Kegunaan |
+|-------|----------|
+| **angular-developer** | Generate kode Angular, migrasi standalone, signals, control flow |
+| **mbb-lib** | Gunakan library komponen BCA (`@mybcabisnis-web/lib`) di proyek Angular |
+| **functional-flow** | Buat dokumen Functional Flow (diagram Mermaid, API endpoints) |
+| **readme** | Generate atau update README proyek secara otomatis |
+| **verify** | Verifikasi perubahan kode berjalan sesuai ekspektasi |
+| **code-review-and-quality** | Review kode multi-dimensi sebelum merge |
+| **code-simplification** | Sederhanakan kode yang terlalu kompleks tanpa mengubah behavior |
+| **test-driven-development** | Tulis test lebih dulu, lalu implementasi |
+| **debugging-and-error-recovery** | Analisis root cause dari bug, error, atau test yang gagal |
+| **planning-and-task-breakdown** | Pecah spesifikasi menjadi task yang dapat diimplementasikan |
 
-Equivalent regex:
-
-```text
-^[a-z0-9]+(-[a-z0-9]+)*$
-```
-
----
-
-## Follow length rules
-
-`description` must be 1-1024 characters.
-Keep it specific enough for the agent to choose correctly.
+Seluruh 30 skill tersedia saat Anda menginstal Mage. Skill lain yang tersedia mencakup: `api-and-interface-design`, `ci-cd-and-automation`, `context-engineering`, `deprecation-and-migration`, `documentation-and-adrs`, `doubt-driven-development`, `frontend-ui-engineering`, `git-workflow-and-versioning`, `idea-refine`, `incremental-implementation`, `interview-me`, `performance-optimization`, `security-and-hardening`, `shipping-and-launch`, `source-driven-development`, `spec-driven-development`, dan lainnya.
 
 ---
 
-## Use an example
+## Membuat skill kustom
 
-Create `.mage/skills/git-release/SKILL.md` like this:
+Anda bisa menambahkan skill sendiri untuk workflow atau konvensi tim yang spesifik.
+
+### Lokasi
+
+| Scope | Path |
+|-------|------|
+| Global (berlaku di semua proyek) | `~/.mage/skills/<nama-skill>/SKILL.md` |
+| Per-proyek | `<direktori-proyek>/.mage/skills/<nama-skill>/SKILL.md` |
+
+### Format `SKILL.md`
+
+Hanya dua field yang wajib ada: `name` dan `description`.
 
 ```markdown
 ---
-name: git-release
-description: Create consistent releases and changelogs
-license: MIT
-compatibility: opencode
-metadata:
-  audience: maintainers
-  workflow: github
+name: your-skill-name
+description: >
+  What this skill does. Use/Activate when the user asks for X, Y,
+  or Z. The more specific the trigger description, the more accurately
+  the model detects when to load this skill.
 ---
 
-## What I do
+# Skill Title
 
-- Draft release notes from merged PRs
-- Propose a version bump
-- Provide a copy-pasteable `gh release create` command
+## Overview
+Short explanation of what this skill does.
 
-## When to use me
+## When to Use
+- When the user asks for ...
+- When the project uses ...
 
-Use this when you are preparing a tagged release.
-Ask clarifying questions if the target versioning scheme is unclear.
+## Workflow
+### Step 1 — ...
+### Step 2 — ...
+
+## Verification
+- [ ] Check this
+- [ ] Check that
 ```
 
+:::tip[Menulis deskripsi yang baik]
+Field `description` adalah satu-satunya yang digunakan model untuk menentukan kapan skill ini cocok. Tulis secara eksplisit kondisi pemicunya: "Gunakan ketika pengguna meminta membuat/mengubah X" atau "Aktifkan sebelum membuat komponen Y". Deskripsi yang samar menghasilkan trigger yang tidak akurat.
+:::
+
+### Contoh skill minimal
+
+````markdown
+---
+name: spring-boot-service
+description: >
+  Generate or modify Spring Boot service classes following BCA
+  backend team conventions. Use when the user asks to create a
+  service, repository, or controller.
 ---
 
-## Recognize tool description
+# Spring Boot Service Generator
 
-Mage lists available skills in the `skill` tool description.
-Each entry includes the skill name and description:
+Follow these conventions when creating a Spring Boot service:
 
-```xml
-<available_skills>
-  <skill>
-    <name>git-release</name>
-    <description>Create consistent releases and changelogs</description>
-  </skill>
-</available_skills>
+1. Use the `@Service` annotation
+2. Inject dependencies via constructor (not field injection)
+3. Method names follow the `verbNoun` pattern (e.g. `getUserById`)
+4. All errors thrown as `BusinessException` with an error code
+
+## Package structure
+```
+com.bca.app/
+├── service/        ← put service classes here
+├── repository/
+└── controller/
+```
+````
+
+### File pendukung
+
+Anda bisa menyertakan file pendukung (referensi, contoh kode, template) di dalam direktori skill yang sama. Jalur relatif dalam `SKILL.md` akan diresolvasi terhadap direktori skill tersebut.
+
+```
+~/.mage/skills/spring-boot-service/
+├── SKILL.md
+├── references/
+│   └── service-template.java
+└── examples/
+    └── ExampleUserService.java
 ```
 
-The agent loads a skill by calling the tool:
-
-```
-skill({ name: "git-release" })
-```
-
----
-
-## Configure permissions
-
-Control which skills agents can access using pattern-based permissions in `mage.json`:
-
-```json
-{
-  "permission": {
-    "skill": {
-      "*": "allow",
-      "pr-review": "allow",
-      "internal-*": "deny",
-      "experimental-*": "ask"
-    }
-  }
-}
-```
-
-| Permission | Behavior                                  |
-| ---------- | ----------------------------------------- |
-| `allow`    | Skill loads immediately                   |
-| `deny`     | Skill hidden from agent, access rejected  |
-| `ask`      | User prompted for approval before loading |
-
-Patterns support wildcards: `internal-*` matches `internal-docs`, `internal-tools`, etc.
-
----
-
-## Override per agent
-
-Give specific agents different permissions than the global defaults.
-
-**For custom agents** (in agent frontmatter):
-
-```yaml
----
-permission:
-  skill:
-    "documents-*": "allow"
----
-```
-
-**For built-in agents** (in `mage.json`):
-
-```json
-{
-  "agent": {
-    "plan": {
-      "permission": {
-        "skill": {
-          "internal-*": "allow"
-        }
-      }
-    }
-  }
-}
-```
-
----
-
-## Disable the skill tool
-
-Completely disable skills for agents that shouldn't use them:
-
-**For custom agents**:
-
-```yaml
----
-tools:
-  skill: false
----
-```
-
-**For built-in agents**:
-
-```json
-{
-  "agent": {
-    "plan": {
-      "tools": {
-        "skill": false
-      }
-    }
-  }
-}
-```
-
-When disabled, the `<available_skills>` section is omitted entirely.
-
----
-
-## Troubleshoot loading
-
-If a skill does not show up:
-
-1. Verify `SKILL.md` is spelled in all caps
-2. Check that frontmatter includes `name` and `description`
-3. Ensure skill names are unique across all locations
-4. Check permissions—skills with `deny` are hidden from agents
+Mage akan mengekspos file-file ini ke model saat skill dimuat, sehingga model bisa menggunakannya sebagai referensi.

@@ -1,14 +1,13 @@
 ---
 import config from "virtual:starlight/user-config"
-import LanguageSelect from "@astrojs/starlight/components/LanguageSelect.astro"
 import { Icon } from "@astrojs/starlight/components"
 
 const { lang, editUrl, lastUpdated, entry } = Astro.locals.starlightRoute
 const template = entry.data.template
-const issueLink = Astro.locals.t("app.footer.issueLink", "Found a bug? Open an issue")
+const issueLink = Astro.locals.t("app.footer.issueLink", "Temukan bug? Buka isu")
 
 const github = config.social?.find((item) => item.icon === "github")
-const changelogUrl = github ? `${github.href}/releases` : "#"
+const changelogUrl = "/changelog/"
 ---
 
 {/* ── Doc meta (edit link / last-updated) — only on doc pages ── */}
@@ -28,7 +27,6 @@ const changelogUrl = github ? `${github.href}/releases` : "#"
             {issueLink}
           </a>
         )}
-        <LanguageSelect />
       </div>
       <div>
         <p>
@@ -61,9 +59,7 @@ const changelogUrl = github ? `${github.href}/releases` : "#"
     {" · "}a fork of OpenCode
   </span>
   <span class="sf-spacer"></span>
-  {github && (
-    <a href={changelogUrl} target="_blank" rel="noopener noreferrer">Changelog</a>
-  )}
+  <a href={changelogUrl}>Perubahan</a>
   {github && (
     <a href={github.href} target="_blank" rel="noopener noreferrer">GitHub</a>
   )}

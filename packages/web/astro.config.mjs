@@ -87,13 +87,8 @@ export default defineConfig({
       defaultLocale: "root",
       locales: {
         root: {
-          label: "English",
-          lang: "en",
-          dir: "ltr",
-        },
-        id: {
           label: "Bahasa Indonesia",
-          lang: "id-ID",
+          lang: "id",
           dir: "ltr",
         },
       },
@@ -166,50 +161,23 @@ export default defineConfig({
         replacesTitle: true,
       },
       sidebar: [
-        // Docs section — all pages under /docs/
         "docs",
-        "docs/config",
-        "docs/providers",
-        "docs/network",
-        "docs/enterprise",
-        "docs/troubleshooting",
+        "docs/instalasi",
+        "docs/setup",
         {
-          label: "Windows",
-          translations: { en: "Windows", "id-ID": "Windows" },
-          link: "docs/windows-wsl",
-        },
-        {
-          label: "Usage",
-          translations: { en: "Usage", "id-ID": "Penggunaan" },
+          label: "Penggunaan",
           items: [
-            "docs/go", "docs/tui", "docs/cli", "docs/web",
-            "docs/ide", "docs/zen", "docs/share", "docs/github", "docs/gitlab",
-          ],
-        },
-        {
-          label: "Configure",
-          translations: { en: "Configure", "id-ID": "Konfigurasi" },
-          items: [
-            "docs/tools",
-            "docs/rules",
-            "docs/agents",
-            "docs/models",
-            "docs/themes",
-            "docs/keybinds",
-            "docs/commands",
-            "docs/formatters",
-            "docs/permissions",
-            "docs/lsp",
-            "docs/mcp-servers",
-            "docs/acp",
+            "docs/penggunaan",
+            "docs/slash-commands",
             "docs/skills",
-            "docs/custom-tools",
           ],
         },
         {
-          label: "Develop",
-          translations: { en: "Develop", "id-ID": "Pengembangan" },
-          items: ["docs/sdk", "docs/server", "docs/plugins", "docs/ecosystem"],
+          label: "Referensi",
+          items: [
+            "docs/konfigurasi",
+            "docs/troubleshooting",
+          ],
         },
       ],
       components: {

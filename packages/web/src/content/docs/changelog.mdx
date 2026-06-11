@@ -1,0 +1,64 @@
+---
+title: Perubahan
+description: Riwayat perubahan dan pembaruan Mage.
+template: splash
+---
+
+import { Card } from "@astrojs/starlight/components"
+
+Halaman ini mencatat pembaruan, perbaikan, dan perubahan signifikan pada setiap versi Mage.
+
+---
+
+## v0.4.2
+
+_Juni 2026_
+
+### Yang baru
+- **Skill `verify`** — Perintah baru untuk memverifikasi perubahan kode berjalan sesuai ekspektasi.
+- **Guard satu subagent** — Task sekarang dijaga agar hanya menjalankan satu subagent dalam satu waktu untuk mencegah konflik.
+- **Skill Angular & MBB-lib** — Skill angular-developer sekarang terhubung dengan skill mbb-lib.
+- Boilerplate info disembunyikan dari sidebar jika tidak tersedia.
+
+### Perbaikan
+- Perbaikan styling hub page dan navigasi halaman detail.
+- Perbaikan bundling shim `zod`/`yaml` agar plugin boilerplate dapat dimuat di aplikasi desktop.
+- Hapus file yang tidak digunakan.
+
+---
+
+## v0.4.1
+
+_Mei 2026_
+
+### Yang baru
+- Tambah skill default dan dokumentasi awal.
+- Perbaikan sinkronisasi upstream dari OpenCode: paket core, llm, extensions, dan desktop diperbarui.
+
+### Perbaikan
+- Perbaikan 13+ error TypeScript dari file hasil migrasi.
+- Build bersih untuk semua platform (macOS, Linux, Windows).
+
+---
+
+## v0.4.0
+
+_Mei 2026_
+
+### Yang baru
+- **Windows cross-build** — Binary Windows kini dapat dibangun dari macOS/Jenkins via `bun run package:win`.
+- **Merlin model id** — Model distandarisasi menjadi `merlin/default`. Konfigurasi `merlin/qwen3` sekarang tidak valid.
+- Perbaikan halaman blank saat membuka aplikasi desktop di Windows.
+
+---
+
+## v0.3.x
+
+_April 2026_
+
+Versi awal fork dari OpenCode dengan integrasi provider Merlin/GAIA BCA. Fitur utama:
+- Koneksi ke gateway GAIA internal via provider `merlin`.
+- Autentikasi menggunakan username udomain BCA.
+- Dukungan boilerplate tim dengan injeksi konvensi otomatis.
+- Slash commands: `/generate`, `/test`, `/review`, `/boilerplate`.
+- Review MR GitLab via binary `mr-reviewer`.

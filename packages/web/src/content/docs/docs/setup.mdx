@@ -1,0 +1,74 @@
+---
+title: Setup Awal
+description: Wizard konfigurasi otomatis — masukkan username udomain BCA dan mulai menggunakan Mage.
+eyebrow: Dokumentasi
+---
+
+## Wizard konfigurasi otomatis
+
+Saat Anda menjalankan `mage` untuk pertama kalinya — atau sebelum username udomain yang valid dikonfigurasi — wizard setup akan muncul otomatis:
+
+```
+$ mage
+
+  █▄ ▄█ ▄▀▀▄ █▀▀▀ █▀▀▀
+  █ ▀ █ ████ █  █ █▀▀▀
+  ▀   ▀ ▀  ▀ ▀▀▀▀ ▀▀▀▀
+
+◆ Mage setup
+│
+◆ BCA udomain username
+│  u0johndoe
+└  Config saved → /Users/johndoe/.mage/mage.json
+```
+
+Wizard hanya meminta satu hal: **username udomain BCA** Anda dalam format `u0…` (misalnya `u0johndoe`).
+
+:::note[Tidak ada SSO atau API key]
+Mage tidak membuka browser dan tidak memerlukan API key pribadi. Autentikasi ke GAIA ditangani lewat username udomain yang Anda masukkan.
+:::
+
+## Mengulangi setup
+
+Jalankan perintah berikut kapan saja untuk mengulang wizard konfigurasi:
+
+```bash
+mage init
+```
+
+Konfigurasi yang ada akan diperbarui — tidak ditimpa sepenuhnya.
+
+## File konfigurasi
+
+Konfigurasi disimpan di:
+
+```
+~/.mage/mage.json
+```
+
+Contoh isi file setelah setup:
+
+```json
+{
+  "provider": {
+    "merlin": {
+      "options": {
+        "username": "u0johndoe"
+      }
+    }
+  }
+}
+```
+
+Anda bisa mengedit file ini langsung untuk mengubah konfigurasi lanjutan. Lihat [Konfigurasi](/docs/konfigurasi) untuk selengkapnya.
+
+## Setelah setup
+
+Jalankan `mage` dari direktori proyek mana pun untuk membuka sesi:
+
+```bash
+cd ~/code/myproject
+mage
+```
+
+Mage mengindeks repository dan membuka TUI. Wizard tidak akan muncul lagi selama username valid sudah tersimpan.
