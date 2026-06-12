@@ -1,6 +1,8 @@
 ---
 name: functional-flow
 description: Generates a Functional Flow (FFL) document for a project — scans the codebase, traces each feature's flow, renders Mermaid sequence + flowchart diagrams, and lists all API endpoints. Trigger when the user asks to generate/create/update an FFL, functional flow doc, flow document, or architecture/endpoint map for an Angular, Spring Boot, or other project.
+metadata:
+  author: MAGE Team
 ---
 
 # Functional Flow (FFL) Generator

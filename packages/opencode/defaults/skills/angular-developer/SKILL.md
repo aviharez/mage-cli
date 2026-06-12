@@ -1,6 +1,6 @@
 ---
 name: angular-developer
-description: Generates Angular code and provides architectural guidance. Trigger when creating projects, components, or services, or for best practices on reactivity (signals, linkedSignal, resource), forms, dependency injection, routing, SSR, accessibility (ARIA), animations, styling (component styles, Tailwind CSS), testing, or CLI tooling.
+description: Generates Angular code and provides architectural guidance. Trigger when creating, updating, migrating, or modernizing Angular projects or components — including ng update, version upgrades (e.g. v18 → v20), standalone migration, control flow syntax (@if/@for/@switch), signals, or implementing new Angular features — or for best practices on reactivity (signals, linkedSignal, resource), forms, dependency injection, routing, SSR, accessibility (ARIA), animations, styling (component styles, Tailwind CSS), testing, or CLI tooling.
 license: MIT
 metadata:
   author: Copyright 2026 Google LLC
@@ -9,7 +9,7 @@ metadata:
 
 # Angular Developer Guidelines
 
-**BCA projects:** If the project depends on `@mybcabisnis-web/lib` or `@mybcabisnis/lib`, load the `mbb-lib` skill FIRST before scaffolding any UI element.
+**myBCA Bisnis projects:** If the project depends on `@mybcabisnis-web/lib` or `@mybcabisnis/lib`, load the `mbb-lib` skill FIRST before scaffolding any UI element.
 
 1. Always analyze the project's Angular version before providing guidance, as best practices and available features can vary significantly between versions. If creating a new project with Angular CLI, do not specify a version unless prompted by the user.
 

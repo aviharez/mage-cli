@@ -1,6 +1,8 @@
 ---
 name: readme
 description: Generates or updates a project's README — detects boilerplate/default READMEs (Angular CLI, create-next-app, Vite, Vue, NestJS, Spring Boot) and replaces them with a real README, auto-discovers and links existing docs (FFL.md, CHANGELOG, docs/, ADRs), never overwrites a customized README (only adds missing doc links). Trigger when the user asks to generate/create/update/improve a README, or when invoked by another skill (e.g. functional-flow) to wire docs into the README.
+metadata:
+  author: MAGE Team
 ---
 
 # README Generator

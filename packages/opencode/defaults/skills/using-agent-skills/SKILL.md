@@ -1,6 +1,8 @@
 ---
 name: using-agent-skills
 description: Discovers and invokes agent skills. Use when starting a session or when you need to discover which skill applies to the current task. This is the meta-skill that governs how all other skills are discovered and invoked.
+metadata:
+  author: Addy Osmani
 ---
 
 # Using Agent Skills
@@ -27,17 +29,14 @@ Task arrives
     │   ├── Need doc-verified code? ───→ source-driven-development
     │   └── Stakes high / unfamiliar code? ──→ doubt-driven-development
     ├── Writing/running tests? ────────→ test-driven-development
-    │   └── Browser-based? ───────────→ browser-testing-with-devtools
     ├── Something broke? ──────────────→ debugging-and-error-recovery
     ├── Reviewing code? ───────────────→ code-review-and-quality
     │   ├── Too complex? ─────────────→ code-simplification
     │   ├── Security concerns? ───────→ security-and-hardening
     │   └── Performance concerns? ────→ performance-optimization
     ├── Committing/branching? ─────────→ git-workflow-and-versioning
-    ├── CI/CD pipeline work? ──────────→ ci-cd-and-automation
     ├── Deprecating/migrating? ────────→ deprecation-and-migration
-    ├── Writing docs/ADRs? ───────────→ documentation-and-adrs
-    └── Deploying/launching? ─────────→ shipping-and-launch
+    └── Writing docs/ADRs? ───────────→ documentation-and-adrs
 ```
 
 ## Core Operating Behaviors

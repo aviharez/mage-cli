@@ -1,13 +1,13 @@
 ---
 name: mbb-lib
-description: Use BCA's in-house Angular component library (@mybcabisnis-web/lib / @mybcabisnis/lib). Trigger BEFORE creating, scaffolding, or editing any Angular component, page, form, or UI element in a project that depends on these packages — so existing library components are reused instead of rebuilt from scratch.
+description: Use myBCA Bisnis's in-house Angular component library (@mybcabisnis-web/lib / @mybcabisnis/lib). Trigger BEFORE creating, scaffolding, or editing any Angular component, page, form, or UI element in a project that depends on these packages — so existing library components are reused instead of rebuilt from scratch.
 metadata:
-  version: '1.0'
+  author: MAGE Team
 ---
 
-# BCA Component Library
+# myBCA Bisnis Component Library
 
-Reads the installed BCA Angular library from node_modules and returns accurate selectors, inputs, outputs, and import paths. Prevents hallucinated or reinvented component APIs.
+Reads the installed myBCA Bisnis Angular library from node_modules and returns accurate selectors, inputs, outputs, and import paths. Prevents hallucinated or reinvented component APIs.
 
 ## Workflow
 
