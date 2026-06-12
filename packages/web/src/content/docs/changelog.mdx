@@ -1,64 +1,73 @@
 ---
-title: Perubahan
+title: Changelog
 description: Riwayat perubahan dan pembaruan Mage.
 template: splash
 ---
 
 import { Card } from "@astrojs/starlight/components"
 
-Halaman ini mencatat pembaruan, perbaikan, dan perubahan signifikan pada setiap versi Mage.
+---
+
+## v1.2.3
+
+_11 Juni 2026_
+
+### Perbaikan
+- Perbaikan skill functional-flow untuk hasil yang lebih dalam dan tidak membaca `.gitignore`.
+- Perubahan batas context untuk trigger compaction ke 262K context.
 
 ---
 
-## v0.4.2
+## v1.2.2
 
-_Juni 2026_
+_9 Juni 2026_
 
 ### Yang baru
-- **Skill `verify`** — Perintah baru untuk memverifikasi perubahan kode berjalan sesuai ekspektasi.
-- **Guard satu subagent** — Task sekarang dijaga agar hanya menjalankan satu subagent dalam satu waktu untuk mencegah konflik.
+- **Skill functional-flow** — Skill baru untuk generate Functional Flow Diagram dengan template output.
 - **Skill Angular & MBB-lib** — Skill angular-developer sekarang terhubung dengan skill mbb-lib.
-- Boilerplate info disembunyikan dari sidebar jika tidak tersedia.
 
 ### Perbaikan
-- Perbaikan styling hub page dan navigasi halaman detail.
-- Perbaikan bundling shim `zod`/`yaml` agar plugin boilerplate dapat dimuat di aplikasi desktop.
-- Hapus file yang tidak digunakan.
+- Perbaikan intent untuk trigger Skills
 
 ---
 
-## v0.4.1
+## v1.2.1
 
-_Mei 2026_
+_8 Juni 2026_
 
 ### Yang baru
-- Tambah skill default dan dokumentasi awal.
-- Perbaikan sinkronisasi upstream dari OpenCode: paket core, llm, extensions, dan desktop diperbarui.
+- Perubahan config Qwen dengan config `temperature=0.6`, `top_p=1`, `top_k=20`, `min_p=0`, `presence_penalty=0`, `repetition_penalty=1` berdasarkan rekomendasi Qwen untuk coding preset.
+
+---
+
+## v1.2.0
+
+_8 Juni 2026_
+
+### Yang baru
+- Revamp UI dan flow web untuk persiapan versi desktop.
+- Update model ke Qwen3.6 27b.
+- Perubahan default AGENTS.md.
+- Penambahan beberapa skill default.
 
 ### Perbaikan
-- Perbaikan 13+ error TypeScript dari file hasil migrasi.
-- Build bersih untuk semua platform (macOS, Linux, Windows).
+- Pembatasan subagent untuk hanya 1 subagent yang berjalan untuk mengantisipasi error GAIA karena overload.
 
 ---
 
-## v0.4.0
+## v1.1.0
 
-_Mei 2026_
+_21 Mei 2026_
 
 ### Yang baru
-- **Windows cross-build** — Binary Windows kini dapat dibangun dari macOS/Jenkins via `bun run package:win`.
-- **Merlin model id** — Model distandarisasi menjadi `merlin/default`. Konfigurasi `merlin/qwen3` sekarang tidak valid.
-- Perbaikan halaman blank saat membuka aplikasi desktop di Windows.
+- Pembaruan model ke Qwen3.5 27b.
+- Penambahan fitur auto update ketika re-open `mage` via TUI.
+- Penambahan default AGENTS.md.
 
 ---
 
-## v0.3.x
+## v1.0.0
 
-_April 2026_
+_11 Mei 2026_
 
-Versi awal fork dari OpenCode dengan integrasi provider Merlin/GAIA BCA. Fitur utama:
-- Koneksi ke gateway GAIA internal via provider `merlin`.
-- Autentikasi menggunakan username udomain BCA.
-- Dukungan boilerplate tim dengan injeksi konvensi otomatis.
-- Slash commands: `/generate`, `/test`, `/review`, `/boilerplate`.
-- Review MR GitLab via binary `mr-reviewer`.
+Versi awal MAGE dengan integrasi GAIA.

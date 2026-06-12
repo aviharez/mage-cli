@@ -7,37 +7,6 @@ const template = entry.data.template
 const changelogUrl = "/changelog/"
 ---
 
-{/* ── Doc meta (edit link / last-updated) — only on doc pages ── */}
-{template === "doc" && (
-  <footer class="doc-meta">
-    <div class="meta sl-flex">
-      <div>
-        {editUrl && (
-          <a href={editUrl} target="_blank" rel="noopener noreferrer" class="sl-flex">
-            <Icon name="pencil" size="1em" />
-            {Astro.locals.t("page.editLink")}
-          </a>
-        )}
-      </div>
-      <div>
-        <p>
-          <em style="font-family:'Instrument Serif',Georgia,serif;">mage</em>
-          {" · "}a fork of{" "}
-          <a href="https://opencode.ai" target="_blank" rel="noopener noreferrer">OpenCode</a>
-        </p>
-        <p title={Astro.locals.t("page.lastUpdated")}>
-          {Astro.locals.t("page.lastUpdated")}{" "}
-          {lastUpdated ? (
-            <time datetime={lastUpdated.toISOString()}>
-              {lastUpdated.toLocaleDateString(lang, { dateStyle: "medium", timeZone: "UTC" })}
-            </time>
-          ) : "-"}
-        </p>
-      </div>
-    </div>
-  </footer>
-)}
-
 {/* ── Minimal global footer bar — on every page ── */}
 <footer class="site-footer">
   <span class="sf-sparkle" aria-hidden="true">
@@ -47,10 +16,10 @@ const changelogUrl = "/changelog/"
   </span>
   <span>
     <em style="font-family:'Instrument Serif',Georgia,serif;">mage</em>
-    {" · "}a fork of OpenCode
+    {" · "}MDZ AI Agent
   </span>
   <span class="sf-spacer"></span>
-  <a href={changelogUrl}>Perubahan</a>
+  <a href={changelogUrl}>Changelog</a>
 </footer>
 
 <style>

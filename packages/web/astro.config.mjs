@@ -2,12 +2,13 @@
 import { defineConfig } from "astro/config"
 import starlight from "@astrojs/starlight"
 import solidJs from "@astrojs/solid-js"
-import cloudflare from "@astrojs/cloudflare"
+import node from "@astrojs/node"
 import theme from "toolbeam-docs-theme"
 import config from "./config.mjs"
 import { rehypeHeadingIds } from "@astrojs/markdown-remark"
 import rehypeAutolinkHeadings from "rehype-autolink-headings"
 import { spawnSync } from "child_process"
+import { existsSync } from "fs"
 
 /**
  * Expressive Code plugin — adds a persistent lang label in the code-block
@@ -66,9 +67,7 @@ export default defineConfig({
   site: config.url,
   base: "/",
   output: "server",
-  adapter: cloudflare({
-    imageService: "passthrough",
-  }),
+  adapter: node({ mode: "standalone" }),
   devToolbar: {
     enabled: false,
   },
@@ -79,6 +78,14 @@ export default defineConfig({
     rehypePlugins: [rehypeHeadingIds, [rehypeAutolinkHeadings, { behavior: "wrap" }]],
   },
   build: {},
+  vite: {
+    ssr: {
+      // Inline solid into dist/server so SSR uses the patched, build-time solid —
+      // not whatever the container's node_modules resolves at runtime. Fixes /hub
+      // rendering empty on OCP (npm-installed solid is unpatched / resolves differently).
+      noExternal: ["solid-js", "solid-js/web", "@astrojs/solid-js"],
+    },
+  },
   integrations: [
     configSchema(),
     solidJs(),
@@ -144,9 +151,13 @@ export default defineConfig({
         themes: ["github-light", "github-dark"],
         plugins: [ecLangLabelPlugin()],
       },
-      editLink: {
-        baseUrl: `${config.github}/edit/dev/packages/web/src/content/`,
-      },
+      ...(config.github
+        ? {
+            editLink: {
+              baseUrl: `${config.github}/edit/dev/packages/web/src/content/`,
+            },
+          }
+        : {}),
       markdown: {
         headingLinks: false,
       },
@@ -172,6 +183,7 @@ export default defineConfig({
           label: "Referensi",
           items: [
             "docs/agent",
+            "docs/qwen-prompting",
             "docs/konfigurasi",
             "docs/troubleshooting",
           ],
@@ -200,8 +212,20 @@ function configSchema() {
     name: "configSchema",
     hooks: {
       "astro:build:done": async () => {
-        console.log("generating config schema")
-        spawnSync("../opencode/script/schema.ts", ["./dist/config.json", "./dist/tui.json"])
+        // Only regenerate when running inside the full monorepo (opencode source + Bun present).
+        // In standalone / Docker builds the vendored public/config.json + public/tui.json are
+        // copied to dist/ by Astro automatically, so this is safely skipped.
+        const schemaScript = "../opencode/script/schema.ts"
+        if (!existsSync(schemaScript)) {
+          console.log("skipping config schema generation (standalone build)")
+          return
+        }
+        try {
+          console.log("generating config schema")
+          spawnSync(schemaScript, ["./dist/config.json", "./dist/tui.json"])
+        } catch (err) {
+          console.warn("config schema generation failed (non-fatal):", err)
+        }
       },
     },
   }

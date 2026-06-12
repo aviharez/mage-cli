@@ -10,9 +10,6 @@ eyebrow: Dokumentasi
 |----------|-----------|
 | `mage` | Buka TUI interaktif di direktori saat ini |
 | `mage run "pesan"` | Kirim satu pesan tanpa membuka TUI |
-| `mage init` | Jalankan ulang wizard konfigurasi |
-| `mage providers` | Kelola kredensial provider |
-| `mage models` | Tampilkan daftar model yang tersedia |
 | `mage serve` | Jalankan server headless (tanpa membuka browser) |
 | `mage web` | Jalankan server dan buka antarmuka web di browser |
 
@@ -27,14 +24,6 @@ mage
 
 Mage akan mengindeks file di repository Anda sebelum sesi dimulai.
 
-### Shortcut keyboard
-
-| Shortcut | Aksi |
-|----------|------|
-| `?` | Tampilkan daftar shortcut lengkap |
-| `Ctrl+C` | Interrupt — hentikan aksi agent yang sedang berjalan |
-| `Ctrl+D` | Keluar dari TUI |
-
 Ketik `/` untuk membuka autocomplete slash command. Lihat [Slash Commands](/docs/slash-commands) untuk daftar lengkap.
 
 ## Mengirim satu pesan (tanpa TUI)
@@ -46,14 +35,6 @@ mage run "Jelaskan fungsi getUserById di file src/user.ts"
 ```
 
 Output dicetak ke stdout dan Mage keluar setelah selesai.
-
-## Informasi model
-
-Model yang digunakan adalah **`merlin/default`** via gateway GAIA BCA.
-
-```bash
-mage models
-```
 
 ---
 

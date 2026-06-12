@@ -1,0 +1,53 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  annotations:
+    app.openshift.io/vcs-ref: DEV1
+    app.openshift.io/vcs-uri: >-
+      https://bcagitlab.intra.bca.co.id/mybcabisnis-web/framework/mage.git
+    # Image trigger: whenever `podman push` updates mage:latest in the internal registry,
+    # the trigger controller patches containers[mage].image to the new digest and rolls out.
+    image.openshift.io/triggers: >-
+      [{"from":{"kind":"ImageStreamTag","name":"mage:latest","namespace":"my-bca-bisnis-dev"},"fieldPath":"spec.template.spec.containers[?(@.name==\"mage\")].image","pause":"false"}]
+  name: mage
+  labels:
+    app: mage
+    app.kubernetes.io/component: mage
+    app.kubernetes.io/instance: mage
+    app.kubernetes.io/name: mage
+    app.kubernetes.io/part-of: rnd
+    app.openshift.io/runtime-namespace: my-bca-bisnis-dev
+    app.openshift.io/runtime-version: latest
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mage
+  template:
+    metadata:
+      labels:
+        app: mage
+        deployment: mage
+    spec:
+      containers:
+        - name: mage
+          # Fallback image path (internal registry). On first `oc apply`, the trigger
+          # controller immediately replaces this with the resolved digest from mage:latest.
+          image: >-
+            image-registry.openshift-image-registry.svc:5000/my-bca-bisnis-dev/mage:latest
+          # No envFrom — the docs site needs no runtime secrets.
+          # HOST, PORT, NODE_ENV are baked into the image via the Dockerfile ENV directives.
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          imagePullPolicy: Always
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+      securityContext: {}
+      schedulerName: default-scheduler
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0%
+      maxUnavailable: 50%

@@ -1,13 +1,13 @@
 const stage = process.env.SST_STAGE || "dev"
-const github = "https://github.com/bcamaster/new-mage"
+const github = ""
 
 export default {
   url: stage === "production" ? "https://mage.bca.id" : `http://localhost:4321`,
-  email: "contact@bca.id",
+  email: "contact@bca.co.id",
   socialCard: "",
   github,
   discord: "",
-  version: "v0.4.2",
+  version: "1.2.3",
   headerLinks: [
     { name: "app.header.docs",      url: "/docs/" },
     { name: "app.header.catalog",   url: "/hub/" },

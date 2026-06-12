@@ -6,28 +6,28 @@ eyebrow: Dokumentasi · 3 menit
 
 import { Tabs, TabItem } from "@astrojs/starlight/components"
 
-**Mage** adalah asisten coding AI berbasis terminal yang terhubung ke **GAIA** — gateway LLM internal BCA. Mage adalah fork dari [OpenCode](https://opencode.ai) yang disesuaikan untuk infrastruktur BCA: tanpa API key pribadi, dengan log audit bawaan.
+**Mage** adalah asisten coding AI berbasis terminal yang terhubung ke **GAIA**. Workflow yang sama, namun lebih dekat dengan project Anda.
 
 ## Prasyarat
 
-Node.js **≥ 18** harus sudah terinstal. Unduh di [nodejs.org](https://nodejs.org/en/download).
+Node.js **≥ 18** harus sudah terinstal. Unduh di Software Center.
 
 ## Instalasi cepat
 
 <Tabs>
-  <TabItem label="macOS / Linux">
-    ```bash
-    curl -fsSL https://mage.apps.ocpdevgra.dti.co.id/install | bash
-    ```
-  </TabItem>
   <TabItem label="Windows PowerShell">
     ```powershell
-    irm https://mage.apps.ocpdevgra.dti.co.id/install.ps1 | iex
+    irm https://mybcabisnis-mage.apps.ocpdevgra.dti.co.id/install.ps1 | iex
+    ```
+  </TabItem>
+  <TabItem label="macOS / Linux">
+    ```bash
+    curl -fsSL https://mybcabisnis-mage.apps.ocpdevgra.dti.co.id/install | bash
     ```
   </TabItem>
 </Tabs>
 
-Installer mengonfigurasi `~/.npmrc` untuk BCA Artifactory secara otomatis, lalu menginstal `@mybcabisnis/mage` secara global.
+Installer mengonfigurasi `C:\Users\udomain\.npmrc` untuk BCA Artifactory secara otomatis, lalu menginstal `@mybcabisnis/mage` secara global.
 
 Untuk opsi instalasi lengkap (Windows cmd, manual `.npmrc`, dari source), lihat [Instalasi](/docs/instalasi).
 
@@ -39,13 +39,13 @@ Jalankan `mage` untuk pertama kalinya. Wizard setup akan muncul otomatis dan mem
 $ mage
 
   █▄ ▄█ ▄▀▀▄ █▀▀▀ █▀▀▀
-  █ ▀ █ ████ █  █ █▀▀▀
+  █ ▀ █ ████ █ ▄█ █▀▀▀
   ▀   ▀ ▀  ▀ ▀▀▀▀ ▀▀▀▀
 
 ◆ Mage setup
 │
 ◆ BCA udomain username
-│  u0johndoe
+│  u0xxxxx
 └  Config saved → ~/.mage/mage.json
 ```
 
@@ -59,14 +59,6 @@ Wizard hanya berjalan sekali. Jalankan `mage init` kapan saja untuk mengulang ko
 cd ~/code/myproject
 mage
 ```
-
-Mage mengindeks repository Anda dan membuka TUI. Di dalam TUI:
-
-| Shortcut | Aksi |
-|----------|------|
-| `?` | Tampilkan daftar shortcut |
-| `Ctrl+C` | Interrupt agent |
-| `Ctrl+D` | Keluar |
 
 ## Langkah selanjutnya
 

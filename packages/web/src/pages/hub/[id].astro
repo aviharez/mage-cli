@@ -20,7 +20,7 @@ if (!item) {
     tableOfContents: false,
   }}
 >
-  <HubDetail item={item} client:load />
+  <HubDetail item={item} client:only="solid-js" />
 </StarlightPage>
 
 <style is:global>

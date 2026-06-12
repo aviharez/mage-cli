@@ -1,0 +1,127 @@
+[
+  {
+    "name": "angular-developer",
+    "description": "Generates Angular code and provides architectural guidance. Trigger when creating, updating, migrating, or modernizing Angular projects or components — including ng update, version upgrades (e.g. v18 → v20), standalone migration, control flow syntax (@if/@for/@switch), signals, or implementing new Angular features — or for best practices on reactivity (signals, linkedSignal, resource), forms, dependency injection, routing, SSR, accessibility (ARIA), animations, styling (component styles, Tailwind CSS), testing, or CLI tooling.",
+    "author": "Copyright 2026 Google LLC",
+    "license": "MIT"
+  },
+  {
+    "name": "api-and-interface-design",
+    "description": "Guides stable API and interface design. Use when designing APIs, module boundaries, or any public interface. Use when creating REST or GraphQL endpoints, defining type contracts between modules, or establishing boundaries between frontend and backend.",
+    "author": "Addy Osmani"
+  },
+  {
+    "name": "code-review-and-quality",
+    "description": "Conducts multi-axis code review. Use before merging any change. Use when reviewing code written by yourself, another agent, or a human. Use when you need to assess code quality across multiple dimensions before it enters the main branch.",
+    "author": "Addy Osmani"
+  },
+  {
+    "name": "code-simplification",
+    "description": "Simplifies code for clarity. Use when refactoring code for clarity without changing behavior. Use when code works but is harder to read, maintain, or extend than it should be. Use when reviewing code that has accumulated unnecessary complexity.",
+    "author": "Addy Osmani"
+  },
+  {
+    "name": "context-engineering",
+    "description": "Optimizes agent context setup. Use when starting a new session, when agent output quality degrades, when switching between tasks, or when you need to configure rules files and context for a project.",
+    "author": "Addy Osmani"
+  },
+  {
+    "name": "debugging-and-error-recovery",
+    "description": "Guides systematic root-cause debugging. Use when tests fail, builds break, behavior doesn't match expectations, or you encounter any unexpected error. Use when you need a systematic approach to finding and fixing the root cause rather than guessing.",
+    "author": "Addy Osmani"
+  },
+  {
+    "name": "deprecation-and-migration",
+    "description": "Manages deprecation and migration. Use when removing old systems, APIs, or features. Use when migrating users from one implementation to another. Use when deciding whether to maintain or sunset existing code.",
+    "author": "Addy Osmani"
+  },
+  {
+    "name": "documentation-and-adrs",
+    "description": "Records decisions and documentation. Use when making architectural decisions, changing public APIs, shipping features, or when you need to record context that future engineers and agents will need to understand the codebase.",
+    "author": "Addy Osmani"
+  },
+  {
+    "name": "doubt-driven-development",
+    "description": "Subjects every non-trivial decision to a fresh-context adversarial review before it stands. Use when correctness matters more than speed, when working in unfamiliar code, when stakes are high (production, security-sensitive logic, irreversible operations), or any time a confident output would be cheaper to verify now than to debug later.",
+    "author": "Addy Osmani"
+  },
+  {
+    "name": "frontend-ui-engineering",
+    "description": "Builds production-quality UIs. Use when building or modifying user-facing interfaces. Use when creating components, implementing layouts, managing state, or when the output needs to look and feel production-quality rather than AI-generated.",
+    "author": "Addy Osmani"
+  },
+  {
+    "name": "functional-flow",
+    "description": "Generates a Functional Flow (FFL) document for a project — scans the codebase, traces each feature's flow, renders Mermaid sequence + flowchart diagrams, and lists all API endpoints. Trigger when the user asks to generate/create/update an FFL, functional flow doc, flow document, or architecture/endpoint map for an Angular, Spring Boot, or other project.",
+    "author": "MAGE Team"
+  },
+  {
+    "name": "git-workflow-and-versioning",
+    "description": "Structures git workflow practices. Use when making any code change. Use when committing, branching, resolving conflicts, or when you need to organize work across multiple parallel streams.",
+    "author": "Addy Osmani"
+  },
+  {
+    "name": "idea-refine",
+    "description": "Refines raw ideas into sharp, actionable concepts through structured divergent and convergent thinking. Use when an idea is still vague, when you need to stress-test assumptions before committing to a plan, or when you want to expand options before converging on one. Triggers on \"ideate\", \"refine this idea\", or \"stress-test my plan\".",
+    "author": "Addy Osmani"
+  },
+  {
+    "name": "incremental-implementation",
+    "description": "Delivers changes incrementally. Use when implementing any feature or change that touches more than one file. Use when you're about to write a large amount of code at once, or when a task feels too big to land in one step.",
+    "author": "Addy Osmani"
+  },
+  {
+    "name": "interview-me",
+    "description": "Extracts what the user actually wants instead of what they think they should want. Achieves this through one-question-at-a-time interview until ~95% confidence about the underlying intent. Use when an ask is underspecified (\"build me X\" without \"for whom\" or \"why now\"), when the user explicitly invokes (\"interview me\", \"grill me\", \"are we sure?\", \"stress-test my thinking\"), or when you catch yourself silently filling in ambiguous requirements before any plan, spec, or code exists.",
+    "author": "Addy Osmani"
+  },
+  {
+    "name": "mbb-lib",
+    "description": "Use myBCA Bisnis's in-house Angular component library (@mybcabisnis-web/lib / @mybcabisnis/lib). Trigger BEFORE creating, scaffolding, or editing any Angular component, page, form, or UI element in a project that depends on these packages — so existing library components are reused instead of rebuilt from scratch.",
+    "author": "MAGE Team"
+  },
+  {
+    "name": "performance-optimization",
+    "description": "Optimizes application performance. Use when performance requirements exist, when you suspect performance regressions, or when Core Web Vitals or load times need improvement. Use when profiling reveals bottlenecks that need fixing.",
+    "author": "Addy Osmani"
+  },
+  {
+    "name": "planning-and-task-breakdown",
+    "description": "Breaks work into ordered tasks. Use when you have a spec or clear requirements and need to break work into implementable tasks. Use when a task feels too large to start, when you need to estimate scope, or when parallel work is possible.",
+    "author": "Addy Osmani"
+  },
+  {
+    "name": "readme",
+    "description": "Generates or updates a project's README — detects boilerplate/default READMEs (Angular CLI, create-next-app, Vite, Vue, NestJS, Spring Boot) and replaces them with a real README, auto-discovers and links existing docs (FFL.md, CHANGELOG, docs/, ADRs), never overwrites a customized README (only adds missing doc links). Trigger when the user asks to generate/create/update/improve a README, or when invoked by another skill (e.g. functional-flow) to wire docs into the README.",
+    "author": "MAGE Team"
+  },
+  {
+    "name": "security-and-hardening",
+    "description": "Hardens code against vulnerabilities. Use when handling user input, authentication, data storage, or external integrations. Use when building any feature that accepts untrusted data, manages user sessions, or interacts with third-party services.",
+    "author": "Addy Osmani"
+  },
+  {
+    "name": "source-driven-development",
+    "description": "Grounds every implementation decision in official documentation. Use when you want authoritative, source-cited code free from outdated patterns. Use when building with any framework or library where correctness matters.",
+    "author": "Addy Osmani"
+  },
+  {
+    "name": "spec-driven-development",
+    "description": "Creates specs before coding. Use when starting a new project, feature, or significant change and no specification exists yet. Use when requirements are unclear, ambiguous, or only exist as a vague idea.",
+    "author": "Addy Osmani"
+  },
+  {
+    "name": "test-driven-development",
+    "description": "Drives development with tests. Use when implementing any logic, fixing any bug, or changing any behavior. Use when you need to prove that code works, when a bug report arrives, or when you're about to modify existing functionality.",
+    "author": "Addy Osmani"
+  },
+  {
+    "name": "using-agent-skills",
+    "description": "Discovers and invokes agent skills. Use when starting a session or when you need to discover which skill applies to the current task. This is the meta-skill that governs how all other skills are discovered and invoked.",
+    "author": "Addy Osmani"
+  },
+  {
+    "name": "verify",
+    "description": "Verifies that a code change actually works by running the app and observing behavior. Use when asked to verify a PR, confirm a fix works, test a change manually, check that a feature works end-to-end, or validate local changes before pushing. Tests the golden path and edge cases and watches for regressions."
+  }
+]

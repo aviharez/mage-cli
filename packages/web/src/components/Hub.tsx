@@ -1,23 +1,24 @@
-import { createSignal, createMemo, For, Show } from "solid-js"
+import { createSignal, createMemo, createEffect, For, Show } from "solid-js"
 import { HUB_ITEMS, type HubItem, type HubItemKind } from "./hub-data"
 
 type Filter = "all" | HubItemKind
-type Sort = "popular" | "name" | "recent"
 
 const KIND_LABELS: Record<HubItemKind, string> = {
-  mcp: "MCP",
+  mcp:   "MCP",
   skill: "Skill",
-  plugin: "Plugin",
 }
 
 const KIND_COLORS: Record<HubItemKind, { color: string; bg: string }> = {
-  mcp:    { color: "#c4a8ff", bg: "rgba(167,139,250,0.12)" },
-  skill:  { color: "#6ee7b7", bg: "rgba(110,231,183,0.12)" },
-  plugin: { color: "#f5b76c", bg: "rgba(245,183,108,0.12)" },
+  mcp:   { color: "#c4a8ff", bg: "rgba(167,139,250,0.12)" },
+  skill: { color: "#6ee7b7", bg: "rgba(110,231,183,0.12)" },
 }
 
+const BUILTIN_COLOR = { color: "#fbbf24", bg: "rgba(251,191,36,0.12)" }
+
+const PAGE_SIZE = 9
+
 function Card(props: { item: HubItem }) {
-  const kc = KIND_COLORS[props.item.kind]
+  const kc = props.item.builtin ? BUILTIN_COLOR : KIND_COLORS[props.item.kind]
 
   return (
     <a
@@ -39,18 +40,95 @@ function Card(props: { item: HubItem }) {
           class="hub-badge"
           style={{ color: kc.color, background: kc.bg, border: `1px solid ${kc.color}44` }}
         >
-          {KIND_LABELS[props.item.kind]}
+          {props.item.builtin ? "Default" : KIND_LABELS[props.item.kind]}
         </span>
+        <For each={props.item.tags ?? []}>
+          {(t) => <span class="hub-tag-chip">{t}</span>}
+        </For>
         <span class="hub-card-arrow">→</span>
       </div>
     </a>
   )
 }
 
+/** Paginated grid — resets to page 1 whenever the items list changes. */
+function PaginatedGrid(props: {
+  items: () => HubItem[]
+  featured?: boolean
+}) {
+  const [page, setPage] = createSignal(1)
+
+  // Reset to page 1 whenever the source items change (filter/search/tag).
+  createEffect(() => {
+    props.items() // track
+    setPage(1)
+  })
+
+  const pageCount = createMemo(() =>
+    Math.max(1, Math.ceil(props.items().length / PAGE_SIZE))
+  )
+  const currentPage = createMemo(() =>
+    Math.min(page(), pageCount())
+  )
+  const visible = createMemo(() => {
+    const start = (currentPage() - 1) * PAGE_SIZE
+    return props.items().slice(start, start + PAGE_SIZE)
+  })
+
+  const gridClass = () =>
+    props.featured ? "hub-grid hub-grid--featured" : "hub-grid"
+
+  return (
+    <div>
+      <div class={gridClass()}>
+        <For each={visible()}>{(item) => <Card item={item} />}</For>
+      </div>
+      <Show when={pageCount() > 1}>
+        <div class="hub-pagination">
+          <button
+            class="hub-page-nav"
+            disabled={currentPage() === 1}
+            onClick={() => setPage(p => p - 1)}
+            aria-label="Halaman sebelumnya"
+          >
+            ‹
+          </button>
+          <For each={Array.from({ length: pageCount() }, (_, i) => i + 1)}>
+            {(n) => (
+              <button
+                class="hub-page-btn"
+                classList={{ active: currentPage() === n }}
+                onClick={() => setPage(n)}
+                aria-label={`Halaman ${n}`}
+                aria-current={currentPage() === n ? "page" : undefined}
+              >
+                {n}
+              </button>
+            )}
+          </For>
+          <button
+            class="hub-page-nav"
+            disabled={currentPage() === pageCount()}
+            onClick={() => setPage(p => p + 1)}
+            aria-label="Halaman berikutnya"
+          >
+            ›
+          </button>
+        </div>
+      </Show>
+    </div>
+  )
+}
+
 export default function Hub() {
   const [filter, setFilter] = createSignal<Filter>("all")
-  const [sort, setSort] = createSignal<Sort>("popular")
-  const [query, setQuery] = createSignal("")
+  const [tag,    setTag]    = createSignal("all")
+  const [query,  setQuery]  = createSignal("")
+
+  // All unique tags across downloadable + MCP items (built-ins have no tags).
+  const allTags = createMemo(() =>
+    Array.from(new Set(HUB_ITEMS.flatMap(i => i.tags ?? []))).sort()
+  )
 
   const filtered = createMemo(() => {
     let items = [...HUB_ITEMS]
@@ -65,51 +143,54 @@ export default function Hub() {
         (i.tags || []).some(t => t.includes(q))
       )
     }
-    if (sort() === "name") items.sort((a, b) => a.name.localeCompare(b.name))
+    const t = tag()
+    if (t !== "all") items = items.filter(i => (i.tags ?? []).includes(t))
     return items
   })
 
-  const featured = createMemo(() =>
-    filter() === "all" && !query()
-      ? HUB_ITEMS.filter(i => i.featured)
-      : []
-  )
+  // "Skill Bawaan" section: hide when filtered by kind=mcp, by query, or by tag
+  // (built-in skills carry no tags, so they never match a tag filter).
+  const builtinSkills = createMemo(() => {
+    const showSection =
+      (filter() === "all" || filter() === "skill") && !query() && tag() === "all"
+    return showSection ? HUB_ITEMS.filter(i => i.builtin) : []
+  })
+
+  // Everything else: not builtin
   const rest = createMemo(() => {
-    const f = featured()
-    return filtered().filter(i => !f.includes(i))
+    const builtins = new Set(builtinSkills().map(i => i.name))
+    return filtered().filter(i => !builtins.has(i.name))
   })
 
   const stats = createMemo(() => ({
     total: HUB_ITEMS.length,
-    mcp:    HUB_ITEMS.filter(i => i.kind === "mcp").length,
-    skill:  HUB_ITEMS.filter(i => i.kind === "skill").length,
-    plugin: HUB_ITEMS.filter(i => i.kind === "plugin").length,
+    mcp:   HUB_ITEMS.filter(i => i.kind === "mcp").length,
+    skill: HUB_ITEMS.filter(i => i.kind === "skill").length,
   }))
 
   const filters: { id: Filter; label: string; count: () => number }[] = [
-    { id: "all",    label: "All",     count: () => HUB_ITEMS.length },
-    { id: "mcp",    label: "MCP",     count: () => stats().mcp },
-    { id: "skill",  label: "Skills",  count: () => stats().skill },
-    { id: "plugin", label: "Plugins", count: () => stats().plugin },
+    { id: "all",   label: "Semua",  count: () => HUB_ITEMS.length },
+    { id: "mcp",   label: "MCP",    count: () => stats().mcp },
+    { id: "skill", label: "Skill",  count: () => stats().skill },
   ]
 
   return (
     <div class="hub-wrap not-content">
-      {/* Header — left: eyebrow+title, right: lede+stats (matches reference catalog-head) */}
+      {/* Header */}
       <div class="hub-head">
         <div>
-          <div class="hub-eyebrow">MCP Catalog</div>
-          <h1 class="hub-title">Extensions for every workflow.</h1>
+          <div class="hub-eyebrow">Katalog Mage</div>
+          <h1 class="hub-title">Ekstensi untuk setiap kebutuhan.</h1>
         </div>
         <div class="hub-right-col">
           <p class="hub-lede">
-            Browse and install MCP servers, skills, and plugins curated for the Mage gateway.
-            Click any card to copy the install snippet.
+            Jelajahi dan pasang MCP server, skill bawaan, serta skill tambahan yang dikurasi
+            untuk Mage. Klik card mana untuk detail pemasangan.
           </p>
           <div class="hub-stats">
             <div class="stat">
               <div class="stat-num">{stats().total}</div>
-              <div class="stat-label">Items</div>
+              <div class="stat-label">Total</div>
             </div>
             <div class="stat">
               <div class="stat-num">{stats().mcp}</div>
@@ -117,11 +198,7 @@ export default function Hub() {
             </div>
             <div class="stat">
               <div class="stat-num">{stats().skill}</div>
-              <div class="stat-label">Skills</div>
-            </div>
-            <div class="stat">
-              <div class="stat-num">{stats().plugin}</div>
-              <div class="stat-label">Plugins</div>
+              <div class="stat-label">Skill</div>
             </div>
           </div>
         </div>
@@ -136,7 +213,7 @@ export default function Hub() {
           </svg>
           <input
             class="filter-input"
-            placeholder="Search servers, skills, plugins…"
+            placeholder="Cari skill atau MCP server…"
             value={query()}
             onInput={e => setQuery(e.currentTarget.value)}
           />
@@ -154,33 +231,33 @@ export default function Hub() {
             )}
           </For>
         </div>
-        <div class="filter-sort">
-          <span>Sort:</span>
-          <select value={sort()} onChange={e => setSort(e.currentTarget.value as Sort)}>
-            <option value="popular">Most installed</option>
-            <option value="name">Name (A–Z)</option>
-            <option value="recent">Recently updated</option>
-          </select>
-        </div>
+        <Show when={allTags().length > 0}>
+          <div class="filter-sort">
+            <span>Tag:</span>
+            <select value={tag()} onChange={e => setTag(e.currentTarget.value)}>
+              <option value="all">Semua tag</option>
+              <For each={allTags()}>{(t) => <option value={t}>{t}</option>}</For>
+            </select>
+          </div>
+        </Show>
       </div>
 
-      {/* Featured */}
-      <Show when={featured().length > 0}>
+      {/* Skill Bawaan */}
+      <Show when={builtinSkills().length > 0}>
         <div class="hub-section">
-          <div class="hub-section-label">✦ Featured</div>
-          <div class="hub-grid hub-grid--featured">
-            <For each={featured()}>{(item) => <Card item={item} />}</For>
-          </div>
+          <div class="hub-section-label">★ Skill Bawaan</div>
+          <p class="hub-section-sublabel">
+            Sudah termasuk dalam Mage — tidak perlu dipasang, langsung tersedia saat sesi dimulai.
+          </p>
+          <PaginatedGrid items={builtinSkills} />
         </div>
       </Show>
 
-      {/* All */}
+      {/* MCP + downloadable skills */}
       <Show when={rest().length > 0}>
         <div class="hub-section">
-          <div class="hub-section-label" style="color:var(--mg-text-dim)">All items</div>
-          <div class="hub-grid">
-            <For each={rest()}>{(item) => <Card item={item} />}</For>
-          </div>
+          <div class="hub-section-label" style="color:var(--mg-text-dim)">Semua item</div>
+          <PaginatedGrid items={rest} />
         </div>
       </Show>
 
@@ -191,7 +268,7 @@ export default function Hub() {
             <circle cx="11" cy="11" r="7"/>
             <path d="m20 20-3.5-3.5"/>
           </svg>
-          <div>No items match that filter.</div>
+          <div>Tidak ada item yang sesuai filter.</div>
         </div>
       </Show>
     </div>

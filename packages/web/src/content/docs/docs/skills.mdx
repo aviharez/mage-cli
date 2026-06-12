@@ -16,12 +16,12 @@ Tulis prompt natural yang mendeskripsikan tugas Anda. Model akan mencocokkan pro
 
 | Skill | Contoh prompt (EN) | Contoh prompt (ID) |
 |-------|-------------------|-------------------|
-| **angular-developer** | "Migrate this project to Angular standalone components" | "Migrasikan proyek ini ke Angular standalone components" |
-| **mbb-lib** | "Build a login form using the BCA component library" | "Buat form login menggunakan library komponen BCA" |
-| **functional-flow** | "Generate a functional flow diagram for the checkout feature" | "Buat diagram functional flow untuk fitur checkout" |
-| **readme** | "Generate a README for this project" | "Buatkan README untuk proyek ini" |
+| **angular-developer** | "Migrate this project to Angular standalone components" | "Migrasikan project ini ke Angular standalone components" |
+| **mbb-lib** | "Build a login form using the MBB component library" | "Buat form login menggunakan library komponen MBB" |
+| **functional-flow** | "Generate a functional flow diagram for this project" | "Buat diagram functional flow untuk project ini" |
+| **readme** | "Generate a README for this project" | "Buatkan README untuk project ini" |
 | **verify** | "Verify that the payment feature works correctly" | "Verifikasi bahwa fitur pembayaran berjalan dengan benar" |
-| **code-review-and-quality** | "Review this code before I merge it" | "Review kode ini sebelum saya merge" |
+| **code-review-and-quality** | "Review this code before I commit it" | "Review kode ini sebelum saya commit" |
 
 :::tip[Browse skill secara manual]
 Ketikkan `/skills` di TUI untuk membuka dialog browser skill — Anda bisa melihat semua skill yang tersedia dan mengaktifkannya secara manual jika diperlukan.
@@ -31,12 +31,12 @@ Ketikkan `/skills` di TUI untuk membuka dialog browser skill — Anda bisa melih
 
 ## Skill bawaan
 
-Mage menyertakan **30 skill bawaan**. Berikut beberapa yang paling relevan untuk penggunaan sehari-hari:
+Mage menyertakan **25 skill bawaan**. Berikut beberapa yang paling relevan untuk penggunaan sehari-hari:
 
 | Skill | Kegunaan |
 |-------|----------|
 | **angular-developer** | Generate kode Angular, migrasi standalone, signals, control flow |
-| **mbb-lib** | Gunakan library komponen BCA (`@mybcabisnis-web/lib`) di proyek Angular |
+| **mbb-lib** | Gunakan library komponen MBB (`@mybcabisnis-web/lib`) di proyek Angular |
 | **functional-flow** | Buat dokumen Functional Flow (diagram Mermaid, API endpoints) |
 | **readme** | Generate atau update README proyek secara otomatis |
 | **verify** | Verifikasi perubahan kode berjalan sesuai ekspektasi |
@@ -46,7 +46,7 @@ Mage menyertakan **30 skill bawaan**. Berikut beberapa yang paling relevan untuk
 | **debugging-and-error-recovery** | Analisis root cause dari bug, error, atau test yang gagal |
 | **planning-and-task-breakdown** | Pecah spesifikasi menjadi task yang dapat diimplementasikan |
 
-Seluruh 30 skill tersedia saat Anda menginstal Mage. Skill lain yang tersedia mencakup: `api-and-interface-design`, `ci-cd-and-automation`, `context-engineering`, `deprecation-and-migration`, `documentation-and-adrs`, `doubt-driven-development`, `frontend-ui-engineering`, `git-workflow-and-versioning`, `idea-refine`, `incremental-implementation`, `interview-me`, `performance-optimization`, `security-and-hardening`, `shipping-and-launch`, `source-driven-development`, `spec-driven-development`, dan lainnya.
+Seluruh 25 skill tersedia saat Anda menginstal Mage. Skill lain yang tersedia mencakup: `api-and-interface-design`, `ci-cd-and-automation`, `context-engineering`, `deprecation-and-migration`, `documentation-and-adrs`, `doubt-driven-development`, `frontend-ui-engineering`, `git-workflow-and-versioning`, `idea-refine`, `incremental-implementation`, `interview-me`, `performance-optimization`, `security-and-hardening`, `shipping-and-launch`, `source-driven-development`, `spec-driven-development`, dan lainnya.
 
 ---
 
@@ -118,7 +118,7 @@ Follow these conventions when creating a Spring Boot service:
 
 ## Package structure
 ```
-com.bca.app/
+id.co.bca.app/
 ├── service/        ← put service classes here
 ├── repository/
 └── controller/
