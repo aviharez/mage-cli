@@ -88,12 +88,11 @@ interface MerlinRequest {
   service_id: string
   config: {
     temperature: number
-    // Gateway currently only honors `temperature`; re-enable when supported.
-    // top_p: number
-    // top_k: number
-    // min_p: number
-    // presence_penalty: number
-    // repetition_penalty: number
+    top_p: number
+    top_k: number
+    min_p: number
+    presence_penalty: number
+    repetition_penalty: number
     max_token: string
     recommendation: string
   }
@@ -188,24 +187,36 @@ function extractBalancedJson(s: string): string | null {
   return null
 }
 
+/**
+ * Escape backslashes that are not part of a valid JSON escape sequence
+ * (`\" \\ \/ \b \f \n \r \t \uXXXX`). Turns a raw Windows path emitted by the
+ * model — `C:\Users\me` — into valid JSON `C:\\Users\\me` so the tool call
+ * survives instead of being dropped. Returns null if given null.
+ */
+function escapeStrayBackslashes(s: string | null): string | null {
+  return s === null ? null : s.replace(/\\(?!["\\/bfnrtu])/g, "\\\\")
+}
+
 /** Parse a single tool_call body into {name, args}, or null if unrecognized. */
 function parseToolCallBody(body: string): { name: string; args: Record<string, unknown> } | null {
   // Strip surrounding markdown code fences if the model wrapped its JSON in them.
   const stripped = body.replace(/^```(?:json|xml)?\s*/i, "").replace(/\s*```\s*$/, "").trim()
 
-  // Format 1: JSON object — strict parse first, then balanced-brace fallback for
-  // cases where the model appended trailing text after the closing brace.
+  // Format 1: JSON object. Try a sequence of increasingly forgiving candidates:
+  //   1. the string as-is,
+  //   2. the balanced-brace substring (model appended trailing text after `}`),
+  //   3. with stray backslashes escaped (raw Windows paths like C:\Users\me make
+  //      the JSON invalid — `\U` is not a legal escape — and would otherwise drop
+  //      the whole tool call, so the agent silently does nothing).
   if (stripped.startsWith("{")) {
-    try {
-      const parsed = JSON.parse(stripped) as { name?: string; arguments?: Record<string, unknown> }
-      if (parsed.name) return { name: parsed.name, args: parsed.arguments ?? {} }
-    } catch { /* try balanced extraction */ }
-    const extracted = extractBalancedJson(stripped)
-    if (extracted && extracted !== stripped) {
+    const balanced = extractBalancedJson(stripped)
+    const candidates = [stripped, balanced, escapeStrayBackslashes(stripped), escapeStrayBackslashes(balanced)]
+    for (const candidate of candidates) {
+      if (!candidate) continue
       try {
-        const parsed = JSON.parse(extracted) as { name?: string; arguments?: Record<string, unknown> }
+        const parsed = JSON.parse(candidate) as { name?: string; arguments?: Record<string, unknown> }
         if (parsed.name) return { name: parsed.name, args: parsed.arguments ?? {} }
-      } catch { /* fall through */ }
+      } catch { /* try next candidate */ }
     }
   }
 
@@ -233,7 +244,7 @@ function parseToolCallBody(body: string): { name: string; args: Record<string, u
  * Tool names are normalized against `availableTools` to recover from case drift —
  * e.g. when the model emits "edit" but the registered tool is "Edit".
  */
-function parseToolCalls(
+export function parseToolCalls(
   text: string,
   availableTools?: LanguageModelV3CallOptions["tools"],
 ): ParsedCall[] {
@@ -292,8 +303,84 @@ function parseToolCalls(
   return results
 }
 
+/**
+ * Return the required field names absent from (or `undefined` in) `call.args`,
+ * as declared by the matching tool's inputSchema. Returns an empty array when
+ * the tool is not found, the schema has no `required` array, or all required
+ * fields are present — i.e. a non-empty return means the call is incomplete.
+ */
+export function missingRequiredArgs(
+  call: ParsedCall,
+  tools?: LanguageModelV3CallOptions["tools"],
+): string[] {
+  if (!tools) return []
+  const tool = tools.find(
+    (t): t is LanguageModelV3FunctionTool => t.type === "function" && t.name === call.name,
+  )
+  if (!tool) return []
+  const required = (tool.inputSchema as { required?: string[] }).required
+  if (!Array.isArray(required)) return []
+  return required.filter((k) => call.args[k] === undefined)
+}
+
+/**
+ * Force strict one-tool-per-turn sequencing.
+ *
+ * Merlin's text-only model can emit several <tool_call> blocks in a single
+ * response, but it has no way to know a later call is safe before the earlier
+ * call's result returns — e.g. a Read whose path depends on a Glob emitted in
+ * the SAME turn fires with a guessed path and reports "file not found". We keep
+ * only the first call; the model re-emits the rest, with real context, on the
+ * next round-trip. The discard is logged so we can measure how often it happens.
+ */
+export function capToolCalls(calls: ParsedCall[]): ParsedCall[] {
+  if (calls.length > 1) {
+    log.warn("tool_call_discard", {
+      kept: calls[0]!.name,
+      discarded: calls.slice(1).map((c) => c.name),
+      count: calls.length - 1,
+    })
+    return [calls[0]!]
+  }
+  return calls
+}
+
+/**
+ * Strip hallucinated transcript continuation that Qwen/GAIA generates after a
+ * real tool call.
+ *
+ * When the model emits a closed `<tool_call>` it sometimes keeps generating and
+ * fabricates the rest of the conversation — fake `Tool Results:`, `<tool_result>`
+ * blocks with invented results, and new `Assistant:` turn markers. These use the
+ * exact delimiters `flattenPrompt` injects, so the model is just continuing the
+ * pattern it was shown.
+ *
+ * Strategy: the model's genuine output for one turn is at most one `<tool_call>`.
+ * Anchor the search for continuation delimiters to **after** the real tool call so
+ * we never accidentally cut inside a tool-call argument string. Everything from the
+ * first line-anchored delimiter onwards is hallucinated and is discarded.
+ */
+export function stripHallucinatedTurns(answer: string): string {
+  // Find where the real tool call ends (prefer the close tag; fall back to the
+  // open tag for unclosed calls; use 0 if there's no tool call at all).
+  const closeIdx = answer.indexOf("</tool_call>")
+  const openIdx = answer.indexOf("<tool_call>")
+  const searchFrom =
+    closeIdx >= 0 ? closeIdx + "</tool_call>".length :
+    openIdx  >= 0 ? openIdx :
+    0
+
+  // Match the first line-anchored continuation delimiter after searchFrom.
+  // \b on "Assistant" catches both bare "Assistant" and "Assistant:".
+  const tail = answer.slice(searchFrom)
+  const continuationRe = /\n[ \t]*(?:Assistant\b|Tool Results:|User:|<tool_result>)/
+  const match = continuationRe.exec(tail)
+  if (!match) return answer
+  return answer.slice(0, searchFrom + match.index).trimEnd()
+}
+
 /** Strip closed, unclosed, and bare func-call traces so they don't leak to the user. */
-function stripToolCalls(text: string): string {
+export function stripToolCalls(text: string): string {
   return text
     .replace(/<tool_call>[\s\S]*?<\/tool_call>/g, "")  // closed blocks
     .replace(/<tool_call>[\s\S]*$/g, "")               // unclosed block to end-of-string
@@ -319,6 +406,15 @@ function outputToString(output: LanguageModelV3ToolResultOutput): string {
 
 // ── Prompt flattening ─────────────────────────────────────────────────────────
 
+/**
+ * Escape <tool_call> tags in untrusted external content (user messages, tool
+ * results) so the model cannot be tricked into executing injected tool calls
+ * if it echoes back user-supplied or file-read content verbatim.
+ */
+function sanitizeExternal(text: string): string {
+  return text.replace(/<(\/?tool_call)>/gi, "&lt;$1&gt;")
+}
+
 /** Flatten the standard prompt messages array into a single prompt string. */
 function flattenPrompt(options: LanguageModelV3CallOptions): string {
   const parts: string[] = []
@@ -332,7 +428,7 @@ function flattenPrompt(options: LanguageModelV3CallOptions): string {
         .filter((p) => p.type === "text")
         .map((p) => (p as { type: "text"; text: string }).text)
         .join("\n")
-      parts.push(`User: ${text}`)
+      parts.push(`User: ${sanitizeExternal(text)}`)
     } else if (msg.role === "assistant") {
       const textParts = msg.content.filter((p) => p.type === "text")
       const toolCalls = msg.content.filter((p) => p.type === "tool-call")
@@ -355,7 +451,7 @@ function flattenPrompt(options: LanguageModelV3CallOptions): string {
         .filter((p) => p.type === "tool-result")
         .map((p) => {
           if (p.type !== "tool-result") return ""
-          return `<tool_result>\n  <name>${p.toolName}</name>\n  <result>${outputToString(p.output)}</result>\n</tool_result>`
+          return `<tool_result>\n  <name>${p.toolName}</name>\n  <result>${sanitizeExternal(outputToString(p.output))}</result>\n</tool_result>`
         })
         .join("\n")
       if (resultBlocks) parts.push(`Tool Results:\n${resultBlocks}`)
@@ -478,18 +574,26 @@ class MerlinLanguageModel implements LanguageModelV3 {
       client_id: this.clientId,
       domain_id: this.username,
       service_id: resolveServiceId(options),
-      // temperature 0.6 = Qwen3.6-27B (thinking) official "precise coding" preset.
-      // The GAIA gateway currently only honors `temperature`; the LLM team leaves
-      // the remaining sampling params at the vLLM defaults. The Qwen3.6-recommended
-      // values are kept here (commented) for when the gateway accepts them:
-      //   top_p 0.95, top_k 20, min_p 0, presence_penalty 0, repetition_penalty 1.0
+      // Qwen3.6-27B (dense) official thinking-mode coding preset. Qwen recommends
+      // temperature 0.6, top_p 0.95, top_k 20, min_p 0, presence_penalty 0,
+      // repetition_penalty 1.0 for code generation — low temperature for
+      // determinism, no presence_penalty (unlike the 35B-A3B MoE variant). Do NOT
+      // use greedy decoding (temperature 0) — Qwen3.6 degrades into endless
+      // repetition. Ref: huggingface.co/Qwen/Qwen3.6-27B sampling guidance.
+      //
+      // GATEWAY TYPE CONSTRAINT: the GAIA gateway only accepts a float for
+      // `temperature`; every other sampling field must be an integer. JS already
+      // serializes 0, 1.0 → "0", "1" (integers), but top_p 0.95 would serialize
+      // as a float and be rejected — so top_p is sent as 1 (nucleus sampling
+      // effectively off). top_k 20 still does the heavy token-set constraining,
+      // so quality impact is minimal. Keep temperature written with a decimal.
       config: {
-        temperature: 0.2,
-        // top_p: 0.95,
-        // top_k: 20,
-        // min_p: 0,
-        // presence_penalty: 0,
-        // repetition_penalty: 1.0,
+        temperature: 0.6,
+        top_p: 1,
+        top_k: 20,
+        min_p: 0,
+        presence_penalty: 0,
+        repetition_penalty: 1,
         max_token: "",
         recommendation: "False",
       },
@@ -537,22 +641,113 @@ class MerlinLanguageModel implements LanguageModelV3 {
       throw new Error(`GAIA error: ${msg}`)
     }
 
-    const answer = data.output_schema?.result?.answer ?? data.response
-    if (!answer) throw new Error("GAIA returned no answer in output_schema.result.answer")
+    const rawAnswer = data.output_schema?.result?.answer ?? data.response
+    if (!rawAnswer) throw new Error("GAIA returned no answer in output_schema.result.answer")
 
     return {
-      answer,
+      // Strip hallucinated transcript continuation before any caller sees the answer.
+      // Qwen keeps generating after its own <tool_call>, fabricating fake Tool Results:
+      // / <tool_result> / Assistant: turns using the same delimiters flattenPrompt injects.
+      answer: stripHallucinatedTurns(rawAnswer),
       inputTokens: data.output_schema?.result?.token_input ?? 0,
       outputTokens: data.output_schema?.result?.token_output ?? 0,
     }
   }
 
-  async doGenerate(options: LanguageModelV3CallOptions): Promise<LanguageModelV3GenerateResult> {
-    const { answer, inputTokens, outputTokens } = await this.callMerlin(options)
-    const toolCalls = parseToolCalls(answer, options.tools)
-    if (toolCalls.length === 0 && /<tool_call>/i.test(answer)) {
-      log.warn("tool_call_parse_miss", { answer })
+  /**
+   * Append a corrective turn instructing the model to re-emit a single, valid
+   * tool call. Used by the self-correction retry when the first reply contained
+   * a <tool_call> tag we couldn't parse, or when it parsed but had missing
+   * required fields.
+   *
+   * When `details` is supplied the message names the specific tool and the
+   * missing fields, which helps prompt-only models fill in the right arguments
+   * rather than sending another empty `arguments: {}`.
+   */
+  private withRepairTurn(
+    options: LanguageModelV3CallOptions,
+    malformedAnswer: string,
+    details?: { toolName: string; missingFields: string[] },
+  ): LanguageModelV3CallOptions {
+    const correction = details
+      ? `Your previous \`${details.toolName}\` tool call was missing required arguments: ${details.missingFields.join(", ")}. ` +
+        "Re-emit the tool call now with ALL required fields filled in, using EXACTLY this format — valid JSON, a closing tag, and nothing else:\n" +
+        '<tool_call>\n{"name": "<tool_name>", "arguments": {<json_args>}}\n</tool_call>'
+      : "Your previous reply contained a <tool_call> block that could not be parsed. " +
+        "Re-emit the tool call now using EXACTLY this format — valid JSON, a closing tag, and nothing else:\n" +
+        '<tool_call>\n{"name": "<tool_name>", "arguments": {<json_args>}}\n</tool_call>'
+    return {
+      ...options,
+      prompt: [
+        ...options.prompt,
+        { role: "assistant", content: [{ type: "text", text: malformedAnswer }] },
+        { role: "user", content: [{ type: "text", text: correction }] },
+      ],
     }
+  }
+
+  /**
+   * Call Merlin, parse tool calls, and self-correct once when needed:
+   *
+   * Branch 1 — tag found but nothing parsed (malformed JSON, stray prose, broken
+   * tag): send one repair round-trip rather than dropping the turn — a dropped
+   * call is a stalled agent.
+   *
+   * Branch 2 — call parsed cleanly but required arguments are missing (e.g. the
+   * model emitted `{"name":"task","arguments":{}}`): send one repair round-trip
+   * that names the specific tool and the absent fields, so the model knows exactly
+   * what to fill in rather than repeating the empty call.
+   *
+   * In both branches token usage is summed across both calls. If the repair also
+   * fails we fall through and return the original (no worse than current behavior).
+   */
+  private async resolveAnswer(
+    options: LanguageModelV3CallOptions,
+  ): Promise<{ answer: string; toolCalls: ParsedCall[]; inputTokens: number; outputTokens: number }> {
+    const first = await this.callMerlin(options)
+    const toolCalls = capToolCalls(parseToolCalls(first.answer, options.tools))
+
+    // Branch 1: tag present but nothing parsed — classic malformed JSON / broken tag.
+    if (toolCalls.length === 0 && /<tool_call>/i.test(first.answer)) {
+      log.warn("tool_call_parse_miss", { answer: first.answer })
+      const repaired = await this.callMerlin(this.withRepairTurn(options, first.answer))
+      const repairedCalls = capToolCalls(parseToolCalls(repaired.answer, options.tools))
+      const inputTokens = first.inputTokens + repaired.inputTokens
+      const outputTokens = first.outputTokens + repaired.outputTokens
+      if (repairedCalls.length > 0) {
+        log.info("tool_call_repair_ok", { count: repairedCalls.length })
+        return { answer: repaired.answer, toolCalls: repairedCalls, inputTokens, outputTokens }
+      }
+      log.warn("tool_call_repair_failed", { answer: repaired.answer })
+      return { answer: first.answer, toolCalls, inputTokens, outputTokens }
+    }
+
+    // Branch 2: call parsed OK but required arguments are absent.
+    if (toolCalls.length > 0) {
+      const tc = toolCalls[0]!
+      const missing = missingRequiredArgs(tc, options.tools)
+      if (missing.length > 0) {
+        log.warn("tool_call_invalid_args", { name: tc.name, missing })
+        const repaired = await this.callMerlin(
+          this.withRepairTurn(options, first.answer, { toolName: tc.name, missingFields: missing }),
+        )
+        const repairedCalls = capToolCalls(parseToolCalls(repaired.answer, options.tools))
+        const inputTokens = first.inputTokens + repaired.inputTokens
+        const outputTokens = first.outputTokens + repaired.outputTokens
+        if (repairedCalls.length > 0 && missingRequiredArgs(repairedCalls[0]!, options.tools).length === 0) {
+          log.info("tool_call_repair_ok", { count: repairedCalls.length })
+          return { answer: repaired.answer, toolCalls: repairedCalls, inputTokens, outputTokens }
+        }
+        log.warn("tool_call_repair_failed", { answer: repaired.answer })
+        return { answer: first.answer, toolCalls, inputTokens, outputTokens }
+      }
+    }
+
+    return { answer: first.answer, toolCalls, inputTokens: first.inputTokens, outputTokens: first.outputTokens }
+  }
+
+  async doGenerate(options: LanguageModelV3CallOptions): Promise<LanguageModelV3GenerateResult> {
+    const { answer, toolCalls, inputTokens, outputTokens } = await this.resolveAnswer(options)
 
     const usage = {
       inputTokens: { total: inputTokens, noCache: inputTokens, cacheRead: undefined, cacheWrite: undefined },
@@ -587,11 +782,7 @@ class MerlinLanguageModel implements LanguageModelV3 {
   }
 
   async doStream(options: LanguageModelV3CallOptions): Promise<LanguageModelV3StreamResult> {
-    const { answer, inputTokens, outputTokens } = await this.callMerlin(options)
-    const toolCalls = parseToolCalls(answer, options.tools)
-    if (toolCalls.length === 0 && /<tool_call>/i.test(answer)) {
-      log.warn("tool_call_parse_miss", { answer })
-    }
+    const { answer, toolCalls, inputTokens, outputTokens } = await this.resolveAnswer(options)
 
     const usage = {
       inputTokens: { total: inputTokens, noCache: inputTokens, cacheRead: undefined, cacheWrite: undefined },
