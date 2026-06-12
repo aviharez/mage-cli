@@ -55,6 +55,36 @@ npm menginstal binary global ke direktori yang mungkin tidak ada di `PATH`.
   </TabItem>
 </Tabs>
 
+## Error "running scripts is disabled on this system" (Windows)
+
+Pesan ini muncul di Windows karena PowerShell memblokir eksekusi file `.ps1` — termasuk
+shim `mage.ps1` yang dibuat npm. Ini bukan bug Mage, melainkan pengaturan keamanan
+bawaan Windows.
+
+Cek policy yang sedang aktif:
+```powershell
+Get-ExecutionPolicy -List
+```
+
+**Solusi** — ubah policy untuk user saat ini (tidak perlu hak admin):
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+```
+
+Konfirmasi dengan `Y`, lalu **tutup dan buka kembali terminal**. Setelah itu `mage`
+seharusnya berjalan normal.
+
+:::note[Tanpa mengubah policy]
+Jika tidak ingin mengubah ExecutionPolicy, gunakan flag bypass saat menjalankan installer.
+Cara ini hanya berlaku untuk proses installer — untuk menjalankan `mage` sehari-hari,
+mengubah policy ke `RemoteSigned` tetap diperlukan.
+:::
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass `
+  -Command "irm https://mybcabisnis-mage.apps.ocpdevgra.dti.co.id/install.ps1 | iex"
+```
+
 ## Node.js tidak ditemukan atau versi terlalu lama
 
 Mage membutuhkan Node.js **≥ 18**.
