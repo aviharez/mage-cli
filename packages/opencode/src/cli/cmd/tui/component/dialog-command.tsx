@@ -20,6 +20,8 @@ const ctx = createContext<Context>()
 export type Slash = {
   name: string
   aliases?: string[]
+  /** When true, the command accepts trailing text arguments typed after the slash command. */
+  arguments?: boolean
 }
 
 export type CommandOption = DialogSelectOption<string> & {
@@ -28,6 +30,8 @@ export type CommandOption = DialogSelectOption<string> & {
   slash?: Slash
   hidden?: boolean
   enabled?: boolean
+  /** Called by trigger() when arguments are present (takes priority over onSelect). */
+  onSelectWithArgs?: (args?: string) => void
 }
 
 function init() {
@@ -75,11 +79,15 @@ function init() {
   })
 
   const result = {
-    trigger(name: string) {
+    trigger(name: string, args?: string) {
       for (const option of entries()) {
         if (option.value === name) {
           if (!isEnabled(option)) return
-          option.onSelect?.(dialog)
+          if (args !== undefined && option.onSelectWithArgs) {
+            option.onSelectWithArgs(args)
+          } else {
+            option.onSelect?.(dialog)
+          }
           return
         }
       }
@@ -92,9 +100,19 @@ function init() {
           display: "/" + slash.name,
           description: option.description ?? option.title,
           aliases: slash.aliases?.map((alias) => "/" + alias),
+          /** Whether this command accepts trailing text arguments. */
+          arguments: slash.arguments,
+          /** The command value used with trigger(). */
+          value: option.value,
           onSelect: () => result.trigger(option.value),
         }
       })
+    },
+    /** Find a registered plugin slash command by its slash name or alias. */
+    slashCommand(name: string): CommandOption | undefined {
+      return visibleOptions().find(
+        (o) => o.slash && (o.slash.name === name || o.slash.aliases?.includes(name)),
+      )
     },
     keybinds(enabled: boolean) {
       setSuspendCount((count) => count + (enabled ? -1 : 1))

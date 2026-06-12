@@ -225,7 +225,7 @@ export const layer = Layer.effect(
       if (!userMessage) return input.messages
 
       if (!Flag.MAGE_EXPERIMENTAL_PLAN_MODE) {
-        if (input.agent.name === "plan") {
+        if (input.agent.name === "oracle") {
           userMessage.parts.push({
             id: PartID.ascending(),
             messageID: userMessage.info.id,
@@ -235,8 +235,8 @@ export const layer = Layer.effect(
             synthetic: true,
           })
         }
-        const wasPlan = input.messages.some((msg) => msg.info.role === "assistant" && msg.info.agent === "plan")
-        if (wasPlan && input.agent.name === "build") {
+        const wasPlan = input.messages.some((msg) => msg.info.role === "assistant" && msg.info.agent === "oracle")
+        if (wasPlan && input.agent.name === "forge") {
           userMessage.parts.push({
             id: PartID.ascending(),
             messageID: userMessage.info.id,
@@ -250,7 +250,7 @@ export const layer = Layer.effect(
       }
 
       const assistantMessage = input.messages.findLast((msg) => msg.info.role === "assistant")
-      if (input.agent.name !== "plan" && assistantMessage?.info.agent === "plan") {
+      if (input.agent.name !== "oracle" && assistantMessage?.info.agent === "oracle") {
         const plan = Session.plan(input.session)
         if (!(yield* fsys.existsSafe(plan))) return input.messages
         const part = yield* sessions.updatePart({
@@ -265,7 +265,7 @@ export const layer = Layer.effect(
         return input.messages
       }
 
-      if (input.agent.name !== "plan" || assistantMessage?.info.agent === "plan") return input.messages
+      if (input.agent.name !== "oracle" || assistantMessage?.info.agent === "oracle") return input.messages
 
       const plan = Session.plan(input.session)
       const exists = yield* fsys.existsSafe(plan)
@@ -285,11 +285,11 @@ You should build your plan incrementally by writing to or editing this file. NOT
 ## Plan Workflow
 
 ### Phase 1: Initial Understanding
-Goal: Gain a comprehensive understanding of the user's request by reading through code and asking them questions. Critical: In this phase you should only use the explore subagent type.
+Goal: Gain a comprehensive understanding of the user's request by reading through code and asking them questions. Critical: In this phase you should only use the seeker subagent type.
 
 1. Focus on understanding the user's request and the code associated with their request
 
-2. Launch explore agents ONE AT A TIME to explore the codebase. Never call the task tool more than once per message.
+2. Launch seeker agents ONE AT A TIME to explore the codebase. Never call the task tool more than once per message.
  - Use 1 agent when the task is isolated to known files, the user provided specific file paths, or you're making a small targeted change.
  - Use multiple agents sequentially when: the scope is uncertain, multiple areas of the codebase are involved, or you need to understand existing patterns before planning.
  - Quality over quantity - 3 agents maximum, but you should try to use the minimum number of agents necessary (usually just 1)
@@ -300,7 +300,7 @@ Goal: Gain a comprehensive understanding of the user's request by reading throug
 ### Phase 2: Design
 Goal: Design an implementation approach.
 
-Launch general agent(s) to design the implementation based on the user's intent and your exploration results from Phase 1.
+Launch wisp agent(s) to design the implementation based on the user's intent and your exploration results from Phase 1.
 
 You can launch up to 1 agent(s) in parallel.
 

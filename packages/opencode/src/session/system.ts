@@ -49,7 +49,7 @@ export const layer = Layer.effect(
 
         return [
           "Skills provide specialized instructions and workflows for specific tasks.",
-          "Use the skill tool to load a skill when a task matches its description.",
+          "IMPORTANT: You MUST call the skill tool to load matching skills BEFORE starting any task. Scan the list below and load every skill whose description matches your task. Do not begin implementation without first loading relevant skills.",
           // the agents seem to ingest the information about skills a bit better if we present a more verbose
           // version of them here and a less verbose version in tool description, rather than vice versa.
           Skill.fmt(list, { verbose: true }),

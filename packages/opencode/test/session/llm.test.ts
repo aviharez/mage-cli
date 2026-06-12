@@ -120,4 +120,4 @@ describe("session.llm.hasToolCalls", () => {
 })
 
 // All session.llm.stream tests removed as they reference non-Qwen model providers.
-// This fork only supports the Qwen3.5 27B model via the merlin provider.
+// This fork only supports the Qwen3.6 27B model via the merlin provider.

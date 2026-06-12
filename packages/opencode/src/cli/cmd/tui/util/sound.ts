@@ -8,6 +8,7 @@ import pulseA from "../asset/pulse-a.wav" with { type: "file" }
 import pulseB from "../asset/pulse-b.wav" with { type: "file" }
 import pulseC from "../asset/pulse-c.wav" with { type: "file" }
 import charge from "../asset/charge.wav" with { type: "file" }
+import notifyAudio from "../asset/notif.wav" with { type: "file" }
 
 const FILE = [pulseA, pulseB, pulseC]
 
@@ -48,6 +49,7 @@ let kind: Kind | null | undefined
 let proc: Process.Child | undefined
 let tail: ReturnType<typeof setTimeout> | undefined
 let cache: Promise<{ hum: string; pulse: string[] }> | undefined
+let notifyCache: Promise<string> | undefined
 let seq = 0
 let shot = 0
 
@@ -147,6 +149,11 @@ export function pulse(scale = 1) {
   void asset()
     .then(({ pulse }) => play(pulse[index], 0.26 + 0.14 * scale))
     .catch(() => undefined)
+}
+
+export function notify() {
+  notifyCache ??= file(notifyAudio)
+  void notifyCache.then((f) => play(f, 0.6)).catch(() => undefined)
 }
 
 export function dispose() {

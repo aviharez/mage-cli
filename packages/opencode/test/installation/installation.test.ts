@@ -51,7 +51,7 @@ function testLayer(
 describe("installation", () => {
   describe("latest", () => {
     test("reads release version from GitHub releases", async () => {
-      const layer = testLayer(() => jsonResponse({ tag_name: "v1.2.3" }))
+      const layer = testLayer(() => jsonResponse({ tag_name: "v1.2.4" }))
 
       const result = await Effect.runPromise(
         Installation.Service.use((svc) => svc.latest("unknown")).pipe(Effect.provide(layer)),

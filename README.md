@@ -6,9 +6,44 @@ AI coding assistant for the terminal, powered by GAIA — BCA's internal LLM gat
 
 ## Installation
 
+**macOS / Linux**
 ```bash
-npm install -g @mybcabisnis/mage --registry https://artifactory.intra.bca.co.id/artifactory/api/npm/MBB-Registry-npm/
+curl -fsSL https://mybcabisnis-mage.apps.ocpdevgra.dti.co.id/install | bash
 ```
+
+**Windows PowerShell**
+```powershell
+irm https://mybcabisnis-mage.apps.ocpdevgra.dti.co.id/install.ps1 | iex
+```
+
+**Windows cmd** — download [`install.cmd`](install.cmd) and double-click it, or run:
+```bat
+powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://mybcabisnis-mage.apps.ocpdevgra.dti.co.id/install.ps1 | iex"
+```
+
+The installer configures your `~/.npmrc` with the BCA Artifactory registry and runs
+`npm install -g @mybcabisnis/mage` automatically. Node.js ≥ 18 must be installed first
+([download](https://nodejs.org/en/download)).
+
+<details>
+<summary>Manual install (if you prefer to configure <code>.npmrc</code> yourself)</summary>
+
+Add these lines to your `~/.npmrc` (create the file if it doesn't exist):
+
+```
+@mybcabisnis:registry=https://artifactory.intra.bca.co.id/artifactory/api/npm/MBB-Registry-npm/
+noproxy[]=artifactory.intra.bca.co.id
+always-auth=true
+strict-ssl=false
+//artifactory.intra.bca.co.id/artifactory/api/npm/MBB-Registry-npm/:_auth=dXNlcm1iYjpCY2FiY2ExMjM=
+```
+
+Then install globally:
+
+```bash
+npm install -g @mybcabisnis/mage
+```
+</details>
 
 Or run from source (requires [Bun](https://bun.sh) ≥ 1.1):
 

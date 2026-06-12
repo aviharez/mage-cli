@@ -54,8 +54,13 @@ export type TuiCommand = {
   slash?: {
     name: string
     aliases?: string[]
+    /** When true, the slash command accepts trailing text arguments (e.g. `/catalog add github`).
+     *  Autocomplete inserts `/name ` text instead of triggering immediately. */
+    arguments?: boolean
   }
-  onSelect?: () => void
+  /** Called when the command is selected. `args` carries any trailing text (non-empty when
+   *  the command has `slash.arguments: true` and the user typed arguments before submitting). */
+  onSelect?: (args?: string) => void
 }
 
 export type TuiKeybind = {

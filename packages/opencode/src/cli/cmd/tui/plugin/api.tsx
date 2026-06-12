@@ -206,7 +206,16 @@ export function createTuiApi(input: Input): TuiPluginApi {
     app: appApi(),
     command: {
       register(cb) {
-        return input.command.register(() => cb())
+        return input.command.register(() =>
+          cb().map((item) => ({
+            ...item,
+            // The internal CommandOption.onSelect takes (ctx: DialogContext) => void.
+            // Plugin's onSelect takes (args?: string) — invoke without args for the no-args path.
+            onSelect: item.onSelect ? () => item.onSelect!() : undefined,
+            // Populate the separate args handler so trigger(value, args) can pass arguments.
+            onSelectWithArgs: item.onSelect,
+          })),
+        )
       },
       trigger(value) {
         input.command.trigger(value)

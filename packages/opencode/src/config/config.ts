@@ -38,6 +38,7 @@ import { ConfigPlugin } from "./plugin"
 import { ConfigProvider } from "./provider"
 import { ConfigServer } from "./server"
 import { ConfigSkills } from "./skills"
+import { ConfigMarketplace } from "./marketplace"
 import { ConfigVariable } from "./variable"
 const log = Log.create({ service: "config" })
 
@@ -99,6 +100,9 @@ const InfoSchema = Schema.Struct({
     description: "Command configuration, see https://mage.ai/docs/commands",
   }),
   skills: Schema.optional(ConfigSkills.Info).annotate({ description: "Additional skill folder paths" }),
+  marketplace: Schema.optional(ConfigMarketplace.Info).annotate({
+    description: "Marketplace configuration for installing skills and MCP servers from a registry",
+  }),
   watcher: Schema.optional(
     Schema.Struct({
       ignore: Schema.optional(Schema.mutable(Schema.Array(Schema.String))),

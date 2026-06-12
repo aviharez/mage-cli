@@ -27,6 +27,7 @@
  *      can execute the real tools and send results back.
  */
 
+import { APICallError } from "@ai-sdk/provider"
 import type {
   LanguageModelV3,
   LanguageModelV3CallOptions,
@@ -569,6 +570,9 @@ class MerlinLanguageModel implements LanguageModelV3 {
     options: LanguageModelV3CallOptions,
   ): Promise<{ answer: string; inputTokens: number; outputTokens: number }> {
     const files = extractFiles(options)
+    // Compute a local token estimate from the flattened prompt length.
+    // Used as a floor for the overflow check when GAIA under-reports, and as the
+    // signal for context overflow when GAIA errors on a large prompt.
 
     const body: MerlinRequest = {
       client_id: this.clientId,
@@ -602,10 +606,13 @@ class MerlinLanguageModel implements LanguageModelV3 {
       file: files,
     }
 
+    const promptTokenEstimate = Math.round(body.prompt.length / 4)
+
     const { prompt: _prompt, file: _file, ...loggableBody } = body
     log.info("request", {
       ...loggableBody,
       prompt_length: body.prompt.length,
+      prompt_token_estimate: promptTokenEstimate,
       file_count: files.length,
       file_bytes: files.reduce((sum, f) => sum + f.length, 0),
     })
@@ -638,18 +645,48 @@ class MerlinLanguageModel implements LanguageModelV3 {
       data.error_schema.error_code !== "DPA-120"
     ) {
       const msg = data.error_schema.error_message?.english ?? data.error_schema.error_code
+      // When the prompt is already large and GAIA errors, it is almost certainly a
+      // context overflow. Throw as APICallError with statusCode 413 so the existing
+      // parseAPICallError → ContextOverflowError chain fires and auto-compaction
+      // triggers instead of surfacing a generic "stop" error to the user.
+      if (promptTokenEstimate >= 200_000) {
+        throw new APICallError({
+          message: `context_length_exceeded: GAIA error (estimated ~${promptTokenEstimate} tokens): ${msg}`,
+          url: this.endpoint,
+          requestBodyValues: {},
+          statusCode: 413,
+          responseBody: msg,
+          isRetryable: false,
+        })
+      }
       throw new Error(`GAIA error: ${msg}`)
     }
 
     const rawAnswer = data.output_schema?.result?.answer ?? data.response
-    if (!rawAnswer) throw new Error("GAIA returned no answer in output_schema.result.answer")
+    if (!rawAnswer) {
+      // No answer with a large prompt is also treated as context overflow.
+      if (promptTokenEstimate >= 200_000) {
+        throw new APICallError({
+          message: `context_length_exceeded: GAIA returned no answer (estimated ~${promptTokenEstimate} tokens)`,
+          url: this.endpoint,
+          requestBodyValues: {},
+          statusCode: 413,
+          responseBody: "",
+          isRetryable: false,
+        })
+      }
+      throw new Error("GAIA returned no answer in output_schema.result.answer")
+    }
 
     return {
       // Strip hallucinated transcript continuation before any caller sees the answer.
       // Qwen keeps generating after its own <tool_call>, fabricating fake Tool Results:
       // / <tool_result> / Assistant: turns using the same delimiters flattenPrompt injects.
       answer: stripHallucinatedTurns(rawAnswer),
-      inputTokens: data.output_schema?.result?.token_input ?? 0,
+      // Use the local prompt-length estimate as a floor: if GAIA reports fewer tokens
+      // than the flattened prompt implies (e.g. per-turn counting instead of cumulative),
+      // the overflow check would never fire. The max() ensures it fires correctly.
+      inputTokens: Math.max(data.output_schema?.result?.token_input ?? 0, promptTokenEstimate),
       outputTokens: data.output_schema?.result?.token_output ?? 0,
     }
   }

@@ -8,6 +8,7 @@ import SidebarTodo from "../feature-plugins/sidebar/todo"
 import SidebarFiles from "../feature-plugins/sidebar/files"
 import SidebarFooter from "../feature-plugins/sidebar/footer"
 import PluginManager from "../feature-plugins/system/plugins"
+import Marketplace from "../feature-plugins/system/marketplace"
 import type { TuiPlugin, TuiPluginModule } from "@mybcabisnis/mage-plugin/tui"
 
 export type InternalTuiPlugin = TuiPluginModule & {
@@ -21,9 +22,10 @@ export const INTERNAL_TUI_PLUGINS: InternalTuiPlugin[] = [
   SidebarBoilerplate,
   // SidebarContext,
   SidebarMcp,
-  SidebarLsp,
+  // SidebarLsp,
   SidebarTodo,
   SidebarFiles,
   SidebarFooter,
   PluginManager,
+  Marketplace,
 ]

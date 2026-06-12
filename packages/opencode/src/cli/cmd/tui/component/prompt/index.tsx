@@ -737,8 +737,8 @@ export function Prompt(props: PromptProps) {
       inputText.startsWith("/") &&
       iife(() => {
         const firstLine = inputText.split("\n")[0]
-        const command = firstLine.split(" ")[0].slice(1)
-        return sync.data.command.some((x) => x.name === command)
+        const commandName = firstLine.split(" ")[0].slice(1)
+        return sync.data.command.some((x) => x.name === commandName)
       })
     ) {
       // Parse command from first line, preserve multi-line content in arguments
@@ -763,6 +763,21 @@ export function Prompt(props: PromptProps) {
             ...x,
           })),
       })
+    } else if (
+      inputText.startsWith("/") &&
+      iife(() => {
+        const firstLine = inputText.split("\n")[0]
+        const commandName = firstLine.split(" ")[0].slice(1)
+        return !!command.slashCommand(commandName)
+      })
+    ) {
+      // Plugin slash command with optional trailing arguments (e.g. `/catalog add github`).
+      const firstLine = inputText.split("\n")[0]
+      const tokens = firstLine.split(" ")
+      const commandName = tokens[0].slice(1)
+      const args = tokens.slice(1).join(" ").trim()
+      const match = command.slashCommand(commandName)
+      if (match) command.trigger(match.value, args || undefined)
     } else {
       sdk.client.session
         .prompt({

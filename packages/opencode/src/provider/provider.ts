@@ -297,7 +297,7 @@ const layer: Layer.Layer<
               },
               cost: { input: 0, output: 0, cache: { read: 0, write: 0 } },
               options: {},
-              limit: { context: 262144, output: 32000 },
+              limit: { context: 262144, output: 262144 },
               headers: {},
               family: "qwen",
               release_date: "2025-07-01",

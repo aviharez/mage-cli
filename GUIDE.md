@@ -21,10 +21,53 @@
 
 ## Installation
 
+**Prerequisite:** Node.js ≥ 18 ([download](https://nodejs.org/en/download))
+
+**macOS / Linux**
 ```bash
-npm install -g @mybcabisnis/mage \
-  --registry https://artifactory.intra.bca.co.id/artifactory/api/npm/MBB-Registry-npm/
+curl -fsSL https://mybcabisnis-mage.apps.ocpdevgra.dti.co.id/install | bash
 ```
+
+**Windows PowerShell**
+```powershell
+irm https://mybcabisnis-mage.apps.ocpdevgra.dti.co.id/install.ps1 | iex
+```
+
+**Windows cmd** — download [`install.cmd`](../install.cmd) and double-click it, or run:
+```bat
+powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://mybcabisnis-mage.apps.ocpdevgra.dti.co.id/install.ps1 | iex"
+```
+
+The installer handles `.npmrc` configuration and the npm global install in one step.
+To pin a specific version:
+
+```bash
+# macOS / Linux
+curl -fsSL https://mybcabisnis-mage.apps.ocpdevgra.dti.co.id/install | bash -s -- --version 1.2.2
+
+# PowerShell
+$env:MAGE_VERSION='1.2.2'; irm https://mybcabisnis-mage.apps.ocpdevgra.dti.co.id/install.ps1 | iex
+```
+
+<details>
+<summary>Manual install (if you prefer to configure <code>.npmrc</code> yourself)</summary>
+
+Add these lines to your `~/.npmrc` (`%USERPROFILE%\.npmrc` on Windows):
+
+```
+@mybcabisnis:registry=https://artifactory.intra.bca.co.id/artifactory/api/npm/MBB-Registry-npm/
+noproxy[]=artifactory.intra.bca.co.id
+always-auth=true
+strict-ssl=false
+//artifactory.intra.bca.co.id/artifactory/api/npm/MBB-Registry-npm/:_auth=dXNlcm1iYjpCY2FiY2ExMjM=
+```
+
+Then:
+
+```bash
+npm install -g @mybcabisnis/mage
+```
+</details>
 
 Or run from source (requires [Bun](https://bun.sh) ≥ 1.1):
 

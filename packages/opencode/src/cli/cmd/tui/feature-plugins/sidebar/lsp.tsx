@@ -8,6 +8,7 @@ function View(props: { api: TuiPluginApi }) {
   const theme = () => props.api.theme.current
   const list = createMemo(() => props.api.state.lsp())
   const off = createMemo(() => props.api.state.config.lsp === false)
+  const unconfigured = createMemo(() => props.api.state.config.lsp == null)
 
   return (
     <box>
@@ -22,7 +23,11 @@ function View(props: { api: TuiPluginApi }) {
       <Show when={list().length <= 2 || open()}>
         <Show when={list().length === 0}>
           <text fg={theme().textMuted}>
-            {off() ? "LSPs have been disabled in settings" : "LSPs will activate as files are read"}
+            {off()
+              ? "LSPs have been disabled in settings"
+              : unconfigured()
+                ? 'Add "lsp": true to mage.json to enable'
+                : "LSPs will activate as files are read"}
           </text>
         </Show>
         <For each={list()}>
