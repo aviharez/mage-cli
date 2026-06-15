@@ -1,6 +1,8 @@
 # Mage
 
-AI coding assistant for the terminal, powered by GAIA — BCA's internal LLM gateway.
+AI coding assistant for the terminal, powered by GAIA.
+
+Current version: **v1.2.4**
 
 ---
 
@@ -49,7 +51,7 @@ Or run from source (requires [Bun](https://bun.sh) ≥ 1.1):
 
 ```bash
 git clone <repo>
-cd mage-poc/packages/opencode
+cd new-mage
 bun install
 bun run dev
 ```
@@ -81,76 +83,27 @@ mage run "message"    # send a single message without the TUI
 mage init             # re-run setup wizard
 mage providers        # manage provider credentials
 mage models           # list available models
+mage web              # open the web interface in your browser
 ```
 
 ### Slash Commands (inside the TUI)
 
-| Command | Action |
-|---------|--------|
-| `/generate <type> <description>` | Generate code from the team boilerplate |
-| `/test <file>` | Generate tests following team conventions |
-| `/review <file>` | Review a local file against team rules |
-| `/review <MR-URL>` | Review a GitLab MR via the Go binary |
-| `/boilerplate list` | List available boilerplate profiles |
-| `/boilerplate use <name>` | Switch the active boilerplate |
-| `/boilerplate info` | Show details of the active boilerplate |
+| Command | Description |
+|---------|-------------|
+| `/init` | Guided AGENTS.md setup for the current project |
+| `/review [commit\|branch\|pr]` | Review changes — defaults to uncommitted |
+
+Skills (auto-triggered from your prompt) and any commands defined in `mage.jsonc` also appear as `/commands` in the TUI.
 
 ---
 
 ## Boilerplate
 
-A boilerplate is a directory containing a `mage.yaml` manifest and team convention files. When active, conventions are automatically injected into every conversation.
-
-### Directory structure
-
-```
-my-boilerplate/
-├── mage.yaml
-├── conventions/
-│   ├── architecture.md      # injected into every prompt
-│   ├── review.md            # loaded for /review
-│   └── testing.md           # loaded for /test
-├── instructions/
-│   └── service.md           # generator instruction
-└── examples/
-    └── ExampleService.ts    # example code
-```
-
-### `mage.yaml` format
-
-```yaml
-name: my-boilerplate
-version: "1.0"
-platform: android
-language: Kotlin
-
-conventions:
-  always_include:
-    - conventions/architecture.md
-  include_for_review:
-    - conventions/review.md
-  include_for_testing:
-    - conventions/testing.md
-
-generators:
-  service:
-    instruction: instructions/service.md
-    examples:
-      - examples/ExampleService.ts
-    description: Generate a service class
-
-project_detection:
-  markers:
-    - build.gradle.kts
-
-context:
-  max_convention_tokens: 5000
-  max_example_tokens: 2000
-```
+A boilerplate is a local directory or git URL containing team conventions. When set, its content is automatically injected into every conversation.
 
 ### Registering a boilerplate
 
-Register via `mage init` or edit `~/.mage/mage.jsonc` directly:
+Set the path in `~/.mage/mage.jsonc`:
 
 ```jsonc
 {
@@ -160,7 +113,33 @@ Register via `mage init` or edit `~/.mage/mage.jsonc` directly:
     }
   },
   "mage": {
-    "boilerplate": "/path/to/boilerplate"
+    "boilerplate": "/path/to/team-boilerplate"
+  }
+}
+```
+
+Or use a git URL:
+
+```jsonc
+{
+  "mage": {
+    "boilerplate": "https://gitlab.company.com/team/conventions.git"
+  }
+}
+```
+
+### Named profiles
+
+Multiple profiles can be defined and switched between:
+
+```jsonc
+{
+  "mage": {
+    "profiles": [
+      { "name": "android", "boilerplate": "/path/to/android-conventions" },
+      { "name": "backend", "boilerplate": "/path/to/backend-conventions" }
+    ],
+    "activeBoilerplate": "android"
   }
 }
 ```
@@ -179,29 +158,19 @@ All configuration lives under `~/.mage/`:
 | `~/.mage/cache/` | Cache and tool binaries (ripgrep, LSP) |
 | `~/.mage/state/` | Runtime state |
 
-Per-project config lives in `.opencode/opencode.jsonc` at the repository root.
+Per-project config lives in `.mage/mage.json(c)` at the repository root.
 
 ---
 
-## GitLab MR Review
+## Editor Integration
 
-Mage delegates MR review to the `mr-reviewer` binary. Make sure it is available on `PATH`:
+Mage has an extension for **Zed** (`packages/extensions/zed`). Install it from the Zed extension panel.
 
-```bash
-/review https://gitlab.company.com/team/repo/-/merge_requests/142
-```
-
-The binary is called with `--url <MR_URL> --format json` and the output is rendered directly in the TUI.
-
----
-
-## IDE Integration
-
-Mage is available as a VS Code extension. Install from the internal marketplace or run the server manually:
+You can also run a headless server or open the web interface:
 
 ```bash
-mage serve   # run a headless server
-mage web     # open the web interface
+mage serve   # start a headless API server
+mage web     # open the web interface in your browser
 ```
 
 ---
@@ -209,19 +178,41 @@ mage web     # open the web interface
 ## Build and Publish
 
 ```bash
-# Build all platforms (darwin, linux, windows)
+# Build the mage CLI
+bun run build:mage
+
+# Publish to BCA Artifactory
+bun run publish:mage
+
+# Or run directly in packages/opencode:
 cd packages/opencode
-bun run build:bca
-
-# Build current platform only (faster)
-bun run build:bca -- --single
-
-# Dry run before publishing
-bun publish --dry-run
-
-# Publish to BCA artifactory
-bun publish
+bun run build
+bun run publish
 ```
+
+---
+
+## Versioning
+
+All packages share a single version number. To bump the version across the entire monorepo:
+
+```bash
+# Print current version
+bun script/version.ts
+
+# Set an exact version
+bun script/version.ts 1.3.0
+
+# Bump by increment type
+bun script/version.ts patch   # 1.2.4 → 1.2.5
+bun script/version.ts minor   # 1.2.4 → 1.3.0
+bun script/version.ts major   # 1.2.4 → 2.0.0
+
+# Or via npm script
+bun run version:set 1.3.0
+```
+
+This updates every `packages/*/package.json`, `packages/web/config.mjs`, the landing page eyebrow in `packages/web/src/content/i18n/id.json`, and the terminal demo in `packages/web/src/components/Lander.astro`.
 
 ---
 
