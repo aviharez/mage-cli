@@ -8,6 +8,24 @@ import { Card } from "@astrojs/starlight/components"
 
 ---
 
+## v1.2.8
+
+_15 Juni 2026_
+
+### Perbaikan
+- **Perbaikan batas context compaction** — Batas context model GAIA dikoreksi dari 262K menjadi 128K sesuai limit aktual gateway. Sebelumnya, compaction tidak pernah terpicu karena threshold dihitung berdasarkan nilai yang terlalu besar, sehingga gateway menolak request ketika prompt mendekati 128K token.
+
+---
+
+## v1.2.7
+
+_15 Juni 2026_
+
+### Yang baru
+- **Parallel subagent** — Mage kini dapat menjalankan hingga 2 subagent secara bersamaan (sebelumnya hanya 1). Jumlah maksimal dapat dikonfigurasi melalui env var `MAGE_SUBAGENT` (contoh: `MAGE_SUBAGENT=3` untuk 3 parallel, `MAGE_SUBAGENT=1` untuk kembali ke mode serial). Subagent yang melebihi batas akan otomatis mengantri hingga slot tersedia.
+
+---
+
 ## v1.2.6
 
 _15 Juni 2026_
