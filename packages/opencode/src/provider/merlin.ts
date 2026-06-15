@@ -639,6 +639,13 @@ class MerlinLanguageModel implements LanguageModelV3 {
 
     const data = (await response.json()) as MerlinResponse
 
+    if (data.error_schema?.error_code === "DPA-124") {
+      log.error("DPA-124 err_debug", {
+        error_code: data.error_schema.error_code,
+        err_debug: data.output_schema?.err_debug ?? "(none)",
+      })
+    }
+
     if (
       data.error_schema?.error_code &&
       data.error_schema.error_code !== "DPA-111" &&

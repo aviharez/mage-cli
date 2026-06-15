@@ -18,6 +18,7 @@ import { useDialog } from "../../ui/dialog"
 import { getScrollAcceleration } from "../../util/scroll"
 import { useTuiConfig } from "../../context/tui-config"
 import * as Sound from "../../util/sound"
+import { useKV } from "../../context/kv"
 
 type PermissionStage = "permission" | "always" | "reject"
 
@@ -133,11 +134,12 @@ function TextBody(props: { title: string; description?: string; icon?: string })
 export function PermissionPrompt(props: { request: PermissionRequest }) {
   const sdk = useSDK()
   const sync = useSync()
+  const kv = useKV()
   const [store, setStore] = createStore({
     stage: "permission" as PermissionStage,
   })
 
-  onMount(() => Sound.notify())
+  onMount(() => { if (kv.get("sound_enabled", true)) Sound.notify() })
 
   const session = createMemo(() => sync.data.session.find((s) => s.id === props.request.sessionID))
 

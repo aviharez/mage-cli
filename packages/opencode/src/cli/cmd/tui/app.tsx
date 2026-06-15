@@ -714,6 +714,15 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
       },
     },
     {
+      title: kv.get("sound_enabled", true) ? "Disable notify sound" : "Enable notify sound",
+      value: "app.toggle.sound",
+      category: "System",
+      onSelect: (dialog) => {
+        kv.set("sound_enabled", !kv.get("sound_enabled", true))
+        dialog.clear()
+      },
+    },
+    {
       title: kv.get("diff_wrap_mode", "word") === "word" ? "Disable diff wrapping" : "Enable diff wrapping",
       value: "app.toggle.diffwrap",
       category: "System",

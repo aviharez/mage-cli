@@ -10,14 +10,16 @@ import { SplitBorder } from "../../component/border"
 import { useTextareaKeybindings } from "../../component/textarea-keybindings"
 import { useDialog } from "../../ui/dialog"
 import * as Sound from "../../util/sound"
+import { useKV } from "../../context/kv"
 
 export function QuestionPrompt(props: { request: QuestionRequest }) {
   const sdk = useSDK()
   const { theme } = useTheme()
   const keybind = useKeybind()
   const bindings = useTextareaKeybindings()
+  const kv = useKV()
 
-  onMount(() => Sound.notify())
+  onMount(() => { if (kv.get("sound_enabled", true)) Sound.notify() })
 
   const questions = createMemo(() => props.request.questions)
   const single = createMemo(() => questions().length === 1 && questions()[0]?.multiple !== true)
