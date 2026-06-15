@@ -289,11 +289,11 @@ Goal: Gain a comprehensive understanding of the user's request by reading throug
 
 1. Focus on understanding the user's request and the code associated with their request
 
-2. Launch seeker agents ONE AT A TIME to explore the codebase. Never call the task tool more than once per message.
+2. **Launch up to ${Flag.MAGE_SUBAGENT} seeker agent(s) IN PARALLEL** (single message, multiple tool calls) to explore the codebase.
  - Use 1 agent when the task is isolated to known files, the user provided specific file paths, or you're making a small targeted change.
- - Use multiple agents sequentially when: the scope is uncertain, multiple areas of the codebase are involved, or you need to understand existing patterns before planning.
+ - Use multiple agents when: the scope is uncertain, multiple areas of the codebase are involved, or you need to understand existing patterns before planning.
  - Quality over quantity - 3 agents maximum, but you should try to use the minimum number of agents necessary (usually just 1)
- - If using multiple agents: Run each agent one at a time; provide each with a specific search focus or area to explore.
+ - If using multiple agents: Provide each agent with a specific search focus or area to explore. Example: One agent searches for existing implementations, another explores related components, a third investigating testing patterns
 
 3. After exploring the code, use the question tool to clarify ambiguities in the user request up front.
 
@@ -302,7 +302,7 @@ Goal: Design an implementation approach.
 
 Launch wisp agent(s) to design the implementation based on the user's intent and your exploration results from Phase 1.
 
-You can launch up to 1 agent(s) in parallel.
+You can launch up to ${Flag.MAGE_SUBAGENT} agent(s) in parallel.
 
 **Guidelines:**
 - **Default**: Launch at least 1 Plan agent for most tasks - it helps validate your understanding and consider alternatives
