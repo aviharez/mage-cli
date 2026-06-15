@@ -5,6 +5,9 @@ import path from "path"
 import fs from "fs/promises"
 import * as Filesystem from "../../../../util/filesystem"
 import * as Process from "../../../../util/process"
+import { Log } from "@/util"
+
+const log = Log.create({ service: "clipboard" })
 
 // Lazy load which and clipboardy to avoid expensive execa/which/isexe chain at startup
 const getWhich = lazy(async () => {
@@ -110,70 +113,79 @@ export async function read(): Promise<Content | undefined> {
   }
 }
 
+// Each platform method returns true on success, false on failure.
+// copy() uses these to decide whether to fall back to clipboardy.
 const getCopyMethod = lazy(async () => {
   const os = platform()
   const which = await getWhich()
 
   if (os === "darwin" && which("osascript")) {
-    console.log("clipboard: using osascript")
-    return async (text: string) => {
+    log.debug("clipboard: using osascript")
+    return async (text: string): Promise<boolean> => {
       const escaped = text.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
-      await Process.run(["osascript", "-e", `set the clipboard to "${escaped}"`], { nothrow: true })
+      const result = await Process.run(["osascript", "-e", `set the clipboard to "${escaped}"`], { nothrow: true })
+      return result.code === 0
     }
   }
 
   if (os === "linux") {
     if (process.env["WAYLAND_DISPLAY"] && which("wl-copy")) {
-      console.log("clipboard: using wl-copy")
-      return async (text: string) => {
+      log.debug("clipboard: using wl-copy")
+      return async (text: string): Promise<boolean> => {
         const proc = Process.spawn(["wl-copy"], { stdin: "pipe", stdout: "ignore", stderr: "ignore" })
-        if (!proc.stdin) return
+        if (!proc.stdin) return false
         proc.stdin.write(text)
         proc.stdin.end()
-        await proc.exited.catch(() => {})
+        const code = await proc.exited.catch(() => 1)
+        return code === 0
       }
     }
     if (which("xclip")) {
-      console.log("clipboard: using xclip")
-      return async (text: string) => {
+      log.debug("clipboard: using xclip")
+      return async (text: string): Promise<boolean> => {
         const proc = Process.spawn(["xclip", "-selection", "clipboard"], {
           stdin: "pipe",
           stdout: "ignore",
           stderr: "ignore",
         })
-        if (!proc.stdin) return
+        if (!proc.stdin) return false
         proc.stdin.write(text)
         proc.stdin.end()
-        await proc.exited.catch(() => {})
+        const code = await proc.exited.catch(() => 1)
+        return code === 0
       }
     }
     if (which("xsel")) {
-      console.log("clipboard: using xsel")
-      return async (text: string) => {
+      log.debug("clipboard: using xsel")
+      return async (text: string): Promise<boolean> => {
         const proc = Process.spawn(["xsel", "--clipboard", "--input"], {
           stdin: "pipe",
           stdout: "ignore",
           stderr: "ignore",
         })
-        if (!proc.stdin) return
+        if (!proc.stdin) return false
         proc.stdin.write(text)
         proc.stdin.end()
-        await proc.exited.catch(() => {})
+        const code = await proc.exited.catch(() => 1)
+        return code === 0
       }
     }
   }
 
   if (os === "win32") {
-    console.log("clipboard: using powershell")
-    return async (text: string) => {
-      // Pipe via stdin to avoid PowerShell string interpolation ($env:FOO, $(), etc.)
+    log.debug("clipboard: using powershell")
+    // Encode as base64 before piping so PowerShell can decode to UTF-8 without
+    // touching [Console]::InputEncoding — setting that property throws
+    // System.IO.IOException ("The handle is invalid") when stdin is a redirected
+    // pipe (which it always is here), aborting the script before Set-Clipboard runs.
+    return async (text: string): Promise<boolean> => {
       const proc = Process.spawn(
         [
           "powershell.exe",
           "-NonInteractive",
           "-NoProfile",
           "-Command",
-          "[Console]::InputEncoding = [System.Text.Encoding]::UTF8; Set-Clipboard -Value ([Console]::In.ReadToEnd())",
+          "Set-Clipboard -Value ([System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String([Console]::In.ReadToEnd())))",
         ],
         {
           stdin: "pipe",
@@ -182,22 +194,37 @@ const getCopyMethod = lazy(async () => {
         },
       )
 
-      if (!proc.stdin) return
-      proc.stdin.write(text)
+      if (!proc.stdin) return false
+      // Write base64-encoded text so the pipe's default ASCII/ANSI encoding is irrelevant.
+      proc.stdin.write(Buffer.from(text).toString("base64"))
       proc.stdin.end()
-      await proc.exited.catch(() => {})
+      const code = await proc.exited.catch(() => 1)
+      return code === 0
     }
   }
 
-  console.log("clipboard: no native support")
-  return async (text: string) => {
-    const clipboardy = await getClipboardy()
-    await clipboardy.write(text).catch(() => {})
-  }
+  return null
 })
 
 export async function copy(text: string): Promise<void> {
+  // Best-effort OSC 52 — lets SSH sessions copy via the terminal emulator.
+  // Silently ignored by terminals that don't support it.
   writeOsc52(text)
+
+  // Try the native platform method first.
   const method = await getCopyMethod()
-  await method(text)
+  if (method) {
+    const ok = await method(text).catch(() => false)
+    if (ok) return
+    // Native method failed — fall through to clipboardy.
+    log.debug("clipboard: native method failed, trying clipboardy fallback")
+  } else {
+    log.debug("clipboard: no native support, trying clipboardy fallback")
+  }
+
+  // clipboardy fallback — covers the case where the native tool is absent or fails.
+  const clipboardy = await getClipboardy()
+  await clipboardy.write(text)
+  // clipboardy.write throws on failure, which propagates to the caller so the
+  // handler's .catch() can show an honest "Failed to copy" toast.
 }
