@@ -33,3 +33,4 @@ logs/
 tsconfig.tsbuildinfo
 .agents/
 skills-lock.json
+memory/
