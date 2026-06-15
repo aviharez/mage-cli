@@ -1,0 +1,46 @@
+---
+// Overrides Starlight's PageTitle to add the reference-design eyebrow
+// (mono-uppercase, accent color) above the h1 and the description as a
+// prominent lede below it — matching docs/getting-started.html lines 79-81.
+const { entry } = Astro.locals.starlightRoute;
+const { title, description } = entry.data;
+const eyebrow = (entry.data as any).eyebrow as string | undefined;
+---
+
+{eyebrow && <p class="page-eyebrow" aria-label="Page category">{eyebrow}</p>}
+
+<h1 id="_top" class="page-title-h1">{title}</h1>
+
+{description && <p class="page-lede">{description}</p>}
+
+<style>
+  .page-eyebrow {
+    font-family: var(--mg-font-mono, ui-monospace, monospace);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--mg-accent, var(--sl-color-accent));
+    margin: 0 0 12px;
+  }
+
+  .page-title-h1 {
+    font-family: var(--mg-font-serif, "Instrument Serif", Georgia, serif) !important;
+    font-style: italic !important;
+    font-weight: 400 !important;
+    font-size: clamp(2rem, 4vw, 3.2rem) !important;
+    line-height: 1.05 !important;
+    letter-spacing: -0.02em !important;
+    margin: 0 0 14px !important;
+    color: var(--mg-text, var(--sl-color-white)) !important;
+    text-transform: none !important;
+  }
+
+  .page-lede {
+    font-size: 18px;
+    color: var(--mg-text-muted, var(--sl-color-gray-6));
+    max-width: 60ch;
+    margin: 0 0 36px;
+    text-wrap: pretty;
+    line-height: 1.55;
+  }
+</style>

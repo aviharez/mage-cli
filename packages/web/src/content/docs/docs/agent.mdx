@@ -1,0 +1,82 @@
+---
+title: Agent
+description: Cara kerja sistem agent di Mage — perbedaan Forge dan Oracle, cara berpindah antar agent, mendelegasikan tugas ke subagent, dan membuat agent kustom di .mage.
+eyebrow: Dokumentasi
+---
+
+**Agent** adalah persona bernama yang menentukan sistem prompt, izin tool, dan model yang digunakan model selama sesi berlangsung. Mage menyertakan beberapa agent bawaan — dua di antaranya dapat Anda pilih langsung dari TUI, sementara lainnya bekerja di balik layar sebagai **subagent** yang didelegasikan secara otomatis.
+
+---
+
+## Agent bawaan
+
+Mage dilengkapi dua **primary agent** yang dapat Anda aktifkan langsung dari TUI:
+
+| Agent | Kegunaan |
+|-------|----------|
+| **Forge** | Agent eksekusi (default) — menjalankan tool sesuai permission yang dikonfigurasi. Digunakan untuk mengerjakan tugas: menulis kode, mengedit file, menjalankan perintah. |
+| **Oracle** | Mode perencanaan — semua tool edit dinonaktifkan. Oracle hanya boleh menulis file rencana di `.mage/plans/*.md`. Gunakan untuk menyusun rencana sebelum eksekusi. |
+
+### Alur plan → eksekusi dengan Oracle dan Forge
+
+Oracle dan Forge dirancang untuk bekerja berpasangan:
+
+1. Pindah ke **Oracle** → minta model menyusun rencana. Oracle mempersiapkan file `.mage/plans/*.md` tanpa menyentuh kode.
+2. Tinjau rencana yang dihasilkan — perbaiki jika perlu.
+3. Pindah kembali ke **Forge** → Mage secara otomatis meminta Forge untuk mengeksekusi rencana yang sudah dibuat.
+
+Pola ini berguna pada tugas besar yang memerlukan eksplorasi dan persetujuan sebelum perubahan kode dijalankan.
+
+---
+
+## Berpindah antar agent
+
+Anda dapat berpindah agent kapan saja dari dalam TUI:
+
+| Aksi | Shortcut / perintah |
+|------|---------------------|
+| Agent berikutnya | `Tab` |
+| Agent sebelumnya | `Shift+Tab` |
+| Buka dialog pemilih agent | `Ctrl+x` lalu `a` |
+| Buka dialog pemilih agent | `/agents` |
+
+:::tip[Agent aktif ditampilkan di status bar]
+Nama agent aktif (misalnya **forge** atau **oracle**) ditampilkan di status bar bagian bawah TUI. Anda dapat mengubah default-nya dengan mengatur `default_agent` di file konfigurasi — lihat [Konfigurasi](/docs/konfigurasi).
+:::
+
+Lihat [Slash Commands](/docs/slash-commands) untuk daftar lengkap perintah yang tersedia di TUI.
+
+---
+
+## Subagent & delegasi
+
+Selain primary agent, Mage memiliki **subagent** yang tidak bisa dipilih langsung dari TUI — mereka diaktifkan oleh model secara otomatis ketika tugas memerlukan bantuan khusus:
+
+| Subagent | Kegunaan |
+|----------|----------|
+| **wisp** | Agen serbaguna untuk riset dan eksekusi multi-langkah. Cocok untuk menjalankan beberapa unit pekerjaan secara paralel. |
+| **seeker** | Agen khusus eksplorasi kodebase yang hanya boleh membaca file. Mendukung tiga level ketuntasan: `quick`, `medium`, dan `very thorough`. |
+
+Forge (dan Oracle) dapat mendelegasikan ke subagent melalui **Task tool** atau menyebut subagent secara langsung dengan `@nama-agent`. Anda dapat memandu model secara eksplisit:
+
+```
+@seeker cari semua komponen Angular yang menggunakan OnPush change detection, medium thoroughness
+```
+
+```
+@wisp analisis ketiga modul ini secara paralel dan buat ringkasannya
+```
+
+:::note[Satu subagent dalam satu waktu]
+Model hanya memanggil satu subagent per giliran. Setiap subagent mendapatkan konteks baru — berikan instruksi yang jelas: apakah subagent perlu riset saja, atau juga perlu menulis/mengubah kode.
+:::
+
+---
+
+## Tips memaksimalkan agent
+
+- **Oracle dulu, Forge kemudian.** Untuk tugas besar yang melibatkan banyak file atau risiko tinggi, pindah ke Oracle untuk merencanakan, tinjau hasilnya, lalu eksekusi dengan Forge.
+- **Delegasikan pencarian ke seeker.** Kalau Anda perlu tahu di mana suatu fungsi didefinisikan atau menemukan pola tertentu di kodebase, minta seeker — lebih cepat dan lebih terfokus.
+- **Gunakan wisp untuk pekerjaan paralel.** Bila ada beberapa modul independen yang perlu dianalisis sekaligus, wisp dapat menanganinya secara bersamaan.
+- **Set `default_agent` di konfigurasi.** Jika Anda hampir selalu memulai sesi dengan Oracle, atur nilai ini agar Mage langsung masuk ke mode perencanaan — lihat [Konfigurasi](/docs/konfigurasi).
+- **Sesuaikan model per-agent.** Agent kustom dapat mempunyai model dan permission tersendiri — lihat bagian *Membuat agent sendiri* di bawah.

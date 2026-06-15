@@ -1,0 +1,49 @@
+{
+  "$schema": "https://v2-8-13.turborepo.dev/schema.json",
+  "globalEnv": ["CI", "OPENCODE_DISABLE_SHARE"],
+  "globalPassThroughEnv": ["CI", "OPENCODE_DISABLE_SHARE"],
+  "tasks": {
+    "typecheck": {},
+    "build": {
+      "dependsOn": [],
+      "outputs": ["dist/**"]
+    },
+    "opencode#test": {
+      "dependsOn": ["^build"],
+      "outputs": [],
+      "passThroughEnv": ["*"]
+    },
+    "opencode#test:ci": {
+      "dependsOn": ["^build"],
+      "outputs": [".artifacts/unit/junit.xml"],
+      "passThroughEnv": ["*"]
+    },
+    "@mybcabisnis/mage-app#test": {
+      "dependsOn": ["^build"],
+      "outputs": []
+    },
+    "@mybcabisnis/mage-app#test:ci": {
+      "dependsOn": ["^build"],
+      "outputs": [".artifacts/unit/junit.xml"],
+      "passThroughEnv": ["*"]
+    },
+    "@mybcabisnis/mage-ui#test": {
+      "dependsOn": ["^build"],
+      "outputs": [".artifacts/unit/junit.xml"],
+      "passThroughEnv": ["*"]
+    },
+    "@mybcabisnis/mage-ui#test:ci": {
+      "dependsOn": ["^build"],
+      "outputs": [".artifacts/unit/junit.xml"],
+      "passThroughEnv": ["*"]
+    },
+    "@mybcabisnis/mage-desktop#build": {
+      "dependsOn": ["@mybcabisnis/mage-app#build", "@mybcabisnis/mage-ui#build"],
+      "outputs": ["out/**"]
+    },
+    "@mybcabisnis/mage-web#build": {
+      "dependsOn": ["@mybcabisnis/mage#build"],
+      "outputs": ["dist/**"]
+    }
+  }
+}

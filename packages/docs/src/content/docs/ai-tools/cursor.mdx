@@ -1,0 +1,30 @@
+---
+title: Cursor Integration
+description: Use Mage alongside Cursor IDE
+---
+
+Mage works well as a complement to Cursor's built-in AI. You can use Mage for long-running tasks and multi-file operations while using Cursor for inline edits.
+
+## Setup
+
+Run Mage in Cursor's integrated terminal:
+
+```bash
+cd your-project
+mage
+```
+
+## Recommended Workflow
+
+- **Cursor**: Inline completions, quick edits, file-level context
+- **Mage**: Multi-file operations, architectural discussions, complex refactors
+
+## ACP (Agent Communication Protocol)
+
+Mage supports the ACP protocol which allows it to communicate with external tools. Start Mage in ACP mode:
+
+```bash
+mage acp
+```
+
+This enables Mage to receive commands programmatically from other tools.

@@ -1,0 +1,73 @@
+---
+title: Konfigurasi
+description: Lokasi file konfigurasi Mage dan cara menyesuaikan pengaturan global maupun per-proyek.
+eyebrow: Dokumentasi
+---
+
+## Direktori konfigurasi global
+
+Semua konfigurasi global Mage tersimpan di `~/.mage/`:
+
+| Path | Isi |
+|------|-----|
+| `~/.mage/mage.json` | Konfigurasi utama (dibuat oleh wizard setup) |
+| `~/.mage/tui.json` | Pengaturan TUI (tema, keybind) |
+| `~/.mage/skills/` | Skill kustom global (lihat [Skill](/docs/skills)) |
+| `~/.mage/data/` | Database sesi dan riwayat |
+| `~/.mage/cache/` | Cache dan binary alat (ripgrep, LSP) |
+| `~/.mage/state/` | State runtime |
+
+## File `mage.json`
+
+File konfigurasi utama dibuat saat pertama kali Anda menjalankan `mage` melalui wizard setup.
+
+Contoh isi:
+
+```json
+{
+  "provider": {
+    "merlin": {
+      "options": {
+        "username": "u0xxxxx"
+      }
+    }
+  }
+}
+```
+
+Untuk mengubah username, edit file ini langsung atau jalankan `mage init`.
+
+## Konfigurasi skills (path tambahan)
+
+Tambahkan path skill kustom dari luar direktori default:
+
+```json
+{
+  "provider": {
+    "merlin": {
+      "options": { "username": "u0xxxxx" }
+    }
+  },
+  "skills": {
+    "paths": ["~/shared-team-skills"]
+  }
+}
+```
+
+Lihat [Skill](/docs/skills) untuk detail struktur skill dan cara membuatnya.
+
+## Konfigurasi per-proyek
+
+Simpan file `.mage/` di root repository untuk konfigurasi yang berlaku hanya di proyek tersebut. Skill kustom per-proyek dapat ditempatkan di `.mage/skills/<nama>/SKILL.md`.
+
+Konfigurasi per-proyek menimpa konfigurasi global untuk proyek yang bersangkutan.
+
+## Mengulangi setup
+
+Untuk mengkonfigurasi ulang username atau pengaturan dasar:
+
+```bash
+mage init
+```
+
+Wizard akan memperbarui konfigurasi yang ada tanpa menimpa pengaturan lain.

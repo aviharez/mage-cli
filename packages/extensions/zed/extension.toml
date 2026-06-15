@@ -1,0 +1,36 @@
+id = "mage"
+name = "Mage"
+description = "BCA AI-powered coding assistant."
+version = "1.1.0"
+schema_version = 1
+authors = ["BCA"]
+repository = "https://github.com/anomalyco/opencode"
+
+[agent_servers.mage]
+name = "Mage"
+icon = "./icons/mage.svg"
+
+[agent_servers.mage.targets.darwin-aarch64]
+archive = "https://github.com/anomalyco/opencode/releases/download/v1.1.0/mage-darwin-arm64.zip"
+cmd = "./mage"
+args = ["acp"]
+
+[agent_servers.mage.targets.darwin-x86_64]
+archive = "https://github.com/anomalyco/opencode/releases/download/v1.1.0/mage-darwin-x64.zip"
+cmd = "./mage"
+args = ["acp"]
+
+[agent_servers.mage.targets.linux-aarch64]
+archive = "https://github.com/anomalyco/opencode/releases/download/v1.1.0/mage-linux-arm64.tar.gz"
+cmd = "./mage"
+args = ["acp"]
+
+[agent_servers.mage.targets.linux-x86_64]
+archive = "https://github.com/anomalyco/opencode/releases/download/v1.1.0/mage-linux-x64.tar.gz"
+cmd = "./mage"
+args = ["acp"]
+
+[agent_servers.mage.targets.windows-x86_64]
+archive = "https://github.com/anomalyco/opencode/releases/download/v1.1.0/mage-windows-x64.zip"
+cmd = "./mage.exe"
+args = ["acp"]

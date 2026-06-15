@@ -1,0 +1,83 @@
+---
+// Custom theme toggle — replaces Starlight's ThemeSelect dropdown with a
+// reference-matching icon button (moon icon). Uses the same localStorage key
+// ('starlight-theme') and document.documentElement.dataset.theme as Starlight's
+// ThemeProvider so the no-flash inline script stays compatible.
+---
+
+<starlight-theme-toggle>
+  <button
+    class="icon-btn theme-toggle"
+    aria-label="Toggle dark/light theme"
+    title="Toggle theme"
+  >
+    <!-- Moon icon (matches reference) -->
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+      <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+    </svg>
+  </button>
+</starlight-theme-toggle>
+
+<script>
+  type Theme = 'dark' | 'light' | 'auto';
+  const STORAGE_KEY = 'starlight-theme';
+
+  function parseTheme(v: unknown): Theme {
+    return v === 'dark' || v === 'light' || v === 'auto' ? v : 'auto';
+  }
+  function loadTheme(): Theme {
+    return parseTheme(typeof localStorage !== 'undefined' && localStorage.getItem(STORAGE_KEY));
+  }
+  function getSystem(): 'dark' | 'light' {
+    return matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+  }
+  function resolveTheme(t: Theme): 'dark' | 'light' {
+    return t === 'auto' ? getSystem() : t;
+  }
+  function applyTheme(t: Theme): void {
+    document.documentElement.dataset.theme = resolveTheme(t);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(STORAGE_KEY, t === 'auto' ? '' : t);
+    }
+    // Keep any remaining Starlight pickers in sync (defensive)
+    if (typeof (window as any).StarlightThemeProvider !== 'undefined') {
+      (window as any).StarlightThemeProvider.updatePickers(t);
+    }
+  }
+
+  class StarlightThemeToggle extends HTMLElement {
+    connectedCallback() {
+      // Sync visual state on mount
+      const current = resolveTheme(loadTheme());
+      document.documentElement.dataset.theme = current;
+
+      this.querySelector('button')?.addEventListener('click', () => {
+        const cur = resolveTheme(loadTheme());
+        const next: Theme = cur === 'dark' ? 'light' : 'dark';
+        applyTheme(next);
+      });
+    }
+  }
+  customElements.define('starlight-theme-toggle', StarlightThemeToggle);
+</script>
+
+<style>
+  .icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--mg-radius-sm, 4px);
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--mg-text-muted, var(--sl-color-gray-6));
+    cursor: pointer;
+    padding: 0;
+    flex-shrink: 0;
+  }
+  .icon-btn:hover {
+    color: var(--mg-text, var(--sl-color-white));
+    background: var(--mg-bg-elev, var(--sl-color-gray-2));
+  }
+</style>

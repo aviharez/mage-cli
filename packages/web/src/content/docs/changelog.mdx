@@ -1,0 +1,98 @@
+---
+title: Changelog
+description: Riwayat perubahan dan pembaruan Mage.
+template: splash
+---
+
+import { Card } from "@astrojs/starlight/components"
+
+---
+
+## v1.2.5
+
+_15 Juni 2026_
+
+### Yang baru
+- **Toggle notif audio** — Penambahan opsi untuk mengaktifkan/menonaktifkan notif audio langsung dari Command dialog (kategori System).
+
+### Perbaikan
+- Perbaikan copy clipboard di Windows ketika menyalin respons AI.
+
+---
+
+## v1.2.4
+
+_12 Juni 2026_
+
+## Yang baru
+- **Notif audio** — Kini mage akan memunculkan audio notif ketika meminta permission atau memberikan pertanyaan.
+
+### Perbaikan
+- Penambahan self-repair untuk argumen kosong yang dikembalikan oleh GAIA ketika tool call.
+- Penambahan handle spam transcript assistant ketika sebuah tool call selesai.
+
+---
+
+## v1.2.3
+
+_11 Juni 2026_
+
+### Perbaikan
+- Perbaikan skill functional-flow untuk hasil yang lebih dalam dan tidak membaca `.gitignore`.
+- Perubahan batas context untuk trigger compaction ke 262K context.
+
+---
+
+## v1.2.2
+
+_9 Juni 2026_
+
+### Yang baru
+- **Skill functional-flow** — Skill baru untuk generate Functional Flow Diagram dengan template output.
+- **Skill Angular & MBB-lib** — Skill angular-developer sekarang terhubung dengan skill mbb-lib.
+
+### Perbaikan
+- Perbaikan intent untuk trigger Skills
+
+---
+
+## v1.2.1
+
+_8 Juni 2026_
+
+### Yang baru
+- Perubahan config Qwen dengan config `temperature=0.6`, `top_p=1`, `top_k=20`, `min_p=0`, `presence_penalty=0`, `repetition_penalty=1` berdasarkan rekomendasi Qwen untuk coding preset.
+
+---
+
+## v1.2.0
+
+_8 Juni 2026_
+
+### Yang baru
+- Revamp UI dan flow web untuk persiapan versi desktop.
+- Update model ke Qwen3.6 27b.
+- Perubahan default AGENTS.md.
+- Penambahan beberapa skill default.
+
+### Perbaikan
+- Pembatasan subagent untuk hanya 1 subagent yang berjalan untuk mengantisipasi error GAIA karena overload.
+
+---
+
+## v1.1.0
+
+_21 Mei 2026_
+
+### Yang baru
+- Pembaruan model ke Qwen3.5 27b.
+- Penambahan fitur auto update ketika re-open `mage` via TUI.
+- Penambahan default AGENTS.md.
+
+---
+
+## v1.0.0
+
+_11 Mei 2026_
+
+Versi awal MAGE dengan integrasi GAIA.

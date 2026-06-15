@@ -1,93 +1,140 @@
-# mage
+# Mage
 
-AI Agent
+AI coding assistant for the terminal, powered by GAIA.
 
-## Getting started
+Current version: **v1.2.5**
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
-
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
-
-## Add your files
-
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
-
-```
-cd existing_repo
-git remote add origin https://bcagitlab/MDZ-TCP/RnD/agent/mage.git
-git branch -M master
-git push -uf origin master
-```
-
-## Integrate with your tools
-
-- [ ] [Set up project integrations](https://bcagitlab/MDZ-TCP/RnD/agent/mage/-/settings/integrations)
-
-## Collaborate with your team
-
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
-
-## Test and Deploy
-
-Use the built-in continuous integration in GitLab.
-
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
-
-***
-
-# Editing this README
-
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
-
-## Suggestions for a good README
-
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
-
-## Name
-Choose a self-explaining name for your project.
-
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
-
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+---
 
 ## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+
+**macOS / Linux**
+```bash
+curl -fsSL https://mybcabisnis-mage.apps.ocpdevgra.dti.co.id/install | bash
+```
+
+**Windows PowerShell**
+```powershell
+irm https://mybcabisnis-mage.apps.ocpdevgra.dti.co.id/install.ps1 | iex
+```
+
+**Windows cmd** — download [`install.cmd`](install.cmd) and double-click it, or run:
+```bat
+powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://mybcabisnis-mage.apps.ocpdevgra.dti.co.id/install.ps1 | iex"
+```
+
+The installer configures your `~/.npmrc` with the BCA Artifactory registry and runs
+`npm install -g @mybcabisnis/mage` automatically. Node.js ≥ 18 must be installed first
+([download](https://nodejs.org/en/download)).
+
+<details>
+<summary>Manual install (if you prefer to configure <code>.npmrc</code> yourself)</summary>
+
+Add these lines to your `~/.npmrc` (create the file if it doesn't exist):
+
+```
+@mybcabisnis:registry=https://artifactory.intra.bca.co.id/artifactory/api/npm/MBB-Registry-npm/
+noproxy[]=artifactory.intra.bca.co.id
+always-auth=true
+strict-ssl=false
+//artifactory.intra.bca.co.id/artifactory/api/npm/MBB-Registry-npm/:_auth=dXNlcm1iYjpCY2FiY2ExMjM=
+```
+
+Then install globally:
+
+```bash
+npm install -g @mybcabisnis/mage
+```
+</details>
+
+Or run from source (requires [Bun](https://bun.sh) ≥ 1.1):
+
+```bash
+git clone <repo>
+cd new-mage
+bun install
+bun run dev
+```
+
+---
+
+## First-time Setup
+
+When you run `mage` for the first time, the onboarding wizard launches automatically. It collects **Domain username** — used to identify your requests to the GAIA gateway
+
+Config is saved to `~/.mage/mage.json`.
+
+To re-run the wizard at any time:
+
+```bash
+mage init
+```
+
+---
 
 ## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+```bash
+mage                  # open interactive TUI
+mage run "message"    # send a single message without the TUI
+mage init             # re-run setup wizard
+mage web              # open the web interface in your browser
+```
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+---
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+## Configuration
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+All configuration lives under `~/.mage/`:
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+| Path | Contents |
+|------|----------|
+| `~/.mage/mage.json` | Main config (created by `mage init`) |
+| `~/.mage/tui.json` | TUI settings (theme, keybinds) |
+| `~/.mage/data/` | Session database and history |
+| `~/.mage/cache/` | Cache and tool binaries (ripgrep, LSP) |
+| `~/.mage/state/` | Runtime state |
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+Per-project config lives in `.mage/mage.json` at the repository root.
 
-## License
-For open source projects, say how it is licensed.
+---
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+## Build and Publish
+
+```bash
+# Build the mage CLI
+bun run build:mage
+
+# Publish to BCA Artifactory
+bun run publish:mage
+
+# Or run directly in packages/opencode:
+cd packages/opencode
+bun run build
+bun run publish
+```
+
+---
+
+## Versioning
+
+All packages share a single version number. To bump the version across the entire monorepo:
+
+```bash
+# Print current version
+bun script/version.ts
+
+# Set an exact version
+bun script/version.ts 1.3.0
+
+# Bump by increment type
+bun script/version.ts patch   # 1.2.4 → 1.2.5
+bun script/version.ts minor   # 1.2.4 → 1.3.0
+bun script/version.ts major   # 1.2.4 → 2.0.0
+
+# Or via npm script
+bun run version:set 1.3.0
+```
+
+This updates every `packages/*/package.json`, `packages/web/config.mjs`, the landing page eyebrow in `packages/web/src/content/i18n/id.json`, and the terminal demo in `packages/web/src/components/Lander.astro`.
+

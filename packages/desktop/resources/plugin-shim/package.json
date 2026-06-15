@@ -1,0 +1,10 @@
+{
+  "name": "@mybcabisnis/mage-plugin",
+  "version": "1.2.4",
+  "type": "module",
+  "exports": {
+    ".": "./index.js",
+    "./tool": "./index.js",
+    "./tui": "./index.js"
+  }
+}

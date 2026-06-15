@@ -1,0 +1,187 @@
+---
+title: Troubleshooting
+description: Solusi untuk masalah umum saat menginstal dan menjalankan Mage di Windows, macOS, dan Linux.
+eyebrow: Dokumentasi
+---
+
+import { Tabs, TabItem } from "@astrojs/starlight/components"
+
+## `mage: command not found` setelah instalasi
+
+npm menginstal binary global ke direktori yang mungkin tidak ada di `PATH`.
+
+<Tabs>
+  <TabItem label="Windows PowerShell">
+    Cek lokasi npm global:
+    ```powershell
+    npm prefix -g
+    ```
+
+    Biasanya menghasilkan `C:\Users\<udomain>\AppData\Roaming\npm`. Tambahkan ke PATH
+    untuk sesi saat ini:
+    ```powershell
+    $env:Path = "$(npm prefix -g)" + ";" + $env:Path
+    ```
+
+    Agar permanen, jalankan perintah berikut (tidak perlu admin):
+    ```powershell
+    setx PATH "$((npm prefix -g));$env:Path"
+    ```
+
+    Setelah itu **tutup dan buka kembali terminal**, lalu coba `mage --version`.
+
+    :::note[Cara alternatif]
+    Buka **"Edit the system environment variables"** → Environment Variables →
+    di bagian *User variables* → pilih `Path` → Edit → tambahkan path dari
+    `npm prefix -g`.
+    :::
+  </TabItem>
+  <TabItem label="macOS / Linux">
+    Cek lokasi npm global:
+    ```bash
+    npm prefix -g
+    ```
+
+    Tambahkan direktori npm global ke shell Anda:
+    ```bash
+    export PATH="$(npm prefix -g)/bin:$PATH"
+    ```
+
+    Tambahkan baris ini ke `~/.zshrc` atau `~/.bashrc` agar permanen, lalu restart
+    terminal atau jalankan:
+    ```bash
+    source ~/.zshrc
+    ```
+  </TabItem>
+</Tabs>
+
+## Error "running scripts is disabled on this system" (Windows)
+
+Pesan ini muncul di Windows karena PowerShell memblokir eksekusi file `.ps1` — termasuk
+shim `mage.ps1` yang dibuat npm. Ini bukan bug Mage, melainkan pengaturan keamanan
+bawaan Windows.
+
+Cek policy yang sedang aktif:
+```powershell
+Get-ExecutionPolicy -List
+```
+
+**Solusi** — ubah policy untuk user saat ini (tidak perlu hak admin):
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+```
+
+Konfirmasi dengan `Y`, lalu **tutup dan buka kembali terminal**. Setelah itu `mage`
+seharusnya berjalan normal.
+
+:::note[Tanpa mengubah policy]
+Jika tidak ingin mengubah ExecutionPolicy, gunakan flag bypass saat menjalankan installer.
+Cara ini hanya berlaku untuk proses installer — untuk menjalankan `mage` sehari-hari,
+mengubah policy ke `RemoteSigned` tetap diperlukan.
+:::
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass `
+  -Command "irm https://mybcabisnis-mage.apps.ocpdevgra.dti.co.id/install.ps1 | iex"
+```
+
+## Node.js tidak ditemukan atau versi terlalu lama
+
+Mage membutuhkan Node.js **≥ 18**.
+
+```bash
+node --version   # cek versi saat ini
+```
+
+<Tabs>
+  <TabItem label="Windows">
+    Unduh Node.js dari **Software Center**.
+    Setelah selesai, buka terminal baru dan verifikasi:
+    ```powershell
+    node --version
+    ```
+  </TabItem>
+  <TabItem label="macOS / Linux">
+    Unduh dari [nodejs.org/en/download](https://nodejs.org/en/download) atau gunakan
+    package manager pilihan Anda (Homebrew, apt, dll).
+  </TabItem>
+</Tabs>
+
+## Error saat instalasi: registry tidak dapat dijangkau
+
+Pastikan Anda terhubung ke jaringan BCA (intra atau via VPN) sebelum menjalankan
+installer. BCA Artifactory (`artifactory.intra.bca.co.id`) hanya dapat diakses dari
+jaringan intra.
+
+## Error `401 Unauthorized` saat `npm install`
+
+Konfigurasi `.npmrc` mungkin rusak atau tidak lengkap. Jalankan ulang installer untuk
+memperbaiki:
+
+<Tabs>
+  <TabItem label="Windows PowerShell">
+    ```powershell
+    irm https://mybcabisnis-mage.apps.ocpdevgra.dti.co.id/install.ps1 | iex
+    ```
+  </TabItem>
+  <TabItem label="macOS / Linux">
+    ```bash
+    curl -fsSL https://mybcabisnis-mage.apps.ocpdevgra.dti.co.id/install | bash
+    ```
+  </TabItem>
+</Tabs>
+
+Installer bersifat idempoten — aman dijalankan berulang kali. Blok konfigurasi lama di
+`.npmrc` akan diganti secara otomatis.
+
+Atau periksa isi `.npmrc` secara manual dan pastikan ada blok ini:
+
+<Tabs>
+  <TabItem label="Windows">
+    Buka file dengan:
+    ```powershell
+    notepad $env:USERPROFILE\.npmrc
+    ```
+    Path lengkap: `C:\Users\<udomain>\.npmrc`
+  </TabItem>
+  <TabItem label="macOS / Linux">
+    ```bash
+    cat ~/.npmrc
+    ```
+  </TabItem>
+</Tabs>
+
+Pastikan blok berikut ada:
+
+```
+# >>> mage >>>
+@mybcabisnis:registry=https://artifactory.intra.bca.co.id/artifactory/api/npm/MBB-Registry-npm/
+noproxy[]=artifactory.intra.bca.co.id
+strict-ssl=false
+//artifactory.intra.bca.co.id/artifactory/api/npm/MBB-Registry-npm/:_auth=dXNlcm1iYjpCY2FiY2ExMjM=
+# <<< mage <<<
+```
+
+## Wizard setup tidak muncul
+
+Wizard muncul otomatis hanya jika username udomain belum dikonfigurasi. Untuk
+menjalankan wizard secara manual:
+
+```bash
+mage init
+```
+
+## Versi web tidak terbuka (`mage web`)
+
+Pastikan tidak ada proses lain yang menggunakan port yang sama. Coba tentukan port
+secara eksplisit:
+
+```bash
+mage web --port 8080
+```
+
+Jika browser tidak terbuka otomatis, buka URL yang dicetak di terminal secara manual.
+
+## Masalah lain
+
+Hubungi tim SQI RnD FE MBB.

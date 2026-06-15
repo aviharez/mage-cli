@@ -1,0 +1,93 @@
+---
+title: Instalasi
+description: Semua cara untuk menginstal Mage — script otomatis, Windows, manual npmrc, dan dari source.
+eyebrow: Dokumentasi
+---
+
+import { Tabs, TabItem } from "@astrojs/starlight/components"
+
+## Prasyarat
+
+Node.js **≥ 18** wajib terinstal sebelum menjalankan installer.
+
+- Unduh: Via Software Center.
+- Verifikasi: `node --version`
+
+## Metode 1 — Script installer (recommended)
+
+Script otomatis mengonfigurasi `~/.npmrc` untuk BCA Artifactory lalu menginstal `@mybcabisnis/mage` secara global.
+
+<Tabs>
+  <TabItem label="Windows PowerShell">
+    ```powershell
+    irm https://mybcabisnis-mage.apps.ocpdevgra.dti.co.id/install.ps1 | iex
+    ```
+  </TabItem>
+  <TabItem label="Windows cmd">
+    Unduh `install.cmd` dari repository lalu jalankan dengan double-click, atau:
+    ```bat
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://mybcabisnis-mage.apps.ocpdevgra.dti.co.id/install.ps1 | iex"
+    ```
+  </TabItem>
+  <TabItem label="macOS / Linux">
+    ```bash
+    curl -fsSL https://mybcabisnis-mage.apps.ocpdevgra.dti.co.id/install | bash
+    ```
+
+    Install versi tertentu:
+    ```bash
+    curl -fsSL https://mybcabisnis-mage.apps.ocpdevgra.dti.co.id/install | bash -s -- --version 1.2.3
+    ```
+
+    Jika registry sudah dikonfigurasi (lewati konfigurasi `.npmrc`):
+    ```bash
+    curl -fsSL https://mybcabisnis-mage.apps.ocpdevgra.dti.co.id/install | bash -s -- --no-config
+    ```
+  </TabItem>
+</Tabs>
+
+Setelah selesai, verifikasi instalasi:
+
+```bash
+mage --version
+```
+
+:::note[PATH tidak ditemukan?]
+Jika perintah `mage` tidak ditemukan setelah instalasi, tambahkan direktori npm global ke PATH shell Anda:
+```powershell
+setx PATH "$((npm prefix -g));$env:Path"
+```
+:::
+
+## Metode 2 — Manual (konfigurasi npmrc sendiri)
+
+Cocok jika Anda ingin mengontrol konfigurasi registry secara manual.
+
+**Langkah 1** — Tambahkan baris berikut ke `~/.npmrc` (buat file jika belum ada):
+
+```
+@mybcabisnis:registry=https://artifactory.intra.bca.co.id/artifactory/api/npm/MBB-Registry-npm/
+noproxy[]=artifactory.intra.bca.co.id
+strict-ssl=false
+//artifactory.intra.bca.co.id/artifactory/api/npm/MBB-Registry-npm/:_auth=dXNlcm1iYjpCY2FiY2ExMjM=
+```
+
+**Langkah 2** — Instal secara global:
+
+```bash
+npm install -g @mybcabisnis/mage
+```
+
+## Pembaruan
+
+Untuk memperbarui ke versi terbaru:
+
+```bash
+npm install -g @mybcabisnis/mage@latest
+```
+
+Atau jalankan ulang mage untuk men-trigger auto update.
+
+## Langkah selanjutnya
+
+Setelah instalasi selesai, lanjutkan ke [Setup Awal](/docs/setup) untuk mengonfigurasi username BCA Anda.
