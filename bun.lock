@@ -33,7 +33,7 @@
     },
     "packages/app": {
       "name": "@mybcabisnis/mage-app",
-      "version": "1.2.5",
+      "version": "1.2.6",
       "dependencies": {
         "@kobalte/core": "catalog:",
         "@mybcabisnis/mage-core": "workspace:*",
@@ -90,7 +90,7 @@
     },
     "packages/core": {
       "name": "@mybcabisnis/mage-core",
-      "version": "1.2.5",
+      "version": "1.2.6",
       "dependencies": {
         "@ai-sdk/alibaba": "1.0.17",
         "@ai-sdk/amazon-bedrock": "4.0.107",
@@ -148,7 +148,7 @@
     },
     "packages/desktop": {
       "name": "@mybcabisnis/mage-desktop",
-      "version": "1.2.5",
+      "version": "1.2.6",
       "dependencies": {
         "@zip.js/zip.js": "2.7.62",
         "drizzle-orm": "catalog:",
@@ -204,7 +204,7 @@
     },
     "packages/docs": {
       "name": "@mybcabisnis/mage-docs",
-      "version": "1.2.5",
+      "version": "1.2.6",
       "dependencies": {
         "@astrojs/starlight": "^0.38.4",
         "@fontsource/inter": "5.2.8",
@@ -216,7 +216,7 @@
     },
     "packages/llm": {
       "name": "@mybcabisnis/mage-llm",
-      "version": "1.2.5",
+      "version": "1.2.6",
       "dependencies": {
         "@smithy/eventstream-codec": "4.2.14",
         "@smithy/util-utf8": "4.2.2",
@@ -233,7 +233,7 @@
     },
     "packages/opencode": {
       "name": "@mybcabisnis/mage",
-      "version": "1.2.5",
+      "version": "1.2.6",
       "bin": {
         "mage": "./bin/mage",
       },
@@ -367,7 +367,7 @@
     },
     "packages/plugin": {
       "name": "@mybcabisnis/mage-plugin",
-      "version": "1.2.5",
+      "version": "1.2.6",
       "dependencies": {
         "@mybcabisnis/mage-sdk": "workspace:*",
         "effect": "catalog:",
@@ -402,7 +402,7 @@
     },
     "packages/sdk/js": {
       "name": "@mybcabisnis/mage-sdk",
-      "version": "1.2.5",
+      "version": "1.2.6",
       "dependencies": {
         "cross-spawn": "catalog:",
       },
@@ -417,7 +417,7 @@
     },
     "packages/shared": {
       "name": "@mybcabisnis/mage-shared",
-      "version": "1.2.5",
+      "version": "1.2.6",
       "bin": {
         "opencode": "./bin/opencode",
       },
@@ -441,7 +441,7 @@
     },
     "packages/ui": {
       "name": "@mybcabisnis/mage-ui",
-      "version": "1.2.5",
+      "version": "1.2.6",
       "dependencies": {
         "@kobalte/core": "catalog:",
         "@mybcabisnis/mage-core": "workspace:*",
@@ -491,7 +491,7 @@
     },
     "packages/web": {
       "name": "@mybcabisnis/mage-web",
-      "version": "1.2.5",
+      "version": "1.2.6",
       "dependencies": {
         "@astrojs/markdown-remark": "6.3.1",
         "@astrojs/node": "9.3.0",
