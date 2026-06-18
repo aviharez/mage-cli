@@ -69,7 +69,7 @@ export async function init(options: Options) {
   if (options.print) return
   logpath = path.join(
     Global.Path.log,
-    options.dev ? "dev.log" : new Date().toISOString().split(".")[0].replace(/:/g, "") + ".log",
+    options.dev ? "dev.log" : toGMT7String(new Date()).replace(/:/g, "") + ".log",
   )
   const runID = process.env.OPENCODE_RUN_ID
   const shouldTruncate = !options.dev || !runID || process.env[initializedRunID] !== runID
@@ -109,6 +109,11 @@ function formatError(error: Error, depth = 0): string {
     : result
 }
 
+function toGMT7String(date: Date): string {
+  const shifted = new Date(date.getTime() + 7 * 60 * 60 * 1000)
+  return shifted.toISOString().split(".")[0]
+}
+
 let last = Date.now()
 export function create(tags?: Record<string, any>) {
   tags = tags || {}
@@ -137,7 +142,7 @@ export function create(tags?: Record<string, any>) {
     const next = new Date()
     const diff = next.getTime() - last
     last = next.getTime()
-    return [next.toISOString().split(".")[0], "+" + diff + "ms", prefix, message].filter(Boolean).join(" ") + "\n"
+    return [toGMT7String(next), "+" + diff + "ms", prefix, message].filter(Boolean).join(" ") + "\n"
   }
   const result: Logger = {
     debug(message?: any, extra?: Record<string, any>) {

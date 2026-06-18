@@ -13,6 +13,7 @@
 //   - packages/web/config.mjs              → version: "..."
 //   - packages/web/src/content/i18n/id.json  → app.lander.eyebrow (vX.Y.Z)
 //   - packages/web/src/components/Lander.astro → TERM_SCRIPT sys line
+//   - README.md                            → Current version: **vX.Y.Z**
 
 // @ts-ignore — semver types live in packages/script; script runs fine via bun
 import semver from "semver"
@@ -135,6 +136,22 @@ if (oldLanderMatch) {
   console.log(`  ✓ packages/web/src/components/Lander.astro  ${oldFull} → mage v${targetVersion}`)
 } else {
   console.warn(`  ⚠ packages/web/src/components/Lander.astro — version pattern not found, skipped`)
+}
+
+// ── 5. README.md → Current version: **vX.Y.Z** ───────────────────────────────
+const readmePath = path.join(root, "README.md")
+const readmeText = await Bun.file(readmePath).text()
+const oldReadmeMatch = readmeText.match(/Current version:\s*\*\*v(\d+\.\d+\.\d+[^*]*)\*\*/)
+if (oldReadmeMatch) {
+  const oldFull = `v${oldReadmeMatch[1]}`
+  const updated = readmeText.replace(
+    /Current version:\s*\*\*v\d+\.\d+\.\d+[^*]*\*\*/,
+    `Current version: **v${targetVersion}**`,
+  )
+  await Bun.write(readmePath, updated)
+  console.log(`  ✓ README.md  ${oldFull} → v${targetVersion}`)
+} else {
+  console.warn(`  ⚠ README.md — "Current version" badge not found, skipped`)
 }
 
 console.log(`\nDone. New version: ${targetVersion}`)

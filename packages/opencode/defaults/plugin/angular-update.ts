@@ -57,7 +57,7 @@ interface MigrationState {
   startVersion: string | null
   mfe: boolean
   bootstrapFile: string | null
-  shell: "powershell" | "cmd"
+  shell: "powershell" | "cmd" | "bash"
   hasMybcabisnisLib: boolean
   hasMaterial: boolean
   hasNgxBootstrap: boolean
@@ -96,7 +96,7 @@ function emptyState(): MigrationState {
     startVersion: null,
     mfe: false,
     bootstrapFile: null,
-    shell: process.env.PSModulePath ? "powershell" : "cmd",
+    shell: detectShell(),
     hasMybcabisnisLib: false,
     hasMaterial: false,
     hasNgxBootstrap: false,
@@ -115,6 +115,13 @@ async function appendStep(name: string, status: "ok" | "skipped" | "failed", not
   const state = (await readState()) ?? emptyState()
   state.steps.push({ name, status, ...(note ? { note } : {}) })
   await writeState(state)
+}
+
+// ── Shell detection ──────────────────────────────────────────────────────────
+
+function detectShell(): MigrationState["shell"] {
+  if (process.platform !== "win32") return "bash"
+  return process.env.PSModulePath ? "powershell" : "cmd"
 }
 
 // ── Shell helpers ────────────────────────────────────────────────────────────
@@ -263,24 +270,10 @@ export const server: Plugin = async (input) => {
       mage_ng_detect: tool({
         description:
           "Detect the project state required to plan the Angular 18 → 20 migration. " +
-          "Checks platform (must be win32), detects the active shell (powershell vs cmd), reads package.json, identifies whether the project bootstraps via single-spa (main.single-spa.ts), and records which optional deps are present. " +
-          "Initializes the migration state file in the OS temp dir. Returns a JSON summary including `state.shell` — the LLM MUST consult this before running any shell command, since cmd-only syntax (e.g. `set X=Y`) will fail in PowerShell. " +
-          "Stops the migration early if the platform is not win32.",
+          "Detects the active shell (powershell / cmd on Windows, bash on Unix), reads package.json, identifies whether the project bootstraps via single-spa (main.single-spa.ts), and records which optional deps are present. " +
+          "Initializes the migration state file in the OS temp dir. Returns a JSON summary including `state.shell` — the LLM MUST consult this before running any shell command, since cmd-only syntax (e.g. `set X=Y`) will fail in PowerShell and on bash.",
         args: {},
         async execute() {
-          if (process.platform !== "win32") {
-            return JSON.stringify(
-              {
-                ok: false,
-                reason: "platform-not-windows",
-                platform: process.platform,
-                message: "This skill targets Windows only.",
-              },
-              null,
-              2,
-            )
-          }
-
           const pkg = await readPackageJson(directory)
           if (!pkg) {
             return JSON.stringify(

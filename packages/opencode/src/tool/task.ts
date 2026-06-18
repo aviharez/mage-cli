@@ -7,7 +7,14 @@ import { MessageV2 } from "../session/message-v2"
 import { Agent } from "../agent/agent"
 import type { SessionPrompt } from "../session/prompt"
 import { Config } from "../config"
-import { Effect } from "effect"
+import { Effect, Semaphore } from "effect"
+import { Flag } from "../flag/flag"
+
+// Shared semaphore that limits how many subagents run concurrently.
+// Capacity comes from MAGE_SUBAGENT env var (default 2). Set MAGE_SUBAGENT=1
+// to restore fully-serial behaviour. Nested subagent calls bypass the cap to
+// prevent deadlocks (they inherit a permit from their parent session).
+const subagentLock = Semaphore.makeUnsafe(Flag.MAGE_SUBAGENT)
 
 export interface TaskPromptOps {
   cancel(sessionID: SessionID): void
@@ -115,13 +122,22 @@ export const TaskTool = Tool.define(
       const ops = ctx.extra?.promptOps as TaskPromptOps
       if (!ops) return yield* Effect.fail(new Error("TaskTool requires promptOps in ctx.extra"))
 
+      // Detect nested calls: the calling session has a parentID when it is
+      // itself a subagent. Nested callers bypass the semaphore so that a
+      // task-capable subagent can spawn children without deadlocking against
+      // permits held by its ancestors.
+      const callerSession = yield* sessions
+        .get(ctx.sessionID)
+        .pipe(Effect.catchCause(() => Effect.succeed(undefined)))
+      const isNested = !!callerSession?.parentID
+
       const messageID = MessageID.ascending()
 
       function cancel() {
         ops.cancel(nextSession.id)
       }
 
-      return yield* Effect.acquireUseRelease(
+      const exec = Effect.acquireUseRelease(
         Effect.sync(() => {
           ctx.abort.addEventListener("abort", cancel)
         }),
@@ -164,6 +180,8 @@ export const TaskTool = Tool.define(
             ctx.abort.removeEventListener("abort", cancel)
           }),
       )
+
+      return yield* isNested ? exec : subagentLock.withPermits(1)(exec)
     })
 
     return {

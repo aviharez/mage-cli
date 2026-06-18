@@ -2,7 +2,7 @@
   "name": "@mybcabisnis/mage-web",
   "type": "module",
   "license": "MIT",
-  "version": "1.2.5",
+  "version": "1.2.8",
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
