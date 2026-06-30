@@ -48,6 +48,7 @@ import { EffectLogger } from "@/effect"
 import { InstanceState } from "@/effect"
 import { TaskTool, type TaskPromptOps } from "@/tool/task"
 import { SessionRunState } from "./run-state"
+import { Todo } from "@/session/todo"
 import { EffectBridge } from "@/effect"
 
 // @ts-ignore
@@ -102,6 +103,7 @@ export const layer = Layer.effect(
     const revert = yield* SessionRevert.Service
     const summary = yield* SessionSummary.Service
     const sys = yield* SystemPrompt.Service
+    const todos = yield* Todo.Service
     const llm = yield* LLM.Service
     const runner = Effect.fn("SessionPrompt.runner")(function* () {
       return yield* EffectBridge.make()
@@ -223,6 +225,30 @@ export const layer = Layer.effect(
     }) {
       const userMessage = input.messages.findLast((msg) => msg.info.role === "user")
       if (!userMessage) return input.messages
+
+      const currentTodos = yield* todos.get(userMessage.info.sessionID)
+      if (currentTodos.length > 0 && currentTodos.some((t) => t.status !== "completed")) {
+        const rendered = currentTodos.map((t) => `[${t.status}] ${t.content}`).join("\n")
+        userMessage.parts.push({
+          id: PartID.ascending(),
+          messageID: userMessage.info.id,
+          sessionID: userMessage.info.sessionID,
+          type: "text",
+          synthetic: true,
+          text: [
+            "<system-reminder>",
+            "This is the authoritative current state of your todo list for this session.",
+            'Items marked [completed] are already DONE — do NOT repeat them. Continue with',
+            'the [in_progress]/[pending] items, and keep the list current by calling the',
+            "todowrite tool as you finish each step.",
+            "",
+            "<todo>",
+            rendered,
+            "</todo>",
+            "</system-reminder>",
+          ].join("\n"),
+        })
+      }
 
       if (!Flag.MAGE_EXPERIMENTAL_PLAN_MODE) {
         if (input.agent.name === "oracle") {
@@ -1697,6 +1723,7 @@ export const defaultLayer = Layer.suspend(() =>
         LLM.defaultLayer,
         Bus.layer,
         CrossSpawnSpawner.defaultLayer,
+        Todo.defaultLayer,
       ),
     ),
   ),
