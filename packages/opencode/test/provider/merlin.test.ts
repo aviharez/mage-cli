@@ -1,5 +1,52 @@
 import { describe, test, expect, mock } from "bun:test"
-import { createMerlin, missingRequiredArgs, stripHallucinatedTurns } from "../../src/provider/merlin"
+import { createMerlin } from "../../src/provider/merlin"
+
+// ── SSE test helper ───────────────────────────────────────────────────────────
+
+/**
+ * Build a streaming Response that yields the given SSE chunks then [DONE].
+ * Optionally appends a usage-only chunk before [DONE] (mirrors the
+ * stream_options.include_usage behaviour).
+ */
+function makeSseResponse(
+  chunks: object[],
+  status = 200,
+  opts?: { usage?: { prompt_tokens: number; completion_tokens: number } },
+): Response {
+  const enc = new TextEncoder()
+  const stream = new ReadableStream({
+    start(controller) {
+      for (const c of chunks) {
+        controller.enqueue(enc.encode(`data: ${JSON.stringify(c)}\n\n`))
+      }
+      if (opts?.usage) {
+        controller.enqueue(
+          enc.encode(`data: ${JSON.stringify({ choices: [], usage: opts.usage })}\n\n`),
+        )
+      }
+      controller.enqueue(enc.encode("data: [DONE]\n\n"))
+      controller.close()
+    },
+  })
+  return new Response(stream, {
+    status,
+    headers: { "Content-Type": "text/event-stream" },
+  })
+}
+
+/** Drain a ReadableStream into an array. */
+async function collect<T>(stream: ReadableStream<T>): Promise<T[]> {
+  const parts: T[] = []
+  const reader = stream.getReader()
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    parts.push(value)
+  }
+  return parts
+}
+
+// ── Factory ───────────────────────────────────────────────────────────────────
 
 describe("createMerlin", () => {
   test("registers provider and returns a LanguageModelV3", () => {
@@ -9,130 +56,270 @@ describe("createMerlin", () => {
     expect(model.provider).toBe("merlin")
     expect(model.modelId).toBe("default")
   })
+})
 
-  test("doGenerate sends correct Merlin request shape and parses answer", async () => {
-    const captured: RequestInit[] = []
-    const fakeFetch = mock(async (_url: string, init: RequestInit) => {
-      captured.push(init)
-      return new Response(
-        JSON.stringify({
-          output_schema: {
-            result: { answer: "Saya adalah Mage.", token_input: 10, token_output: 5 },
-          },
-        }),
-        { status: 200, headers: { "Content-Type": "application/json" } },
+// ── doGenerate — text ─────────────────────────────────────────────────────────
+
+describe("doGenerate — text response", () => {
+  test("sends correct OpenAI-compatible request shape and returns aggregated text", async () => {
+    let capturedUrl = ""
+    let capturedBody: Record<string, unknown> = {}
+
+    const fakeFetch = mock(async (url: string, init: RequestInit) => {
+      capturedUrl = url as string
+      capturedBody = JSON.parse(init.body as string)
+      return makeSseResponse(
+        [
+          { choices: [{ delta: { role: "assistant", content: "Saya adalah Mage." }, index: 0, finish_reason: null }] },
+          { choices: [{ delta: {}, index: 0, finish_reason: "stop" }] },
+        ],
+        200,
+        { usage: { prompt_tokens: 10, completion_tokens: 5 } },
       )
     })
 
     const origFetch = globalThis.fetch
     globalThis.fetch = fakeFetch as any
-
     try {
-      const model = createMerlin({ baseURL: "https://merlin.test/llm", username: "testuser" }).languageModel("default")
-
+      const model = createMerlin({ baseURL: "https://merlin.test", username: "testuser" }).languageModel("default")
       const result = await model.doGenerate({
         prompt: [
           { role: "system", content: "You are a helpful assistant." },
           { role: "user", content: [{ type: "text", text: "Who are you?" }] },
         ],
-        temperature: 0.7,
       } as any)
 
+      // ── URL shape ──
+      expect(capturedUrl).toContain("MAGEDEV")
+      expect(capturedUrl).toContain("testuser")
+      expect(capturedUrl).toContain("/chat/completions")
+      // domain_id is the 3rd positional segment after MAGEDEV/none
+      expect(capturedUrl).toMatch(/\/MAGEDEV\/none\/testuser\//)
+      // task segment must be vllm-text-generation (not "none") for gateway routing
+      expect(capturedUrl).toContain("/false/vllm-text-generation/chat/completions")
+
+      // ── Request body ──
+      expect(capturedBody.model).toBe("/app/models/text-2")
+      expect(capturedBody.service_id).toBe("MBBDSDEV29978319") // general skill
+      expect(capturedBody.stream).toBe(true)
+      expect(Array.isArray(capturedBody.messages)).toBe(true)
+      const msgs = capturedBody.messages as any[]
+      expect(msgs[0]).toMatchObject({ role: "system", content: "You are a helpful assistant." })
+      expect(msgs[1]).toMatchObject({ role: "user", content: "Who are you?" })
+      expect(capturedBody.tools).toBeUndefined()           // no tools in this call
+      expect(capturedBody.tool_choice).toBeUndefined()     // NOT sent (not in GAIA §1.2.2 whitelist)
+      expect(capturedBody.stream_options).toBeUndefined()  // NOT sent (DPA-113 if present)
+
+      // ── Result ──
       expect(result.content).toHaveLength(1)
       expect(result.content[0]).toMatchObject({ type: "text", text: "Saya adalah Mage." })
       expect(result.finishReason).toMatchObject({ unified: "stop" })
       expect(result.usage.inputTokens.total).toBe(10)
       expect(result.usage.outputTokens.total).toBe(5)
-
-      expect(captured).toHaveLength(1)
-      const body = JSON.parse(captured[0]!.body as string)
-      expect(body.client_id).toBe("MAGEDEV")
-      expect(body.domain_id).toBe("testuser")
-      expect(body.service_id).toBe("MBBDSDEV29978319")
-      expect(body.new_session).toBe("True")
-      expect(body.file).toEqual([])
-      expect(body.config).not.toHaveProperty("model_name")
-      expect(body.config).not.toHaveProperty("persona")
-      expect(typeof body.prompt).toBe("string")
-      expect(body.prompt).toContain("You are a helpful assistant.")
-      expect(body.prompt).toContain("User: Who are you?")
     } finally {
       globalThis.fetch = origFetch
     }
   })
 
-  test("doStream emits text-delta parts followed by finish", async () => {
+  test("concatenates multiple text-delta chunks into one string", async () => {
     const fakeFetch = mock(async () =>
-      new Response(
-        JSON.stringify({
-          output_schema: { result: { answer: "Halo dunia!", token_input: 5, token_output: 3 } },
-        }),
-        { status: 200, headers: { "Content-Type": "application/json" } },
+      makeSseResponse([
+        { choices: [{ delta: { content: "Halo " }, index: 0, finish_reason: null }] },
+        { choices: [{ delta: { content: "dunia" }, index: 0, finish_reason: null }] },
+        { choices: [{ delta: { content: "!" }, index: 0, finish_reason: null }] },
+        { choices: [{ delta: {}, index: 0, finish_reason: "stop" }] },
+      ]),
+    )
+    const origFetch = globalThis.fetch
+    globalThis.fetch = fakeFetch as any
+    try {
+      const model = createMerlin({ baseURL: "https://x.test", username: "u" }).languageModel("default")
+      const result = await model.doGenerate({
+        prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
+      } as any)
+      expect(result.content[0]).toMatchObject({ type: "text", text: "Halo dunia!" })
+    } finally {
+      globalThis.fetch = origFetch
+    }
+  })
+})
+
+// ── doStream ──────────────────────────────────────────────────────────────────
+
+describe("doStream", () => {
+  test("emits stream-start, text-start, text-delta parts (live), text-end, and finish", async () => {
+    const fakeFetch = mock(async () =>
+      makeSseResponse(
+        [
+          { choices: [{ delta: { content: "Halo " }, index: 0, finish_reason: null }] },
+          { choices: [{ delta: { content: "dunia!" }, index: 0, finish_reason: null }] },
+          { choices: [{ delta: {}, index: 0, finish_reason: "stop" }] },
+        ],
+        200,
+        { usage: { prompt_tokens: 5, completion_tokens: 3 } },
       ),
     )
     const origFetch = globalThis.fetch
     globalThis.fetch = fakeFetch as any
-
     try {
       const model = createMerlin({ baseURL: "https://x.test", username: "u" }).languageModel("default")
       const { stream } = await model.doStream({
         prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
       } as any)
 
-      const parts: any[] = []
-      const reader = stream.getReader()
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        parts.push(value)
-      }
+      const parts = await collect(stream)
+      const types = parts.map((p: any) => p.type)
 
-      const types = parts.map((p) => p.type)
       expect(types).toContain("stream-start")
       expect(types).toContain("text-start")
       expect(types).toContain("text-delta")
       expect(types).toContain("text-end")
       expect(types).toContain("finish")
 
-      const delta = parts.find((p) => p.type === "text-delta")
-      expect(delta?.delta).toBe("Halo dunia!")
+      // Both incremental deltas must be present and in order.
+      const deltas = parts.filter((p: any) => p.type === "text-delta").map((p: any) => p.delta)
+      expect(deltas).toEqual(["Halo ", "dunia!"])
+
+      const finish = parts.find((p: any) => p.type === "finish") as any
+      expect(finish.finishReason).toMatchObject({ unified: "stop" })
+      expect(finish.usage.inputTokens.total).toBe(5)
+      expect(finish.usage.outputTokens.total).toBe(3)
     } finally {
       globalThis.fetch = origFetch
     }
   })
 
-  test("doGenerate self-corrects once when the first tool_call is unparseable", async () => {
-    const answers = [
-      // 1st reply: a <tool_call> tag the parser can't extract anything from.
-      "Let me read it.\n<tool_call>\noops this is not valid json\n</tool_call>",
-      // 2nd reply (repair round-trip): a clean, parseable tool call.
-      '<tool_call>\n{"name": "Read", "arguments": {"filePath": "/a/b.ts"}}\n</tool_call>',
-    ]
-    let call = 0
+  test("text-start arrives before text-delta, text-end arrives after", async () => {
     const fakeFetch = mock(async () =>
-      new Response(
-        JSON.stringify({ output_schema: { result: { answer: answers[call++], token_input: 4, token_output: 2 } } }),
-        { status: 200, headers: { "Content-Type": "application/json" } },
+      makeSseResponse([
+        { choices: [{ delta: { content: "A" }, index: 0, finish_reason: null }] },
+        { choices: [{ delta: { content: "B" }, index: 0, finish_reason: null }] },
+        { choices: [{ delta: {}, index: 0, finish_reason: "stop" }] },
+      ]),
+    )
+    const origFetch = globalThis.fetch
+    globalThis.fetch = fakeFetch as any
+    try {
+      const model = createMerlin({ baseURL: "https://x.test", username: "u" }).languageModel("default")
+      const { stream } = await model.doStream({
+        prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
+      } as any)
+
+      const parts = await collect(stream)
+      const types = parts.map((p: any) => p.type)
+      const startIdx = types.indexOf("text-start")
+      const endIdx = types.indexOf("text-end")
+      const deltaIdxs = types.reduce<number[]>((acc, t, i) => (t === "text-delta" ? [...acc, i] : acc), [])
+
+      expect(startIdx).toBeLessThan(deltaIdxs[0]!)
+      expect(endIdx).toBeGreaterThan(deltaIdxs[deltaIdxs.length - 1]!)
+    } finally {
+      globalThis.fetch = origFetch
+    }
+  })
+})
+
+// ── Native tool_calls ─────────────────────────────────────────────────────────
+
+describe("doGenerate — native tool_calls", () => {
+  test("sends tools in OpenAI format when tools are provided", async () => {
+    let capturedBody: any = null
+    const fakeFetch = mock(async (_url: string, init: RequestInit) => {
+      capturedBody = JSON.parse(init.body as string)
+      return makeSseResponse([
+        { choices: [{ delta: { content: "ok" }, finish_reason: null }] },
+        { choices: [{ delta: {}, finish_reason: "stop" }] },
+      ])
+    })
+    const origFetch = globalThis.fetch
+    globalThis.fetch = fakeFetch as any
+    try {
+      const model = createMerlin({ baseURL: "https://x.test", username: "u" }).languageModel("default")
+      await model.doGenerate({
+        prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
+        tools: [
+          {
+            type: "function",
+            name: "Bash",
+            description: "Run a shell command",
+            inputSchema: {
+              type: "object",
+              properties: { command: { type: "string" } },
+              required: ["command"],
+            },
+          },
+        ],
+      } as any)
+
+      expect(Array.isArray(capturedBody.tools)).toBe(true)
+      expect(capturedBody.tools).toHaveLength(1)
+      expect(capturedBody.tools[0]).toMatchObject({
+        type: "function",
+        function: {
+          name: "Bash",
+          description: "Run a shell command",
+        },
+      })
+      expect(capturedBody.tool_choice).toBeUndefined() // NOT sent (not in GAIA §1.2.2 whitelist)
+    } finally {
+      globalThis.fetch = origFetch
+    }
+  })
+
+  test("assembles fragmented tool_calls argument deltas into a complete tool-call part", async () => {
+    const fakeFetch = mock(async () =>
+      makeSseResponse(
+        [
+          // First chunk: tool call header with id and function name
+          {
+            choices: [{
+              delta: {
+                role: "assistant",
+                content: null,
+                tool_calls: [{ index: 0, id: "call_abc", type: "function", function: { name: "Read", arguments: "" } }],
+              },
+              index: 0,
+              finish_reason: null,
+            }],
+          },
+          // Argument fragment 1
+          { choices: [{ delta: { tool_calls: [{ index: 0, function: { arguments: '{"filePath":' } }] }, finish_reason: null }] },
+          // Argument fragment 2
+          { choices: [{ delta: { tool_calls: [{ index: 0, function: { arguments: '"/a/b.ts"}' } }] }, finish_reason: null }] },
+          // Finish
+          { choices: [{ delta: {}, finish_reason: "tool_calls" }] },
+        ],
+        200,
+        { usage: { prompt_tokens: 8, completion_tokens: 4 } },
       ),
     )
     const origFetch = globalThis.fetch
     globalThis.fetch = fakeFetch as any
-
     try {
       const model = createMerlin({ baseURL: "https://x.test", username: "u" }).languageModel("default")
       const result = await model.doGenerate({
         prompt: [{ role: "user", content: [{ type: "text", text: "read the file" }] }],
+        tools: [
+          {
+            type: "function",
+            name: "Read",
+            description: "Read a file",
+            inputSchema: {
+              type: "object",
+              properties: { filePath: { type: "string" } },
+              required: ["filePath"],
+            },
+          },
+        ],
       } as any)
 
-      // Two round-trips: the original + one repair.
-      expect(fakeFetch).toHaveBeenCalledTimes(2)
-      // The recovered tool call is surfaced to the agent.
-      const toolCall = result.content.find((p: any) => p.type === "tool-call") as any
-      expect(toolCall).toBeDefined()
+      expect(result.content).toHaveLength(1)
+      const toolCall = result.content[0] as any
+      expect(toolCall.type).toBe("tool-call")
+      expect(toolCall.toolCallId).toBe("call_abc")
       expect(toolCall.toolName).toBe("Read")
       expect(JSON.parse(toolCall.input)).toEqual({ filePath: "/a/b.ts" })
       expect(result.finishReason).toMatchObject({ unified: "tool-calls" })
-      // Usage is summed across both calls (4+4 in, 2+2 out).
       expect(result.usage.inputTokens.total).toBe(8)
       expect(result.usage.outputTokens.total).toBe(4)
     } finally {
@@ -140,279 +327,365 @@ describe("createMerlin", () => {
     }
   })
 
-  test("doGenerate does not retry when the first reply is clean", async () => {
+  test("emits tool-input-start/delta/end + tool-call parts in doStream for tool responses", async () => {
     const fakeFetch = mock(async () =>
-      new Response(
-        JSON.stringify({ output_schema: { result: { answer: "Just a plain answer.", token_input: 3, token_output: 1 } } }),
-        { status: 200, headers: { "Content-Type": "application/json" } },
-      ),
+      makeSseResponse([
+        {
+          choices: [{
+            delta: {
+              tool_calls: [{ index: 0, id: "call_xyz", type: "function", function: { name: "Bash", arguments: "" } }],
+            },
+            finish_reason: null,
+          }],
+        },
+        { choices: [{ delta: { tool_calls: [{ index: 0, function: { arguments: '{"command":"ls"}' } }] }, finish_reason: null }] },
+        { choices: [{ delta: {}, finish_reason: "tool_calls" }] },
+      ]),
     )
     const origFetch = globalThis.fetch
     globalThis.fetch = fakeFetch as any
-
     try {
       const model = createMerlin({ baseURL: "https://x.test", username: "u" }).languageModel("default")
-      await model.doGenerate({ prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }] } as any)
-      expect(fakeFetch).toHaveBeenCalledTimes(1)
+      const { stream } = await model.doStream({
+        prompt: [{ role: "user", content: [{ type: "text", text: "list files" }] }],
+      } as any)
+
+      const parts = await collect(stream)
+      const types = parts.map((p: any) => p.type)
+
+      expect(types).toContain("tool-input-start")
+      expect(types).toContain("tool-input-delta")
+      expect(types).toContain("tool-input-end")
+      expect(types).toContain("tool-call")
+
+      const toolCallPart = parts.find((p: any) => p.type === "tool-call") as any
+      expect(toolCallPart.toolCallId).toBe("call_xyz")
+      expect(toolCallPart.toolName).toBe("Bash")
+      expect(JSON.parse(toolCallPart.input)).toEqual({ command: "ls" })
+
+      const finish = parts.find((p: any) => p.type === "finish") as any
+      expect(finish.finishReason).toMatchObject({ unified: "tool-calls" })
     } finally {
       globalThis.fetch = origFetch
     }
   })
 
-  test("stripHallucinatedTurns removes fabricated transcript continuation after a tool call", () => {
-    // Exact pattern from the session: closed tool_call followed by fabricated turns.
-    const withSpam =
-      '<tool_call>\n{"name":"read","arguments":{"filePath":"Foo.java"}}\n</tool_call>' +
-      "\n\nTool Results:\n<tool_result>\n  <name>read</name>\n  <result>fake content</result>\n</tool_result>" +
-      "\n\nAssistant: \n\nTool Results:\n<tool_result>\n  <name>read</name>\n  <result>more fake</result>\n</tool_result>"
-
-    const cleaned = stripHallucinatedTurns(withSpam)
-    // Real tool call is preserved.
-    expect(cleaned).toContain('<tool_call>')
-    expect(cleaned).toContain('"name":"read"')
-    expect(cleaned).toContain('</tool_call>')
-    // Fabricated turns are gone.
-    expect(cleaned).not.toContain("Tool Results:")
-    expect(cleaned).not.toContain("<tool_result>")
-    expect(cleaned).not.toContain("fake content")
-    expect(cleaned).not.toContain("Assistant:")
-  })
-
-  test("stripHallucinatedTurns removes fabricated Assistant: continuation without tool call", () => {
-    // Plain final-text turn followed by hallucinated next turn.
-    const answer = "Here is the summary.\n\nAssistant: Now let me check the file.\n\nUser: ok"
-    const cleaned = stripHallucinatedTurns(answer)
-    expect(cleaned).toBe("Here is the summary.")
-    expect(cleaned).not.toContain("Assistant:")
-  })
-
-  test("stripHallucinatedTurns does not truncate mid-sentence 'assistant' in prose", () => {
-    // "assistant" appearing inside a sentence (not line-anchored) must NOT be cut.
-    const safe = "The assistant role is important.\n\nHere is the result."
-    expect(stripHallucinatedTurns(safe)).toBe(safe)
-  })
-
-  test("stripHallucinatedTurns returns answer unchanged when no continuation markers present", () => {
-    const clean = '<tool_call>\n{"name":"bash","arguments":{"command":"ls"}}\n</tool_call>'
-    expect(stripHallucinatedTurns(clean)).toBe(clean)
-
-    const plainText = "The answer is 42."
-    expect(stripHallucinatedTurns(plainText)).toBe(plainText)
-  })
-
-  test("doGenerate strips hallucinated transcript spam from Merlin reply", async () => {
-    // Simulate Merlin returning a real tool call followed by hallucinated continuation.
-    const hallucinatedAnswer =
-      '<tool_call>\n{"name":"bash","arguments":{"command":"pwd"}}\n</tool_call>' +
-      "\n\nTool Results:\n<tool_result>\n  <name>bash</name>\n  <result>C:\\Users\\me</result>\n</tool_result>" +
-      "\n\nAssistant: \n\nTool Results:\n<tool_result>\n  <name>read</name>\n  <result>hallucinated</result>\n</tool_result>"
-
+  test("multiple tool calls in one response are all surfaced", async () => {
     const fakeFetch = mock(async () =>
-      new Response(
-        JSON.stringify({ output_schema: { result: { answer: hallucinatedAnswer, token_input: 12, token_output: 30 } } }),
-        { status: 200, headers: { "Content-Type": "application/json" } },
-      ),
+      makeSseResponse([
+        {
+          choices: [{
+            delta: {
+              tool_calls: [
+                { index: 0, id: "call_1", type: "function", function: { name: "Read", arguments: '{"filePath":"/a"}' } },
+              ],
+            },
+            finish_reason: null,
+          }],
+        },
+        {
+          choices: [{
+            delta: {
+              tool_calls: [
+                { index: 1, id: "call_2", type: "function", function: { name: "Bash", arguments: '{"command":"ls"}' } },
+              ],
+            },
+            finish_reason: null,
+          }],
+        },
+        { choices: [{ delta: {}, finish_reason: "tool_calls" }] },
+      ]),
     )
     const origFetch = globalThis.fetch
     globalThis.fetch = fakeFetch as any
-
     try {
       const model = createMerlin({ baseURL: "https://x.test", username: "u" }).languageModel("default")
       const result = await model.doGenerate({
-        prompt: [{ role: "user", content: [{ type: "text", text: "what dir am I in?" }] }],
+        prompt: [{ role: "user", content: [{ type: "text", text: "do stuff" }] }],
       } as any)
 
-      // Only one round-trip — no repair needed.
-      expect(fakeFetch).toHaveBeenCalledTimes(1)
-      // The real tool call is still surfaced.
-      const toolCall = result.content.find((p: any) => p.type === "tool-call") as any
-      expect(toolCall).toBeDefined()
-      expect(toolCall.toolName).toBe("bash")
-      // No hallucinated text leaks into the text remainder.
-      const textPart = result.content.find((p: any) => p.type === "text") as any
-      if (textPart) {
-        expect(textPart.text).not.toContain("Tool Results:")
-        expect(textPart.text).not.toContain("Assistant:")
-        expect(textPart.text).not.toContain("hallucinated")
-      }
-    } finally {
-      globalThis.fetch = origFetch
-    }
-  })
-
-  test("missingRequiredArgs identifies absent required fields", () => {
-    const taskTool = {
-      type: "function" as const,
-      name: "task",
-      description: "Launch a subagent",
-      inputSchema: {
-        type: "object" as const,
-        required: ["description", "prompt", "subagent_type"],
-        properties: {
-          description: { type: "string" as const },
-          prompt: { type: "string" as const },
-          subagent_type: { type: "string" as const },
-        },
-      },
-    }
-
-    // All three required fields absent — mirrors the exact session failure.
-    expect(missingRequiredArgs({ name: "task", callId: "x", args: {} }, [taskTool])).toEqual([
-      "description",
-      "prompt",
-      "subagent_type",
-    ])
-
-    // All fields present → nothing missing.
-    expect(
-      missingRequiredArgs(
-        { name: "task", callId: "x", args: { description: "d", prompt: "p", subagent_type: "s" } },
-        [taskTool],
-      ),
-    ).toEqual([])
-
-    // Tool not in the list → nothing missing (no false positives for unknown tools).
-    expect(missingRequiredArgs({ name: "unknown", callId: "x", args: {} }, [taskTool])).toEqual([])
-
-    // No tools list → nothing missing.
-    expect(missingRequiredArgs({ name: "task", callId: "x", args: {} }, undefined)).toEqual([])
-
-    // Schema without a required array → nothing missing.
-    const noRequired = { ...taskTool, inputSchema: { type: "object" as const, properties: {} } }
-    expect(missingRequiredArgs({ name: "task", callId: "x", args: {} }, [noRequired])).toEqual([])
-  })
-
-  test("doGenerate self-corrects once when the tool call is missing required args", async () => {
-    const taskTool = {
-      type: "function" as const,
-      name: "task",
-      description: "Launch a subagent",
-      inputSchema: {
-        type: "object" as const,
-        required: ["description", "prompt", "subagent_type"],
-        properties: {
-          description: { type: "string" as const },
-          prompt: { type: "string" as const },
-          subagent_type: { type: "string" as const },
-        },
-      },
-    }
-
-    const answers = [
-      // 1st reply: empty arguments — the exact failure from the session log.
-      '<tool_call>\n{"name":"task","arguments":{}}\n</tool_call>',
-      // 2nd reply (repair): all required fields filled in.
-      '<tool_call>\n{"name":"task","arguments":{"description":"Review code","prompt":"Review src/","subagent_type":"claude"}}\n</tool_call>',
-    ]
-    let call = 0
-    const fakeFetch = mock(async () =>
-      new Response(
-        JSON.stringify({ output_schema: { result: { answer: answers[call++], token_input: 8, token_output: 3 } } }),
-        { status: 200, headers: { "Content-Type": "application/json" } },
-      ),
-    )
-    const origFetch = globalThis.fetch
-    globalThis.fetch = fakeFetch as any
-
-    try {
-      const model = createMerlin({ baseURL: "https://x.test", username: "u" }).languageModel("default")
-      const result = await model.doGenerate({
-        prompt: [{ role: "user", content: [{ type: "text", text: "review the code" }] }],
-        tools: [taskTool],
-      } as any)
-
-      // Two round-trips: the invalid call + one repair.
-      expect(fakeFetch).toHaveBeenCalledTimes(2)
-
-      // The repaired, complete tool call is surfaced.
-      const toolCall = result.content.find((p: any) => p.type === "tool-call") as any
-      expect(toolCall).toBeDefined()
-      expect(toolCall.toolName).toBe("task")
-      expect(JSON.parse(toolCall.input)).toMatchObject({
-        description: "Review code",
-        prompt: "Review src/",
-        subagent_type: "claude",
-      })
+      const calls = result.content.filter((p: any) => p.type === "tool-call") as any[]
+      expect(calls).toHaveLength(2)
+      expect(calls[0].toolName).toBe("Read")
+      expect(calls[1].toolName).toBe("Bash")
       expect(result.finishReason).toMatchObject({ unified: "tool-calls" })
-      // Token usage is summed across both calls (8+8, 3+3).
-      expect(result.usage.inputTokens.total).toBe(16)
-      expect(result.usage.outputTokens.total).toBe(6)
     } finally {
       globalThis.fetch = origFetch
     }
   })
+})
 
-  test("doGenerate falls through gracefully when repair also has missing args", async () => {
-    const taskTool = {
-      type: "function" as const,
-      name: "task",
-      description: "Launch a subagent",
-      inputSchema: {
-        type: "object" as const,
-        required: ["description", "prompt", "subagent_type"],
-        properties: {
-          description: { type: "string" as const },
-          prompt: { type: "string" as const },
-          subagent_type: { type: "string" as const },
-        },
-      },
+// ── Message conversion ────────────────────────────────────────────────────────
+
+describe("message conversion", () => {
+  test("passes assistant tool_calls history to the gateway in OpenAI format", async () => {
+    let capturedBody: any = null
+    const fakeFetch = mock(async (_url: string, init: RequestInit) => {
+      capturedBody = JSON.parse(init.body as string)
+      return makeSseResponse([
+        { choices: [{ delta: { content: "done" }, finish_reason: null }] },
+        { choices: [{ delta: {}, finish_reason: "stop" }] },
+      ])
+    })
+    const origFetch = globalThis.fetch
+    globalThis.fetch = fakeFetch as any
+    try {
+      const model = createMerlin({ baseURL: "https://x.test", username: "u" }).languageModel("default")
+      await model.doGenerate({
+        prompt: [
+          { role: "user", content: [{ type: "text", text: "read the file" }] },
+          {
+            role: "assistant",
+            content: [
+              { type: "tool-call", toolCallId: "call_1", toolName: "Read", input: { filePath: "/a.ts" } },
+            ],
+          },
+          {
+            role: "tool",
+            content: [
+              {
+                type: "tool-result",
+                toolCallId: "call_1",
+                toolName: "Read",
+                output: { type: "text", value: "file content" },
+              },
+            ],
+          },
+        ],
+      } as any)
+
+      const msgs = capturedBody.messages as any[]
+      const assistantMsg = msgs.find((m: any) => m.role === "assistant")
+      expect(assistantMsg).toBeDefined()
+      expect(assistantMsg.tool_calls).toHaveLength(1)
+      expect(assistantMsg.tool_calls[0]).toMatchObject({
+        id: "call_1",
+        type: "function",
+        function: { name: "Read", arguments: '{"filePath":"/a.ts"}' },
+      })
+
+      const toolMsg = msgs.find((m: any) => m.role === "tool")
+      expect(toolMsg).toBeDefined()
+      expect(toolMsg.tool_call_id).toBe("call_1")
+      expect(toolMsg.content).toBe("file content")
+    } finally {
+      globalThis.fetch = origFetch
     }
+  })
+})
 
-    // Both replies are incomplete — repair also fails.
-    const answers = [
-      '<tool_call>\n{"name":"task","arguments":{}}\n</tool_call>',
-      '<tool_call>\n{"name":"task","arguments":{}}\n</tool_call>',
-    ]
-    let call = 0
+// ── Error handling ────────────────────────────────────────────────────────────
+
+describe("error handling", () => {
+  test("throws on non-OK HTTP status", async () => {
     const fakeFetch = mock(async () =>
-      new Response(
-        JSON.stringify({ output_schema: { result: { answer: answers[call++], token_input: 5, token_output: 2 } } }),
-        { status: 200, headers: { "Content-Type": "application/json" } },
-      ),
+      new Response("Unauthorized", { status: 401, headers: { "Content-Type": "text/plain" } }),
     )
     const origFetch = globalThis.fetch
     globalThis.fetch = fakeFetch as any
-
     try {
-      const model = createMerlin({ baseURL: "https://x.test", username: "u" }).languageModel("default")
-      // Should NOT throw — falls through returning the original incomplete call.
-      const result = await model.doGenerate({
-        prompt: [{ role: "user", content: [{ type: "text", text: "review the code" }] }],
-        tools: [taskTool],
-      } as any)
-
-      expect(fakeFetch).toHaveBeenCalledTimes(2)
-      // Original incomplete call is returned as-is (downstream Zod will surface the error,
-      // but that is the same behaviour as today — no regression).
-      const toolCall = result.content.find((p: any) => p.type === "tool-call") as any
-      expect(toolCall).toBeDefined()
-      expect(toolCall.toolName).toBe("task")
-      expect(JSON.parse(toolCall.input)).toEqual({})
+      const model = createMerlin({ baseURL: "https://x.test" }).languageModel("default")
+      await expect(
+        model.doGenerate({
+          prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
+        } as any),
+      ).rejects.toThrow("GAIA HTTP 401")
     } finally {
       globalThis.fetch = origFetch
     }
   })
 
-  test("doGenerate throws on Merlin error_schema", async () => {
+  test("emits domain_id=none in URL when username is empty", async () => {
+    let capturedUrl = ""
+    const fakeFetch = mock(async (url: string) => {
+      capturedUrl = url as string
+      return makeSseResponse([
+        { choices: [{ delta: { content: "ok" }, finish_reason: null }] },
+        { choices: [{ delta: {}, finish_reason: "stop" }] },
+      ])
+    })
+    const origFetch = globalThis.fetch
+    globalThis.fetch = fakeFetch as any
+    try {
+      const model = createMerlin({ baseURL: "https://x.test" }).languageModel("default")
+      await model.doGenerate({
+        prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
+      } as any)
+      expect(capturedUrl).toContain("/MAGEDEV/none/none/")
+    } finally {
+      globalThis.fetch = origFetch
+    }
+  })
+})
+
+// ── Non-SSE JSON fallback ─────────────────────────────────────────────────────
+
+describe("non-SSE JSON fallback", () => {
+  test("handles application/json response (non-streaming shape) with choices[0].message.content", async () => {
     const fakeFetch = mock(async () =>
       new Response(
         JSON.stringify({
-          error_schema: {
-            error_code: "AUTH_FAILED",
-            error_message: { english: "Authentication failed" },
-          },
+          choices: [
+            {
+              message: { role: "assistant", content: "Saya Mage versi JSON!" },
+              finish_reason: "stop",
+            },
+          ],
+          usage: { prompt_tokens: 12, completion_tokens: 7 },
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    )
+    const origFetch = globalThis.fetch
+    globalThis.fetch = fakeFetch as any
+    try {
+      const model = createMerlin({ baseURL: "https://x.test", username: "u" }).languageModel("default")
+      const result = await model.doGenerate({
+        prompt: [{ role: "user", content: [{ type: "text", text: "siapa kamu?" }] }],
+      } as any)
+      expect(result.content).toHaveLength(1)
+      expect(result.content[0]).toMatchObject({ type: "text", text: "Saya Mage versi JSON!" })
+      expect(result.finishReason).toMatchObject({ unified: "stop" })
+      expect(result.usage.inputTokens.total).toBe(12)
+      expect(result.usage.outputTokens.total).toBe(7)
+    } finally {
+      globalThis.fetch = origFetch
+    }
+  })
+
+  test("handles SSE chunks that use choice.message instead of choice.delta", async () => {
+    // Some gateway variants send the full message object even in SSE mode.
+    const fakeFetch = mock(async () =>
+      makeSseResponse([
+        { choices: [{ message: { content: "Halo dari message field!" }, finish_reason: "stop" }] },
+      ]),
+    )
+    const origFetch = globalThis.fetch
+    globalThis.fetch = fakeFetch as any
+    try {
+      const model = createMerlin({ baseURL: "https://x.test", username: "u" }).languageModel("default")
+      const result = await model.doGenerate({
+        prompt: [{ role: "user", content: [{ type: "text", text: "halo" }] }],
+      } as any)
+      expect(result.content).toHaveLength(1)
+      expect(result.content[0]).toMatchObject({ type: "text", text: "Halo dari message field!" })
+      expect(result.finishReason).toMatchObject({ unified: "stop" })
+    } finally {
+      globalThis.fetch = origFetch
+    }
+  })
+})
+
+// ── Reasoning / thinking block ────────────────────────────────────────────────
+
+describe("reasoning block", () => {
+  test("SSE: reasoning chunks emit reasoning-start/delta/end before text parts", async () => {
+    // The gateway streams thinking in a field named "reasoning" (confirmed from wire capture).
+    const fakeFetch = mock(async () =>
+      makeSseResponse([
+        { choices: [{ delta: { reasoning: "First, I need to think " }, finish_reason: null }] },
+        { choices: [{ delta: { reasoning: "about this problem." }, finish_reason: null }] },
+        { choices: [{ delta: { content: "The answer is 42." }, finish_reason: null }] },
+        { choices: [{ delta: {}, finish_reason: "stop" }] },
+      ]),
+    )
+    const origFetch = globalThis.fetch
+    globalThis.fetch = fakeFetch as any
+    try {
+      const model = createMerlin({ baseURL: "https://x.test", username: "u" }).languageModel("default")
+      const { stream } = await model.doStream({
+        prompt: [{ role: "user", content: [{ type: "text", text: "what is 6*7?" }] }],
+      } as any)
+
+      const parts = await collect(stream)
+      const types = parts.map((p: any) => p.type)
+
+      // Reasoning parts must be present
+      expect(types).toContain("reasoning-start")
+      expect(types).toContain("reasoning-delta")
+      expect(types).toContain("reasoning-end")
+
+      // All reasoning deltas must be concatenated in order
+      const reasoningDeltas = parts
+        .filter((p: any) => p.type === "reasoning-delta")
+        .map((p: any) => p.delta)
+      expect(reasoningDeltas).toEqual(["First, I need to think ", "about this problem."])
+
+      // reasoning-start must precede reasoning-delta, reasoning-end must follow
+      const rsIdx = types.indexOf("reasoning-start")
+      const reIdx = types.indexOf("reasoning-end")
+      const rdIdxs = types.reduce<number[]>((acc, t, i) => (t === "reasoning-delta" ? [...acc, i] : acc), [])
+      expect(rsIdx).toBeLessThan(rdIdxs[0]!)
+      expect(reIdx).toBeGreaterThan(rdIdxs[rdIdxs.length - 1]!)
+
+      // reasoning-end must come before text-start
+      const textStartIdx = types.indexOf("text-start")
+      expect(reIdx).toBeLessThan(textStartIdx)
+    } finally {
+      globalThis.fetch = origFetch
+    }
+  })
+
+  test("SSE: doGenerate aggregates reasoning field into reasoning content part before text", async () => {
+    const fakeFetch = mock(async () =>
+      makeSseResponse([
+        { choices: [{ delta: { reasoning: "Let me think..." }, finish_reason: null }] },
+        { choices: [{ delta: { content: "Answer: 7." }, finish_reason: null }] },
+        { choices: [{ delta: {}, finish_reason: "stop" }] },
+      ]),
+    )
+    const origFetch = globalThis.fetch
+    globalThis.fetch = fakeFetch as any
+    try {
+      const model = createMerlin({ baseURL: "https://x.test", username: "u" }).languageModel("default")
+      const result = await model.doGenerate({
+        prompt: [{ role: "user", content: [{ type: "text", text: "what is 3+4?" }] }],
+      } as any)
+
+      // Reasoning part must come before text part
+      expect(result.content).toHaveLength(2)
+      expect(result.content[0]).toMatchObject({ type: "reasoning", text: "Let me think..." })
+      expect(result.content[1]).toMatchObject({ type: "text", text: "Answer: 7." })
+    } finally {
+      globalThis.fetch = origFetch
+    }
+  })
+
+  test("non-SSE JSON: reasoning_content in message emits reasoning parts before text parts", async () => {
+    const fakeFetch = mock(async () =>
+      new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                role: "assistant",
+                reasoning_content: "I think deeply about this.",
+                content: "Here is the answer.",
+              },
+              finish_reason: "stop",
+            },
+          ],
+          usage: { prompt_tokens: 5, completion_tokens: 10 },
         }),
         { status: 200, headers: { "Content-Type": "application/json" } },
       ),
     )
     const origFetch = globalThis.fetch
     globalThis.fetch = fakeFetch as any
-
     try {
-      const model = createMerlin({ baseURL: "https://x.test" }).languageModel("default")
-      await expect(
-        model.doGenerate({ prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }] } as any),
-      ).rejects.toThrow("Authentication failed")
+      const model = createMerlin({ baseURL: "https://x.test", username: "u" }).languageModel("default")
+      const result = await model.doGenerate({
+        prompt: [{ role: "user", content: [{ type: "text", text: "explain something" }] }],
+      } as any)
+
+      // Reasoning before text in the content array
+      expect(result.content).toHaveLength(2)
+      expect(result.content[0]).toMatchObject({ type: "reasoning", text: "I think deeply about this." })
+      expect(result.content[1]).toMatchObject({ type: "text", text: "Here is the answer." })
+      expect(result.finishReason).toMatchObject({ unified: "stop" })
     } finally {
       globalThis.fetch = origFetch
     }

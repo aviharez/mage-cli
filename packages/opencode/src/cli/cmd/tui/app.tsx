@@ -621,15 +621,15 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
       },
       category: "System",
     },
-    // {
-    //   title: "Open docs",
-    //   value: "docs.open",
-    //   onSelect: () => {
-    //     open("https://mage.ai/docs").catch(() => { })
-    //     dialog.clear()
-    //   },
-    //   category: "System",
-    // },
+    {
+      title: "Open docs",
+      value: "docs.open",
+      onSelect: () => {
+        open("https://mybcabisnis-mage.apps.ocpdevgra.dti.co.id/").catch(() => { })
+        dialog.clear()
+      },
+      category: "System",
+    },
     {
       title: "Exit the app",
       value: "app.exit",
