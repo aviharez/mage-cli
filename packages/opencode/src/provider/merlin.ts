@@ -59,6 +59,14 @@ const MODEL_NAME = "/app/models/text-2"
  */
 const CODING_TEMPERATURE = 0.2
 
+/**
+ * Maximum number of transparent re-requests issued when the gateway cuts a
+ * stream off mid-answer (connection closes with no finish_reason and no
+ * [DONE] sentinel). Bounds retries so a persistently broken connection can't
+ * loop forever.
+ */
+const MAX_CONTINUATIONS = 4
+
 // ── TLS bypass for the internal self-signed GAIA gateway ───────────────────────
 
 const isBun = typeof (globalThis as { Bun?: unknown }).Bun !== "undefined"
@@ -280,6 +288,17 @@ function stripGaiaErrors(text: string): string {
   return out
 }
 
+/**
+ * On the old /multimodal (non-streaming) endpoint, this canned Indonesian
+ * error surfaced with error_code DPA-124. On the streaming /chat/completions
+ * endpoint the gateway instead sends it as if it were the model's real
+ * answer. It is detected and converted into a context-overflow APICallError
+ * (see the DPA-124 checks in streamChat) so the session automatically
+ * compacts and continues instead of showing this error to the user.
+ */
+const DPA124_CANNED_ERROR =
+  "Maaf, terjadi kesalahan dalam memproses pertanyaan Anda. Mohon untuk mencoba mengajukan pertanyaan kembali."
+
 // ── Finish-reason mapping ─────────────────────────────────────────────────────
 
 type UnifiedFinish = "stop" | "length" | "content-filter" | "tool-calls" | "other" | "error"
@@ -318,6 +337,17 @@ class MerlinLanguageModel implements LanguageModelV3 {
    *
    * Text deltas stream live as they arrive. Tool calls are accumulated and
    * emitted in index order after the stream finishes.
+   *
+   * ── Cutoff continuation ──────────────────────────────────────────────────
+   * Because of the gateway's architecture, a response is sometimes cut off
+   * mid-stream: the connection closes without ever sending a `finish_reason`
+   * or a `[DONE]` sentinel (confirmed from wire captures — `finish_reason`,
+   * not `[DONE]`, is the reliable completion signal; the gateway frequently
+   * omits `[DONE]` even on a clean finish). When a cutoff is detected, this
+   * method transparently re-POSTs with the partial answer folded back in as
+   * an assistant turn plus a "continue" nudge, and keeps appending to the
+   * SAME text/reasoning parts so the UI shows one uninterrupted answer.
+   * Bounded by MAX_CONTINUATIONS.
    */
   private async *streamChat(
     options: LanguageModelV3CallOptions,
@@ -330,11 +360,11 @@ class MerlinLanguageModel implements LanguageModelV3 {
     const domainId = this.username || "none"
     const url = buildUrl(this.baseUrl, domainId)
 
-    // Token estimation for the sidebar context gauge.
-    // The gateway never returns usage during streaming because stream_options.include_usage
-    // is not in the §1.2.2 whitelist and triggers DPA-113 "Invalid Parameters".
+    // Token estimation for the sidebar context gauge — used only as a fallback
+    // for the rare case where the gateway omits the usage chunk entirely.
     // Use serialised message bytes ÷ 4 as a ~±15% proxy (~4 chars/token for mixed
-    // English/code content). Falls back to real gateway counts whenever they are non-zero.
+    // English/code content). Real gateway counts (prompt_tokens/completion_tokens/
+    // total_tokens, sent in the penultimate SSE chunk) are preferred whenever present.
     const estimatedInputTokens = Math.ceil(JSON.stringify(messages).length / 4)
 
     // GAIA §1.2.2 accepted params: model, messages, temperature,
@@ -342,237 +372,346 @@ class MerlinLanguageModel implements LanguageModelV3 {
     // web_search, priority, request_id, service_id.
     // Sending undocumented params (stream_options, tool_choice) triggers DPA-113
     // "Invalid Parameters" — the gateway returns its canned error body.
-    const body: Record<string, unknown> = {
-      model: MODEL_NAME,
-      service_id: serviceId,
-      messages,
-      stream: true,
-      temperature: CODING_TEMPERATURE,
-    }
-    if (tools) {
-      // tool_choice is NOT in the §1.2.2 whitelist; the model picks automatically.
-      body.tools = tools
-    }
-
-    log.info("request", {
-      url,
-      service_id: serviceId,
-      message_count: messages.length,
-      tool_count: tools?.length ?? 0,
-    })
-
-    const signals: AbortSignal[] = [AbortSignal.timeout(this.timeoutMs)]
-    if (options.abortSignal) signals.push(options.abortSignal)
-
-    const dispatcher = await getNodeInsecureDispatcher()
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-      signal: AbortSignal.any(signals),
-      ...bunFetchTlsOption,
-      ...(dispatcher ? { dispatcher } : {}),
-    } as RequestInit)
-
-    if (!response.ok) {
-      const responseText = await response.text().catch(() => "")
-      // Heuristic: a large prompt is the most likely cause when GAIA 5xx-es.
-      // Use serialized messages length as a proxy token count.
-      const msgEstimate = Math.round(JSON.stringify(messages).length / 4)
-      if (msgEstimate >= 200_000) {
-        throw new APICallError({
-          message: `context_length_exceeded: GAIA HTTP ${response.status} (estimated ~${msgEstimate} tokens): ${responseText}`,
-          url,
-          requestBodyValues: {},
-          statusCode: 413,
-          responseBody: responseText,
-          isRetryable: false,
-        })
+    function buildBody(msgs: OpenAIMessage[]): Record<string, unknown> {
+      const b: Record<string, unknown> = {
+        model: MODEL_NAME,
+        service_id: serviceId,
+        messages: msgs,
+        stream: true,
+        temperature: CODING_TEMPERATURE,
       }
-      throw new Error(`GAIA HTTP ${response.status} ${response.statusText}: ${responseText}`)
+      if (tools) {
+        // tool_choice is NOT in the §1.2.2 whitelist; the model picks automatically.
+        b.tools = tools
+      }
+      return b
     }
 
-    // Log the raw response meta so we can see what content-type the gateway sent.
-    const contentType = response.headers.get("content-type") ?? ""
-    log.info("response", { status: response.status, contentType })
-
-    // ── Non-SSE fallback ─────────────────────────────────────────────────────
-    // GAIA may return a plain application/json body (the non-streaming OpenAI shape)
-    // even when stream:true was requested — e.g. the vllm backend ignores the flag,
-    // or the gateway wraps the result itself.  Without this branch the SSE parser
-    // would drain the body without finding any `data:` lines and yield nothing.
-    if (!contentType.includes("text/event-stream")) {
-      const raw = await response.text()
-      log.warn("non_sse_response", { contentType, preview: raw.slice(0, 500) })
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let json: any
-      try {
-        json = JSON.parse(raw)
-      } catch {
-        throw new Error(`GAIA non-SSE response was not JSON (${contentType}): ${raw.slice(0, 500)}`)
-      }
-      // Surface a GAIA error envelope when no choices are present.
-      if (!json.choices && (json.error || json.error_schema)) {
-        const msg =
-          (json.error_schema as { error_message?: { english?: string } } | undefined)
-            ?.error_message?.english ??
-          (json.error as string | undefined) ??
-          "unknown GAIA error"
-        throw new Error(`GAIA error: ${msg}`)
-      }
-      if (!json.choices?.[0]?.message) {
-        log.warn("non_sse_no_message", { raw: raw.slice(0, 500) })
-      }
-      yield* this.emitMessage(
-        json.choices?.[0]?.message as Parameters<typeof this.emitMessage>[0],
-        json.choices?.[0]?.finish_reason as string | undefined,
-        json.usage as { prompt_tokens?: number; completion_tokens?: number } | undefined,
-        estimatedInputTokens,
-      )
-      return
-    }
-
-    // ── SSE parser ────────────────────────────────────────────────────────────
-
-    const reader = response.body!.getReader()
-    const decoder = new TextDecoder()
-    let buf = ""
-
-    // Text stream state (single text stream per response)
+    // Text stream state (single text stream per response), shared across
+    // continuation rounds so a cutoff mid-answer resumes into the same part.
     const TEXT_ID = "merlin-text"
     let textOpen = false
+    // Accumulated final text across all rounds — fed back as the assistant's
+    // partial turn when re-requesting after a cutoff.
+    let fullText = ""
 
-    // Reasoning stream state (thinking block — populated via reasoning_content field)
+    // Reasoning stream state (thinking block — populated via the "reasoning" field)
     const REASONING_ID = "merlin-reasoning"
     let reasoningOpen = false
     let reasoningSeen = false
 
-    // Tool call accumulator, keyed by the OpenAI stream index.
+    // Tool call accumulator, keyed by (round offset + OpenAI stream index) so
+    // indices from different continuation rounds never collide.
     type ToolAcc = { id: string; name: string; argsBuffer: string }
     const toolAccum = new Map<number, ToolAcc>()
 
-    // Final usage & finish tracking
+    // Final usage & finish tracking, accumulated across rounds.
     let inputTokens = 0
     let outputTokens = 0
     let finishReason = "stop"
     // Character accumulator for output-token estimation (see estimatedInputTokens comment above).
     let outputChars = 0
 
-    outer: while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
+    // Chunk type mirrors the OpenAI streaming format.
+    // `message` is the non-streaming field; some gateway variants send it even
+    // in SSE chunks instead of `delta`, so we accept both.
+    type ChunkDeltaOrMessage = {
+      content?: string | null
+      // Live SSE field name confirmed from gateway wire capture: "reasoning"
+      reasoning?: string | null
+      // Fallback field name from non-SSE JSON and some gateway variants
+      reasoning_content?: string | null
+      tool_calls?: Array<{
+        index?: number
+        id?: string
+        function?: { name?: string; arguments?: string }
+      }>
+    }
+    type Chunk = {
+      choices?: Array<{
+        delta?: ChunkDeltaOrMessage
+        message?: ChunkDeltaOrMessage
+        finish_reason?: string | null
+      }>
+      usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | null
+    }
 
-      buf += decoder.decode(value, { stream: true })
+    let roundMessages = messages
+    let round = 0
 
-      // Split on double-newline SSE event boundaries.
-      const events = buf.split(/\r?\n\r?\n/)
-      buf = events.pop() ?? ""
+    while (true) {
+      let sawFinishReason = false
+      let sawDone = false
+      const charsBeforeRound = outputChars
+      // Offset new tool-call indices past anything already accumulated, so a
+      // continuation round's index-0 tool call can't clobber a completed one.
+      const toolIndexOffset = toolAccum.size ? Math.max(...toolAccum.keys()) + 1 : 0
 
-      for (const event of events) {
-        for (const line of event.split(/\r?\n/)) {
-          if (!line.startsWith("data:")) continue
-          const data = line.slice(5).trim()
-          if (data === "[DONE]") break outer
+      log.info("request", {
+        url,
+        service_id: serviceId,
+        message_count: roundMessages.length,
+        tool_count: tools?.length ?? 0,
+        round,
+      })
 
-          // Chunk type mirrors the OpenAI streaming format.
-          // `message` is the non-streaming field; some gateway variants send it even
-          // in SSE chunks instead of `delta`, so we accept both.
-          type ChunkDeltaOrMessage = {
-            content?: string | null
-            // Live SSE field name confirmed from gateway wire capture: "reasoning"
-            reasoning?: string | null
-            // Fallback field name from non-SSE JSON and some gateway variants
-            reasoning_content?: string | null
-            tool_calls?: Array<{
-              index?: number
-              id?: string
-              function?: { name?: string; arguments?: string }
-            }>
-          }
-          let chunk: {
-            choices?: Array<{
-              delta?: ChunkDeltaOrMessage
-              message?: ChunkDeltaOrMessage
-              finish_reason?: string | null
-            }>
-            usage?: { prompt_tokens?: number; completion_tokens?: number } | null
-          }
-          try {
-            chunk = JSON.parse(data)
-          } catch {
-            continue
-          }
+      const signals: AbortSignal[] = [AbortSignal.timeout(this.timeoutMs)]
+      if (options.abortSignal) signals.push(options.abortSignal)
 
-          // Usage arrives in the penultimate chunk when include_usage is set.
-          if (chunk.usage) {
-            inputTokens = chunk.usage.prompt_tokens ?? inputTokens
-            outputTokens = chunk.usage.completion_tokens ?? outputTokens
-          }
+      const dispatcher = await getNodeInsecureDispatcher()
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildBody(roundMessages)),
+        signal: AbortSignal.any(signals),
+        ...bunFetchTlsOption,
+        ...(dispatcher ? { dispatcher } : {}),
+      } as RequestInit)
 
-          const choice = chunk.choices?.[0]
-          if (!choice) continue
+      if (!response.ok) {
+        const responseText = await response.text().catch(() => "")
+        // Heuristic: a large prompt is the most likely cause when GAIA 5xx-es.
+        // Use serialized messages length as a proxy token count.
+        const msgEstimate = Math.round(JSON.stringify(roundMessages).length / 4)
+        if (msgEstimate >= 200_000) {
+          throw new APICallError({
+            message: `context_length_exceeded: GAIA HTTP ${response.status} (estimated ~${msgEstimate} tokens): ${responseText}`,
+            url,
+            requestBodyValues: {},
+            statusCode: 413,
+            responseBody: responseText,
+            isRetryable: false,
+          })
+        }
+        throw new Error(`GAIA HTTP ${response.status} ${response.statusText}: ${responseText}`)
+      }
 
-          if (choice.finish_reason) finishReason = choice.finish_reason
+      // Log the raw response meta so we can see what content-type the gateway sent.
+      const contentType = response.headers.get("content-type") ?? ""
+      log.info("response", { status: response.status, contentType, round })
 
-          // Accept either `delta` (standard SSE streaming) or `message` (some gateway
-          // variants send the full message object even in SSE mode instead of deltas).
-          const delta = choice.delta ?? choice.message
-          if (!delta) continue
+      // ── Non-SSE fallback ─────────────────────────────────────────────────────
+      // GAIA may return a plain application/json body (the non-streaming OpenAI shape)
+      // even when stream:true was requested — e.g. the vllm backend ignores the flag,
+      // or the gateway wraps the result itself. Without this branch the SSE parser
+      // would drain the body without finding any `data:` lines and yield nothing.
+      // Treated as a complete, terminal response — cutoff continuation only
+      // applies to SSE streams, which is the documented failure mode.
+      if (!contentType.includes("text/event-stream")) {
+        const raw = await response.text()
+        log.warn("non_sse_response", { contentType, preview: raw.slice(0, 500) })
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let json: any
+        try {
+          json = JSON.parse(raw)
+        } catch {
+          throw new Error(`GAIA non-SSE response was not JSON (${contentType}): ${raw.slice(0, 500)}`)
+        }
+        // Surface a GAIA error envelope when no choices are present.
+        if (!json.choices && (json.error || json.error_schema)) {
+          const msg =
+            (json.error_schema as { error_message?: { english?: string } } | undefined)
+              ?.error_message?.english ??
+            (json.error as string | undefined) ??
+            "unknown GAIA error"
+          throw new Error(`GAIA error: ${msg}`)
+        }
+        const message = json.choices?.[0]?.message as
+          | { content?: string; reasoning?: string; reasoning_content?: string; tool_calls?: unknown[] }
+          | undefined
+        if (!message) {
+          log.warn("non_sse_no_message", { raw: raw.slice(0, 500) })
+        }
+        // DPA-124 canned error surfaced as the model's "real" answer — convert
+        // to a context-overflow error so the session auto-compacts + continues.
+        if (typeof message?.content === "string" && message.content.includes(DPA124_CANNED_ERROR)) {
+          throw new APICallError({
+            message: "context_length_exceeded: GAIA returned canned error (DPA-124)",
+            url,
+            requestBodyValues: {},
+            statusCode: 413,
+            responseBody: raw,
+            isRetryable: false,
+          })
+        }
+        yield* this.emitMessage(
+          message as Parameters<MerlinLanguageModel["emitMessage"]>[0],
+          json.choices?.[0]?.finish_reason as string | undefined,
+          json.usage as { prompt_tokens?: number; completion_tokens?: number } | undefined,
+          estimatedInputTokens,
+        )
+        return
+      }
 
-          // ── Reasoning deltas: stream live (before text) ─────────────────────
-          // The gateway sends reasoning in "reasoning" (confirmed from SSE wire capture);
-          // fall back to "reasoning_content" for non-SSE JSON variants.
-          const reasoningDelta = delta.reasoning ?? delta.reasoning_content
-          if (typeof reasoningDelta === "string" && reasoningDelta) {
-            if (!reasoningOpen) {
-              yield { type: "reasoning-start", id: REASONING_ID }
-              reasoningOpen = true
+      // ── SSE parser (one round) ─────────────────────────────────────────────
+
+      const reader = response.body!.getReader()
+      const decoder = new TextDecoder()
+      let buf = ""
+
+      outer: while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buf += decoder.decode(value, { stream: true })
+
+        // Split on double-newline SSE event boundaries.
+        const events = buf.split(/\r?\n\r?\n/)
+        buf = events.pop() ?? ""
+
+        for (const event of events) {
+          for (const line of event.split(/\r?\n/)) {
+            if (!line.startsWith("data:")) continue
+            const data = line.slice(5).trim()
+            if (data === "[DONE]") {
+              sawDone = true
+              break outer
             }
-            reasoningSeen = true
-            yield { type: "reasoning-delta", id: REASONING_ID, delta: reasoningDelta }
-            outputChars += reasoningDelta.length
-          }
 
-          // ── Text deltas: stream live ────────────────────────────────────────
-          if (typeof delta.content === "string" && delta.content) {
-            const cleaned = stripGaiaErrors(delta.content)
-            if (cleaned) {
-              // Close reasoning block before the first text token arrives.
-              if (reasoningOpen) {
-                yield { type: "reasoning-end", id: REASONING_ID }
-                reasoningOpen = false
-              }
-              if (!textOpen) {
-                yield { type: "text-start", id: TEXT_ID }
-                textOpen = true
-              }
-              yield { type: "text-delta", id: TEXT_ID, delta: cleaned }
-              outputChars += cleaned.length
+            let chunk: Chunk
+            try {
+              chunk = JSON.parse(data)
+            } catch {
+              continue
             }
-          }
 
-          // ── Tool call deltas: accumulate by index ───────────────────────────
-          if (Array.isArray(delta.tool_calls)) {
-            for (const tc of delta.tool_calls) {
-              const idx = tc.index ?? 0
-              if (!toolAccum.has(idx)) {
-                // Initialise with empty name/args; all fields are filled via += below.
-                toolAccum.set(idx, { id: `merlin-tc-${idx}`, name: "", argsBuffer: "" })
+            // Usage arrives in the penultimate chunk when include_usage is set;
+            // sum completion tokens across rounds, keep the latest prompt count.
+            if (chunk.usage) {
+              inputTokens = chunk.usage.prompt_tokens ?? inputTokens
+              const completion =
+                chunk.usage.completion_tokens ??
+                (chunk.usage.total_tokens !== undefined
+                  ? Math.max(0, chunk.usage.total_tokens - (chunk.usage.prompt_tokens ?? inputTokens))
+                  : undefined)
+              if (completion !== undefined) outputTokens += completion
+            }
+
+            const choice = chunk.choices?.[0]
+            if (!choice) continue
+
+            if (choice.finish_reason) {
+              finishReason = choice.finish_reason
+              sawFinishReason = true
+            }
+
+            // Accept either `delta` (standard SSE streaming) or `message` (some gateway
+            // variants send the full message object even in SSE mode instead of deltas).
+            const delta = choice.delta ?? choice.message
+            if (!delta) continue
+
+            // DPA-124 canned error sent as if it were the model's real answer —
+            // convert to a context-overflow error so the session auto-compacts
+            // and auto-continues instead of showing this to the user.
+            if (typeof delta.content === "string" && delta.content.includes(DPA124_CANNED_ERROR)) {
+              throw new APICallError({
+                message: "context_length_exceeded: GAIA returned canned error (DPA-124)",
+                url,
+                requestBodyValues: {},
+                statusCode: 413,
+                responseBody: delta.content,
+                isRetryable: false,
+              })
+            }
+
+            // ── Reasoning deltas: stream live (before text) ─────────────────────
+            // The gateway sends reasoning in "reasoning" (confirmed from SSE wire capture);
+            // fall back to "reasoning_content" for non-SSE JSON variants.
+            const reasoningDelta = delta.reasoning ?? delta.reasoning_content
+            if (typeof reasoningDelta === "string" && reasoningDelta) {
+              if (!reasoningOpen) {
+                yield { type: "reasoning-start", id: REASONING_ID }
+                reasoningOpen = true
               }
-              const acc = toolAccum.get(idx)!
-              // The gateway sends id and name only in the first delta for each index;
-              // subsequent deltas only carry argument fragments. Always append so the
-              // accumulator works correctly even if multiple chunks carry name fragments.
-              if (tc.id) acc.id = tc.id
-              if (tc.function?.name) acc.name += tc.function.name
-              if (tc.function?.arguments) {
-                acc.argsBuffer += tc.function.arguments
-                outputChars += tc.function.arguments.length
+              reasoningSeen = true
+              yield { type: "reasoning-delta", id: REASONING_ID, delta: reasoningDelta }
+              outputChars += reasoningDelta.length
+            }
+
+            // ── Text deltas: stream live ────────────────────────────────────────
+            if (typeof delta.content === "string" && delta.content) {
+              const cleaned = stripGaiaErrors(delta.content)
+              if (cleaned) {
+                // Close reasoning block before the first text token arrives.
+                if (reasoningOpen) {
+                  yield { type: "reasoning-end", id: REASONING_ID }
+                  reasoningOpen = false
+                }
+                if (!textOpen) {
+                  yield { type: "text-start", id: TEXT_ID }
+                  textOpen = true
+                }
+                yield { type: "text-delta", id: TEXT_ID, delta: cleaned }
+                outputChars += cleaned.length
+                fullText += cleaned
+              }
+            }
+
+            // ── Tool call deltas: accumulate by index ───────────────────────────
+            if (Array.isArray(delta.tool_calls)) {
+              for (const tc of delta.tool_calls) {
+                const idx = (tc.index ?? 0) + toolIndexOffset
+                if (!toolAccum.has(idx)) {
+                  // Initialise with empty name/args; all fields are filled via += below.
+                  toolAccum.set(idx, { id: `merlin-tc-${idx}`, name: "", argsBuffer: "" })
+                }
+                const acc = toolAccum.get(idx)!
+                // The gateway sends id and name only in the first delta for each index;
+                // subsequent deltas only carry argument fragments. Always append so the
+                // accumulator works correctly even if multiple chunks carry name fragments.
+                if (tc.id) acc.id = tc.id
+                if (tc.function?.name) acc.name += tc.function.name
+                if (tc.function?.arguments) {
+                  acc.argsBuffer += tc.function.arguments
+                  outputChars += tc.function.arguments.length
+                }
               }
             }
           }
         }
       }
+
+      round++
+      const madeProgress = outputChars > charsBeforeRound || toolAccum.size > 0
+      const truncated = !sawFinishReason && !sawDone
+
+      log.info("truncation_decision", {
+        round,
+        sawFinishReason,
+        sawDone,
+        outputChars,
+        madeProgress,
+        truncated,
+      })
+
+      if (!truncated) break
+
+      if (!madeProgress || round >= MAX_CONTINUATIONS) {
+        log.warn("continuation_exhausted", { round, madeProgress })
+        if (finishReason === "stop") finishReason = "length"
+        break
+      }
+
+      // Discard any tool call still mid-flight (invalid/incomplete JSON args) —
+      // it will be re-emitted whole by the continuation round instead of resumed.
+      for (const [idx, acc] of [...toolAccum.entries()]) {
+        try {
+          JSON.parse(acc.argsBuffer || "{}")
+        } catch {
+          toolAccum.delete(idx)
+        }
+      }
+
+      const continuationAssistant: OpenAIMessage = { role: "assistant" }
+      if (fullText) (continuationAssistant as { role: "assistant"; content: string }).content = fullText
+      roundMessages = [
+        ...messages,
+        continuationAssistant,
+        {
+          role: "user",
+          content: "Continue exactly where you left off. Do not repeat any content you already produced.",
+        },
+      ]
     }
 
     // ── Diagnostic guard ─────────────────────────────────────────────────────
@@ -602,7 +741,7 @@ class MerlinLanguageModel implements LanguageModelV3 {
     }
 
     // Use real gateway token counts when available; fall back to char-based estimates
-    // for the common streaming case where the gateway never sends a usage chunk.
+    // for the case where the gateway never sends a usage chunk.
     const finalInputTokens = inputTokens || estimatedInputTokens
     const finalOutputTokens = outputTokens || Math.ceil(outputChars / 4)
 

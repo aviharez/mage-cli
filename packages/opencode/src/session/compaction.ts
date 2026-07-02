@@ -36,6 +36,10 @@ const PRUNE_PROTECTED_TOOLS = ["skill"]
 const DEFAULT_TAIL_TURNS = 2
 const MIN_PRESERVE_RECENT_TOKENS = 2_000
 const MAX_PRESERVE_RECENT_TOKENS = 8_000
+// Headroom subtracted from the summarizer's usable context when shrinking the
+// compaction head to fit — leaves room for the summary prompt template and
+// the model's own output tokens.
+const HISTORY_SAFETY_BUFFER = 4_000
 type Turn = {
   start: number
   end: number
@@ -166,6 +170,39 @@ export const layer: Layer.Layer<
         head: input.messages.slice(0, keep.start),
         tail_start_id: keep.id,
       }
+    })
+
+    // Sheds bytes from a (already-cloned) compaction head so the summarization
+    // request always fits the summarizer model's context — this is what fixes
+    // "Conversation history too large to compact - exceeds model context limit".
+    // Real conversational turns are preserved as long as possible: tool-call
+    // *outputs* (the largest, least-summary-relevant bytes — the tool name and
+    // arguments are kept) are blanked first, and only if that isn't enough are
+    // whole messages dropped, oldest first. The verbatim recent tail kept by
+    // `select` is a separate slice and is never touched by this function.
+    const shrinkToFit = Effect.fn("SessionCompaction.shrinkToFit")(function* (input: {
+      messages: MessageV2.WithParts[]
+      model: Provider.Model
+      cfg: Config.Info
+    }) {
+      for (const msg of input.messages) {
+        for (const part of msg.parts) {
+          if (part.type !== "tool") continue
+          if (part.state.status !== "completed") continue
+          if (PRUNE_PROTECTED_TOOLS.includes(part.tool)) continue
+          part.state.time.compacted = Date.now()
+        }
+      }
+
+      let msgs = input.messages
+      const budget = usable({ cfg: input.cfg, model: input.model }) - HISTORY_SAFETY_BUFFER
+      while (msgs.length > 0 && (yield* estimate({ messages: msgs, model: input.model })) > budget) {
+        msgs = msgs.slice(1)
+      }
+      if (msgs.length !== input.messages.length) {
+        log.warn("shrink_dropped_messages", { dropped: input.messages.length - msgs.length, kept: msgs.length })
+      }
+      return msgs
     })
 
     // goes backwards through parts until there are PRUNE_PROTECT tokens worth of tool
@@ -299,7 +336,11 @@ export const layer: Layer.Layer<
 ---`
 
       const prompt = compacting.prompt ?? [defaultPrompt, ...compacting.context].join("\n\n")
-      const msgs = structuredClone(selected.head)
+      // Shed tool-output bytes (and, if still needed, the oldest whole turns) so
+      // this request always fits the summarizer's context — fixes "Conversation
+      // history too large to compact". The preserved recent tail (selected.tail_start_id)
+      // is a separate slice appended by filterCompacted later and is unaffected.
+      const msgs = yield* shrinkToFit({ messages: structuredClone(selected.head), model, cfg })
       yield* plugin.trigger("experimental.chat.messages.transform", {}, { messages: msgs })
       const modelMessages = yield* MessageV2.toModelMessagesEffect(msgs, model, { stripMedia: true })
       const ctx = yield* InstanceState.context

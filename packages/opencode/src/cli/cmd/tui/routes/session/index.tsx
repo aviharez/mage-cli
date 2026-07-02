@@ -1348,31 +1348,62 @@ const PART_MAPPING = {
 function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: AssistantMessage }) {
   const { theme, subtleSyntax } = useTheme()
   const ctx = use()
+  const renderer = useRenderer()
+  const [hover, setHover] = createSignal(false)
+  const [expanded, setExpanded] = createSignal(false)
   const content = createMemo(() => {
     // Filter out redacted reasoning chunks from OpenRouter
     // OpenRouter sends encrypted reasoning data that appears as [REDACTED]
     return props.part.text.replace("[REDACTED]", "").trim()
   })
+  // Reasoning is still streaming until the provider closes the block (time.end
+  // is set on "reasoning-end"). Collapse to a one-line "+ Thought: xxms" summary
+  // once it's done; click to re-expand the full thinking block.
+  const done = createMemo(() => props.part.time.end !== undefined)
+  const open = createMemo(() => !done() || expanded())
+  const duration = createMemo(() => {
+    if (!done()) return undefined
+    return `${Math.max(0, Math.round(props.part.time.end! - props.part.time.start))}ms`
+  })
+
   return (
     <Show when={content() && ctx.showThinking()}>
       <box
-        id={"text-" + props.part.id}
         paddingLeft={2}
         marginTop={1}
         flexDirection="column"
-        border={["left"]}
-        customBorderChars={SplitBorder.customBorderChars}
-        borderColor={theme.backgroundElement}
+        onMouseOver={() => done() && setHover(true)}
+        onMouseOut={() => setHover(false)}
+        onMouseUp={() => {
+          if (renderer.getSelection()?.getSelectedText()) return
+          if (done()) setExpanded((prev) => !prev)
+        }}
       >
-        <code
-          filetype="markdown"
-          drawUnstyledText={false}
-          streaming={true}
-          syntaxStyle={subtleSyntax()}
-          content={"_Thinking:_ " + content()}
-          conceal={ctx.conceal()}
-          fg={theme.textMuted}
-        />
+        <Show
+          when={open()}
+          fallback={<text fg={hover() ? theme.text : theme.textMuted}>+ Thought: {duration()}</text>}
+        >
+          <box
+            id={"text-" + props.part.id}
+            flexDirection="column"
+            border={["left"]}
+            customBorderChars={SplitBorder.customBorderChars}
+            borderColor={theme.backgroundElement}
+          >
+            <code
+              filetype="markdown"
+              drawUnstyledText={false}
+              streaming={true}
+              syntaxStyle={subtleSyntax()}
+              content={"_Thinking:_ " + content()}
+              conceal={ctx.conceal()}
+              fg={theme.textMuted}
+            />
+          </box>
+          <Show when={done()}>
+            <text fg={theme.textMuted}>{"− Click to collapse"}</text>
+          </Show>
+        </Show>
       </box>
     </Show>
   )

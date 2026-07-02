@@ -15,7 +15,12 @@ function View(props: { api: TuiPluginApi; session_id: string }) {
   const cost = createMemo(() => msg().reduce((sum, item) => sum + (item.role === "assistant" ? item.cost : 0), 0))
 
   const state = createMemo(() => {
-    const last = msg().findLast((item): item is AssistantMessage => item.role === "assistant" && item.tokens.output > 0)
+    // Exclude compaction summaries: once a session is compacted, the gauge
+    // should reflect the smaller post-compaction context (summary + tail),
+    // not the large input the summarizer itself consumed.
+    const last = msg().findLast(
+      (item): item is AssistantMessage => item.role === "assistant" && item.tokens.output > 0 && !item.summary,
+    )
     if (!last) {
       return {
         tokens: 0,
