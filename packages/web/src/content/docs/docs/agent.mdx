@@ -19,13 +19,36 @@ Mage dilengkapi dua **primary agent** yang dapat Anda aktifkan langsung dari TUI
 
 ### Alur plan → eksekusi dengan Plan dan Build
 
-Plan dan Build dirancang untuk bekerja berpasangan:
+Plan dan Build dirancang untuk bekerja berpasangan. Berikut contoh alurnya pada tugas menambah fitur baru di aplikasi Angular:
 
-1. Pindah ke **Plan** → minta model menyusun rencana. Plan mempersiapkan file `.mage/plans/*.md` tanpa menyentuh kode.
-2. Tinjau rencana yang dihasilkan — perbaiki jika perlu.
-3. Pindah kembali ke **Build** → Mage secara otomatis meminta Build untuk mengeksekusi rencana yang sudah dibuat.
+**1. Pindah ke Plan** — minta model menyusun rencana dengan prompt yang punya anchor (path file, nama service) dan batasan yang jelas:
+
+```
+Draft a plan to add an "Export to CSV" button to TransactionListComponent
+(src/app/features/transaction/). Reuse the existing TransactionService
+to source the row data — do not add new npm dependencies.
+Don't write any code yet; just write the plan.
+```
+
+Plan akan mengeksplorasi kode yang relevan, lalu menulis rencana ke `.mage/plans/*.md` — tanpa menyentuh file sumber sama sekali.
+
+**2. Tinjau rencana yang dihasilkan** — buka file `.mage/plans/*.md` yang baru dibuat, baca langkah-langkahnya, dan minta Plan merevisi jika ada yang kurang sesuai.
+
+**3. Pindah kembali ke Build** — Mage secara otomatis menawarkan untuk mengeksekusi rencana yang baru dibuat. Anda juga bisa memintanya secara eksplisit, sambil mengulang batasan penting agar tidak "melemah" seiring sesi berjalan:
+
+```
+Execute the plan in .mage/plans/csv-export.md.
+Reuse TransactionService — do not create a new service.
+Stop after the minimal working implementation; don't refactor unrelated code.
+```
+
+Build akan membaca rencana tersebut dan menjalankan perubahan kode sesuai permission yang dikonfigurasi.
 
 Pola ini berguna pada tugas besar yang memerlukan eksplorasi dan persetujuan sebelum perubahan kode dijalankan.
+
+:::tip[Ingin pola prompt yang lebih lengkap?]
+Lihat [Prompting Qwen3.6 27b](/docs/qwen-prompting) untuk kerangka Goal/Context/Constraints/Output/Verification, contoh prompt lemah vs. kuat, dan tips iterasi pada sesi panjang.
+:::
 
 ---
 
