@@ -139,7 +139,7 @@ const InfoSchema = Schema.Struct({
   }),
   default_agent: Schema.optional(Schema.String).annotate({
     description:
-      "Default agent to use when none is specified. Must be a primary agent. Falls back to 'forge' if not set or if the specified agent is invalid.",
+      "Default agent to use when none is specified. Must be a primary agent. Falls back to 'build' if not set or if the specified agent is invalid.",
   }),
   username: Schema.optional(Schema.String).annotate({
     description: "Custom username to display in conversations instead of system username",
@@ -157,11 +157,11 @@ const InfoSchema = Schema.Struct({
     Schema.StructWithRest(
       Schema.Struct({
         // primary
-        oracle: Schema.optional(AgentRef),
-        forge: Schema.optional(AgentRef),
+        plan: Schema.optional(AgentRef),
+        build: Schema.optional(AgentRef),
         // subagent
-        wisp: Schema.optional(AgentRef),
-        seeker: Schema.optional(AgentRef),
+        general: Schema.optional(AgentRef),
+        explore: Schema.optional(AgentRef),
         // specialized
         title: Schema.optional(AgentRef),
         summary: Schema.optional(AgentRef),

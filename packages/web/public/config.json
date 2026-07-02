@@ -195,7 +195,7 @@
       "type": "string"
     },
     "default_agent": {
-      "description": "Default agent to use when none is specified. Must be a primary agent. Falls back to 'forge' if not set or if the specified agent is invalid.",
+      "description": "Default agent to use when none is specified. Must be a primary agent. Falls back to 'build' if not set or if the specified agent is invalid.",
       "type": "string"
     },
     "username": {
@@ -1718,7 +1718,7 @@
       "description": "Agent configuration, see https://mage.ai/docs/agents",
       "type": "object",
       "properties": {
-        "oracle": {
+        "plan": {
           "ref": "AgentConfig",
           "type": "object",
           "properties": {
@@ -2220,7 +2220,7 @@
           },
           "additionalProperties": {}
         },
-        "forge": {
+        "build": {
           "ref": "AgentConfig",
           "type": "object",
           "properties": {
@@ -2722,7 +2722,7 @@
           },
           "additionalProperties": {}
         },
-        "wisp": {
+        "general": {
           "ref": "AgentConfig",
           "type": "object",
           "properties": {
@@ -3224,7 +3224,7 @@
           },
           "additionalProperties": {}
         },
-        "seeker": {
+        "explore": {
           "ref": "AgentConfig",
           "type": "object",
           "properties": {
