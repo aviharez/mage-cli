@@ -20,7 +20,7 @@ export const INTERNAL_TUI_PLUGINS: InternalTuiPlugin[] = [
   HomeFooter,
   HomeTips,
   SidebarBoilerplate,
-  // SidebarContext,
+  SidebarContext,
   SidebarMcp,
   // SidebarLsp,
   SidebarTodo,

@@ -1,5 +1,12 @@
 import { describe, test, expect, mock } from "bun:test"
-import { createMerlin, missingRequiredArgs, stripHallucinatedTurns } from "../../src/provider/merlin"
+import {
+  createMerlin,
+  missingRequiredArgs,
+  stripHallucinatedTurns,
+  isPrematureActionStop,
+  isGatewayParseError,
+  MAX_CONTINUATIONS,
+} from "../../src/provider/merlin"
 
 describe("createMerlin", () => {
   test("registers provider and returns a LanguageModelV3", () => {
@@ -41,7 +48,9 @@ describe("createMerlin", () => {
       expect(result.content).toHaveLength(1)
       expect(result.content[0]).toMatchObject({ type: "text", text: "Saya adalah Mage." })
       expect(result.finishReason).toMatchObject({ unified: "stop" })
-      expect(result.usage.inputTokens.total).toBe(10)
+      // inputTokens is Math.max(reported, promptLength/4) — the real flattened
+      // prompt is longer than 10 tokens, so the floor (not the mocked value) wins.
+      expect(result.usage.inputTokens.total).toBeGreaterThanOrEqual(10)
       expect(result.usage.outputTokens.total).toBe(5)
 
       expect(captured).toHaveLength(1)
@@ -132,8 +141,11 @@ describe("createMerlin", () => {
       expect(toolCall.toolName).toBe("Read")
       expect(JSON.parse(toolCall.input)).toEqual({ filePath: "/a/b.ts" })
       expect(result.finishReason).toMatchObject({ unified: "tool-calls" })
-      // Usage is summed across both calls (4+4 in, 2+2 out).
-      expect(result.usage.inputTokens.total).toBe(8)
+      // Usage is summed across both calls. inputTokens is floored by the real
+      // flattened-prompt length (Math.max(reported, promptLength/4)), which
+      // exceeds the 4+4 mocked total once two round-trips of real prompt text
+      // are involved — outputTokens has no such floor.
+      expect(result.usage.inputTokens.total).toBeGreaterThanOrEqual(8)
       expect(result.usage.outputTokens.total).toBe(4)
     } finally {
       globalThis.fetch = origFetch
@@ -334,8 +346,10 @@ describe("createMerlin", () => {
         subagent_type: "claude",
       })
       expect(result.finishReason).toMatchObject({ unified: "tool-calls" })
-      // Token usage is summed across both calls (8+8, 3+3).
-      expect(result.usage.inputTokens.total).toBe(16)
+      // Token usage is summed across both calls. inputTokens is floored by the
+      // real flattened-prompt length (this prompt also carries the rendered
+      // tools block, so the floor dominates the 8+8 mocked total).
+      expect(result.usage.inputTokens.total).toBeGreaterThanOrEqual(16)
       expect(result.usage.outputTokens.total).toBe(6)
     } finally {
       globalThis.fetch = origFetch
@@ -413,6 +427,338 @@ describe("createMerlin", () => {
       await expect(
         model.doGenerate({ prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }] } as any),
       ).rejects.toThrow("Authentication failed")
+    } finally {
+      globalThis.fetch = origFetch
+    }
+  })
+
+  // ── DPA-124 → auto-compaction ──────────────────────────────────────────────
+
+  test("doGenerate converts a DPA-124 error_schema into a context-overflow APICallError", async () => {
+    const fakeFetch = mock(async () =>
+      new Response(
+        JSON.stringify({
+          error_schema: {
+            error_code: "DPA-124",
+            error_message: { english: "An error occurred while the engine was processing the query" },
+          },
+          output_schema: { err_debug: "engine timeout" },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    )
+    const origFetch = globalThis.fetch
+    globalThis.fetch = fakeFetch as any
+
+    try {
+      const model = createMerlin({ baseURL: "https://x.test" }).languageModel("default")
+      await expect(
+        model.doGenerate({ prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }] } as any),
+      ).rejects.toMatchObject({
+        statusCode: 413,
+        isRetryable: false,
+        message: expect.stringContaining("context_length_exceeded"),
+      })
+    } finally {
+      globalThis.fetch = origFetch
+    }
+  })
+
+  test("doGenerate treats DPA-124 as overflow even on a small prompt (no 200k-token floor)", async () => {
+    // Regression guard: DPA-124 must always compact, unlike the generic error_schema
+    // path below it which only converts to a 413 above the 200k-token estimate.
+    const fakeFetch = mock(async () =>
+      new Response(
+        JSON.stringify({
+          error_schema: { error_code: "DPA-124", error_message: { english: "engine error" } },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    )
+    const origFetch = globalThis.fetch
+    globalThis.fetch = fakeFetch as any
+
+    try {
+      const model = createMerlin({ baseURL: "https://x.test" }).languageModel("default")
+      await expect(
+        model.doGenerate({ prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }] } as any),
+      ).rejects.toMatchObject({ statusCode: 413 })
+    } finally {
+      globalThis.fetch = origFetch
+    }
+  })
+
+  // ── Auto-retry on timeout / transient failure ───────────────────────────────
+
+  test("doGenerate surfaces a 5xx HTTP response as a retryable APICallError", async () => {
+    const fakeFetch = mock(async () => new Response("upstream down", { status: 502, statusText: "Bad Gateway" }))
+    const origFetch = globalThis.fetch
+    globalThis.fetch = fakeFetch as any
+
+    try {
+      const model = createMerlin({ baseURL: "https://x.test" }).languageModel("default")
+      await expect(
+        model.doGenerate({ prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }] } as any),
+      ).rejects.toMatchObject({ statusCode: 502, isRetryable: true })
+    } finally {
+      globalThis.fetch = origFetch
+    }
+  })
+
+  test("doGenerate surfaces a 4xx HTTP response as a non-retryable APICallError", async () => {
+    const fakeFetch = mock(async () => new Response("bad request", { status: 400, statusText: "Bad Request" }))
+    const origFetch = globalThis.fetch
+    globalThis.fetch = fakeFetch as any
+
+    try {
+      const model = createMerlin({ baseURL: "https://x.test" }).languageModel("default")
+      await expect(
+        model.doGenerate({ prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }] } as any),
+      ).rejects.toMatchObject({ statusCode: 400, isRetryable: false })
+    } finally {
+      globalThis.fetch = origFetch
+    }
+  })
+
+  test("doGenerate converts a fetch timeout into a retryable APICallError", async () => {
+    // Simulate AbortSignal.timeout firing mid-request: fetch rejects with an
+    // AbortError while the caller's own abortSignal (if any) is not aborted.
+    const fakeFetch = mock(async () => {
+      throw new DOMException("The operation timed out.", "TimeoutError")
+    })
+    const origFetch = globalThis.fetch
+    globalThis.fetch = fakeFetch as any
+
+    try {
+      const model = createMerlin({ baseURL: "https://x.test" }).languageModel("default")
+      await expect(
+        model.doGenerate({ prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }] } as any),
+      ).rejects.toMatchObject({ statusCode: 504, isRetryable: true })
+    } finally {
+      globalThis.fetch = origFetch
+    }
+  })
+
+  test("doGenerate re-throws a user-initiated cancel untouched (not converted to retryable)", async () => {
+    const userAbort = new AbortController()
+    const cancelError = new DOMException("The user aborted a request.", "AbortError")
+    const fakeFetch = mock(async () => {
+      userAbort.abort()
+      throw cancelError
+    })
+    const origFetch = globalThis.fetch
+    globalThis.fetch = fakeFetch as any
+
+    try {
+      const model = createMerlin({ baseURL: "https://x.test" }).languageModel("default")
+      await expect(
+        model.doGenerate({
+          prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
+          abortSignal: userAbort.signal,
+        } as any),
+      ).rejects.toBe(cancelError)
+    } finally {
+      globalThis.fetch = origFetch
+    }
+  })
+
+  // ── Auto-continue on premature action-stop ──────────────────────────────────
+
+  test("isPrematureActionStop detects an announcement with no follow-through", () => {
+    expect(isPrematureActionStop("Sure, let me read the config file to check.")).toBe(true)
+    expect(isPrematureActionStop("I'll check the package.json now.")).toBe(true)
+  })
+
+  test("isPrematureActionStop does not flag a normal text-only final answer", () => {
+    expect(isPrematureActionStop("The answer is 42.")).toBe(false)
+    expect(isPrematureActionStop("Let me know if you have more questions.")).toBe(false)
+  })
+
+  test("doGenerate transparently continues when the model announces an action but emits no tool call", async () => {
+    const readTool = {
+      type: "function" as const,
+      name: "Read",
+      description: "Read a file",
+      inputSchema: { type: "object" as const, required: ["filePath"], properties: { filePath: { type: "string" as const } } },
+    }
+
+    const answers = [
+      // 1st reply: announces intent, no <tool_call> at all.
+      "Let me read the config file to check its contents.",
+      // 2nd reply (continuation): actually emits the tool call.
+      '<tool_call>\n{"name": "Read", "arguments": {"filePath": "/a/config.json"}}\n</tool_call>',
+    ]
+    let call = 0
+    const fakeFetch = mock(async () =>
+      new Response(
+        JSON.stringify({ output_schema: { result: { answer: answers[call++], token_input: 6, token_output: 4 } } }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    )
+    const origFetch = globalThis.fetch
+    globalThis.fetch = fakeFetch as any
+
+    try {
+      const model = createMerlin({ baseURL: "https://x.test", username: "u" }).languageModel("default")
+      const result = await model.doGenerate({
+        prompt: [{ role: "user", content: [{ type: "text", text: "check the config" }] }],
+        tools: [readTool],
+      } as any)
+
+      // Original announcement round + one continuation round.
+      expect(fakeFetch).toHaveBeenCalledTimes(2)
+      const toolCall = result.content.find((p: any) => p.type === "tool-call") as any
+      expect(toolCall).toBeDefined()
+      expect(toolCall.toolName).toBe("Read")
+      expect(JSON.parse(toolCall.input)).toEqual({ filePath: "/a/config.json" })
+      expect(result.finishReason).toMatchObject({ unified: "tool-calls" })
+      // Token usage summed across both rounds; inputTokens is floored by the
+      // real flattened-prompt length so it exceeds the 6+6 mocked total.
+      expect(result.usage.inputTokens.total).toBeGreaterThanOrEqual(12)
+      expect(result.usage.outputTokens.total).toBe(8)
+    } finally {
+      globalThis.fetch = origFetch
+    }
+  })
+
+  test("doGenerate does not continue when a tool call is already present", async () => {
+    const readTool = {
+      type: "function" as const,
+      name: "Read",
+      description: "Read a file",
+      inputSchema: { type: "object" as const, required: ["filePath"], properties: { filePath: { type: "string" as const } } },
+    }
+    const fakeFetch = mock(async () =>
+      new Response(
+        JSON.stringify({
+          output_schema: {
+            result: {
+              answer: 'Let me check.\n<tool_call>\n{"name":"Read","arguments":{"filePath":"/a.ts"}}\n</tool_call>',
+              token_input: 4,
+              token_output: 2,
+            },
+          },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    )
+    const origFetch = globalThis.fetch
+    globalThis.fetch = fakeFetch as any
+
+    try {
+      const model = createMerlin({ baseURL: "https://x.test" }).languageModel("default")
+      await model.doGenerate({
+        prompt: [{ role: "user", content: [{ type: "text", text: "check the file" }] }],
+        tools: [readTool],
+      } as any)
+      expect(fakeFetch).toHaveBeenCalledTimes(1)
+    } finally {
+      globalThis.fetch = origFetch
+    }
+  })
+
+  test("doGenerate does not continue a premature-looking stop when no tools are available", async () => {
+    const fakeFetch = mock(async () =>
+      new Response(
+        JSON.stringify({
+          output_schema: { result: { answer: "Let me check that for you.", token_input: 4, token_output: 2 } },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    )
+    const origFetch = globalThis.fetch
+    globalThis.fetch = fakeFetch as any
+
+    try {
+      // No `tools` option passed at all.
+      const model = createMerlin({ baseURL: "https://x.test" }).languageModel("default")
+      await model.doGenerate({ prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }] } as any)
+      expect(fakeFetch).toHaveBeenCalledTimes(1)
+    } finally {
+      globalThis.fetch = origFetch
+    }
+  })
+
+  test("doGenerate stops continuing after MAX_CONTINUATIONS rounds of premature stops", async () => {
+    const readTool = {
+      type: "function" as const,
+      name: "Read",
+      description: "Read a file",
+      inputSchema: { type: "object" as const, properties: {} },
+    }
+    // Every round announces intent and never emits a tool call.
+    const fakeFetch = mock(async () =>
+      new Response(
+        JSON.stringify({
+          output_schema: { result: { answer: "Let me read the file now.", token_input: 1, token_output: 1 } },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    )
+    const origFetch = globalThis.fetch
+    globalThis.fetch = fakeFetch as any
+
+    try {
+      const model = createMerlin({ baseURL: "https://x.test" }).languageModel("default")
+      const result = await model.doGenerate({
+        prompt: [{ role: "user", content: [{ type: "text", text: "go" }] }],
+        tools: [readTool],
+      } as any)
+
+      // 1 initial + MAX_CONTINUATIONS continuations, then gives up.
+      expect(fakeFetch).toHaveBeenCalledTimes(1 + MAX_CONTINUATIONS)
+      expect(result.content.some((p: any) => p.type === "tool-call")).toBe(false)
+      expect(result.finishReason).toMatchObject({ unified: "stop" })
+    } finally {
+      globalThis.fetch = origFetch
+    }
+  })
+
+  // ── Gateway parse-error detection ───────────────────────────────────────────
+
+  test("isGatewayParseError detects the captured session-error.md diagnostic", () => {
+    expect(
+      isGatewayParseError('Tool results was maybe incorrectly parsed for json\n\nBlock name: "read"\nError character: <newline>'),
+    ).toBe(true)
+  })
+
+  test("isGatewayParseError detects the Block name / Error character pair on its own", () => {
+    expect(isGatewayParseError('Block name: "write"\nError character: <tab>')).toBe(true)
+  })
+
+  test("isGatewayParseError does not flag a normal answer, even one that mentions json/parsing", () => {
+    expect(isGatewayParseError("Here's how to parse JSON in Python using json.loads().")).toBe(false)
+    expect(isGatewayParseError("The config block contains a valid JSON object.")).toBe(false)
+    expect(isGatewayParseError("The answer is 42.")).toBe(false)
+  })
+
+  test("doGenerate converts a gateway parse-diagnostic answer into a retryable APICallError", async () => {
+    const fakeFetch = mock(async () =>
+      new Response(
+        JSON.stringify({
+          output_schema: {
+            result: {
+              answer: 'Tool results was maybe incorrectly parsed for json\n\nBlock name: "read"\nError character: <newline>',
+              token_input: 4,
+              token_output: 2,
+            },
+          },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    )
+    const origFetch = globalThis.fetch
+    globalThis.fetch = fakeFetch as any
+
+    try {
+      const model = createMerlin({ baseURL: "https://x.test" }).languageModel("default")
+      await expect(
+        model.doGenerate({ prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }] } as any),
+      ).rejects.toMatchObject({
+        statusCode: 504,
+        isRetryable: true,
+        message: expect.not.stringContaining("context_length_exceeded"),
+      })
     } finally {
       globalThis.fetch = origFetch
     }

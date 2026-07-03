@@ -17,6 +17,9 @@
  *   { output_schema?: { result?: { answer, token_input, token_output } }, error_schema? }
  *
  * No true streaming — we perform a full request then emit a single text-delta.
+ * (The company's GAIA gateway proved unreliable under SSE streaming — connections
+ * were dropped mid-answer with no finish signal — so this adapter deliberately
+ * stays on the single request/response shape instead of /chat/completions SSE.)
  *
  * Tool calling strategy:
  *   Merlin has no native function-calling API, so we use prompt-based tool calling:
@@ -25,6 +28,24 @@
  *   3. Parse the model's text response for those blocks.
  *   4. Return LanguageModelV3 tool-call content parts so the AI SDK agentic loop
  *      can execute the real tools and send results back.
+ *
+ * Resilience layered on top of the base request/response flow:
+ *   - Timeouts and 5xx responses are surfaced as retryable APICallErrors so the
+ *     existing session-level retry policy (session/retry.ts) backs off and
+ *     re-sends automatically.
+ *   - DPA-124 ("engine error while processing the query") is treated as a
+ *     context-overflow condition and converted to a 413 APICallError so the
+ *     session auto-compacts instead of showing the canned error to the user.
+ *   - A genuine reply that only announces an action ("Let me read the key
+ *     files...") without ever emitting the tool call is detected and
+ *     transparently continued, bounded by MAX_CONTINUATIONS, so the agent loop
+ *     doesn't stall mid-task.
+ *   - An internal engine parse diagnostic ("Tool results was maybe incorrectly
+ *     parsed for json...") occasionally comes back as a 200 "answer" instead of
+ *     a real reply — usually when a large, multiline tool-result block fails to
+ *     JSON-parse gateway-side. This is detected and surfaced as a retryable
+ *     APICallError so it is treated as transient and retried, instead of being
+ *     shown to the user or misclassified as context overflow.
  */
 
 import { APICallError } from "@ai-sdk/provider"
@@ -46,6 +67,14 @@ const log = Log.create({ service: "merlin" })
 const MERLIN_ENDPOINT =
   "https://gaia-gateway-multimodal-uat.apps.ocpuatgra.dti.co.id/llm-gateway/multimodal"
 const CLIENT_ID = "MAGEDEV"
+
+/**
+ * Maximum number of transparent re-requests issued when the model announces an
+ * action ("Let me check the config...") but never actually emits the tool call
+ * for it (see `isPrematureActionStop`). Bounds retries so a model stuck in that
+ * pattern can't loop forever.
+ */
+export const MAX_CONTINUATIONS = 2
 
 // ── TLS bypass for the internal self-signed GAIA gateway ───────────────────────
 
@@ -545,6 +574,62 @@ function resolveServiceId(options: LanguageModelV3CallOptions): string {
   return SERVICE_IDS["general"]!
 }
 
+// ── Premature-stop detection ──────────────────────────────────────────────────
+
+// First-person intent to act; "let me know" is excluded since it's a common
+// turn-ending closer, not an announcement of pending work.
+const INTENT_RE = /\b(let me(?! know)|let'?s|i'?ll|i will|i'?m going to|going to|now i|next,? i|proceed to|proceed)\b/i
+// A tool-ish action verb that implies work should follow the announcement.
+const ACTION_RE =
+  /\b(read|check|run|look|search|create|write|update|edit|fix|explore|examine|investigate|gather|inspect|review|open|list|find|grep|analyze|start|build|test)\b/i
+
+/**
+ * The gateway sometimes returns a reply that only announces an action ("Let me
+ * read the key files...") with no `<tool_call>` at all — the announced work
+ * never happens and the agentic loop exits mid-task. Detect that pattern so
+ * the caller can transparently re-request instead of ending the turn. Gated on
+ * the trailing line only, and requires both an intent phrase and an action
+ * verb, to avoid re-prompting legitimate text-only final answers.
+ */
+export function isPrematureActionStop(fullText: string): boolean {
+  const lines = fullText
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean)
+  const lastLine = lines[lines.length - 1] ?? ""
+  return lastLine.length > 0 && INTENT_RE.test(lastLine) && ACTION_RE.test(lastLine)
+}
+
+// ── Gateway parse-error detection ─────────────────────────────────────────────
+
+// The engine occasionally returns an internal parse diagnostic as the ANSWER
+// (HTTP 200, non-empty) instead of a real reply — typically when it fails to
+// JSON-parse a large, multiline tool-result block out of the flattened prompt:
+//   "Tool results was maybe incorrectly parsed for json
+//    Block name: "read"
+//    Error character: <newline>"
+// Without this, the diagnostic slips past every other guard (no error_schema, no
+// <tool_call>, doesn't match isPrematureActionStop) and is shown to the user as
+// the assistant's reply. Match only the machine-diagnostic shapes (an opening
+// "tool results … incorrectly parsed" line, or the structured "Block name: …
+// Error character:" pair) so a genuine answer that merely mentions JSON/parsing
+// is never mistaken for one.
+const GATEWAY_PARSE_ERROR_RES = [
+  /\btool results?\b[\s\S]{0,40}\bincorrectly parsed\b/i,
+  /\bblock name:\s*["']?[\w.-]+["']?[\s\S]{0,80}\berror character:/i,
+]
+
+/**
+ * Detect a gateway-side parse-diagnostic masquerading as a normal answer (see
+ * `session-error.md` for a captured repro). Treated as a transient failure —
+ * the caller throws a retryable APICallError so the session retry policy
+ * (session/retry.ts) backs off and re-sends instead of showing raw engine
+ * internals to the user.
+ */
+export function isGatewayParseError(answer: string): boolean {
+  return GATEWAY_PARSE_ERROR_RES.some((re) => re.test(answer))
+}
+
 // ── Model implementation ──────────────────────────────────────────────────────
 
 class MerlinLanguageModel implements LanguageModelV3 {
@@ -616,7 +701,7 @@ class MerlinLanguageModel implements LanguageModelV3 {
       file_count: files.length,
       file_bytes: files.reduce((sum, f) => sum + f.length, 0),
     })
-    log.info("request_prompt", { prompt: body.prompt })
+    log.debug("request_prompt", { prompt: body.prompt })
 
     const signals: AbortSignal[] = [AbortSignal.timeout(this.timeoutMs)]
     if (options.abortSignal) signals.push(options.abortSignal)
@@ -624,17 +709,46 @@ class MerlinLanguageModel implements LanguageModelV3 {
     // Disable TLS verification for the internal self-signed GAIA endpoint. Bun
     // reads the `tls` option; Node (desktop sidecar) needs an undici dispatcher.
     const dispatcher = await getNodeInsecureDispatcher()
-    const response = await fetch(this.endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-      signal: AbortSignal.any(signals),
-      ...bunFetchTlsOption,
-      ...(dispatcher ? { dispatcher } : {}),
-    } as RequestInit)
+
+    let response: Response
+    try {
+      response = await fetch(this.endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal: AbortSignal.any(signals),
+        ...bunFetchTlsOption,
+        ...(dispatcher ? { dispatcher } : {}),
+      } as RequestInit)
+    } catch (error) {
+      // A user-initiated cancel must propagate untouched and never be retried.
+      if (options.abortSignal?.aborted) throw error
+      // Anything else here — including the per-request timeout
+      // (AbortSignal.timeout(this.timeoutMs)) firing — is a transient failure.
+      // Surface it as a retryable APICallError so the session-level retry
+      // policy (session/retry.ts) backs off and re-sends automatically.
+      log.warn("request_failed", { error: String(error) })
+      throw new APICallError({
+        message: `GAIA request failed or timed out: ${String(error)}`,
+        url: this.endpoint,
+        requestBodyValues: {},
+        statusCode: 504,
+        isRetryable: true,
+      })
+    }
 
     if (!response.ok) {
-      throw new Error(`GAIA HTTP ${response.status} ${response.statusText}`)
+      const responseText = await response.text().catch(() => "")
+      // 5xx are transient server failures (connection drops, OCP hiccups —
+      // DPA-115/117-class) and should be retried; 4xx are not.
+      throw new APICallError({
+        message: `GAIA HTTP ${response.status} ${response.statusText}: ${responseText}`,
+        url: this.endpoint,
+        requestBodyValues: {},
+        statusCode: response.status,
+        responseBody: responseText,
+        isRetryable: response.status >= 500,
+      })
     }
 
     const data = (await response.json()) as MerlinResponse
@@ -643,6 +757,20 @@ class MerlinLanguageModel implements LanguageModelV3 {
       log.error("DPA-124 err_debug", {
         error_code: data.error_schema.error_code,
         err_debug: data.output_schema?.err_debug ?? "(none)",
+      })
+      // DPA-124 ("engine error while processing the query") is GAIA's catch-all
+      // failure code, but in practice it fires almost exclusively when the
+      // prompt is too large for the engine to process. Always convert it to a
+      // context-overflow APICallError so the existing parseAPICallError →
+      // ContextOverflowError chain fires and the session auto-compacts and
+      // continues, instead of surfacing the canned Indonesian error to the user.
+      throw new APICallError({
+        message: `context_length_exceeded: GAIA DPA-124 (estimated ~${promptTokenEstimate} tokens): ${data.error_schema.error_message?.english ?? "engine error"}`,
+        url: this.endpoint,
+        requestBodyValues: {},
+        statusCode: 413,
+        responseBody: data.output_schema?.err_debug ?? "",
+        isRetryable: false,
       })
     }
 
@@ -683,6 +811,23 @@ class MerlinLanguageModel implements LanguageModelV3 {
         })
       }
       throw new Error("GAIA returned no answer in output_schema.result.answer")
+    }
+
+    if (isGatewayParseError(rawAnswer)) {
+      // A degenerate engine diagnostic came back as a 200 "answer" instead of a
+      // real reply (see isGatewayParseError). This is a transient gateway-side
+      // failure, not a context-overflow or a genuine model error — surface it as
+      // a retryable APICallError so session/retry.ts backs off and re-sends
+      // rather than showing engine internals to the user.
+      log.warn("gateway_parse_diagnostic", { answer: rawAnswer.slice(0, 500) })
+      throw new APICallError({
+        message: `GAIA returned an internal parse diagnostic instead of a reply (transient): ${rawAnswer.slice(0, 200)}`,
+        url: this.endpoint,
+        requestBodyValues: {},
+        statusCode: 504,
+        responseBody: rawAnswer,
+        isRetryable: true,
+      })
     }
 
     return {
@@ -790,8 +935,69 @@ class MerlinLanguageModel implements LanguageModelV3 {
     return { answer: first.answer, toolCalls, inputTokens: first.inputTokens, outputTokens: first.outputTokens }
   }
 
+  /**
+   * Wrap `resolveAnswer` with transparent continuation for the premature
+   * action-stop case: the model announced work ("Let me look at X...") but
+   * never emitted the `<tool_call>` for it. When that pattern is detected and
+   * tools are available, re-request with the accumulated answer folded back in
+   * as an assistant turn plus a nudge, bounded by MAX_CONTINUATIONS. Token usage
+   * and answer text are summed/concatenated across rounds so the caller sees one
+   * uninterrupted reply.
+   */
+  private async resolveWithContinuation(
+    options: LanguageModelV3CallOptions,
+  ): Promise<{ answer: string; toolCalls: ParsedCall[]; inputTokens: number; outputTokens: number }> {
+    const toolsAvailable = !!options.tools && options.tools.length > 0
+
+    let combinedAnswer = ""
+    let inputTokens = 0
+    let outputTokens = 0
+    let toolCalls: ParsedCall[] = []
+    let currentOptions = options
+
+    for (let round = 0; round <= MAX_CONTINUATIONS; round++) {
+      const result = await this.resolveAnswer(currentOptions)
+      inputTokens += result.inputTokens
+      outputTokens += result.outputTokens
+      combinedAnswer = combinedAnswer ? `${combinedAnswer}\n\n${result.answer}` : result.answer
+      toolCalls = result.toolCalls
+
+      // Only the latest round's delta can end in an "announced but not done" line, so
+      // check that instead of re-stripping the whole (monotonically growing) combined
+      // answer every round — avoids O(rounds * total length) work across continuations.
+      const strippedDelta = stripToolCalls(result.answer)
+      const premature = toolsAvailable && toolCalls.length === 0 && isPrematureActionStop(strippedDelta)
+      if (!premature) break
+
+      if (round >= MAX_CONTINUATIONS) {
+        log.warn("continuation_exhausted", { round, answer: stripToolCalls(combinedAnswer) })
+        break
+      }
+
+      log.warn("premature_action_stop", { round: round + 1, answer: result.answer })
+      currentOptions = {
+        ...options,
+        prompt: [
+          ...options.prompt,
+          { role: "assistant", content: [{ type: "text", text: combinedAnswer }] },
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: "You described your next step but did not carry it out. Continue by actually issuing the tool call and performing the work you described. Do not repeat any text you already produced.",
+              },
+            ],
+          },
+        ],
+      }
+    }
+
+    return { answer: combinedAnswer, toolCalls, inputTokens, outputTokens }
+  }
+
   async doGenerate(options: LanguageModelV3CallOptions): Promise<LanguageModelV3GenerateResult> {
-    const { answer, toolCalls, inputTokens, outputTokens } = await this.resolveAnswer(options)
+    const { answer, toolCalls, inputTokens, outputTokens } = await this.resolveWithContinuation(options)
 
     const usage = {
       inputTokens: { total: inputTokens, noCache: inputTokens, cacheRead: undefined, cacheWrite: undefined },
@@ -826,7 +1032,7 @@ class MerlinLanguageModel implements LanguageModelV3 {
   }
 
   async doStream(options: LanguageModelV3CallOptions): Promise<LanguageModelV3StreamResult> {
-    const { answer, toolCalls, inputTokens, outputTokens } = await this.resolveAnswer(options)
+    const { answer, toolCalls, inputTokens, outputTokens } = await this.resolveWithContinuation(options)
 
     const usage = {
       inputTokens: { total: inputTokens, noCache: inputTokens, cacheRead: undefined, cacheWrite: undefined },

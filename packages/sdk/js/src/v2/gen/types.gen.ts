@@ -1556,7 +1556,7 @@ export type Config = {
    */
   small_model?: string
   /**
-   * Default agent to use when none is specified. Must be a primary agent. Falls back to 'forge' if not set or if the specified agent is invalid.
+   * Default agent to use when none is specified. Must be a primary agent. Falls back to 'build' if not set or if the specified agent is invalid.
    */
   default_agent?: string
   /**
@@ -1575,10 +1575,10 @@ export type Config = {
    * Agent configuration, see https://mage.ai/docs/agents
    */
   agent?: {
-    oracle?: AgentConfig
-    forge?: AgentConfig
-    wisp?: AgentConfig
-    seeker?: AgentConfig
+    plan?: AgentConfig
+    build?: AgentConfig
+    general?: AgentConfig
+    explore?: AgentConfig
     title?: AgentConfig
     summary?: AgentConfig
     compaction?: AgentConfig

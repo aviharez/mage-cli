@@ -28,7 +28,7 @@ Tidak semua prompt memerlukan kelima bagian secara eksplisit. Untuk tugas kecil,
 
 ## Beri anchor, jangan dikte caranya
 
-Qwen3.6 27b bekerja paling baik saat diberi **titik awal yang jelas** — bukan prosedur langkah demi langkah yang Anda tentukan sendiri.
+Qwen3.6 27b bekerja paling baik saat diberi **titik awal yang jelas** — bukan prosedur langkah demi langkah yang Anda tentukan sendiri. Model ini sudah menjalankan loop agentic-nya sendiri (rencanakan → pakai tool → amati hasil → putuskan langkah berikutnya), jadi mendikte urutan langkah biasanya redundan, dan kadang malah bentrok dengan rencana yang sudah dibuat model.
 
 **Anchor yang berguna:**
 - Path file: `src/app/shared/components/data-table/`
@@ -160,6 +160,15 @@ Keep everything else unchanged.
 :::note[Iterasi kecil lebih aman]
 Minta perubahan satu per satu, bukan sekaligus. Setiap iterasi lebih mudah di-review dan lebih kecil kemungkinan model mengubah bagian yang tidak perlu disentuh.
 :::
+
+---
+
+## Sesi panjang: ulangi batasan penting
+
+Instruksi dan batasan yang Anda berikan di awal sesi bisa "melemah" seiring percakapan yang panjang — model cenderung lebih patuh pada instruksi yang baru saja diberikan dibanding instruksi lama yang sudah tertimbun banyak pesan. Untuk sesi yang berjalan lama atau multi-iterasi:
+
+- Ulangi batasan kritis (misalnya "jangan tambah dependency baru") setiap kali Anda meminta perubahan baru, jangan asumsikan model masih mengingatnya.
+- Jangan mengandalkan satu prompt panjang di awal sebagai jaminan perilaku model untuk seluruh sesi.
 
 ---
 
