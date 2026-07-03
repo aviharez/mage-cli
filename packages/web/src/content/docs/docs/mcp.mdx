@@ -1,0 +1,219 @@
+---
+title: MCP
+description: Apa itu MCP, cara menambahkan MCP server kustom, dan contoh penggunaan seperti Sentry serta Chrome DevTools.
+eyebrow: Dokumentasi
+---
+
+**MCP (Model Context Protocol)** adalah protokol standar yang menghubungkan Mage ke server eksternal yang menyediakan *tools*, data, dan konteks tambahan — mulai dari browser, database, hingga issue tracker. Anggap MCP sebagai "USB-C untuk tools AI": satu standar koneksi yang membuat agent bisa memakai kemampuan baru tanpa Mage perlu tahu detail implementasinya.
+
+Setelah sebuah MCP server terhubung, semua tool yang disediakannya otomatis tersedia untuk agent — tidak ada perintah khusus yang perlu dihafal. Anda cukup menulis prompt natural, dan model akan memilih tool yang relevan.
+
+---
+
+## Jenis server MCP
+
+| Tipe | Cara jalan | Kapan dipakai |
+|------|-----------|----------------|
+| `local` | Dijalankan sebagai proses lokal (command + argumen) | Tool yang berjalan di mesin Anda, mis. akses filesystem atau browser lokal |
+| `remote` | Terhubung ke URL server MCP jarak jauh (HTTP/SSE) | Layanan pihak ketiga yang di-hosting, mis. Sentry, Linear, dsb. — bisa memerlukan OAuth |
+
+---
+
+## Menambahkan MCP server (interaktif)
+
+Cara termudah adalah lewat wizard interaktif:
+
+```bash
+mage mcp add
+```
+
+Wizard akan menanyakan:
+
+1. **Location** — simpan di config proyek saat ini atau global (`~/.mage/mage.json`)
+2. **Nama** — nama unik untuk server ini, mis. `sentry` atau `chrome-devtools`
+3. **Type** — `Local` (jalankan command) atau `Remote` (URL)
+4. Untuk `Local`: **command** yang dijalankan, mis. `mage x @modelcontextprotocol/server-filesystem`
+5. Untuk `Remote`: **URL** server, lalu apakah server membutuhkan **OAuth**
+
+Setelah ditambahkan, cek statusnya:
+
+```bash
+mage mcp list
+```
+
+Setiap server akan menunjukkan status: `connected`, `disabled`, `needs authentication`, atau `failed`.
+
+Anda juga bisa mengaktifkan/menonaktifkan server tanpa mengedit config lewat TUI — ketik `/mcps` untuk membuka dialog toggle. Lihat [Slash Commands](/docs/slash-commands).
+
+---
+
+## Menambahkan lewat konfigurasi manual
+
+Server MCP juga bisa ditambahkan langsung dengan mengedit `mage.json` (lihat [Konfigurasi](/docs/konfigurasi) untuk lokasi file). Semua server didaftarkan di bawah key `mcp`, dengan nama server sebagai key.
+
+### Field untuk server `local`
+
+| Field | Wajib | Deskripsi |
+|-------|-------|-----------|
+| `type` | Ya | Harus `"local"` |
+| `command` | Ya | Array command + argumen yang dijalankan |
+| `environment` | Tidak | Environment variable tambahan untuk proses tersebut |
+| `enabled` | Tidak | `false` untuk menonaktifkan server tanpa menghapus config |
+| `timeout` | Tidak | Timeout request dalam ms (default 5000) |
+
+### Field untuk server `remote`
+
+| Field | Wajib | Deskripsi |
+|-------|-------|-----------|
+| `type` | Ya | Harus `"remote"` |
+| `url` | Ya | URL server MCP |
+| `headers` | Tidak | Header HTTP tambahan, mis. token API |
+| `oauth` | Tidak | Konfigurasi OAuth, atau `false` untuk menonaktifkan auto-deteksi OAuth |
+| `enabled` | Tidak | `false` untuk menonaktifkan server |
+| `timeout` | Tidak | Timeout request dalam ms (default 5000) |
+
+---
+
+## Contoh: Chrome DevTools (local)
+
+[Chrome DevTools MCP](https://github.com/ChromeDevTools/chrome-devtools-mcp) memberi agent kemampuan mengontrol dan menginspeksi browser Chrome — membuka halaman, membaca console log, memeriksa network request, dan lainnya.
+
+```json
+{
+  "mcp": {
+    "chrome-devtools": {
+      "type": "local",
+      "command": ["mage", "x", "chrome-devtools-mcp@latest"]
+    }
+  }
+}
+```
+
+**Contoh prompt:**
+
+- "Buka localhost:3000 dan cek apakah ada error di console"
+- "Ambil daftar network request yang gagal (status 4xx/5xx) di halaman ini"
+- "Screenshot halaman checkout dan jelaskan apa yang tampil"
+
+---
+
+## Contoh: Sentry (remote + OAuth)
+
+[Sentry MCP](https://docs.sentry.io/product/sentry-mcp/) memberi agent akses ke issue, stacktrace, dan data error dari project Sentry Anda. Karena ini server remote yang memerlukan autentikasi, gunakan OAuth.
+
+```json
+{
+  "mcp": {
+    "sentry": {
+      "type": "remote",
+      "url": "https://mcp.sentry.dev/mcp"
+    }
+  }
+}
+```
+
+Setelah menambahkan konfigurasi di atas, autentikasi dengan:
+
+```bash
+mage mcp auth sentry
+```
+
+Mage akan membuka browser untuk alur login OAuth. Setelah berhasil, token disimpan secara lokal dan server berstatus `connected` pada `mage mcp list`.
+
+**Contoh prompt:**
+
+- "Tampilkan 5 issue Sentry terbaru untuk project ini"
+- "Jelaskan stacktrace dari issue SENTRY-123 dan usulkan perbaikannya"
+- "Berapa banyak error baru muncul di production dalam 24 jam terakhir?"
+
+---
+
+## Contoh tambahan
+
+### Filesystem (local)
+
+Memberi agent akses baca/tulis terbatas ke direktori tertentu di luar workspace default:
+
+```json
+{
+  "mcp": {
+    "filesystem": {
+      "type": "local",
+      "command": ["mage", "x", "@modelcontextprotocol/server-filesystem", "/path/to/shared-docs"]
+    }
+  }
+}
+```
+
+**Contoh prompt:** "Cari file yang membahas API pembayaran di /path/to/shared-docs"
+
+### Remote dengan token API (tanpa OAuth)
+
+Untuk server remote yang memakai API key sederhana alih-alih OAuth:
+
+```json
+{
+  "mcp": {
+    "internal-api": {
+      "type": "remote",
+      "url": "https://internal.example.com/mcp",
+      "oauth": false,
+      "headers": {
+        "Authorization": "Bearer YOUR_API_TOKEN"
+      }
+    }
+  }
+}
+```
+
+**Contoh prompt:** "Ambil data status order #12345 dari internal API"
+
+---
+
+## Cara memakai MCP (prompt)
+
+Begitu server terhubung, tool-nya otomatis muncul di konteks agent — tidak perlu prefix atau perintah khusus. Cukup tulis apa yang ingin Anda lakukan dalam bahasa natural (Indonesia atau English), dan model akan memilih tool MCP yang paling relevan.
+
+| MCP server | Contoh prompt |
+|-----------|----------------|
+| Chrome DevTools | "Cek error console di localhost:3000" |
+| Sentry | "Tampilkan issue Sentry terbaru untuk project X" |
+| Filesystem | "Cari file konfigurasi di /path/to/shared-docs" |
+| Internal API (token) | "Ambil status order #12345" |
+
+:::tip[Tool tidak terpicu?]
+Pastikan server dalam status `connected` dengan `mage mcp list`, atau cek toggle-nya lewat `/mcps` di TUI. Server yang `disabled` atau `needs auth` tidak akan menyediakan tool ke agent.
+:::
+
+---
+
+## OAuth & autentikasi
+
+Untuk server remote dengan OAuth:
+
+| Perintah | Deskripsi |
+|----------|-----------|
+| `mage mcp auth [nama]` | Mulai/ulangi alur autentikasi OAuth untuk server tertentu |
+| `mage mcp auth list` | Tampilkan status OAuth semua server |
+| `mage mcp logout [nama]` | Hapus kredensial OAuth yang tersimpan |
+
+Secara default, server remote akan mencoba mendeteksi OAuth secara otomatis (dynamic client registration). Jika server Anda memerlukan client ID yang sudah terdaftar, tambahkan secara eksplisit:
+
+```json
+{
+  "mcp": {
+    "my-server": {
+      "type": "remote",
+      "url": "https://example.com/mcp",
+      "oauth": {
+        "clientId": "your-client-id",
+        "clientSecret": "your-client-secret"
+      }
+    }
+  }
+}
+```
+
+:::note[Server bermasalah?]
+Server yang gagal terhubung atau butuh autentikasi ulang akan terlihat statusnya lewat `mage mcp list`. Lihat [Troubleshooting](/docs/troubleshooting) untuk langkah lebih lanjut.
+:::
