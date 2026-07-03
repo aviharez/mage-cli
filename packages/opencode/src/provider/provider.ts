@@ -288,7 +288,7 @@ const layer: Layer.Layer<
               status: "active",
               capabilities: {
                 temperature: true,
-                reasoning: true,
+                reasoning: false,
                 attachment: false,
                 toolcall: true,
                 input: { text: true, audio: false, image: false, video: false, pdf: false },

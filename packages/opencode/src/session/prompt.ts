@@ -315,7 +315,7 @@ Goal: Gain a comprehensive understanding of the user's request by reading throug
 
 1. Focus on understanding the user's request and the code associated with their request
 
-2. **Launch up to ${Flag.MAGE_SUBAGENT} explore agent(s) IN PARALLEL** (single message, multiple tool calls) to explore the codebase.
+2. **Launch up to 3 explore agents IN PARALLEL** (single message, multiple tool calls) to explore the codebase.
  - Use 1 agent when the task is isolated to known files, the user provided specific file paths, or you're making a small targeted change.
  - Use multiple agents when: the scope is uncertain, multiple areas of the codebase are involved, or you need to understand existing patterns before planning.
  - Quality over quantity - 3 agents maximum, but you should try to use the minimum number of agents necessary (usually just 1)
@@ -328,7 +328,7 @@ Goal: Design an implementation approach.
 
 Launch general agent(s) to design the implementation based on the user's intent and your exploration results from Phase 1.
 
-You can launch up to ${Flag.MAGE_SUBAGENT} agent(s) in parallel.
+You can launch up to 1 agent(s) in parallel.
 
 **Guidelines:**
 - **Default**: Launch at least 1 Plan agent for most tasks - it helps validate your understanding and consider alternatives

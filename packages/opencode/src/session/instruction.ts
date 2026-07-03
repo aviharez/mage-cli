@@ -1,6 +1,6 @@
 import os from "os"
 import path from "path"
-import { Effect, Layer, Context } from "effect"
+import { Effect, Layer, Context, Option } from "effect"
 import { FetchHttpClient, HttpClient, HttpClientRequest } from "effect/unstable/http"
 import { Config } from "@/config"
 import { InstanceState } from "@/effect"
@@ -76,6 +76,10 @@ export const layer: Layer.Layer<Service, never, AppFileSystem.Service | Config.S
           Effect.succeed({
             // Track which instruction files have already been attached for a given assistant message.
             claims: new Map<MessageID, Set<string>>(),
+            // Cache the last computed system() result, keyed by each instruction file's
+            // path+mtime plus the configured URLs, so unchanged files aren't re-read from
+            // disk on every agentic step (system() runs once per step, not once per session).
+            systemCache: undefined as { key: string; result: string[] } | undefined,
           }),
         ),
       )
@@ -166,14 +170,35 @@ export const layer: Layer.Layer<Service, never, AppFileSystem.Service | Config.S
         const urls = (config.instructions ?? []).filter(
           (item) => item.startsWith("https://") || item.startsWith("http://"),
         )
+        const pathList = Array.from(paths)
 
-        const files = yield* Effect.forEach(Array.from(paths), read, { concurrency: 8 })
+        // Build a cache key from each file's mtime so an edit mid-session busts the
+        // cache, but an unchanged file is not re-read on every step.
+        const stats = yield* Effect.forEach(
+          pathList,
+          (item) => fs.stat(item).pipe(Effect.catch(() => Effect.succeed(undefined))),
+          { concurrency: 8 },
+        )
+        const key = JSON.stringify([
+          pathList.map((item, i) => [
+            item,
+            stats[i] ? Option.getOrElse(stats[i]!.mtime, () => new Date(0)).getTime() : -1,
+          ]),
+          urls,
+        ])
+
+        const s = yield* InstanceState.get(state)
+        if (s.systemCache && s.systemCache.key === key) return s.systemCache.result
+
+        const files = yield* Effect.forEach(pathList, read, { concurrency: 8 })
         const remote = yield* Effect.forEach(urls, fetch, { concurrency: 4 })
 
-        return [
-          ...Array.from(paths).flatMap((item, i) => (files[i] ? [`Instructions from: ${item}\n${files[i]}`] : [])),
+        const result = [
+          ...pathList.flatMap((item, i) => (files[i] ? [`Instructions from: ${item}\n${files[i]}`] : [])),
           ...urls.flatMap((item, i) => (remote[i] ? [`Instructions from: ${item}\n${remote[i]}`] : [])),
         ]
+        s.systemCache = { key, result }
+        return result
       })
 
       const find = Effect.fn("Instruction.find")(function* (dir: string) {

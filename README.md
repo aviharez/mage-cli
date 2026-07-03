@@ -2,7 +2,7 @@
 
 AI coding assistant for the terminal, powered by GAIA.
 
-Current version: **v1.2.8**
+Current version: **v1.2.9**
 
 ---
 

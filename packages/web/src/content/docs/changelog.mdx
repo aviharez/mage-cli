@@ -8,6 +8,30 @@ import { Card } from "@astrojs/starlight/components"
 
 ---
 
+## v1.2.9
+
+_3 Juli 2026_
+
+### Yang baru
+- **Dokumentasi MCP** — Halaman baru di bawah Penggunaan yang menjelaskan cara menambahkan MCP server (local/remote) via `mage mcp add` atau config manual, lengkap contoh Chrome DevTools & Sentry.
+- **Rename agent** — Seluruh agent dinamai ulang menjadi `build`, `plan`, `explore`, dan `general`.
+- **Subagent paralel tanpa batas** — Batas `MAGE_SUBAGENT` dihapus; subagent dan tool call kini berjalan paralel tanpa dibatasi (seperti upstream), mengembalikan throttle yang ditambahkan di v1.2.7.
+- **Estimasi token sidebar** — Sidebar menampilkan pemakaian context berdasarkan estimasi token sisi klien, sehingga tetap akurat meski gateway GAIA tidak mengirim data usage.
+
+### Perbaikan
+- **Todo list di context tiap turn** — Daftar todo dibaca ulang dari DB dan disuntikkan sebagai system-reminder setiap turn, sehingga model tidak mengulang langkah yang sudah selesai meski melewati batas compaction.
+- **Auto-recovery Merlin lebih tangguh** — Beberapa kondisi gateway GAIA kini pulih otomatis, bukan ditampilkan sebagai error ke pengguna:
+  - Error **DPA-124** dikonversi ke jalur context-overflow sehingga session otomatis compact lalu lanjut.
+  - Jawaban yang hanya mengumumkan aksi (mis. "Let me read the files...") tanpa benar-benar memanggil tool kini disambung otomatis (terbatas beberapa putaran) agar agent tidak berhenti di tengah tugas.
+  - Diagnostik gateway yang bersifat sementara (tool result gagal di-parse) diperlakukan sebagai error retryable dan diulang, bukan disalahartikan sebagai overflow.
+- **Compaction overflow** — Mengatasi "history too large to compact" dengan membuang byte output tool call lama (dan, bila perlu, turn tertua) sebelum request summarization. Gauge token sidebar juga mengecualikan summary compaction sehingga turun setelah compact.
+- **Cache instruksi AGENTS.md** — File instruksi tidak lagi dibaca ulang dari disk pada setiap step (di-cache berdasarkan mtime), mengurangi overhead per turn.
+
+### Performa
+- **Kondensasi built-in prompt** — Prompt bawaan `bash`, `todowrite`, dan `qwen` diringkas (~27KB → ~9KB) tanpa menghapus aturan perilaku/keamanan, untuk memangkas token overhead per turn pada Merlin/GAIA yang tidak punya caching sisi gateway.
+
+---
+
 ## v1.2.8
 
 _15 Juni 2026_

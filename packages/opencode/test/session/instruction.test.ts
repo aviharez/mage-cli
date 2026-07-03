@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import path from "path"
+import NFS from "fs/promises"
 import { Effect } from "effect"
 import { ModelID, ProviderID } from "../../src/provider/schema"
 import { Instruction } from "../../src/session/instruction"
@@ -269,6 +270,42 @@ describe("Instruction.system", () => {
         process.env["MAGE_CONFIG_DIR"] = originalConfigDir
       }
     }
+  })
+
+  test("caches system() result and skips re-reading an instruction file whose mtime is unchanged", async () => {
+    await using tmp = await tmpdir({
+      init: async (dir) => {
+        await Bun.write(path.join(dir, "AGENTS.md"), "# Original Instructions")
+      },
+    })
+    const agentsPath = path.join(tmp.path, "AGENTS.md")
+
+    await Instance.provide({
+      directory: tmp.path,
+      fn: () =>
+        run(
+          Instruction.Service.use((svc) =>
+            Effect.gen(function* () {
+              const first = yield* svc.system()
+              expect(first).toContain(`Instructions from: ${agentsPath}\n# Original Instructions`)
+
+              // Overwrite the content but restore the original mtime — a cache keyed on
+              // mtime should not notice this change and must return the stale content.
+              const stat = yield* Effect.promise(() => NFS.stat(agentsPath))
+              yield* Effect.promise(() => Bun.write(agentsPath, "# Changed Without Mtime Bump"))
+              yield* Effect.promise(() => NFS.utimes(agentsPath, stat.atime, stat.mtime))
+
+              const second = yield* svc.system()
+              expect(second).toEqual(first)
+
+              // Bumping the mtime must invalidate the cache and pick up the new content.
+              yield* Effect.promise(() => NFS.utimes(agentsPath, new Date(), new Date(stat.mtime.getTime() + 60_000)))
+              const third = yield* svc.system()
+              expect(third).toContain(`Instructions from: ${agentsPath}\n# Changed Without Mtime Bump`)
+            }),
+          ),
+        ),
+    })
   })
 })
 
