@@ -33,13 +33,15 @@ type McpCatalogEntry = {
 type CatalogData = {
   skills: SkillCatalogEntry[]
   mcp: McpCatalogEntry[]
+  connected: boolean
 }
 
-type Scope = "global" | "project"
+// Skills and MCP servers are always installed to the global scope — there is
+// no per-project install option for /catalog entries.
+const INSTALL_SCOPE = "global" as const
 
 const id = "internal:marketplace"
 const spaceKey = Keybind.parse("space").at(0)
-const tabKey = Keybind.parse("tab").at(0)
 
 // ------------------------------------------------------------------
 // Sequential input collector (same pattern as PromptsMethod in dialog-provider.tsx)
@@ -76,23 +78,23 @@ async function installByName(
   api: TuiPluginApi,
   catalogData: CatalogData,
   name: string,
-  scope: Scope,
+  type: "skill" | "mcp" | undefined,
   dialog: ReturnType<typeof useDialog>,
 ): Promise<void> {
-  // Try skill first
-  const skillEntry = catalogData.skills.find((s) => s.name === name)
+  // Try skill first (unless the caller pinned the type to "mcp")
+  const skillEntry = type !== "mcp" ? catalogData.skills.find((s) => s.name === name) : undefined
   if (skillEntry) {
-    const res = await api.client.marketplace.skill.install({ name, scope })
+    const res = await api.client.marketplace.skill.install({ name, scope: INSTALL_SCOPE })
     if (!res.data) throw new Error("Install failed")
     api.ui.toast({
       variant: "success",
-      message: `Skill "${name}" installed (${scope}). Start a new session to use it.`,
+      message: `Skill "${name}" installed (global). Start a new session to use it.`,
     })
     return
   }
 
-  // Try MCP
-  const mcpEntry = catalogData.mcp.find((m) => m.name === name)
+  // Try MCP (unless the caller pinned the type to "skill")
+  const mcpEntry = type !== "skill" ? catalogData.mcp.find((m) => m.name === name) : undefined
   if (mcpEntry) {
     const inputs = mcpEntry.inputs ?? []
     let collected: Record<string, string> = {}
@@ -101,11 +103,11 @@ async function installByName(
       if (result === null) return // cancelled
       collected = result
     }
-    const res = await api.client.marketplace.mcp.install({ name, scope, inputs: collected })
+    const res = await api.client.marketplace.mcp.install({ name, scope: INSTALL_SCOPE, inputs: collected })
     if (!res.data) throw new Error("Install failed")
     api.ui.toast({
       variant: "success",
-      message: `MCP server "${name}" installed and connected (${scope}).`,
+      message: `MCP server "${name}" installed and connected (global).`,
     })
     return
   }
@@ -117,7 +119,7 @@ async function installByName(
 // DirectInstall — used when /catalog is invoked with arguments
 // Renders inside a dialog: fetches catalog, optionally collects MCP inputs, installs.
 // ------------------------------------------------------------------
-function DirectInstall(props: { api: TuiPluginApi; name: string; scope: Scope }) {
+function DirectInstall(props: { api: TuiPluginApi; name: string; type?: "skill" | "mcp" }) {
   const dialog = useDialog()
   const [status, setStatus] = createSignal<"loading" | "done">("loading")
   const [error, setError] = createSignal<string | null>(null)
@@ -126,7 +128,9 @@ function DirectInstall(props: { api: TuiPluginApi; name: string; scope: Scope })
     try {
       const res = await props.api.client.marketplace.catalog()
       if (!res.data) throw new Error("Failed to fetch catalog")
-      await installByName(props.api, res.data as CatalogData, props.name, props.scope, dialog)
+      const data = res.data as CatalogData
+      if (!data.connected) throw new Error("Failed to connect to Rune")
+      await installByName(props.api, data, props.name, props.type, dialog)
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e)
       setError(msg)
@@ -144,9 +148,7 @@ function DirectInstall(props: { api: TuiPluginApi; name: string; scope: Scope })
       busy={status() === "loading"}
       busyText={`Installing "${props.name}"...`}
       description={() =>
-        error() ? (
-          <span style={{ fg: props.api.theme.current.error }}>{error()}</span>
-        ) : null
+        error() ? <text fg={props.api.theme.current.error}>{error()}</text> : null
       }
       onCancel={() => dialog.clear()}
       onConfirm={() => dialog.clear()}
@@ -161,7 +163,6 @@ function Browse(props: { api: TuiPluginApi; catalog: CatalogData }) {
   const size = useTerminalDimensions()
   const dialog = useDialog()
 
-  const [scope, setScope] = createSignal<Scope>("global")
   const [busyName, setBusyName] = createSignal<string | null>(null)
   const [cur, setCur] = createSignal<string | undefined>()
   const [installedSkills, setInstalledSkills] = createSignal(new Set<string>())
@@ -246,13 +247,13 @@ function Browse(props: { api: TuiPluginApi; catalog: CatalogData }) {
       try {
         const res = await props.api.client.marketplace.skill.install({
           name,
-          scope: scope(),
+          scope: INSTALL_SCOPE,
         })
         if (!res.data) throw new Error("Install failed")
         setInstalledSkills((s) => new Set([...s, name]))
         props.api.ui.toast({
           variant: "success",
-          message: `Skill "${name}" installed (${scope()}). Start a new session to use it.`,
+          message: `Skill "${name}" installed (global). Start a new session to use it.`,
         })
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e)
@@ -285,14 +286,14 @@ function Browse(props: { api: TuiPluginApi; catalog: CatalogData }) {
       try {
         const res = await props.api.client.marketplace.mcp.install({
           name,
-          scope: scope(),
+          scope: INSTALL_SCOPE,
           inputs: collected,
         })
         if (!res.data) throw new Error("Install failed")
         setConnectedMcp((s) => new Set([...s, name]))
         props.api.ui.toast({
           variant: "success",
-          message: `MCP server "${name}" installed and connected (${scope()}).`,
+          message: `MCP server "${name}" installed and connected (global).`,
         })
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e)
@@ -321,14 +322,6 @@ function Browse(props: { api: TuiPluginApi; catalog: CatalogData }) {
             void doInstall(item.value)
           },
         },
-        {
-          title: scope() === "global" ? "global" : "project",
-          keybind: tabKey,
-          side: "left",
-          onTrigger: () => {
-            setScope((s) => (s === "global" ? "project" : "global"))
-          },
-        },
       ]}
       onSelect={(item) => {
         setCur(item.value)
@@ -350,24 +343,42 @@ function CatalogView(props: { api: TuiPluginApi }) {
     }),
   )
 
+  // Distinguish "reached the registry but nothing published" (connected,
+  // empty) from "couldn't reach the registry" (not connected) — each gets
+  // its own message rather than both silently showing an empty list.
+  const notConnected = () => !catalog.loading && !catalog.error && catalog()?.connected === false
+  const isEmpty = () =>
+    !catalog.loading &&
+    !catalog.error &&
+    catalog()?.connected === true &&
+    (catalog()?.skills.length ?? 0) === 0 &&
+    (catalog()?.mcp.length ?? 0) === 0
+  const showBrowse = () => !catalog.loading && !catalog.error && !notConnected() && !isEmpty()
+
   return (
     <Show
-      when={!catalog.loading && !catalog.error}
+      when={showBrowse()}
       fallback={
         <props.api.ui.DialogPrompt
           title="Catalog"
           placeholder=""
           busy={catalog.loading}
           busyText={catalog.loading ? "Loading catalog..." : ""}
-          description={() =>
-            catalog.error ? (
-              <span style={{ fg: props.api.theme.current.error }}>
-                {catalog.error instanceof Error
+          description={() => {
+            if (catalog.loading) return null
+            let message: string | null = null
+            if (catalog.error) {
+              message =
+                catalog.error instanceof Error
                   ? catalog.error.message
-                  : "Failed to load catalog. Is marketplace.registry configured?"}
-              </span>
-            ) : null
-          }
+                  : "Failed to load catalog. Is marketplace.registry configured?"
+            } else if (notConnected()) {
+              message = "Failed to connect to Rune"
+            } else if (isEmpty()) {
+              message = "No catalog available"
+            }
+            return message ? <text fg={props.api.theme.current.error}>{message}</text> : null
+          }}
           onCancel={() => dialog.clear()}
           onConfirm={() => dialog.clear()}
         />
@@ -383,10 +394,11 @@ function show(api: TuiPluginApi) {
 }
 
 // ------------------------------------------------------------------
-// Parse /catalog args: "[add] <name> [global|project]"
-// Returns null if no name could be extracted.
+// Parse /catalog args: "[add] [skills|skill|mcp|mcps] <name>"
+// Returns null if no name could be extracted. Installs always target the
+// global scope, so there is no scope token to parse.
 // ------------------------------------------------------------------
-function parseInstallArgs(args: string): { name: string; scope: Scope } | null {
+function parseInstallArgs(args: string): { name: string; type?: "skill" | "mcp" } | null {
   const tokens = args.trim().split(/\s+/).filter(Boolean)
   if (tokens.length === 0) return null
 
@@ -395,13 +407,21 @@ function parseInstallArgs(args: string): { name: string; scope: Scope } | null {
   if (remaining[0]?.toLowerCase() === "add") remaining = remaining.slice(1)
   if (remaining.length === 0) return null
 
+  // Optional leading type keyword ("skills"/"skill" or "mcp"/"mcps")
+  let type: "skill" | "mcp" | undefined
+  const head = remaining[0]?.toLowerCase()
+  if (head === "skill" || head === "skills") {
+    type = "skill"
+    remaining = remaining.slice(1)
+  } else if (head === "mcp" || head === "mcps") {
+    type = "mcp"
+    remaining = remaining.slice(1)
+  }
+  if (remaining.length === 0) return null
+
   const name = remaining[0]!
 
-  // Optional trailing scope token
-  const last = remaining[remaining.length - 1]?.toLowerCase()
-  const scope: Scope = last === "project" ? "project" : "global"
-
-  return { name, scope }
+  return { name, type }
 }
 
 // ------------------------------------------------------------------
@@ -426,7 +446,7 @@ const tui: TuiPlugin = async (api) => {
         }
         // Direct install: open a transient dialog that handles the flow
         api.ui.dialog.replace(() => (
-          <DirectInstall api={api} name={parsed.name} scope={parsed.scope} />
+          <DirectInstall api={api} name={parsed.name} type={parsed.type} />
         ))
       },
     },

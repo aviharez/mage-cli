@@ -22,6 +22,9 @@ import path from "path"
 
 // Re-export the Catalog zod schema for OpenAPI resolver
 const CatalogSchema = z.object({
+  connected: z
+    .boolean()
+    .describe("Whether the registry was reached; false means the bundled fallback catalog is being shown"),
   skills: z
     .array(
       z.object({
@@ -135,14 +138,12 @@ export const MarketplaceRoutes = lazy(() =>
           const cfg = yield* Config.Service
           const config = yield* cfg.get()
 
+          // resolveRegistry/resolveToken return undefined when nothing is
+          // configured — Marketplace.catalog/installSkill fall back to
+          // Rune's baked-in default GitLab registry in that case, so there's
+          // no need to hard-fail here the way earlier versions did.
           const registry = resolveRegistry(config.marketplace?.registry)
           const token = resolveToken(config.marketplace?.token)
-
-          if (!registry) {
-            throw new Error(
-              "No marketplace registry configured. Set MAGE_MARKETPLACE_REGISTRY or marketplace.registry in mage.json.",
-            )
-          }
 
           const cat = yield* Effect.promise(() => Marketplace.catalog(registry, token))
           const entry = cat.skills.find((s) => s.name === name)
@@ -194,14 +195,10 @@ export const MarketplaceRoutes = lazy(() =>
           const cfg = yield* Config.Service
           const config = yield* cfg.get()
 
+          // See the /skill route above: undefined registry/token fall back
+          // to Rune's baked-in default GitLab registry inside Marketplace.catalog.
           const registry = resolveRegistry(config.marketplace?.registry)
           const token = resolveToken(config.marketplace?.token)
-
-          if (!registry) {
-            throw new Error(
-              "No marketplace registry configured. Set MAGE_MARKETPLACE_REGISTRY or marketplace.registry in mage.json.",
-            )
-          }
 
           const cat = yield* Effect.promise(() => Marketplace.catalog(registry, token))
           const entry = cat.mcp.find((m) => m.name === name)
