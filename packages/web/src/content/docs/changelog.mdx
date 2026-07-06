@@ -21,7 +21,7 @@ _3 Juli 2026_
 ### Perbaikan
 - **Todo list di context tiap turn** — Daftar todo dibaca ulang dari DB dan disuntikkan sebagai system-reminder setiap turn, sehingga model tidak mengulang langkah yang sudah selesai meski melewati batas compaction.
 - **Auto-recovery Merlin lebih tangguh** — Beberapa kondisi gateway GAIA kini pulih otomatis, bukan ditampilkan sebagai error ke pengguna:
-  - Error **DPA-124** dikonversi ke jalur context-overflow sehingga session otomatis compact lalu lanjut.
+  - Error **An error occurred while the engine was processing the query** dikonversi ke jalur context-overflow sehingga session otomatis compact lalu lanjut.
   - Jawaban yang hanya mengumumkan aksi (mis. "Let me read the files...") tanpa benar-benar memanggil tool kini disambung otomatis (terbatas beberapa putaran) agar agent tidak berhenti di tengah tugas.
   - Diagnostik gateway yang bersifat sementara (tool result gagal di-parse) diperlakukan sebagai error retryable dan diulang, bukan disalahartikan sebagai overflow.
 - **Compaction overflow** — Mengatasi "history too large to compact" dengan membuang byte output tool call lama (dan, bila perlu, turn tertua) sebelum request summarization. Gauge token sidebar juga mengecualikan summary compaction sehingga turun setelah compact.
