@@ -33,9 +33,11 @@
  *   - Timeouts and 5xx responses are surfaced as retryable APICallErrors so the
  *     existing session-level retry policy (session/retry.ts) backs off and
  *     re-sends automatically.
- *   - DPA-124 ("engine error while processing the query") is treated as a
- *     context-overflow condition and converted to a 413 APICallError so the
- *     session auto-compacts instead of showing the canned error to the user.
+ *   - DPA-124 ("engine error while processing the query") is GAIA's catch-all
+ *     failure code. Only DPA-124s whose err_debug names a context-length limit
+ *     are treated as context overflow and converted to a 413 APICallError so
+ *     the session auto-compacts; other DPA-124s (e.g. a generic engine 500)
+ *     surface as "GAIA Error: 500 Internal Server Error" without compacting.
  *   - A genuine reply that only announces an action ("Let me read the key
  *     files...") without ever emitting the tool call is detected and
  *     transparently continued, bounded by MAX_CONTINUATIONS, so the agent loop
@@ -754,24 +756,30 @@ class MerlinLanguageModel implements LanguageModelV3 {
     const data = (await response.json()) as MerlinResponse
 
     if (data.error_schema?.error_code === "DPA-124") {
+      const errDebug = data.output_schema?.err_debug ?? ""
       log.error("DPA-124 err_debug", {
         error_code: data.error_schema.error_code,
-        err_debug: data.output_schema?.err_debug ?? "(none)",
+        err_debug: errDebug || "(none)",
       })
       // DPA-124 ("engine error while processing the query") is GAIA's catch-all
-      // failure code, but in practice it fires almost exclusively when the
-      // prompt is too large for the engine to process. Always convert it to a
-      // context-overflow APICallError so the existing parseAPICallError →
-      // ContextOverflowError chain fires and the session auto-compacts and
-      // continues, instead of surfacing the canned Indonesian error to the user.
-      throw new APICallError({
-        message: `context_length_exceeded: GAIA DPA-124 (estimated ~${promptTokenEstimate} tokens): ${data.error_schema.error_message?.english ?? "engine error"}`,
-        url: this.endpoint,
-        requestBodyValues: {},
-        statusCode: 413,
-        responseBody: data.output_schema?.err_debug ?? "",
-        isRetryable: false,
-      })
+      // failure code. It fires both for real context overflow (err_debug names
+      // the model's context length limit) and for unrelated engine failures
+      // (err_debug is a generic 500 Internal Server Error page). Only the former
+      // should convert to a context-overflow APICallError so the existing
+      // parseAPICallError → ContextOverflowError chain fires and the session
+      // auto-compacts; the latter is not a context problem and must not trigger
+      // compaction.
+      if (errDebug.toLowerCase().includes("context length")) {
+        throw new APICallError({
+          message: `context_length_exceeded: GAIA DPA-124 (estimated ~${promptTokenEstimate} tokens): ${data.error_schema.error_message?.english ?? "engine error"}`,
+          url: this.endpoint,
+          requestBodyValues: {},
+          statusCode: 413,
+          responseBody: errDebug,
+          isRetryable: false,
+        })
+      }
+      throw new Error("GAIA Error: 500 Internal Server Error")
     }
 
     if (
