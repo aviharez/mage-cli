@@ -1266,6 +1266,19 @@ function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; las
     return props.message.time.completed - user.time.created
   })
 
+  // Merlin (and any other non-streaming provider) can take a long time between
+  // the assistant message being created and the first visible output. Surface
+  // an explicit "still working" indicator beside the agent name for the
+  // duration of the turn so it isn't mistaken for a hang.
+  const running = createMemo(() => {
+    return (
+      props.last &&
+      !final() &&
+      props.message.error?.name !== "MessageAbortedError" &&
+      sync.data.session_status?.[props.message.sessionID]?.type === "busy"
+    )
+  })
+
   const keybind = useKeybind()
 
   return (
@@ -1309,8 +1322,8 @@ function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; las
       </Show>
       <Switch>
         <Match when={props.last || final() || props.message.error?.name === "MessageAbortedError"}>
-          <box paddingLeft={3}>
-            <text marginTop={1}>
+          <box paddingLeft={3} flexDirection="row" gap={1} marginTop={1}>
+            <text>
               <span
                 style={{
                   fg:
@@ -1332,6 +1345,9 @@ function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; las
                 <span style={{ fg: theme.textMuted }}> · interrupted</span>
               </Show>
             </text>
+            <Show when={running()}>
+              <Spinner color={local.agent.color(props.message.agent)}>Agent process running…</Spinner>
+            </Show>
           </box>
         </Match>
       </Switch>

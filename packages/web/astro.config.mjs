@@ -177,6 +177,7 @@ export default defineConfig({
             "docs/penggunaan",
             "docs/slash-commands",
             "docs/skills",
+            "docs/mcp",
           ],
         },
         {

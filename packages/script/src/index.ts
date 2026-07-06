@@ -25,7 +25,7 @@ const env = {
 }
 // Branches that represent production releases; builds from these use the "latest" dist-tag.
 const PRODUCTION_BRANCHES = new Set(
-  (process.env.MAGE_MAIN_BRANCH ?? "main,master,mage/main,DEV/INIT").split(",").map((b) => b.trim()),
+  (process.env.MAGE_MAIN_BRANCH ?? "main,master,staging,DEV1").split(",").map((b) => b.trim()),
 )
 
 const CHANNEL = await (async () => {

@@ -264,12 +264,7 @@ export const layer: Layer.Layer<
             `- ${item.name}: ${item.description ?? "This subagent should only be called manually by the user."}`,
         )
         .join("\n")
-      return [
-        "Available agent types and the tools they have access to:",
-        description,
-        "",
-        `**Parallelism limit:** You may launch up to ${Flag.MAGE_SUBAGENT} agent(s) in parallel (call the task tool up to ${Flag.MAGE_SUBAGENT} times in one message). If you need more, run them in batches — wait for all running agents to finish before launching the next batch.`,
-      ].join("\n")
+      return ["Available agent types and the tools they have access to:", description].join("\n")
     })
 
     const tools: Interface["tools"] = Effect.fn("ToolRegistry.tools")(function* (input) {
