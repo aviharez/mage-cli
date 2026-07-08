@@ -297,7 +297,14 @@ const layer: Layer.Layer<
               },
               cost: { input: 0, output: 0, cache: { read: 0, write: 0 } },
               options: {},
-              limit: { context: 128000, output: 32000 },
+              // GAIA's actually-accepted context is smaller than the model's
+              // nominal 128k (and flattenPrompt's XML/tool-schema overhead
+              // widens the gap further), so requests sized against 128000
+              // were being rejected by GAIA with a context-length DPA-124.
+              // Lowered to a more conservative estimate so auto-compaction
+              // triggers earlier; session/compaction.ts's retry-shrink loop is
+              // the real safety net if this is still too high.
+              limit: { context: 96000, output: 32000 },
               headers: {},
               family: "qwen",
               release_date: "2025-07-01",

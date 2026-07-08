@@ -30,9 +30,15 @@
  *      can execute the real tools and send results back.
  *
  * Resilience layered on top of the base request/response flow:
- *   - Timeouts and 5xx responses are surfaced as retryable APICallErrors so the
- *     existing session-level retry policy (session/retry.ts) backs off and
- *     re-sends automatically.
+ *   - Only a genuine per-request timeout (AbortSignal.timeout(this.timeoutMs)
+ *     firing) is surfaced as a retryable APICallError, so the existing
+ *     session-level retry policy (session/retry.ts) backs off and re-sends
+ *     automatically. Every other failure — non-timeout fetch errors, HTTP
+ *     error responses (including 5xx), and the gateway parse-diagnostic below
+ *     — is surfaced as non-retryable (isRetryable: false, no >=500
+ *     statusCode) so it is shown once instead of retried indefinitely
+ *     (retry.ts has no max-attempt cap and retries on `isRetryable ||
+ *     statusCode >= 500`).
  *   - DPA-124 ("engine error while processing the query") is GAIA's catch-all
  *     failure code. Only DPA-124s whose err_debug names a context-length limit
  *     are treated as context overflow and converted to a 413 APICallError so
@@ -45,9 +51,10 @@
  *   - An internal engine parse diagnostic ("Tool results was maybe incorrectly
  *     parsed for json...") occasionally comes back as a 200 "answer" instead of
  *     a real reply — usually when a large, multiline tool-result block fails to
- *     JSON-parse gateway-side. This is detected and surfaced as a retryable
- *     APICallError so it is treated as transient and retried, instead of being
- *     shown to the user or misclassified as context overflow.
+ *     JSON-parse gateway-side. This is detected and surfaced as a
+ *     non-retryable APICallError (not a timeout, so not auto-retried) instead
+ *     of being shown to the user as raw engine internals or misclassified as
+ *     context overflow.
  */
 
 import { APICallError } from "@ai-sdk/provider"
@@ -60,7 +67,7 @@ import type {
   LanguageModelV3StreamPart,
   LanguageModelV3ToolResultOutput,
 } from "@ai-sdk/provider"
-import { Log } from "../util"
+import { Log, Network } from "../util"
 
 const log = Log.create({ service: "merlin" })
 
@@ -77,40 +84,6 @@ const CLIENT_ID = "MAGEDEV"
  * pattern can't loop forever.
  */
 export const MAX_CONTINUATIONS = 2
-
-// ── TLS bypass for the internal self-signed GAIA gateway ───────────────────────
-
-const isBun = typeof (globalThis as { Bun?: unknown }).Bun !== "undefined"
-
-/**
- * The GAIA UAT gateway serves a self-signed certificate, so TLS verification has
- * to be disabled for the Merlin request. The two runtimes that host the server
- * need different mechanisms:
- *
- *   - Bun (CLI / `bun run dev` web backend) honors a per-request `tls` option on
- *     fetch — see `bunFetchTlsOption`.
- *   - Node (the Electron desktop sidecar in packages/desktop) runs the prebuilt
- *     dist/node bundle and uses undici's fetch, which SILENTLY IGNORES the `tls`
- *     option. Without an undici dispatcher the desktop fails with "fetch failed"
- *     on the self-signed cert. We lazily build an Agent that skips verification.
- */
-const bunFetchTlsOption = isBun ? { tls: { rejectUnauthorized: false } } : {}
-
-let nodeDispatcher: unknown
-let nodeDispatcherInit = false
-
-async function getNodeInsecureDispatcher(): Promise<unknown> {
-  if (isBun) return undefined
-  if (nodeDispatcherInit) return nodeDispatcher
-  nodeDispatcherInit = true
-  try {
-    const { Agent } = await import("undici")
-    nodeDispatcher = new Agent({ connect: { rejectUnauthorized: false } })
-  } catch (error) {
-    log.warn("undici_dispatcher_unavailable", { error: String(error) })
-  }
-  return nodeDispatcher
-}
 
 // ── Merlin API types ──────────────────────────────────────────────────────────
 
@@ -705,13 +678,15 @@ class MerlinLanguageModel implements LanguageModelV3 {
     })
     log.debug("request_prompt", { prompt: body.prompt })
 
-    const signals: AbortSignal[] = [AbortSignal.timeout(this.timeoutMs)]
+    // Bound to its own name (rather than inlined) so the catch block can tell
+    // a genuine per-request timeout apart from any other fetch failure —
+    // see the retry-scoping note below.
+    const timeoutSignal = AbortSignal.timeout(this.timeoutMs)
+    const signals: AbortSignal[] = [timeoutSignal]
     if (options.abortSignal) signals.push(options.abortSignal)
 
     // Disable TLS verification for the internal self-signed GAIA endpoint. Bun
     // reads the `tls` option; Node (desktop sidecar) needs an undici dispatcher.
-    const dispatcher = await getNodeInsecureDispatcher()
-
     let response: Response
     try {
       response = await fetch(this.endpoint, {
@@ -719,37 +694,53 @@ class MerlinLanguageModel implements LanguageModelV3 {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
         signal: AbortSignal.any(signals),
-        ...bunFetchTlsOption,
-        ...(dispatcher ? { dispatcher } : {}),
+        ...(await Network.insecureFetchInit()),
       } as RequestInit)
     } catch (error) {
       // A user-initiated cancel must propagate untouched and never be retried.
       if (options.abortSignal?.aborted) throw error
-      // Anything else here — including the per-request timeout
-      // (AbortSignal.timeout(this.timeoutMs)) firing — is a transient failure.
-      // Surface it as a retryable APICallError so the session-level retry
-      // policy (session/retry.ts) backs off and re-sends automatically.
+      // Only a genuine per-request timeout (AbortSignal.timeout(this.timeoutMs)
+      // firing) is treated as transient and retried — surfaced as a retryable
+      // APICallError so the session-level retry policy (session/retry.ts) backs
+      // off and re-sends automatically.
+      if (timeoutSignal.aborted) {
+        log.warn("request_timeout", { timeoutMs: this.timeoutMs })
+        throw new APICallError({
+          message: `GAIA request timed out after ${this.timeoutMs}ms`,
+          url: this.endpoint,
+          requestBodyValues: {},
+          statusCode: 504,
+          isRetryable: true,
+        })
+      }
+      // Any other fetch failure (connection refused, DNS, TLS, socket reset) is
+      // NOT a timeout — do not retry. isRetryable is false and statusCode is
+      // omitted (undefined) so it can't be picked up by retry.ts's `status >=
+      // 500` fallback, which retries regardless of isRetryable.
       log.warn("request_failed", { error: String(error) })
       throw new APICallError({
-        message: `GAIA request failed or timed out: ${String(error)}`,
+        message: `GAIA request failed: ${String(error)}`,
         url: this.endpoint,
         requestBodyValues: {},
-        statusCode: 504,
-        isRetryable: true,
+        isRetryable: false,
       })
     }
 
     if (!response.ok) {
       const responseText = await response.text().catch(() => "")
-      // 5xx are transient server failures (connection drops, OCP hiccups —
-      // DPA-115/117-class) and should be retried; 4xx are not.
+      // Only genuine timeouts are retried (see the fetch catch-block above), so
+      // HTTP error responses — including 5xx (connection drops, OCP hiccups —
+      // DPA-115/117-class) — are never retried here. statusCode is omitted for
+      // >=500 so it can't fall through retry.ts's `status >= 500` fallback;
+      // a real 4xx status (e.g. 413) is preserved so downstream classification
+      // (e.g. context-overflow on 413) still works.
       throw new APICallError({
         message: `GAIA HTTP ${response.status} ${response.statusText}: ${responseText}`,
         url: this.endpoint,
         requestBodyValues: {},
-        statusCode: response.status,
+        statusCode: response.status < 500 ? response.status : undefined,
         responseBody: responseText,
-        isRetryable: response.status >= 500,
+        isRetryable: false,
       })
     }
 
@@ -779,7 +770,11 @@ class MerlinLanguageModel implements LanguageModelV3 {
           isRetryable: false,
         })
       }
-      throw new Error("GAIA Error: 500 Internal Server Error")
+      throw new Error(
+        errDebug
+          ? `GAIA Error: 500 Internal Server Error\n${errDebug}`
+          : "GAIA Error: 500 Internal Server Error",
+      )
     }
 
     if (
@@ -823,18 +818,17 @@ class MerlinLanguageModel implements LanguageModelV3 {
 
     if (isGatewayParseError(rawAnswer)) {
       // A degenerate engine diagnostic came back as a 200 "answer" instead of a
-      // real reply (see isGatewayParseError). This is a transient gateway-side
-      // failure, not a context-overflow or a genuine model error — surface it as
-      // a retryable APICallError so session/retry.ts backs off and re-sends
-      // rather than showing engine internals to the user.
+      // real reply (see isGatewayParseError). This is gateway-side, not a
+      // context-overflow or a genuine model error, but only genuine timeouts
+      // are retried (see the fetch catch-block above) — surface it as a
+      // non-retryable APICallError so it is shown once rather than looped on.
       log.warn("gateway_parse_diagnostic", { answer: rawAnswer.slice(0, 500) })
       throw new APICallError({
-        message: `GAIA returned an internal parse diagnostic instead of a reply (transient): ${rawAnswer.slice(0, 200)}`,
+        message: `GAIA returned an internal parse diagnostic instead of a reply: ${rawAnswer.slice(0, 200)}`,
         url: this.endpoint,
         requestBodyValues: {},
-        statusCode: 504,
         responseBody: rawAnswer,
-        isRetryable: true,
+        isRetryable: false,
       })
     }
 

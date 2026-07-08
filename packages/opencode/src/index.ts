@@ -19,6 +19,7 @@ import { Filesystem } from "./util"
 import { DebugCommand } from "./cli/cmd/debug"
 import { StatsCommand } from "./cli/cmd/stats"
 import { McpCommand } from "./cli/cmd/mcp"
+import { SkillsCommand } from "./cli/cmd/skills"
 import { GithubCommand } from "./cli/cmd/github"
 import { ExportCommand } from "./cli/cmd/export"
 import { ImportCommand } from "./cli/cmd/import"
@@ -158,6 +159,7 @@ const cli = yargs(args)
   .command(InitCommand)
   .command(AcpCommand)
   .command(McpCommand)
+  .command(SkillsCommand)
   .command(TuiThreadCommand)
   .command(AttachCommand)
   .command(RunCommand)

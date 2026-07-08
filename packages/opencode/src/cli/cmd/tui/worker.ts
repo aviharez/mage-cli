@@ -57,8 +57,16 @@ export const rpc = {
       headers,
       body: input.body,
     })
+    Log.Default.info("worker rpc.fetch: starting", { url: input.url, method: input.method })
+    const started = Date.now()
     const response = await Server.Default().app.fetch(request)
+    Log.Default.info("worker rpc.fetch: app.fetch resolved", {
+      url: input.url,
+      status: response.status,
+      ms: Date.now() - started,
+    })
     const body = await response.text()
+    Log.Default.info("worker rpc.fetch: body read", { url: input.url, ms: Date.now() - started })
     return {
       status: response.status,
       headers: Object.fromEntries(response.headers.entries()),
