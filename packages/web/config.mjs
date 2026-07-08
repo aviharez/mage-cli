@@ -7,7 +7,7 @@ export default {
   socialCard: "",
   github,
   discord: "",
-  version: "1.2.9",
+  version: "1.2.10",
   headerLinks: [
     { name: "app.header.docs",      url: "/docs/" },
     { name: "app.header.catalog",   url: "/hub/" },

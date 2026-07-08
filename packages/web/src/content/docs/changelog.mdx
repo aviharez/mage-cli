@@ -8,12 +8,25 @@ import { Card } from "@astrojs/starlight/components"
 
 ---
 
+## v1.2.10
+
+_8 Juli 2026_
+
+### Yang baru
+- **`mage skills`** — Perintah CLI baru untuk install/remove skill dari Rune (`mage skills install`, `mage skills remove`), menggantikan halaman catalog di TUI.
+- **Context gauge di footer** — Persentase context kini ditampilkan di footer prompt (di sebelah hint agent/command), menggantikan panel sidebar lama.
+
+### Perbaikan
+- **Akurasi context gauge** — Perhitungan token auto-compaction diselaraskan dengan angka persentase context yang ditampilkan; estimasi pasca-compact disimpan sehingga `/compact` manual ikut memperbarui angka, tidak lagi menampilkan nilai lama.
+- **DPA-124 tidak selalu dianggap context overflow** — DPA-124 (error catch-all engine GAIA) sebelumnya selalu dikonversi menjadi context-overflow untuk trigger auto-compaction, padahal juga muncul untuk kegagalan engine lain (mis. 500 generik) yang salah diklasifikasikan. Kini hanya DPA-124 yang `err_debug`-nya menyebut context-length limit yang memicu compaction; sisanya tampil sebagai error biasa.
+
+---
+
 ## v1.2.9
 
 _3 Juli 2026_
 
 ### Yang baru
-- **Dokumentasi MCP** — Halaman baru di bawah Penggunaan yang menjelaskan cara menambahkan MCP server (local/remote) via `mage mcp add` atau config manual, lengkap contoh Chrome DevTools & Sentry.
 - **Rename agent** — Seluruh agent dinamai ulang menjadi `build`, `plan`, `explore`, dan `general`.
 - **Subagent paralel tanpa batas** — Batas `MAGE_SUBAGENT` dihapus; subagent dan tool call kini berjalan paralel tanpa dibatasi (seperti upstream), mengembalikan throttle yang ditambahkan di v1.2.7.
 - **Estimasi token sidebar** — Sidebar menampilkan pemakaian context berdasarkan estimasi token sisi klien, sehingga tetap akurat meski gateway GAIA tidak mengirim data usage.
