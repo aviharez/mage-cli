@@ -434,7 +434,7 @@ describe("createMerlin", () => {
 
   // ── DPA-124 → auto-compaction ──────────────────────────────────────────────
 
-  test("doGenerate converts a DPA-124 error_schema into a context-overflow APICallError", async () => {
+  test("doGenerate converts a DPA-124 whose err_debug names a context-length limit into an overflow APICallError", async () => {
     const fakeFetch = mock(async () =>
       new Response(
         JSON.stringify({
@@ -442,7 +442,7 @@ describe("createMerlin", () => {
             error_code: "DPA-124",
             error_message: { english: "An error occurred while the engine was processing the query" },
           },
-          output_schema: { err_debug: "engine timeout" },
+          output_schema: { err_debug: "context length exceeded: max 128000 tokens" },
         }),
         { status: 200, headers: { "Content-Type": "application/json" } },
       ),
@@ -464,13 +464,15 @@ describe("createMerlin", () => {
     }
   })
 
-  test("doGenerate treats DPA-124 as overflow even on a small prompt (no 200k-token floor)", async () => {
-    // Regression guard: DPA-124 must always compact, unlike the generic error_schema
-    // path below it which only converts to a 413 above the 200k-token estimate.
+  test("doGenerate treats a context-length DPA-124 as overflow even on a small prompt (no 200k-token floor)", async () => {
+    // Regression guard: a context-length DPA-124 must always compact, unlike the
+    // generic error_schema path below it which only converts to a 413 above the
+    // 200k-token estimate.
     const fakeFetch = mock(async () =>
       new Response(
         JSON.stringify({
           error_schema: { error_code: "DPA-124", error_message: { english: "engine error" } },
+          output_schema: { err_debug: "context length exceeded" },
         }),
         { status: 200, headers: { "Content-Type": "application/json" } },
       ),
@@ -483,6 +485,32 @@ describe("createMerlin", () => {
       await expect(
         model.doGenerate({ prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }] } as any),
       ).rejects.toMatchObject({ statusCode: 413 })
+    } finally {
+      globalThis.fetch = origFetch
+    }
+  })
+
+  test("doGenerate surfaces a non-context-length DPA-124 as a plain error without compacting", async () => {
+    // A DPA-124 whose err_debug is an unrelated engine failure (e.g. a generic
+    // 500 page) must NOT be treated as context overflow — only the messages
+    // above that actually name a context-length limit should trigger compaction.
+    const fakeFetch = mock(async () =>
+      new Response(
+        JSON.stringify({
+          error_schema: { error_code: "DPA-124", error_message: { english: "engine error" } },
+          output_schema: { err_debug: "engine timeout" },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    )
+    const origFetch = globalThis.fetch
+    globalThis.fetch = fakeFetch as any
+
+    try {
+      const model = createMerlin({ baseURL: "https://x.test" }).languageModel("default")
+      await expect(
+        model.doGenerate({ prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }] } as any),
+      ).rejects.toThrow("GAIA Error: 500 Internal Server Error")
     } finally {
       globalThis.fetch = origFetch
     }

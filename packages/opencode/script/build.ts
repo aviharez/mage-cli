@@ -245,8 +245,6 @@ for (const item of targets) {
       MAGE_WORKER_PATH: workerPath,
       MAGE_CHANNEL: `'${Script.channel}'`,
       MAGE_LIBC: item.os === "linux" ? `'${item.abi ?? "glibc"}'` : "",
-      MAGE_MARKETPLACE_REGISTRY: JSON.stringify(process.env.MAGE_MARKETPLACE_REGISTRY ?? ""),
-      MAGE_MARKETPLACE_TOKEN: JSON.stringify(process.env.MAGE_MARKETPLACE_TOKEN ?? ""),
     },
   })
 

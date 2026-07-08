@@ -40,6 +40,13 @@ const MAX_PRESERVE_RECENT_TOKENS = 8_000
 // compaction head to fit — leaves room for the summary prompt template and
 // the model's own output tokens.
 const HISTORY_SAFETY_BUFFER = 4_000
+// Fractions of the base shrink budget tried in order when the summarization
+// request itself overflows the provider (e.g. the model's declared context
+// limit is larger than what the provider actually accepts). The first factor
+// (1) is the normal shrinkToFit target; later, smaller factors are a
+// limit-agnostic fallback so compaction keeps making progress instead of
+// dead-ending on the very first overflow.
+const COMPACTION_SHRINK_FACTORS = [1, 0.55, 0.3]
 type Turn = {
   start: number
   end: number
@@ -180,10 +187,18 @@ export const layer: Layer.Layer<
     // arguments are kept) are blanked first, and only if that isn't enough are
     // whole messages dropped, oldest first. The verbatim recent tail kept by
     // `select` is a separate slice and is never touched by this function.
+    //
+    // `budget` optionally overrides the default `usable(...) -
+    // HISTORY_SAFETY_BUFFER` target. This lets a caller re-shrink harder than
+    // the model's declared limit would imply — e.g. `attemptSummary` below
+    // retries with a smaller budget when the provider still rejects a request
+    // opencode believed fit, which happens when the declared model limit is
+    // larger than what the provider actually accepts.
     const shrinkToFit = Effect.fn("SessionCompaction.shrinkToFit")(function* (input: {
       messages: MessageV2.WithParts[]
       model: Provider.Model
       cfg: Config.Info
+      budget?: number
     }) {
       for (const msg of input.messages) {
         for (const part of msg.parts) {
@@ -195,7 +210,7 @@ export const layer: Layer.Layer<
       }
 
       let msgs = input.messages
-      const budget = usable({ cfg: input.cfg, model: input.model }) - HISTORY_SAFETY_BUFFER
+      const budget = input.budget ?? usable({ cfg: input.cfg, model: input.model }) - HISTORY_SAFETY_BUFFER
       while (msgs.length > 0 && (yield* estimate({ messages: msgs, model: input.model })) > budget) {
         msgs = msgs.slice(1)
       }
@@ -336,61 +351,86 @@ export const layer: Layer.Layer<
 ---`
 
       const prompt = compacting.prompt ?? [defaultPrompt, ...compacting.context].join("\n\n")
+
+      // Runs one summarization attempt at a given shrink budget: shrink the
+      // head to fit, build the summarizer request, and process it. Returns
+      // the processor and its result so the caller can decide whether to
+      // retry at a smaller budget or accept this attempt.
+      const attemptSummary = Effect.fn("SessionCompaction.attemptSummary")(function* (budget: number) {
+        const msgs = yield* shrinkToFit({ messages: structuredClone(selected.head), model, cfg, budget })
+        yield* plugin.trigger("experimental.chat.messages.transform", {}, { messages: msgs })
+        const modelMessages = yield* MessageV2.toModelMessagesEffect(msgs, model, { stripMedia: true })
+        const ctx = yield* InstanceState.context
+        const msg: MessageV2.Assistant = {
+          id: MessageID.ascending(),
+          role: "assistant",
+          parentID: input.parentID,
+          sessionID: input.sessionID,
+          mode: "compaction",
+          agent: "compaction",
+          variant: userMessage.model.variant,
+          summary: true,
+          path: {
+            cwd: ctx.directory,
+            root: ctx.worktree,
+          },
+          cost: 0,
+          tokens: {
+            output: 0,
+            input: 0,
+            reasoning: 0,
+            cache: { read: 0, write: 0 },
+          },
+          modelID: model.id,
+          providerID: model.providerID,
+          time: {
+            created: Date.now(),
+          },
+        }
+        yield* session.updateMessage(msg)
+        const attemptProcessor = yield* processors.create({
+          assistantMessage: msg,
+          sessionID: input.sessionID,
+          model,
+        })
+        const attemptResult = yield* attemptProcessor.process({
+          user: userMessage,
+          agent,
+          sessionID: input.sessionID,
+          tools: {},
+          system: [],
+          messages: [
+            ...modelMessages,
+            {
+              role: "user",
+              content: [{ type: "text", text: prompt }],
+            },
+          ],
+          model,
+        })
+        return { result: attemptResult, processor: attemptProcessor }
+      })
+
       // Shed tool-output bytes (and, if still needed, the oldest whole turns) so
       // this request always fits the summarizer's context — fixes "Conversation
       // history too large to compact". The preserved recent tail (selected.tail_start_id)
       // is a separate slice appended by filterCompacted later and is unaffected.
-      const msgs = yield* shrinkToFit({ messages: structuredClone(selected.head), model, cfg })
-      yield* plugin.trigger("experimental.chat.messages.transform", {}, { messages: msgs })
-      const modelMessages = yield* MessageV2.toModelMessagesEffect(msgs, model, { stripMedia: true })
-      const ctx = yield* InstanceState.context
-      const msg: MessageV2.Assistant = {
-        id: MessageID.ascending(),
-        role: "assistant",
-        parentID: input.parentID,
-        sessionID: input.sessionID,
-        mode: "compaction",
-        agent: "compaction",
-        variant: userMessage.model.variant,
-        summary: true,
-        path: {
-          cwd: ctx.directory,
-          root: ctx.worktree,
-        },
-        cost: 0,
-        tokens: {
-          output: 0,
-          input: 0,
-          reasoning: 0,
-          cache: { read: 0, write: 0 },
-        },
-        modelID: model.id,
-        providerID: model.providerID,
-        time: {
-          created: Date.now(),
-        },
+      //
+      // The model's declared context limit can still be larger than what the
+      // provider actually accepts (e.g. GAIA rejecting a request opencode
+      // believed fit), so if the summarization request itself overflows we
+      // retry at progressively smaller budgets (COMPACTION_SHRINK_FACTORS)
+      // instead of dead-ending on the first overflow. Only interim attempts
+      // that still overflow after every factor is exhausted count as failure
+      // below — earlier overflowing attempts are silently superseded, so they
+      // never surface as a user-visible error.
+      const baseBudget = usable({ cfg, model }) - HISTORY_SAFETY_BUFFER
+      const budgets = COMPACTION_SHRINK_FACTORS.map((factor) => Math.max(1, Math.floor(baseBudget * factor)))
+      let { result, processor } = yield* attemptSummary(budgets[0]!)
+      for (let i = 1; i < budgets.length && result === "compact"; i++) {
+        log.warn("compaction_overflow_retry", { attempt: i, budget: budgets[i] })
+        ;({ result, processor } = yield* attemptSummary(budgets[i]!))
       }
-      yield* session.updateMessage(msg)
-      const processor = yield* processors.create({
-        assistantMessage: msg,
-        sessionID: input.sessionID,
-        model,
-      })
-      const result = yield* processor.process({
-        user: userMessage,
-        agent,
-        sessionID: input.sessionID,
-        tools: {},
-        system: [],
-        messages: [
-          ...modelMessages,
-          {
-            role: "user",
-            content: [{ type: "text", text: prompt }],
-          },
-        ],
-        model,
-      })
 
       if (result === "compact") {
         processor.message.error = new MessageV2.ContextOverflowError({
@@ -403,10 +443,21 @@ export const layer: Layer.Layer<
         return "stop"
       }
 
-      if (compactionPart && selected.tail_start_id && compactionPart.tail_start_id !== selected.tail_start_id) {
+      if (result === "continue" && compactionPart) {
+        // Estimate the active context size immediately after this compaction
+        // (summary + preserved tail) against the real conversation model, so
+        // clients can show an accurate post-compaction context size before a
+        // new turn produces a real measurement (see sidebar/prompt context
+        // gauge — manual compaction otherwise leaves it reading the stale
+        // pre-compaction value since it doesn't emit a new non-summary
+        // assistant message).
+        const activeMessages = yield* MessageV2.filterCompactedEffect(input.sessionID)
+        const contextModel = yield* provider.getModel(userMessage.model.providerID, userMessage.model.modelID)
+        const postEstimate = yield* estimate({ messages: activeMessages, model: contextModel })
         yield* session.updatePart({
           ...compactionPart,
-          tail_start_id: selected.tail_start_id,
+          tail_start_id: selected.tail_start_id ?? compactionPart.tail_start_id,
+          context: postEstimate,
         })
       }
 

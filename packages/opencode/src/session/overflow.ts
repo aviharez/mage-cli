@@ -20,7 +20,18 @@ export function isOverflow(input: { cfg: Config.Info; tokens: MessageV2.Assistan
   if (input.cfg.compaction?.auto === false) return false
   if (input.model.limit.context === 0) return false
 
-  const count =
-    input.tokens.total || input.tokens.input + input.tokens.output + input.tokens.cache.read + input.tokens.cache.write
+  // Some providers report a `total` that excludes cache or reasoning tokens
+  // (or omit reasoning from the component fallback entirely), which can let
+  // the displayed context gauge — which always sums every component — read
+  // higher than what this check sees, silently missing the auto-compaction
+  // trigger. Take the max of both so this never under-counts relative to the
+  // gauge.
+  const componentSum =
+    input.tokens.input +
+    input.tokens.output +
+    input.tokens.reasoning +
+    input.tokens.cache.read +
+    input.tokens.cache.write
+  const count = Math.max(input.tokens.total ?? 0, componentSum)
   return count >= usable(input)
 }

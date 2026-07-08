@@ -886,6 +886,7 @@ export type CompactionPart = {
   auto: boolean
   overflow?: boolean
   tail_start_id?: string
+  context?: number
 }
 
 export type Part =
@@ -1503,13 +1504,9 @@ export type Config = {
    */
   marketplace?: {
     /**
-     * URL of the marketplace registry (e.g. GitLab generic package endpoint)
+     * URL to POST { name } to after a successful skill/mcp install, for the registry's install counter
      */
-    registry?: string
-    /**
-     * Access token for the registry (supports {env:VAR} substitution)
-     */
-    token?: string
+    counter?: string
   }
   watcher?: {
     ignore?: Array<string>
@@ -5034,135 +5031,6 @@ export type McpDisconnectResponses = {
 }
 
 export type McpDisconnectResponse = McpDisconnectResponses[keyof McpDisconnectResponses]
-
-export type MarketplaceCatalogData = {
-  body?: never
-  path?: never
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/marketplace"
-}
-
-export type MarketplaceCatalogResponses = {
-  /**
-   * Marketplace catalog
-   */
-  200: {
-    /**
-     * Available skills in the catalog
-     */
-    skills: Array<{
-      name: string
-      description: string
-      files: Array<string>
-    }>
-    /**
-     * Available MCP servers in the catalog
-     */
-    mcp: Array<{
-      name: string
-      description: string
-      config: {
-        [key: string]: unknown
-      }
-      inputs?: Array<{
-        key: string
-        message: string
-        placeholder?: string
-        into: "environment" | "header" | "arg"
-        secret?: boolean
-      }>
-    }>
-  }
-}
-
-export type MarketplaceCatalogResponse = MarketplaceCatalogResponses[keyof MarketplaceCatalogResponses]
-
-export type MarketplaceSkillInstallData = {
-  body?: {
-    name: string
-    scope?: "global" | "project"
-  }
-  path?: never
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/marketplace/skill"
-}
-
-export type MarketplaceSkillInstallErrors = {
-  /**
-   * Bad request
-   */
-  400: BadRequestError
-  /**
-   * Not found
-   */
-  404: NotFoundError
-}
-
-export type MarketplaceSkillInstallError = MarketplaceSkillInstallErrors[keyof MarketplaceSkillInstallErrors]
-
-export type MarketplaceSkillInstallResponses = {
-  /**
-   * Skill installed
-   */
-  200: {
-    name: string
-    dir: string
-    scope: "global" | "project"
-  }
-}
-
-export type MarketplaceSkillInstallResponse = MarketplaceSkillInstallResponses[keyof MarketplaceSkillInstallResponses]
-
-export type MarketplaceMcpInstallData = {
-  body?: {
-    name: string
-    scope?: "global" | "project"
-    inputs?: {
-      [key: string]: string
-    }
-  }
-  path?: never
-  query?: {
-    directory?: string
-    workspace?: string
-  }
-  url: "/marketplace/mcp"
-}
-
-export type MarketplaceMcpInstallErrors = {
-  /**
-   * Bad request
-   */
-  400: BadRequestError
-  /**
-   * Not found
-   */
-  404: NotFoundError
-}
-
-export type MarketplaceMcpInstallError = MarketplaceMcpInstallErrors[keyof MarketplaceMcpInstallErrors]
-
-export type MarketplaceMcpInstallResponses = {
-  /**
-   * MCP server installed and connected
-   */
-  200: {
-    name: string
-    scope: "global" | "project"
-    configPath: string
-    status: {
-      [key: string]: unknown
-    }
-  }
-}
-
-export type MarketplaceMcpInstallResponse = MarketplaceMcpInstallResponses[keyof MarketplaceMcpInstallResponses]
 
 export type TuiAppendPromptData = {
   body?: {

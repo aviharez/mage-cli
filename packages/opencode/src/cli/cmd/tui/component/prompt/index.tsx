@@ -3,7 +3,7 @@ import { createEffect, createMemo, onMount, createSignal, onCleanup, on, Show, S
 import "opentui-spinner/solid"
 import path from "path"
 import { fileURLToPath } from "url"
-import { Filesystem } from "@/util"
+import { Filesystem, Log } from "@/util"
 import { useLocal } from "@tui/context/local"
 import { tint, useTheme } from "@tui/context/theme"
 import { EmptyBorder, SplitBorder } from "@tui/component/border"
@@ -25,7 +25,7 @@ import { useRenderer, type JSX } from "@opentui/solid"
 import * as Editor from "@tui/util/editor"
 import { useExit } from "../../context/exit"
 import * as Clipboard from "../../util/clipboard"
-import type { AssistantMessage, FilePart, UserMessage } from "@mybcabisnis/mage-sdk/v2"
+import type { AssistantMessage, CompactionPart, FilePart, UserMessage } from "@mybcabisnis/mage-sdk/v2"
 import { TuiEvent } from "../../event"
 import { iife } from "@/util/iife"
 import { Locale } from "@/util"
@@ -84,6 +84,8 @@ function fadeColor(color: RGBA, alpha: number) {
 }
 
 let stashed: { prompt: PromptInfo; cursor: number } | undefined
+
+const log = Log.create({ service: "prompt-paste" })
 
 export function Prompt(props: PromptProps) {
   let input: TextareaRenderable
@@ -159,20 +161,44 @@ export function Prompt(props: PromptProps) {
   const usage = createMemo(() => {
     if (!props.sessionID) return
     const msg = sync.data.message[props.sessionID] ?? []
-    const last = msg.findLast((item): item is AssistantMessage => item.role === "assistant" && item.tokens.output > 0)
-    if (!last) return
+    const cost = msg.reduce((sum, item) => sum + (item.role === "assistant" ? item.cost : 0), 0)
+    const format = (tokens: number, providerID?: string, modelID?: string) => {
+      const model = providerID && modelID ? sync.data.provider.find((item) => item.id === providerID)?.models[modelID] : undefined
+      const pct = model?.limit.context ? `${Math.round((tokens / model.limit.context) * 100)}%` : undefined
+      return {
+        context: pct ? `${Locale.number(tokens)} (${pct})` : Locale.number(tokens),
+        cost: cost > 0 ? money.format(cost) : undefined,
+      }
+    }
 
+    const lastIndex = msg.findLastIndex(
+      (item): item is AssistantMessage => item.role === "assistant" && item.tokens.output > 0 && !item.summary,
+    )
+    const last = lastIndex === -1 ? undefined : (msg[lastIndex] as AssistantMessage)
+
+    // Manual compaction doesn't emit a new non-summary assistant message, so
+    // `last` would otherwise keep pointing at the stale pre-compaction turn.
+    // If a compaction ran after `last`, prefer its stored post-compaction
+    // estimate (see session/compaction.ts) until a real turn replaces it.
+    const afterLast = lastIndex === -1 ? msg : msg.slice(lastIndex + 1)
+    const compactionMsg = afterLast.findLast(
+      (item): item is UserMessage =>
+        item.role === "user" && (sync.data.part[item.id] ?? []).some((p) => p.type === "compaction"),
+    )
+    const compactionPart = compactionMsg
+      ? (sync.data.part[compactionMsg.id] ?? []).find((p): p is CompactionPart => p.type === "compaction")
+      : undefined
+
+    if (compactionPart?.context !== undefined) {
+      const fallbackModel = local.model.current()
+      return format(compactionPart.context, last?.providerID ?? fallbackModel?.providerID, last?.modelID ?? fallbackModel?.modelID)
+    }
+
+    if (!last) return
     const tokens =
       last.tokens.input + last.tokens.output + last.tokens.reasoning + last.tokens.cache.read + last.tokens.cache.write
     if (tokens <= 0) return
-
-    const model = sync.data.provider.find((item) => item.id === last.providerID)?.models[last.modelID]
-    const pct = model?.limit.context ? `${Math.round((tokens / model.limit.context) * 100)}%` : undefined
-    const cost = msg.reduce((sum, item) => sum + (item.role === "assistant" ? item.cost : 0), 0)
-    return {
-      context: pct ? `${Locale.number(tokens)} (${pct})` : Locale.number(tokens),
-      cost: cost > 0 ? money.format(cost) : undefined,
-    }
+    return format(tokens, last.providerID, last.modelID)
   })
 
   const [store, setStore] = createStore<{
@@ -771,7 +797,7 @@ export function Prompt(props: PromptProps) {
         return !!command.slashCommand(commandName)
       })
     ) {
-      // Plugin slash command with optional trailing arguments (e.g. `/catalog add github`).
+      // Plugin slash command with optional trailing arguments (e.g. `/plugins install foo`).
       const firstLine = inputText.split("\n")[0]
       const tokens = firstLine.split(" ")
       const commandName = tokens[0].slice(1)
@@ -905,6 +931,75 @@ export function Prompt(props: PromptProps) {
     return
   }
 
+  // Shared by bracketed-paste (onPaste) and the Ctrl+V key fallback (onKeyDown)
+  // used when a terminal forwards Ctrl+V as a keypress instead of emitting a
+  // bracketed paste (e.g. Windows Terminal with the kitty keyboard protocol
+  // enabled). `rawText` is expected to already be decoded to a plain string.
+  async function processPastedText(rawText: string) {
+    // Normalize line endings at the boundary
+    // Windows ConPTY/Terminal often sends CR-only newlines in bracketed paste
+    // Replace CRLF first, then any remaining CR
+    const normalizedText = rawText.replace(/\r\n/g, "\n").replace(/\r/g, "\n")
+    const pastedContent = normalizedText.trim()
+    if (!pastedContent) return
+
+    const filepath = iife(() => {
+      const raw = pastedContent.replace(/^['"]+|['"]+$/g, "")
+      if (raw.startsWith("file://")) {
+        try {
+          return fileURLToPath(raw)
+        } catch { }
+      }
+      if (process.platform === "win32") return raw
+      return raw.replace(/\\(.)/g, "$1")
+    })
+    const isUrl = /^(https?):\/\//.test(filepath)
+    if (!isUrl) {
+      try {
+        const mime = await Filesystem.mimeType(filepath)
+        const filename = path.basename(filepath)
+        // Handle SVG as raw text content, not as base64 image
+        if (mime === "image/svg+xml") {
+          const content = await Filesystem.readText(filepath).catch(() => { })
+          if (content) {
+            pasteText(content, `[SVG: ${filename ?? "image"}]`)
+            return
+          }
+        }
+        if (mime.startsWith("image/") || mime === "application/pdf") {
+          const content = await Filesystem.readArrayBuffer(filepath)
+            .then((buffer) => Buffer.from(buffer).toString("base64"))
+            .catch(() => { })
+          if (content) {
+            await pasteAttachment({
+              filename,
+              filepath,
+              mime,
+              content,
+            })
+            return
+          }
+        }
+      } catch { }
+    }
+
+    const lineCount = (pastedContent.match(/\n/g)?.length ?? 0) + 1
+    if ((lineCount >= 3 || pastedContent.length > 150) && !sync.data.config.experimental?.disable_paste_summary) {
+      pasteText(pastedContent, `[Pasted ~${lineCount} lines]`)
+      return
+    }
+
+    input.insertText(normalizedText)
+
+    // Force layout update and render for the pasted content
+    setTimeout(() => {
+      // setTimeout is a workaround and needs to be addressed properly
+      if (!input || input.isDestroyed) return
+      input.getLayoutNode().markDirty()
+      renderer.requestRender()
+    }, 0)
+  }
+
   const highlight = createMemo(() => {
     if (keybind.leader) return theme.border
     if (store.mode === "shell") return theme.primary
@@ -1025,7 +1120,12 @@ export function Prompt(props: PromptProps) {
                 // This helps terminals that forward Ctrl+V to the app; Windows
                 // Terminal 1.25+ usually handles Ctrl+V before this path.
                 if (keybind.match("input_paste", e)) {
+                  log.debug("input_paste matched", { name: e.name, ctrl: e.ctrl })
                   const content = await Clipboard.read()
+                  log.debug("input_paste Clipboard.read() result", {
+                    mime: content?.mime,
+                    dataLength: content?.data.length ?? 0,
+                  })
                   if (content?.mime.startsWith("image/")) {
                     e.preventDefault()
                     await pasteAttachment({
@@ -1035,7 +1135,16 @@ export function Prompt(props: PromptProps) {
                     })
                     return
                   }
-                  // If no image, let the default paste behavior continue
+                  // Some terminals (e.g. Windows Terminal with the kitty keyboard
+                  // protocol enabled) forward Ctrl+V as a keypress instead of
+                  // emitting a bracketed paste, so there's no "default paste
+                  // behavior" to fall back on here — insert the text ourselves.
+                  if (content?.data) {
+                    e.preventDefault()
+                    await processPastedText(content.data)
+                    return
+                  }
+                  // No clipboard content — let the default paste behavior continue
                 }
                 if (keybind.match("input_clear", e) && store.prompt.input !== "") {
                   input.clear()
@@ -1105,15 +1214,12 @@ export function Prompt(props: PromptProps) {
                   return
                 }
 
-                // Normalize line endings at the boundary
-                // Windows ConPTY/Terminal often sends CR-only newlines in bracketed paste
-                // Replace CRLF first, then any remaining CR
-                const normalizedText = decodePasteBytes(event.bytes).replace(/\r\n/g, "\n").replace(/\r/g, "\n")
-                const pastedContent = normalizedText.trim()
+                const decoded = decodePasteBytes(event.bytes)
+                log.debug("onPaste (bracketed) fired", { decodedLength: decoded.length })
 
                 // Windows Terminal <1.25 can surface image-only clipboard as an
                 // empty bracketed paste. Windows Terminal 1.25+ does not.
-                if (!pastedContent) {
+                if (!decoded.trim()) {
                   command.trigger("prompt.paste")
                   return
                 }
@@ -1121,65 +1227,7 @@ export function Prompt(props: PromptProps) {
                 // Once we cross an async boundary below, the terminal may perform its
                 // default paste unless we suppress it first and handle insertion ourselves.
                 event.preventDefault()
-
-                const filepath = iife(() => {
-                  const raw = pastedContent.replace(/^['"]+|['"]+$/g, "")
-                  if (raw.startsWith("file://")) {
-                    try {
-                      return fileURLToPath(raw)
-                    } catch { }
-                  }
-                  if (process.platform === "win32") return raw
-                  return raw.replace(/\\(.)/g, "$1")
-                })
-                const isUrl = /^(https?):\/\//.test(filepath)
-                if (!isUrl) {
-                  try {
-                    const mime = await Filesystem.mimeType(filepath)
-                    const filename = path.basename(filepath)
-                    // Handle SVG as raw text content, not as base64 image
-                    if (mime === "image/svg+xml") {
-                      const content = await Filesystem.readText(filepath).catch(() => { })
-                      if (content) {
-                        pasteText(content, `[SVG: ${filename ?? "image"}]`)
-                        return
-                      }
-                    }
-                    if (mime.startsWith("image/") || mime === "application/pdf") {
-                      const content = await Filesystem.readArrayBuffer(filepath)
-                        .then((buffer) => Buffer.from(buffer).toString("base64"))
-                        .catch(() => { })
-                      if (content) {
-                        await pasteAttachment({
-                          filename,
-                          filepath,
-                          mime,
-                          content,
-                        })
-                        return
-                      }
-                    }
-                  } catch { }
-                }
-
-                const lineCount = (pastedContent.match(/\n/g)?.length ?? 0) + 1
-                if (
-                  (lineCount >= 3 || pastedContent.length > 150) &&
-                  !sync.data.config.experimental?.disable_paste_summary
-                ) {
-                  pasteText(pastedContent, `[Pasted ~${lineCount} lines]`)
-                  return
-                }
-
-                input.insertText(normalizedText)
-
-                // Force layout update and render for the pasted content
-                setTimeout(() => {
-                  // setTimeout is a workaround and needs to be addressed properly
-                  if (!input || input.isDestroyed) return
-                  input.getLayoutNode().markDirty()
-                  renderer.requestRender()
-                }, 0)
+                await processPastedText(decoded)
               }}
               ref={(r: TextareaRenderable) => {
                 input = r
@@ -1359,6 +1407,9 @@ export function Prompt(props: PromptProps) {
                   <text fg={theme.text}>
                     {keybind.print("command_list")} <span style={{ fg: theme.textMuted }}>commands</span>
                   </text>
+                  <Show when={usage()?.context}>
+                    <text fg={theme.textMuted}>{usage()!.context}</text>
+                  </Show>
                 </Match>
                 <Match when={store.mode === "shell"}>
                   <text fg={theme.text}>

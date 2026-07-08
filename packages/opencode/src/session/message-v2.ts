@@ -250,6 +250,11 @@ export const CompactionPart = PartBase.extend({
   auto: z.boolean(),
   overflow: z.boolean().optional(),
   tail_start_id: MessageID.zod.optional(),
+  // Estimated token count of the active context immediately after this
+  // compaction ran (summary + preserved tail). Lets clients show an accurate
+  // post-compaction context size before a new turn produces a real
+  // measurement.
+  context: z.number().optional(),
 }).meta({
   ref: "CompactionPart",
 })

@@ -1,14 +1,12 @@
 import HomeFooter from "../feature-plugins/home/footer"
 import HomeTips from "../feature-plugins/home/tips"
 import SidebarBoilerplate from "../feature-plugins/sidebar/boilerplate"
-import SidebarContext from "../feature-plugins/sidebar/context"
 import SidebarMcp from "../feature-plugins/sidebar/mcp"
 import SidebarLsp from "../feature-plugins/sidebar/lsp"
 import SidebarTodo from "../feature-plugins/sidebar/todo"
 import SidebarFiles from "../feature-plugins/sidebar/files"
 import SidebarFooter from "../feature-plugins/sidebar/footer"
 import PluginManager from "../feature-plugins/system/plugins"
-import Marketplace from "../feature-plugins/system/marketplace"
 import type { TuiPlugin, TuiPluginModule } from "@mybcabisnis/mage-plugin/tui"
 
 export type InternalTuiPlugin = TuiPluginModule & {
@@ -20,12 +18,10 @@ export const INTERNAL_TUI_PLUGINS: InternalTuiPlugin[] = [
   HomeFooter,
   HomeTips,
   SidebarBoilerplate,
-  SidebarContext,
   SidebarMcp,
   // SidebarLsp,
   SidebarTodo,
   SidebarFiles,
   SidebarFooter,
   PluginManager,
-  Marketplace,
 ]
