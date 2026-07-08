@@ -17,7 +17,7 @@ _8 Juli 2026_
 - **Context gauge di footer** — Persentase context kini ditampilkan di footer prompt (di sebelah hint agent/command), menggantikan panel sidebar lama.
 
 ### Perbaikan
-- **Akurasi context gauge** — Perhitungan token auto-compaction diselaraskan dengan angka persentase context yang ditampilkan; estimasi pasca-compact disimpan sehingga `/compact` manual ikut memperbarui angka, tidak lagi menampilkan nilai lama.
+- **Akurasi context gauge** — Perhitungan token auto-compaction diselaraskan dengan angka persentase context yang ditampilkan; estimasi pasca-compact disimpan sehingga `/compact` manual ikut memperbarui angka, tidak lagi menampilkan nilai basi.
 - **DPA-124 tidak selalu dianggap context overflow** — DPA-124 (error catch-all engine GAIA) sebelumnya selalu dikonversi menjadi context-overflow untuk trigger auto-compaction, padahal juga muncul untuk kegagalan engine lain (mis. 500 generik) yang salah diklasifikasikan. Kini hanya DPA-124 yang `err_debug`-nya menyebut context-length limit yang memicu compaction; sisanya tampil sebagai error biasa.
 
 ---
