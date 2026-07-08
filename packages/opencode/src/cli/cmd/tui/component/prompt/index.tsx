@@ -3,7 +3,7 @@ import { createEffect, createMemo, onMount, createSignal, onCleanup, on, Show, S
 import "opentui-spinner/solid"
 import path from "path"
 import { fileURLToPath } from "url"
-import { Filesystem } from "@/util"
+import { Filesystem, Log } from "@/util"
 import { useLocal } from "@tui/context/local"
 import { tint, useTheme } from "@tui/context/theme"
 import { EmptyBorder, SplitBorder } from "@tui/component/border"
@@ -84,6 +84,8 @@ function fadeColor(color: RGBA, alpha: number) {
 }
 
 let stashed: { prompt: PromptInfo; cursor: number } | undefined
+
+const log = Log.create({ service: "prompt-paste" })
 
 export function Prompt(props: PromptProps) {
   let input: TextareaRenderable
@@ -1118,7 +1120,12 @@ export function Prompt(props: PromptProps) {
                 // This helps terminals that forward Ctrl+V to the app; Windows
                 // Terminal 1.25+ usually handles Ctrl+V before this path.
                 if (keybind.match("input_paste", e)) {
+                  log.debug("input_paste matched", { name: e.name, ctrl: e.ctrl })
                   const content = await Clipboard.read()
+                  log.debug("input_paste Clipboard.read() result", {
+                    mime: content?.mime,
+                    dataLength: content?.data.length ?? 0,
+                  })
                   if (content?.mime.startsWith("image/")) {
                     e.preventDefault()
                     await pasteAttachment({
@@ -1208,6 +1215,7 @@ export function Prompt(props: PromptProps) {
                 }
 
                 const decoded = decodePasteBytes(event.bytes)
+                log.debug("onPaste (bracketed) fired", { decodedLength: decoded.length })
 
                 // Windows Terminal <1.25 can surface image-only clipboard as an
                 // empty bracketed paste. Windows Terminal 1.25+ does not.

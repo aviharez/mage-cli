@@ -77,20 +77,42 @@ export async function read(): Promise<Content | undefined> {
     }
   }
 
-  // Windows/WSL: probe clipboard for images via PowerShell.
-  // Bracketed paste can't carry image data so we read it directly.
+  // Windows/WSL: probe clipboard for images, then text, in one PowerShell call.
+  // Bracketed paste can't carry image data so we read it directly. Text also
+  // goes through PowerShell rather than clipboardy: clipboardy's Windows paste
+  // shells out to a bundled clipboard_*.exe resolved via import.meta.url — that
+  // asset is not embedded in the compiled single-file binary, so
+  // clipboardy.read() ENOENTs there. A single spawn (instead of one probe per
+  // kind) keeps every Ctrl+V paste from costing two PowerShell startups.
+  //
+  // -Sta: the WinForms/OLE clipboard API (used for images) only works from an
+  // STA thread. Without it, GetImage()/GetText() silently return null in some
+  // hosts (observed: classic conhost windows). Get-Clipboard is a cmdlet (like
+  // Set-Clipboard in copy(), below) and works regardless of apartment state, so
+  // it's used for text instead of the WinForms text API for the same reason.
   if (os === "win32" || release().includes("WSL")) {
     const script =
-      "Add-Type -AssemblyName System.Windows.Forms; $img = [System.Windows.Forms.Clipboard]::GetImage(); if ($img) { $ms = New-Object System.IO.MemoryStream; $img.Save($ms, [System.Drawing.Imaging.ImageFormat]::Png); [System.Convert]::ToBase64String($ms.ToArray()) }"
-    const base64 = await Process.text(["powershell.exe", "-NonInteractive", "-NoProfile", "-command", script], {
-      nothrow: true,
-    })
-    if (base64.text) {
-      const imageBuffer = Buffer.from(base64.text.trim(), "base64")
+      "Add-Type -AssemblyName System.Windows.Forms; " +
+      "$img = [System.Windows.Forms.Clipboard]::GetImage(); " +
+      "if ($img) { $ms = New-Object System.IO.MemoryStream; $img.Save($ms, [System.Drawing.Imaging.ImageFormat]::Png); 'IMG:' + [System.Convert]::ToBase64String($ms.ToArray()) } " +
+      "else { $t = Get-Clipboard -Raw; if ($t) { 'TXT:' + [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($t)) } }"
+    const result = await Process.text(
+      ["powershell.exe", "-Sta", "-NonInteractive", "-NoProfile", "-command", script],
+      { nothrow: true },
+    )
+    const out = result.text.trim()
+    log.debug("clipboard: read (win32)", { code: result.code, outLength: out.length })
+    if (out.startsWith("IMG:")) {
+      const imageBuffer = Buffer.from(out.slice(4), "base64")
       if (imageBuffer.length > 0) {
         return { data: imageBuffer.toString("base64"), mime: "image/png" }
       }
+    } else if (out.startsWith("TXT:")) {
+      const text = Buffer.from(out.slice(4), "base64").toString("utf8")
+      if (text) return { data: text, mime: "text/plain" }
     }
+    // Fall through to the clipboardy fallback below — a no-op in the compiled
+    // binary (swallowed by its .catch()), but still useful for `bun dev`.
   }
 
   if (os === "linux") {
