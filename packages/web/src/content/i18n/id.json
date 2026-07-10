@@ -14,7 +14,7 @@
   "app.lander.hero.line4": "BCA.",
   "app.lander.hero.lede": "adalah asisten coding AI yang terhubung ke GAIA. Workflow yang sama, namun lebih dekat dengan project Anda.",
   "app.lander.cta.getStarted": "Mulai",
-  "app.lander.install.cmd": "irm https://mybcabisnis-mage.apps.ocpdevgra.dti.co.id/install.ps1 | iex",
+  "app.lander.install.cmd": "irm https://mage.apps.ocpdevgra.dti.co.id/install.ps1 | iex",
 
   "app.lander.steps.eyebrow": "Mulai cepat · ~5 menit",
   "app.lander.steps.title": "Dari install ke prompt pertama.",
@@ -22,7 +22,7 @@
   "app.lander.steps.01.num": "01 · INSTALL",
   "app.lander.steps.01.title": "Jalankan installer",
   "app.lander.steps.01.desc": "Satu perintah untuk Windows. Tersedia juga installer macOS/Linux dan cara manual.",
-  "app.lander.steps.01.code": "irm https://mybcabisnis-mage.apps.ocpdevgra.dti.co.id/install.ps1 | iex",
+  "app.lander.steps.01.code": "irm https://mage.apps.ocpdevgra.dti.co.id/install.ps1 | iex",
   "app.lander.steps.02.num": "02 · SETUP",
   "app.lander.steps.02.title": "Masukkan udomain BCA",
   "app.lander.steps.02.desc": "Wizard setup muncul otomatis. Cukup ketikkan udomain Anda (u0…).",

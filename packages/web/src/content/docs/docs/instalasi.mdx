@@ -20,28 +20,28 @@ Script otomatis mengonfigurasi `~/.npmrc` untuk BCA Artifactory lalu menginstal 
 <Tabs>
   <TabItem label="Windows PowerShell">
     ```powershell
-    irm https://mybcabisnis-mage.apps.ocpdevgra.dti.co.id/install.ps1 | iex
+    irm https://mage.apps.ocpdevgra.dti.co.id/install.ps1 | iex
     ```
   </TabItem>
   <TabItem label="Windows cmd">
     Unduh `install.cmd` dari repository lalu jalankan dengan double-click, atau:
     ```bat
-    powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://mybcabisnis-mage.apps.ocpdevgra.dti.co.id/install.ps1 | iex"
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://mage.apps.ocpdevgra.dti.co.id/install.ps1 | iex"
     ```
   </TabItem>
   <TabItem label="macOS / Linux">
     ```bash
-    curl -fsSL https://mybcabisnis-mage.apps.ocpdevgra.dti.co.id/install | bash
+    curl -fsSL https://mage.apps.ocpdevgra.dti.co.id/install | bash
     ```
 
     Install versi tertentu:
     ```bash
-    curl -fsSL https://mybcabisnis-mage.apps.ocpdevgra.dti.co.id/install | bash -s -- --version 1.2.3
+    curl -fsSL https://mage.apps.ocpdevgra.dti.co.id/install | bash -s -- --version 1.2.3
     ```
 
     Jika registry sudah dikonfigurasi (lewati konfigurasi `.npmrc`):
     ```bash
-    curl -fsSL https://mybcabisnis-mage.apps.ocpdevgra.dti.co.id/install | bash -s -- --no-config
+    curl -fsSL https://mage.apps.ocpdevgra.dti.co.id/install | bash -s -- --no-config
     ```
   </TabItem>
 </Tabs>

@@ -6,7 +6,7 @@ const locale = Astro.currentLocale || 'root';
 const t = Astro.locals.t as (key: string) => string;
 const docsHref = getRelativeLocaleUrl(locale, "docs");
 
-const installCmd = "irm https://mybcabisnis-mage.apps.ocpdevgra.dti.co.id/install.ps1 | iex";
+const installCmd = "irm https://mage.apps.ocpdevgra.dti.co.id/install.ps1 | iex";
 ---
 
 <div class="lander">
