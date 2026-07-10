@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Mage installer — macOS & Linux
-# Usage: curl -fsSL https://mybcabisnis-mage.apps.ocpdevgra.dti.co.id/install | bash
+# Usage: curl -fsSL https://mage.apps.ocpdevgra.dti.co.id/install | bash
 set -euo pipefail
 
 MUTED='\033[0;2m'
@@ -24,10 +24,10 @@ Options:
         --no-config          Skip .npmrc configuration (assumes registry is already configured)
 
 One-liner:
-    curl -fsSL https://mybcabisnis-mage.apps.ocpdevgra.dti.co.id/install | bash
+    curl -fsSL https://mage.apps.ocpdevgra.dti.co.id/install | bash
 
 With a version pin:
-    curl -fsSL https://mybcabisnis-mage.apps.ocpdevgra.dti.co.id/install | bash -s -- --version 1.2.2
+    curl -fsSL https://mage.apps.ocpdevgra.dti.co.id/install | bash -s -- --version 1.2.2
 
 From a local copy:
     bash install.sh

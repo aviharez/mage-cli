@@ -9,7 +9,7 @@ metadata:
     app.kubernetes.io/name: mage
     app.kubernetes.io/part-of: framework
 spec:
-  host: mybcabisnis-mage.apps.ocpdevgra.dti.co.id
+  host: mage.apps.ocpdevgra.dti.co.id
   to:
     kind: Service
     name: mage

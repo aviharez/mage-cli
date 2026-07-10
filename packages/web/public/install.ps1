@@ -1,6 +1,6 @@
 #Requires -Version 5.0
 # Mage installer — Windows PowerShell
-# Usage: irm https://mybcabisnis-mage.apps.ocpdevgra.dti.co.id/install.ps1 | iex
+# Usage: irm https://mage.apps.ocpdevgra.dti.co.id/install.ps1 | iex
 
 param(
     [string]$Version  = "",
@@ -29,10 +29,10 @@ Options:
     -NoConfig                Skip .npmrc configuration (assumes registry is already configured)
 
 One-liner:
-    irm https://mybcabisnis-mage.apps.ocpdevgra.dti.co.id/install.ps1 | iex
+    irm https://mage.apps.ocpdevgra.dti.co.id/install.ps1 | iex
 
 With a version pin (pipe form):
-    `$env:MAGE_VERSION='1.2.2'; irm https://mybcabisnis-mage.apps.ocpdevgra.dti.co.id/install.ps1 | iex
+    `$env:MAGE_VERSION='1.2.2'; irm https://mage.apps.ocpdevgra.dti.co.id/install.ps1 | iex
 
 Direct file:
     .\install.ps1
@@ -143,7 +143,7 @@ if ($installedVersion -ne "") {
 } else {
     Write-Ok "Mage installed"
     Write-Host ""
-    $npmBin = "$(npm prefix -g 2>$null)\bin" -replace '/', '\'
+    $npmBin = "$(npm prefix -g 2>$null)" -replace '/', '\'
     Write-Warn "Note: 'mage' was not found on PATH."
     Write-Info "Add the npm global bin directory to your PATH:"
     Write-Host ""
