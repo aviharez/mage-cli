@@ -274,7 +274,7 @@ const layer: Layer.Layer<
         // Users may optionally add provider.merlin.options.username to mage.jsonc for domain_id.
         database["merlin"] = {
           id: ProviderID.make("merlin"),
-          name: "GAIA",
+          name: "",
           source: "custom",
           env: [],
           key: undefined,
@@ -284,7 +284,7 @@ const layer: Layer.Layer<
               id: ModelID.make("default"),
               providerID: ProviderID.make("merlin"),
               api: { id: "default", npm: "@mage/merlin-provider", url: "" },
-              name: "Qwen3.6 27B",
+              name: "GAIA",
               status: "active",
               capabilities: {
                 temperature: true,

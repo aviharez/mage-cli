@@ -2,7 +2,7 @@
 
 AI coding assistant for the terminal, powered by GAIA.
 
-Current version: **v1.2.10**
+Current version: **v1.2.11**
 
 ---
 
@@ -10,17 +10,17 @@ Current version: **v1.2.10**
 
 **macOS / Linux**
 ```bash
-curl -fsSL https://mybcabisnis-mage.apps.ocpdevgra.dti.co.id/install | bash
+curl -fsSL https://mage.apps.ocpdevgra.dti.co.id/install | bash
 ```
 
 **Windows PowerShell**
 ```powershell
-irm https://mybcabisnis-mage.apps.ocpdevgra.dti.co.id/install.ps1 | iex
+irm https://mage.apps.ocpdevgra.dti.co.id/install.ps1 | iex
 ```
 
 **Windows cmd** — download [`install.cmd`](install.cmd) and double-click it, or run:
 ```bat
-powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://mybcabisnis-mage.apps.ocpdevgra.dti.co.id/install.ps1 | iex"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://mage.apps.ocpdevgra.dti.co.id/install.ps1 | iex"
 ```
 
 The installer configures your `~/.npmrc` with the BCA Artifactory registry and runs
