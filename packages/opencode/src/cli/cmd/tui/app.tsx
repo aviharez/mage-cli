@@ -625,7 +625,7 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
       title: "Open docs",
       value: "docs.open",
       onSelect: () => {
-        open("https://mybcabisnis-mage.apps.ocpdevgra.dti.co.id/").catch(() => { })
+        open("https://mage.apps.ocpdevgra.dti.co.id/").catch(() => { })
         dialog.clear()
       },
       category: "System",
