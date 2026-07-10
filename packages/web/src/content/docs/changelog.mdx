@@ -8,6 +8,18 @@ import { Card } from "@astrojs/starlight/components"
 
 ---
 
+## v1.2.11
+
+_10 Juli 2026_
+
+### Yang baru
+- **New session di window baru** — Saat memulai session baru kini muncul pilihan **This window** (lanjut di jendela ini) atau **New window** (membuka mage di jendela terminal baru pada direktori yang sama). Fitur window baru hanya didukung di macOS dan Windows; platform lain menampilkan toast error.
+
+### Perbaikan
+- **Auto-recovery lebih tangguh** — Error gateway **DPA-115** dan **DPA-117** (gangguan sementara pada gateway/OCP) kini diperlakukan sebagai error retryable dan diulang otomatis oleh policy retry session, bukan langsung ditampilkan sebagai error ke pengguna.
+
+---
+
 ## v1.2.10
 
 _8 Juli 2026_

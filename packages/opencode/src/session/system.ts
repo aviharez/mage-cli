@@ -29,7 +29,6 @@ export const layer = Layer.effect(
         const project = Instance.project
         return [
           [
-            `You are powered by the model named ${model.name}.`,
             `Here is some useful information about the environment you are running in:`,
             `<env>`,
             `  Working directory: ${Instance.directory}`,

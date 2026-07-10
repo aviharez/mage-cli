@@ -30,10 +30,11 @@
  *      can execute the real tools and send results back.
  *
  * Resilience layered on top of the base request/response flow:
- *   - Only a genuine per-request timeout (AbortSignal.timeout(this.timeoutMs)
- *     firing) is surfaced as a retryable APICallError, so the existing
+ *   - A genuine per-request timeout (AbortSignal.timeout(this.timeoutMs)
+ *     firing) and a DPA-115/DPA-117 error_schema (transient gateway/OCP
+ *     hiccups) are surfaced as retryable APICallErrors, so the existing
  *     session-level retry policy (session/retry.ts) backs off and re-sends
- *     automatically. Every other failure — non-timeout fetch errors, HTTP
+ *     automatically. Every other failure — non-timeout fetch errors, raw HTTP
  *     error responses (including 5xx), and the gateway parse-diagnostic below
  *     — is surfaced as non-retryable (isRetryable: false, no >=500
  *     statusCode) so it is shown once instead of retried indefinitely
@@ -44,6 +45,8 @@
  *     are treated as context overflow and converted to a 413 APICallError so
  *     the session auto-compacts; other DPA-124s (e.g. a generic engine 500)
  *     surface as "GAIA Error: 500 Internal Server Error" without compacting.
+ *     DPA-115 and DPA-117, by contrast, are always transient and always
+ *     retried — see above.
  *   - A genuine reply that only announces an action ("Let me read the key
  *     files...") without ever emitting the tool call is detected and
  *     transparently continued, bounded by MAX_CONTINUATIONS, so the agent loop
@@ -90,7 +93,11 @@ export const MAX_CONTINUATIONS = 2
 interface MerlinRequest {
   client_id: string
   domain_id: string
-  service_id: string
+  /**
+   * Omitted entirely (not sent as "") when the MAGE_USE_SERVICE_ID env var is
+   * falsy — some gateways/tenants reject an unrecognized service_id outright.
+   */
+  service_id?: string
   config: {
     temperature: number
     top_p: number
@@ -98,8 +105,10 @@ interface MerlinRequest {
     min_p: number
     presence_penalty: number
     repetition_penalty: number
-    max_token: string
+    max_token: number
     recommendation: string
+    /** Optional model override, populated from MAGE_MODEL_NAME when set. */
+    model_name?: string
   }
   new_session: string
   prompt: string
@@ -618,6 +627,10 @@ class MerlinLanguageModel implements LanguageModelV3 {
     private readonly clientId: string,
     private readonly username: string,
     private readonly timeoutMs: number,
+    /** Whether to send service_id at all (MAGE_USE_SERVICE_ID can disable it). */
+    private readonly sendServiceId: boolean,
+    /** Optional model override sent as model_name (from MAGE_MODEL_NAME). */
+    private readonly modelName: string | undefined,
   ) {}
 
   private buildPrompt(options: LanguageModelV3CallOptions): string {
@@ -637,7 +650,8 @@ class MerlinLanguageModel implements LanguageModelV3 {
     const body: MerlinRequest = {
       client_id: this.clientId,
       domain_id: this.username,
-      service_id: resolveServiceId(options),
+      // Omitted (not sent as "") when MAGE_USE_SERVICE_ID is falsy.
+      ...(this.sendServiceId ? { service_id: resolveServiceId(options) } : {}),
       // Qwen3.6-27B (dense) official thinking-mode coding preset. Qwen recommends
       // temperature 0.6, top_p 0.95, top_k 20, min_p 0, presence_penalty 0,
       // repetition_penalty 1.0 for code generation — low temperature for
@@ -658,8 +672,10 @@ class MerlinLanguageModel implements LanguageModelV3 {
         min_p: 0,
         presence_penalty: 0,
         repetition_penalty: 1,
-        max_token: "",
+        max_token: 128000,
         recommendation: "False",
+        // Only sent when MAGE_MODEL_NAME is set.
+        ...(this.modelName ? { model_name: this.modelName } : {}),
       },
       new_session: "True",
       prompt: this.buildPrompt(options),
@@ -729,11 +745,13 @@ class MerlinLanguageModel implements LanguageModelV3 {
     if (!response.ok) {
       const responseText = await response.text().catch(() => "")
       // Only genuine timeouts are retried (see the fetch catch-block above), so
-      // HTTP error responses — including 5xx (connection drops, OCP hiccups —
-      // DPA-115/117-class) — are never retried here. statusCode is omitted for
+      // raw HTTP 5xx error responses (connection drops, OCP hiccups at the
+      // transport level) are never retried here. statusCode is omitted for
       // >=500 so it can't fall through retry.ts's `status >= 500` fallback;
       // a real 4xx status (e.g. 413) is preserved so downstream classification
-      // (e.g. context-overflow on 413) still works.
+      // (e.g. context-overflow on 413) still works. Note this is distinct from
+      // DPA-115/DPA-117, which arrive as a 200 response with an error_schema
+      // and ARE retried — see the check below.
       throw new APICallError({
         message: `GAIA HTTP ${response.status} ${response.statusText}: ${responseText}`,
         url: this.endpoint,
@@ -775,6 +793,25 @@ class MerlinLanguageModel implements LanguageModelV3 {
           ? `GAIA Error: 500 Internal Server Error\n${errDebug}`
           : "GAIA Error: 500 Internal Server Error",
       )
+    }
+
+    // DPA-115 / DPA-117 are transient gateway/OCP failures (connection drops,
+    // upstream hiccups) delivered as a 200 error_schema. Surface them as a
+    // retryable APICallError so the session retry policy (session/retry.ts)
+    // backs off and re-sends automatically — same treatment as a request
+    // timeout — instead of showing a one-shot error for a hiccup that a
+    // re-send would clear.
+    if (data.error_schema?.error_code === "DPA-115" || data.error_schema?.error_code === "DPA-117") {
+      const code = data.error_schema.error_code
+      log.warn("transient_gateway_error", { error_code: code })
+      throw new APICallError({
+        message: `GAIA transient error ${code}: ${data.error_schema.error_message?.english ?? "gateway error"}`,
+        url: this.endpoint,
+        requestBodyValues: {},
+        statusCode: 503,
+        responseBody: data.error_schema.error_message?.english ?? "",
+        isRetryable: true,
+      })
     }
 
     if (
@@ -1099,6 +1136,12 @@ export interface MerlinProvider {
   languageModel(modelId: string): LanguageModelV3
 }
 
+/** True when `key` is set to a recognized falsy string ("false" or "0"). */
+function isEnvFalsy(key: string): boolean {
+  const value = process.env[key]?.toLowerCase()
+  return value === "false" || value === "0"
+}
+
 /**
  * Create a Merlin provider instance.
  * All options are optional — endpoint, client_id, and model are hardcoded
@@ -1107,6 +1150,15 @@ export interface MerlinProvider {
  * Optionally set `username` to populate the domain_id field for gateway
  * user tracking. Can be configured via provider.merlin.options.username
  * in mage.jsonc if needed.
+ *
+ * Four env vars intercept/augment the request at runtime, for deployments
+ * pointed at a different GAIA gateway or tenant:
+ *   - MAGE_GAIA_ENDPOINT: overrides the request endpoint.
+ *   - MAGE_CLIENT_ID: overrides client_id.
+ *   - MAGE_USE_SERVICE_ID: when set to a falsy value ("false"/"0"), omits
+ *     service_id from the request entirely (some gateways reject an
+ *     unrecognized service_id outright).
+ *   - MAGE_MODEL_NAME: when set, adds a model_name field under config.
  */
 export function createMerlin(options: MerlinProviderOptions = {}): MerlinProvider {
   const {
@@ -1114,10 +1166,16 @@ export function createMerlin(options: MerlinProviderOptions = {}): MerlinProvide
     username = "",
     timeoutMs = 600_000,
   } = options
+  // MAGE_GAIA_ENDPOINT/MAGE_CLIENT_ID intercept even an explicitly-passed
+  // baseURL/CLIENT_ID — env always wins over the provider.merlin.options config.
+  const endpoint = process.env["MAGE_GAIA_ENDPOINT"] || baseURL
+  const clientId = process.env["MAGE_CLIENT_ID"] || CLIENT_ID
+  const sendServiceId = !isEnvFalsy("MAGE_USE_SERVICE_ID")
+  const modelName = process.env["MAGE_MODEL_NAME"] || undefined
 
   return {
     languageModel(_modelId: string): LanguageModelV3 {
-      return new MerlinLanguageModel(baseURL, CLIENT_ID, username, timeoutMs)
+      return new MerlinLanguageModel(endpoint, clientId, username, timeoutMs, sendServiceId, modelName)
     },
   }
 }

@@ -518,6 +518,50 @@ describe("createMerlin", () => {
 
   // ── Auto-retry on timeout / transient failure ───────────────────────────────
 
+  test("doGenerate converts a DPA-115 error_schema into a retryable APICallError", async () => {
+    const fakeFetch = mock(async () =>
+      new Response(
+        JSON.stringify({
+          error_schema: { error_code: "DPA-115", error_message: { english: "connection dropped" } },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    )
+    const origFetch = globalThis.fetch
+    globalThis.fetch = fakeFetch as any
+
+    try {
+      const model = createMerlin({ baseURL: "https://x.test" }).languageModel("default")
+      await expect(
+        model.doGenerate({ prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }] } as any),
+      ).rejects.toMatchObject({ statusCode: 503, isRetryable: true })
+    } finally {
+      globalThis.fetch = origFetch
+    }
+  })
+
+  test("doGenerate converts a DPA-117 error_schema into a retryable APICallError", async () => {
+    const fakeFetch = mock(async () =>
+      new Response(
+        JSON.stringify({
+          error_schema: { error_code: "DPA-117", error_message: { english: "upstream hiccup" } },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    )
+    const origFetch = globalThis.fetch
+    globalThis.fetch = fakeFetch as any
+
+    try {
+      const model = createMerlin({ baseURL: "https://x.test" }).languageModel("default")
+      await expect(
+        model.doGenerate({ prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }] } as any),
+      ).rejects.toMatchObject({ statusCode: 503, isRetryable: true })
+    } finally {
+      globalThis.fetch = origFetch
+    }
+  })
+
   test("doGenerate surfaces a 5xx HTTP response as a retryable APICallError", async () => {
     const fakeFetch = mock(async () => new Response("upstream down", { status: 502, statusText: "Bad Gateway" }))
     const origFetch = globalThis.fetch
@@ -752,6 +796,133 @@ describe("createMerlin", () => {
 
   test("isGatewayParseError detects the Block name / Error character pair on its own", () => {
     expect(isGatewayParseError('Block name: "write"\nError character: <tab>')).toBe(true)
+  })
+
+  // ── Env-var overrides ────────────────────────────────────────────────────
+
+  describe("env-var overrides", () => {
+    const ENV_KEYS = ["MAGE_GAIA_ENDPOINT", "MAGE_CLIENT_ID", "MAGE_USE_SERVICE_ID", "MAGE_MODEL_NAME"] as const
+    let savedEnv: Record<string, string | undefined>
+
+    const captureBody = async (createOpts: Parameters<typeof createMerlin>[0] = { baseURL: "https://x.test" }) => {
+      const captured: RequestInit[] = []
+      const fakeFetch = mock(async (_url: string, init: RequestInit) => {
+        captured.push(init)
+        return new Response(
+          JSON.stringify({ output_schema: { result: { answer: "ok", token_input: 1, token_output: 1 } } }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        )
+      })
+      const origFetch = globalThis.fetch
+      globalThis.fetch = fakeFetch as any
+      try {
+        const model = createMerlin(createOpts).languageModel("default")
+        await model.doGenerate({ prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }] } as any)
+      } finally {
+        globalThis.fetch = origFetch
+      }
+      return { url: (fakeFetch.mock.calls[0]![0] as string), body: JSON.parse(captured[0]!.body as string) }
+    }
+
+    // Save/restore process.env around each case so overrides don't leak between tests.
+    const withEnv = (vars: Record<string, string | undefined>, fn: () => Promise<void>) => {
+      return async () => {
+        savedEnv = {}
+        for (const k of ENV_KEYS) savedEnv[k] = process.env[k]
+        for (const [k, v] of Object.entries(vars)) {
+          if (v === undefined) delete process.env[k]
+          else process.env[k] = v
+        }
+        try {
+          await fn()
+        } finally {
+          for (const k of ENV_KEYS) {
+            if (savedEnv[k] === undefined) delete process.env[k]
+            else process.env[k] = savedEnv[k]!
+          }
+        }
+      }
+    }
+
+    test(
+      "MAGE_GAIA_ENDPOINT overrides the request endpoint, even over an explicit baseURL",
+      withEnv({ MAGE_GAIA_ENDPOINT: "https://override.test/llm" }, async () => {
+        const { url } = await captureBody({ baseURL: "https://x.test" })
+        expect(url).toBe("https://override.test/llm")
+      }),
+    )
+
+    test(
+      "without MAGE_GAIA_ENDPOINT, the passed baseURL is used",
+      withEnv({}, async () => {
+        const { url } = await captureBody({ baseURL: "https://x.test" })
+        expect(url).toBe("https://x.test")
+      }),
+    )
+
+    test(
+      "MAGE_CLIENT_ID overrides client_id",
+      withEnv({ MAGE_CLIENT_ID: "OTHERCLIENT" }, async () => {
+        const { body } = await captureBody()
+        expect(body.client_id).toBe("OTHERCLIENT")
+      }),
+    )
+
+    test(
+      "without MAGE_CLIENT_ID, the default client_id is sent",
+      withEnv({}, async () => {
+        const { body } = await captureBody()
+        expect(body.client_id).toBe("MAGEDEV")
+      }),
+    )
+
+    test(
+      "service_id is sent by default",
+      withEnv({}, async () => {
+        const { body } = await captureBody()
+        expect(body).toHaveProperty("service_id")
+      }),
+    )
+
+    test(
+      'MAGE_USE_SERVICE_ID="false" omits service_id entirely',
+      withEnv({ MAGE_USE_SERVICE_ID: "false" }, async () => {
+        const { body } = await captureBody()
+        expect(body).not.toHaveProperty("service_id")
+      }),
+    )
+
+    test(
+      'MAGE_USE_SERVICE_ID="0" omits service_id entirely',
+      withEnv({ MAGE_USE_SERVICE_ID: "0" }, async () => {
+        const { body } = await captureBody()
+        expect(body).not.toHaveProperty("service_id")
+      }),
+    )
+
+    test(
+      'MAGE_USE_SERVICE_ID="true" still sends service_id',
+      withEnv({ MAGE_USE_SERVICE_ID: "true" }, async () => {
+        const { body } = await captureBody()
+        expect(body).toHaveProperty("service_id")
+      }),
+    )
+
+    test(
+      "model_name is absent from config by default",
+      withEnv({}, async () => {
+        const { body } = await captureBody()
+        expect(body.config).not.toHaveProperty("model_name")
+      }),
+    )
+
+    test(
+      "MAGE_MODEL_NAME adds a model_name field under config",
+      withEnv({ MAGE_MODEL_NAME: "qwen3.6-27b" }, async () => {
+        const { body } = await captureBody()
+        expect(body.config.model_name).toBe("qwen3.6-27b")
+      }),
+    )
   })
 
   test("isGatewayParseError does not flag a normal answer, even one that mentions json/parsing", () => {
