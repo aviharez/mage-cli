@@ -1,5 +1,5 @@
 import type { AgentSideConnection } from "@agentclientprotocol/sdk"
-import * as Log from "@mybcabisnis/mage-core/util/log"
+import * as Log from "@/util/log"
 import type {
   Event,
   EventMessagePartDelta,

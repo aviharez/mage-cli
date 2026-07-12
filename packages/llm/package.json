@@ -1,13 +1,13 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
-  "version": "1.2.11",
+  "version": "1.17.18",
   "name": "@mybcabisnis/mage-llm",
   "type": "module",
   "license": "MIT",
   "private": true,
   "scripts": {
     "setup:recording-env": "bun run script/setup-recording-env.ts",
-    "test": "bun test --timeout 30000",
+    "test": "bun test --timeout 30000 --only-failures",
     "typecheck": "tsgo --noEmit"
   },
   "exports": {
@@ -37,13 +37,15 @@
   "devDependencies": {
     "@clack/prompts": "1.0.0-alpha.1",
     "@effect/platform-node": "catalog:",
-"@tsconfig/bun": "catalog:",
+    "@mybcabisnis/mage-http-recorder": "workspace:*",
+    "@tsconfig/bun": "catalog:",
     "@types/bun": "catalog:",
     "@typescript/native-preview": "catalog:"
   },
   "dependencies": {
     "@smithy/eventstream-codec": "4.2.14",
     "@smithy/util-utf8": "4.2.2",
+    "@mybcabisnis/mage-schema": "workspace:*",
     "aws4fetch": "1.0.20",
     "effect": "catalog:"
   }

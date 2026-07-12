@@ -1,10 +1,11 @@
+import { LayerNode } from "@mybcabisnis/mage-core/effect/layer-node"
 import path from "path"
 import { Effect, Layer, Record, Result, Schema, Context } from "effect"
-import { zod } from "@/util/effect-zod"
-import { Global } from "../global"
-import { AppFileSystem } from "@mybcabisnis/mage-shared/filesystem"
+import { NonNegativeInt } from "@mybcabisnis/mage-core/schema"
+import { Global } from "@mybcabisnis/mage-core/global"
+import { FSUtil } from "@mybcabisnis/mage-core/fs-util"
 
-export const OAUTH_DUMMY_KEY = "mage-oauth-dummy-key"
+export const OAUTH_DUMMY_KEY = "opencode-oauth-dummy-key"
 
 const file = path.join(Global.Path.data, "auth.json")
 
@@ -14,31 +15,30 @@ export class Oauth extends Schema.Class<Oauth>("OAuth")({
   type: Schema.Literal("oauth"),
   refresh: Schema.String,
   access: Schema.String,
-  expires: Schema.Number,
+  expires: NonNegativeInt,
   accountId: Schema.optional(Schema.String),
   enterpriseUrl: Schema.optional(Schema.String),
-}) { }
+}) {}
 
 export class Api extends Schema.Class<Api>("ApiAuth")({
   type: Schema.Literal("api"),
   key: Schema.String,
   metadata: Schema.optional(Schema.Record(Schema.String, Schema.String)),
-}) { }
+}) {}
 
 export class WellKnown extends Schema.Class<WellKnown>("WellKnownAuth")({
   type: Schema.Literal("wellknown"),
   key: Schema.String,
   token: Schema.String,
-}) { }
+}) {}
 
-const _Info = Schema.Union([Oauth, Api, WellKnown]).annotate({ discriminator: "type", identifier: "Auth" })
-export const Info = Object.assign(_Info, { zod: zod(_Info) })
-export type Info = Schema.Schema.Type<typeof _Info>
+export const Info = Schema.Union([Oauth, Api, WellKnown]).annotate({ discriminator: "type", identifier: "Auth" })
+export type Info = Schema.Schema.Type<typeof Info>
 
 export class AuthError extends Schema.TaggedErrorClass<AuthError>()("AuthError", {
   message: Schema.String,
-  cause: Schema.optional(Schema.Defect),
-}) { }
+  cause: Schema.optional(Schema.Defect()),
+}) {}
 
 export interface Interface {
   readonly get: (providerID: string) => Effect.Effect<Info | undefined, AuthError>
@@ -47,19 +47,19 @@ export interface Interface {
   readonly remove: (key: string) => Effect.Effect<void, AuthError>
 }
 
-export class Service extends Context.Service<Service, Interface>()("@opencode/Auth") { }
+export class Service extends Context.Service<Service, Interface>()("@opencode/Auth") {}
 
-export const layer = Layer.effect(
+const layer = Layer.effect(
   Service,
   Effect.gen(function* () {
-    const fsys = yield* AppFileSystem.Service
+    const fsys = yield* FSUtil.Service
     const decode = Schema.decodeUnknownOption(Info)
 
     const all = Effect.fn("Auth.all")(function* () {
-      if (process.env.MAGE_AUTH_CONTENT) {
+      if (process.env.OPENCODE_AUTH_CONTENT) {
         try {
-          return JSON.parse(process.env.MAGE_AUTH_CONTENT)
-        } catch (err) { }
+          return JSON.parse(process.env.OPENCODE_AUTH_CONTENT)
+        } catch (err) {}
       }
 
       const data = (yield* fsys.readJson(file).pipe(Effect.orElseSucceed(() => ({})))) as Record<string, unknown>
@@ -92,6 +92,6 @@ export const layer = Layer.effect(
   }),
 )
 
-export const defaultLayer = layer.pipe(Layer.provide(AppFileSystem.defaultLayer))
+export const node = LayerNode.make({ service: Service, layer: layer, deps: [FSUtil.node] })
 
 export * as Auth from "."

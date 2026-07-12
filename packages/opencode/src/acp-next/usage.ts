@@ -1,5 +1,5 @@
 import type { AgentSideConnection, Usage } from "@agentclientprotocol/sdk"
-import * as Log from "@mybcabisnis/mage-core/util/log"
+import * as Log from "@/util/log"
 import type { AssistantMessage as OpenCodeAssistantMessage, Message } from "@mybcabisnis/mage-sdk/v2"
 import { InstanceRef } from "@/effect/instance-ref"
 import { InstanceStore } from "@/project/instance-store"

@@ -1,14 +1,13 @@
 import type { Argv } from "yargs"
 import { UI } from "../ui"
 import * as prompts from "@clack/prompts"
-import { AppRuntime } from "@/effect/app-runtime"
 import { Installation } from "../../installation"
-import { Global } from "../../global"
+import { Global } from "@mybcabisnis/mage-core/global"
 import fs from "fs/promises"
 import path from "path"
 import os from "os"
-import { Filesystem } from "../../util"
-import { Process } from "../../util"
+import { Filesystem } from "@/util/filesystem"
+import { Process } from "@/util/process"
 
 interface UninstallArgs {
   keepConfig: boolean
@@ -25,7 +24,7 @@ interface RemovalTargets {
 
 export const UninstallCommand = {
   command: "uninstall",
-  describe: "uninstall mage and remove all related files",
+  describe: "uninstall opencode and remove all related files",
   builder: (yargs: Argv) =>
     yargs
       .option("keep-config", {
@@ -56,9 +55,9 @@ export const UninstallCommand = {
     UI.empty()
     UI.println(UI.logo("  "))
     UI.empty()
-    prompts.intro("Uninstall Mage")
+    prompts.intro("Uninstall OpenCode")
 
-    const method = await AppRuntime.runPromise(Installation.Service.use((svc) => svc.method()))
+    const method = await Installation.method()
     prompts.log.info(`Installation method: ${method}`)
 
     const targets = await collectRemovalTargets(args, method)
@@ -130,13 +129,13 @@ async function showRemovalSummary(targets: RemovalTargets, method: Installation.
 
   if (method !== "curl" && method !== "unknown") {
     const cmds: Record<string, string> = {
-      npm: "npm uninstall -g mage-ai",
-      pnpm: "pnpm uninstall -g mage-ai",
-      bun: "bun remove -g mage-ai",
-      yarn: "yarn global remove mage-ai",
-      brew: "brew uninstall mage",
-      choco: "choco uninstall mage",
-      scoop: "scoop uninstall mage",
+      npm: "npm uninstall -g opencode-ai",
+      pnpm: "pnpm uninstall -g opencode-ai",
+      bun: "bun remove -g opencode-ai",
+      yarn: "yarn global remove opencode-ai",
+      brew: "brew uninstall opencode",
+      choco: "choco uninstall opencode",
+      scoop: "scoop uninstall opencode",
     }
     prompts.log.info(`  ✓ Package: ${cmds[method] || method}`)
   }
@@ -181,19 +180,19 @@ async function executeUninstall(method: Installation.Method, targets: RemovalTar
 
   if (method !== "curl" && method !== "unknown") {
     const cmds: Record<string, string[]> = {
-      npm: ["npm", "uninstall", "-g", "mage-ai"],
-      pnpm: ["pnpm", "uninstall", "-g", "mage-ai"],
-      bun: ["bun", "remove", "-g", "mage-ai"],
-      yarn: ["yarn", "global", "remove", "mage-ai"],
-      brew: ["brew", "uninstall", "mage"],
-      choco: ["choco", "uninstall", "mage"],
-      scoop: ["scoop", "uninstall", "mage"],
+      npm: ["npm", "uninstall", "-g", "opencode-ai"],
+      pnpm: ["pnpm", "uninstall", "-g", "opencode-ai"],
+      bun: ["bun", "remove", "-g", "opencode-ai"],
+      yarn: ["yarn", "global", "remove", "opencode-ai"],
+      brew: ["brew", "uninstall", "opencode"],
+      choco: ["choco", "uninstall", "opencode"],
+      scoop: ["scoop", "uninstall", "opencode"],
     }
 
     const cmd = cmds[method]
     if (cmd) {
       spinner.start(`Running ${cmd.join(" ")}...`)
-      const result = await Process.run(method === "choco" ? ["choco", "uninstall", "mage", "-y", "-r"] : cmd, {
+      const result = await Process.run(method === "choco" ? ["choco", "uninstall", "opencode", "-y", "-r"] : cmd, {
         nothrow: true,
       })
       if (result.code !== 0) {
@@ -216,7 +215,7 @@ async function executeUninstall(method: Installation.Method, targets: RemovalTar
     prompts.log.info(`  rm "${targets.binary}"`)
 
     const binDir = path.dirname(targets.binary)
-    if (binDir.includes(".mage")) {
+    if (binDir.includes(".opencode")) {
       prompts.log.info(`  rmdir "${binDir}" 2>/dev/null`)
     }
   }
@@ -230,7 +229,7 @@ async function executeUninstall(method: Installation.Method, targets: RemovalTar
   }
 
   UI.empty()
-  prompts.log.success("Thank you for using Mage!")
+  prompts.log.success("Thank you for using OpenCode!")
 }
 
 async function getShellConfigFile(): Promise<string | null> {
@@ -267,7 +266,7 @@ async function getShellConfigFile(): Promise<string | null> {
     if (!exists) continue
 
     const content = await Filesystem.readText(file).catch(() => "")
-    if (content.includes("# mage") || content.includes(".mage/bin")) {
+    if (content.includes("# opencode") || content.includes(".opencode/bin")) {
       return file
     }
   }
@@ -285,21 +284,21 @@ async function cleanShellConfig(file: string) {
   for (const line of lines) {
     const trimmed = line.trim()
 
-    if (trimmed === "# mage") {
+    if (trimmed === "# opencode") {
       skip = true
       continue
     }
 
     if (skip) {
       skip = false
-      if (trimmed.includes(".mage/bin") || trimmed.includes("fish_add_path")) {
+      if (trimmed.includes(".opencode/bin") || trimmed.includes("fish_add_path")) {
         continue
       }
     }
 
     if (
-      (trimmed.startsWith("export PATH=") && trimmed.includes(".mage/bin")) ||
-      (trimmed.startsWith("fish_add_path") && trimmed.includes(".mage"))
+      (trimmed.startsWith("export PATH=") && trimmed.includes(".opencode/bin")) ||
+      (trimmed.startsWith("fish_add_path") && trimmed.includes(".opencode"))
     ) {
       continue
     }

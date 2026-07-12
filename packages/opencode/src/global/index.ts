@@ -1,7 +1,7 @@
 import fs from "fs/promises"
 import path from "path"
 import os from "os"
-import { Filesystem } from "../util"
+import { Filesystem } from "../util/filesystem"
 import { Flock } from "@mybcabisnis/mage-shared/util/flock"
 
 const getHomeDir = () => process.env.MAGE_TEST_HOME || os.homedir()

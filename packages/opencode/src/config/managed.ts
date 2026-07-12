@@ -3,14 +3,11 @@ export * as ConfigManaged from "./managed"
 import { existsSync } from "fs"
 import os from "os"
 import path from "path"
-import { Log, Process } from "../util"
-import { warn } from "console"
+import { Process } from "@/util/process"
 
-const log = Log.create({ service: "config" })
+const MANAGED_PLIST_DOMAIN = "ai.opencode.managed"
 
-const MANAGED_PLIST_DOMAIN = "ai.mage.managed"
-
-// Keys injected by macOS/MDM into the managed plist that are not Mage config
+// Keys injected by macOS/MDM into the managed plist that are not OpenCode config
 const PLIST_META = new Set([
   "PayloadDisplayName",
   "PayloadIdentifier",
@@ -23,16 +20,16 @@ const PLIST_META = new Set([
 function systemManagedConfigDir(): string {
   switch (process.platform) {
     case "darwin":
-      return "/Library/Application Support/mage"
+      return "/Library/Application Support/opencode"
     case "win32":
-      return path.join(process.env.ProgramData || "C:\\ProgramData", "mage")
+      return path.join(process.env.ProgramData || "C:\\ProgramData", "opencode")
     default:
-      return "/etc/mage"
+      return "/etc/opencode"
   }
 }
 
 export function managedConfigDir() {
-  return process.env.MAGE_TEST_MANAGED_CONFIG_DIR || systemManagedConfigDir()
+  return process.env.OPENCODE_TEST_MANAGED_CONFIG_DIR || systemManagedConfigDir()
 }
 
 export function parseManagedPlist(json: string): string {
@@ -46,7 +43,13 @@ export function parseManagedPlist(json: string): string {
 export async function readManagedPreferences() {
   if (process.platform !== "darwin") return
 
-  const user = os.userInfo().username
+  const user = (() => {
+    try {
+      return os.userInfo().username || "user"
+    } catch {
+      return "user"
+    }
+  })()
   const paths = [
     path.join("/Library/Managed Preferences", user, `${MANAGED_PLIST_DOMAIN}.plist`),
     path.join("/Library/Managed Preferences", `${MANAGED_PLIST_DOMAIN}.plist`),
@@ -54,12 +57,8 @@ export async function readManagedPreferences() {
 
   for (const plist of paths) {
     if (!existsSync(plist)) continue
-    log.info("reading macOS managed preferences", { path: plist })
     const result = await Process.run(["plutil", "-convert", "json", "-o", "-", plist], { nothrow: true })
-    if (result.code !== 0) {
-      log.warn("failed to convert managed preferences plist", { path: plist })
-      continue
-    }
+    if (result.code !== 0) continue
     return {
       source: `mobileconfig:${plist}`,
       text: parseManagedPlist(result.stdout.toString()),

@@ -1,11 +1,1 @@
-export const logo = {
-  left: ["         ", "█▄ ▄█ ▄▀▀▄", "█ ▀ █ ████", "▀   ▀ ▀  ▀"],
-  right: ["         ", "█▀▀▀ █▀▀▀", "█_▄█ █^^^", "▀▀▀▀ ▀▀▀▀"],
-}
-
-export const go = {
-  left: ["    ", "█▀▀▀", "█_^█", "▀▀▀▀"],
-  right: ["    ", "█▀▀█", "█__█", "▀▀▀▀"],
-}
-
-export const marks = "_^~,"
+export * from "@mybcabisnis/mage-tui/logo"

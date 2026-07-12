@@ -1,11 +1,11 @@
 import { Context } from "effect"
-import type { InstanceContext } from "@/project/instance"
-import type { WorkspaceID } from "@/control-plane/schema"
+import type { InstanceContext } from "@/project/instance-context"
+import type { WorkspaceV2 } from "@mybcabisnis/mage-core/workspace"
 
-export const InstanceRef = Context.Reference<InstanceContext | undefined>("~mage/InstanceRef", {
+export const InstanceRef = Context.Reference<InstanceContext | undefined>("~opencode/InstanceRef", {
   defaultValue: () => undefined,
 })
 
-export const WorkspaceRef = Context.Reference<WorkspaceID | undefined>("~mage/WorkspaceRef", {
+export const WorkspaceRef = Context.Reference<WorkspaceV2.ID | undefined>("~opencode/WorkspaceRef", {
   defaultValue: () => undefined,
 })

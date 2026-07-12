@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import path from "path"
-import { Module } from "@mybcabisnis/mage-shared/util/module"
-import { Filesystem } from "../../src/util"
+import { Module } from "@mybcabisnis/mage-core/util/module"
+import { Filesystem } from "@/util/filesystem"
 import { tmpdir } from "../fixture/fixture"
 
 describe("util.module", () => {

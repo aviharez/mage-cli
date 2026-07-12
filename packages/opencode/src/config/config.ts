@@ -1,57 +1,56 @@
-import { Log } from "../util"
+import { LayerNode } from "@mybcabisnis/mage-core/effect/layer-node"
+import { httpClient } from "@mybcabisnis/mage-core/effect/app-node-platform"
+import { serviceUse } from "@mybcabisnis/mage-core/effect/service-use"
 import path from "path"
 import { pathToFileURL } from "url"
 import os from "os"
-import z from "zod"
-import { mergeDeep, pipe } from "remeda"
-import { Global } from "../global"
+import { mergeDeep } from "remeda"
+import { Global } from "@mybcabisnis/mage-core/global"
 import fsNode from "fs/promises"
-import { NamedError } from "@mybcabisnis/mage-shared/util/error"
-import { Flag } from "../flag/flag"
+import { Flag } from "@mybcabisnis/mage-core/flag/flag"
 import { Auth } from "../auth"
 import { Env } from "../env"
 import { applyEdits, modify } from "jsonc-parser"
-import { Instance, type InstanceContext } from "../project/instance"
+import { InstallationLocal, InstallationVersion } from "@mybcabisnis/mage-core/installation/version"
 import { existsSync } from "fs"
-import { GlobalBus } from "@/bus/global"
-import { Event } from "../server/event"
 import { Account } from "@/account/account"
 import { isRecord } from "@/util/record"
-import type { ConsoleState } from "./console-state"
-import { AppFileSystem } from "@mybcabisnis/mage-shared/filesystem"
-import { InstanceState } from "@/effect"
-import { Context, Duration, Effect, Layer, Option, Schema } from "effect"
-import { InstanceRef } from "@/effect/instance-ref"
-import { zod, ZodOverride } from "@/util/effect-zod"
+import type { ConsoleState } from "@mybcabisnis/mage-core/v1/config/console-state"
+import { FSUtil } from "@mybcabisnis/mage-core/fs-util"
+import { InstanceState } from "@/effect/instance-state"
+import { Context, Duration, Effect, Exit, Fiber, Layer, Option, Schema } from "effect"
+import { FetchHttpClient, HttpClient, HttpClientRequest } from "effect/unstable/http"
+import { EffectFlock } from "@mybcabisnis/mage-core/util/effect-flock"
+import { containsPath, type InstanceContext } from "../project/instance-context"
+import { ConfigV1 } from "@mybcabisnis/mage-core/v1/config/config"
+import { RemoteAuthError } from "@mybcabisnis/mage-core/v1/config/error"
+import { ConfigPermissionV1 } from "@mybcabisnis/mage-core/v1/config/permission"
+import { ConfigPluginV1 } from "@mybcabisnis/mage-core/v1/config/plugin"
 import { ConfigAgent } from "./agent"
 import { ConfigCommand } from "./command"
-import { ConfigFormatter } from "./formatter"
-import { ConfigLayout } from "./layout"
-import { ConfigLSP } from "./lsp"
 import { ConfigManaged } from "./managed"
-import { ConfigMCP } from "./mcp"
-import { ConfigModelID } from "./model-id"
 import { ConfigParse } from "./parse"
 import { ConfigPaths } from "./paths"
-import { ConfigPermission } from "./permission"
 import { ConfigPlugin } from "./plugin"
-import { ConfigProvider } from "./provider"
-import { ConfigServer } from "./server"
-import { ConfigSkills } from "./skills"
-import { ConfigMarketplace } from "./marketplace"
 import { ConfigVariable } from "./variable"
-const log = Log.create({ service: "config" })
+import { Npm } from "@mybcabisnis/mage-core/npm"
+import { withTransientReadRetry } from "@/util/effect-http-client"
 
 // Custom merge function that concatenates array fields instead of replacing them
+// Keep remeda's deep conditional merge type out of hot config-loading paths; TS profiling showed it dominates here.
+function mergeConfig(target: Info, source: Info): Info {
+  return mergeDeep(target, source) as Info
+}
+
 function mergeConfigConcatArrays(target: Info, source: Info): Info {
-  const merged = mergeDeep(target, source)
+  const merged = mergeConfig(target, source)
   if (target.instructions && source.instructions) {
     merged.instructions = Array.from(new Set([...target.instructions, ...source.instructions]))
   }
   return merged
 }
 
-function normalizeLoadedConfig(data: unknown, source: string) {
+function normalizeLoadedConfig(data: unknown) {
   if (!isRecord(data)) return data
   const copy = { ...data }
   const hadLegacy = "theme" in copy || "keybinds" in copy || "tui" in copy
@@ -59,11 +58,47 @@ function normalizeLoadedConfig(data: unknown, source: string) {
   delete copy.theme
   delete copy.keybinds
   delete copy.tui
-  log.warn("tui keys in mage config are deprecated; move them to tui.json", { path: source })
   return copy
 }
 
-async function resolveLoadedPlugins<T extends { plugin?: ConfigPlugin.Spec[] }>(config: T, filepath: string) {
+async function substituteWellKnownRemoteConfig(input: {
+  value: unknown
+  dir: string
+  source: string
+  env: Record<string, string>
+}) {
+  if (!isRecord(input.value) || typeof input.value.url !== "string") return undefined
+
+  const url = await ConfigVariable.substitute({
+    text: input.value.url,
+    type: "virtual",
+    dir: input.dir,
+    source: input.source,
+    env: input.env,
+  })
+  const headers = isRecord(input.value.headers)
+    ? Object.fromEntries(
+        await Promise.all(
+          Object.entries(input.value.headers)
+            .filter((entry): entry is [string, string] => typeof entry[1] === "string")
+            .map(async ([key, value]) => [
+              key,
+              await ConfigVariable.substitute({
+                text: value,
+                type: "virtual",
+                dir: input.dir,
+                source: input.source,
+                env: input.env,
+              }),
+            ]),
+        ),
+      )
+    : undefined
+
+  return { url, headers }
+}
+
+async function resolveLoadedPlugins<T extends { plugin?: ConfigPluginV1.Spec[] }>(config: T, filepath: string) {
   if (!config.plugin) return config
   for (let i = 0; i < config.plugin.length; i++) {
     // Normalize path-like plugin specs while we still know which config file declared them.
@@ -73,208 +108,7 @@ async function resolveLoadedPlugins<T extends { plugin?: ConfigPlugin.Spec[] }>(
   return config
 }
 
-export const Server = ConfigServer.Server.zod
-export const Layout = ConfigLayout.Layout.zod
-export type Layout = ConfigLayout.Layout
-
-// Schemas that still live at the zod layer (have .transform / .preprocess /
-// .meta not expressible in current Effect Schema) get referenced via a
-// ZodOverride-annotated Schema.Any.  Walker sees the annotation and emits the
-// exact zod directly, preserving component $refs.
-const AgentRef = Schema.Any.annotate({ [ZodOverride]: ConfigAgent.Info })
-const PermissionRef = Schema.Any.annotate({ [ZodOverride]: ConfigPermission.Info })
-const LogLevelRef = Schema.Any.annotate({ [ZodOverride]: Log.Level })
-
-const PositiveInt = Schema.Number.check(Schema.isInt()).check(Schema.isGreaterThan(0))
-const NonNegativeInt = Schema.Number.check(Schema.isInt()).check(Schema.isGreaterThanOrEqualTo(0))
-
-const InfoSchema = Schema.Struct({
-  $schema: Schema.optional(Schema.String).annotate({
-    description: "JSON schema reference for configuration validation",
-  }),
-  logLevel: Schema.optional(LogLevelRef).annotate({ description: "Log level" }),
-  server: Schema.optional(ConfigServer.Server).annotate({
-    description: "Server configuration for mage serve and web commands",
-  }),
-  command: Schema.optional(Schema.Record(Schema.String, ConfigCommand.Info)).annotate({
-    description: "Command configuration, see https://mage.ai/docs/commands",
-  }),
-  skills: Schema.optional(ConfigSkills.Info).annotate({ description: "Additional skill folder paths" }),
-  marketplace: Schema.optional(ConfigMarketplace.Info).annotate({
-    description: "Marketplace configuration for installing skills and MCP servers from a registry",
-  }),
-  watcher: Schema.optional(
-    Schema.Struct({
-      ignore: Schema.optional(Schema.mutable(Schema.Array(Schema.String))),
-    }),
-  ),
-  snapshot: Schema.optional(Schema.Boolean).annotate({
-    description:
-      "Enable or disable snapshot tracking. When false, filesystem snapshots are not recorded and undoing or reverting will not undo/redo file changes. Defaults to true.",
-  }),
-  // User-facing plugin config is stored as Specs; provenance gets attached later while configs are merged.
-  plugin: Schema.optional(Schema.mutable(Schema.Array(ConfigPlugin.Spec))),
-  share: Schema.optional(Schema.Literals(["manual", "auto", "disabled"])).annotate({
-    description:
-      "Control sharing behavior:'manual' allows manual sharing via commands, 'auto' enables automatic sharing, 'disabled' disables all sharing",
-  }),
-  autoshare: Schema.optional(Schema.Boolean).annotate({
-    description: "@deprecated Use 'share' field instead. Share newly created sessions automatically",
-  }),
-  autoupdate: Schema.optional(Schema.Union([Schema.Boolean, Schema.Literal("notify")])).annotate({
-    description:
-      "Automatically update to the latest version. Set to true to auto-update, false to disable, or 'notify' to show update notifications",
-  }),
-  disabled_providers: Schema.optional(Schema.mutable(Schema.Array(Schema.String))).annotate({
-    description: "Disable providers that are loaded automatically",
-  }),
-  enabled_providers: Schema.optional(Schema.mutable(Schema.Array(Schema.String))).annotate({
-    description: "When set, ONLY these providers will be enabled. All other providers will be ignored",
-  }),
-  model: Schema.optional(ConfigModelID).annotate({
-    description: "Model to use in the format of provider/model, eg anthropic/claude-2",
-  }),
-  small_model: Schema.optional(ConfigModelID).annotate({
-    description: "Small model to use for tasks like title generation in the format of provider/model",
-  }),
-  default_agent: Schema.optional(Schema.String).annotate({
-    description:
-      "Default agent to use when none is specified. Must be a primary agent. Falls back to 'build' if not set or if the specified agent is invalid.",
-  }),
-  username: Schema.optional(Schema.String).annotate({
-    description: "Custom username to display in conversations instead of system username",
-  }),
-  mode: Schema.optional(
-    Schema.StructWithRest(
-      Schema.Struct({
-        build: Schema.optional(AgentRef),
-        plan: Schema.optional(AgentRef),
-      }),
-      [Schema.Record(Schema.String, AgentRef)],
-    ),
-  ).annotate({ description: "@deprecated Use `agent` field instead." }),
-  agent: Schema.optional(
-    Schema.StructWithRest(
-      Schema.Struct({
-        // primary
-        plan: Schema.optional(AgentRef),
-        build: Schema.optional(AgentRef),
-        // subagent
-        general: Schema.optional(AgentRef),
-        explore: Schema.optional(AgentRef),
-        // specialized
-        title: Schema.optional(AgentRef),
-        summary: Schema.optional(AgentRef),
-        compaction: Schema.optional(AgentRef),
-      }),
-      [Schema.Record(Schema.String, AgentRef)],
-    ),
-  ).annotate({ description: "Agent configuration, see https://mage.ai/docs/agents" }),
-  provider: Schema.optional(Schema.Record(Schema.String, ConfigProvider.Info)).annotate({
-    description: "Custom provider configurations and model overrides",
-  }),
-  mcp: Schema.optional(
-    Schema.Record(
-      Schema.String,
-      Schema.Union([
-        ConfigMCP.Info,
-        // Matches the legacy `{ enabled: false }` form used to disable a server.
-        Schema.Any.annotate({ [ZodOverride]: z.object({ enabled: z.boolean() }).strict() }),
-      ]),
-    ),
-  ).annotate({ description: "MCP (Model Context Protocol) server configurations" }),
-  formatter: Schema.optional(ConfigFormatter.Info),
-  lsp: Schema.optional(ConfigLSP.Info),
-  instructions: Schema.optional(Schema.mutable(Schema.Array(Schema.String))).annotate({
-    description: "Additional instruction files or patterns to include",
-  }),
-  layout: Schema.optional(ConfigLayout.Layout).annotate({ description: "@deprecated Always uses stretch layout." }),
-  permission: Schema.optional(PermissionRef),
-  tools: Schema.optional(Schema.Record(Schema.String, Schema.Boolean)),
-  enterprise: Schema.optional(
-    Schema.Struct({
-      url: Schema.optional(Schema.String).annotate({ description: "Enterprise URL" }),
-    }),
-  ),
-  compaction: Schema.optional(
-    Schema.Struct({
-      auto: Schema.optional(Schema.Boolean).annotate({
-        description: "Enable automatic compaction when context is full (default: true)",
-      }),
-      prune: Schema.optional(Schema.Boolean).annotate({
-        description: "Enable pruning of old tool outputs (default: true)",
-      }),
-      tail_turns: Schema.optional(NonNegativeInt).annotate({
-        description:
-          "Number of recent user turns, including their following assistant/tool responses, to keep verbatim during compaction (default: 2)",
-      }),
-      preserve_recent_tokens: Schema.optional(NonNegativeInt).annotate({
-        description: "Maximum number of tokens from recent turns to preserve verbatim after compaction",
-      }),
-      reserved: Schema.optional(NonNegativeInt).annotate({
-        description: "Token buffer for compaction. Leaves enough window to avoid overflow during compaction.",
-      }),
-    }),
-  ),
-  experimental: Schema.optional(
-    Schema.Struct({
-      disable_paste_summary: Schema.optional(Schema.Boolean),
-      batch_tool: Schema.optional(Schema.Boolean).annotate({ description: "Enable the batch tool" }),
-      openTelemetry: Schema.optional(Schema.Boolean).annotate({
-        description: "Enable OpenTelemetry spans for AI SDK calls (using the 'experimental_telemetry' flag)",
-      }),
-      primary_tools: Schema.optional(Schema.mutable(Schema.Array(Schema.String))).annotate({
-        description: "Tools that should only be available to primary agents.",
-      }),
-      continue_loop_on_deny: Schema.optional(Schema.Boolean).annotate({
-        description: "Continue the agent loop when a tool call is denied",
-      }),
-      mcp_timeout: Schema.optional(PositiveInt).annotate({
-        description: "Timeout in milliseconds for model context protocol (MCP) requests",
-      }),
-    }),
-  ),
-  mage: Schema.optional(
-    Schema.Struct({
-      boilerplate: Schema.optional(Schema.String).annotate({
-        description: "Path or git URL to the team boilerplate",
-      }),
-      activeBoilerplate: Schema.optional(Schema.String).annotate({
-        description: "Active boilerplate profile name",
-      }),
-    }),
-  ).annotate({ description: "Mage-specific configuration" }),
-})
-
-// Schema.Struct produces readonly types by default, but the service code
-// below mutates Info objects directly (e.g. `config.mode = ...`). Strip the
-// readonly recursively so callers get the same mutable shape zod inferred.
-//
-// `Types.DeepMutable` from effect-smol would be a drop-in, but its fallback
-// branch `{ -readonly [K in keyof T]: ... }` collapses `unknown` to `{}`
-// (since `keyof unknown = never`), which widens `Record<string, unknown>`
-// fields like `ConfigPlugin.Options`. The local version gates on
-// `extends object` so `unknown` passes through.
-//
-// Tuple branch preserves `ConfigPlugin.Spec`'s `readonly [string, Options]`
-// shape (otherwise the general array branch widens it to an array).
-type DeepMutable<T> = T extends readonly [unknown, ...unknown[]]
-  ? { -readonly [K in keyof T]: DeepMutable<T[K]> }
-  : T extends readonly (infer U)[]
-  ? DeepMutable<U>[]
-  : T extends object
-  ? { -readonly [K in keyof T]: DeepMutable<T[K]> }
-  : T
-
-// The walker emits `z.object({...})` which is non-strict by default. Config
-// historically uses `.strict()` (additionalProperties: false in openapi.json),
-// so layer that on after derivation.  Re-apply the Config ref afterward
-// since `.strict()` strips the walker's meta annotation.
-export const Info = (zod(InfoSchema) as unknown as z.ZodObject<any>)
-  .strict()
-  .meta({ ref: "Config" }) as unknown as z.ZodType<DeepMutable<Schema.Schema.Type<typeof InfoSchema>>>
-
-export type Info = z.output<typeof Info> & {
+type Info = ConfigV1.Info & {
   // plugin_origins is derived state, not a persisted config field. It keeps each winning plugin spec together
   // with the file and scope it came from so later runtime code can make location-sensitive decisions.
   plugin_origins?: ConfigPlugin.Origin[]
@@ -283,6 +117,7 @@ export type Info = z.output<typeof Info> & {
 type State = {
   config: Info
   directories: string[]
+  deps: Fiber.Fiber<void>[]
   consoleState: ConsoleState
 }
 
@@ -291,21 +126,18 @@ export interface Interface {
   readonly getGlobal: () => Effect.Effect<Info>
   readonly getConsoleState: () => Effect.Effect<ConsoleState>
   readonly update: (config: Info) => Effect.Effect<void>
-  readonly updateGlobal: (config: Info) => Effect.Effect<Info>
-  readonly invalidate: (wait?: boolean) => Effect.Effect<void>
+  readonly updateGlobal: (config: Info) => Effect.Effect<{ info: Info; changed: boolean }>
+  readonly invalidate: () => Effect.Effect<void>
   readonly directories: () => Effect.Effect<string[]>
   readonly waitForDependencies: () => Effect.Effect<void>
 }
 
-export class Service extends Context.Service<Service, Interface>()("@opencode/Config") { }
+export class Service extends Context.Service<Service, Interface>()("@opencode/Config") {}
+
+export const use = serviceUse(Service)
 
 function globalConfigFile() {
-  // mage.json first so a fresh ~/.mage (nothing seeded — the desktop app does not
-  // run postinstall's ensureGlobalConfig) creates mage.json, matching the CLI
-  // `init` wizard (CONFIG_FILE = "mage.json") and postinstall.mjs. Previously the
-  // first candidate was mage.jsonc, so the desktop's first updateConfig created
-  // ~/.mage/mage.jsonc instead of mage.json.
-  const candidates = ["mage.json", "mage.jsonc", "config.json"].map((file) =>
+  const candidates = ["opencode.jsonc", "opencode.json", "config.json"].map((file) =>
     path.join(Global.Path.config, file),
   )
   for (const file of candidates) {
@@ -325,10 +157,7 @@ function patchJsonc(input: string, patch: unknown, path: string[] = []): string 
     return applyEdits(input, edits)
   }
 
-  return Object.entries(patch).reduce((result, [key, value]) => {
-    if (value === undefined) return result
-    return patchJsonc(result, value, [...path, key])
-  }, input)
+  return Object.entries(patch).reduce((result, [key, value]) => patchJsonc(result, value, [...path, key]), input)
 }
 
 function writable(info: Info) {
@@ -336,65 +165,99 @@ function writable(info: Info) {
   return next
 }
 
-export const ConfigDirectoryTypoError = NamedError.create(
-  "ConfigDirectoryTypoError",
-  z.object({
-    path: z.string(),
-    dir: z.string(),
-    suggestion: z.string(),
-  }),
-)
+function writableGlobal(info: Info) {
+  const next = writable(info)
+  // When a user changes config from a value back to default in the Desktop app, we don't want to leave a blank `"shell": "",` key
+  if ("shell" in next && next.shell === "") return { ...next, shell: undefined }
+  return next
+}
 
-export const layer = Layer.effect(
+const layer = Layer.effect(
   Service,
   Effect.gen(function* () {
-    const fs = yield* AppFileSystem.Service
+    const fs = yield* FSUtil.Service
     const authSvc = yield* Auth.Service
     const accountSvc = yield* Account.Service
     const env = yield* Env.Service
+    const npmSvc = yield* Npm.Service
+    const http = yield* HttpClient.HttpClient
 
-    const readConfigFile = Effect.fnUntraced(function* (filepath: string) {
-      return yield* fs.readFileString(filepath).pipe(
-        Effect.catchIf(
-          (e) => e.reason._tag === "NotFound",
-          () => Effect.succeed(undefined),
-        ),
-        Effect.orDie,
+    const readConfigFile = (filepath: string) => fs.readFileStringSafe(filepath).pipe(Effect.orDie)
+
+    const fetchRemoteJson = Effect.fnUntraced(function* <S extends Schema.Top>(
+      url: string,
+      headers: Record<string, string> | undefined,
+      schema: S,
+      loginOrigin: string,
+    ) {
+      const response = yield* HttpClient.filterStatusOk(withTransientReadRetry(http))
+        .execute(
+          HttpClientRequest.get(url).pipe(HttpClientRequest.acceptJson, HttpClientRequest.setHeaders(headers ?? {})),
+        )
+        .pipe(
+          Effect.catch((error) => Effect.die(new Error(`failed to fetch remote config from ${url}: ${String(error)}`))),
+        )
+      const body = yield* response.text.pipe(
+        Effect.catch((error) => Effect.die(new Error(`failed to read remote config from ${url}: ${String(error)}`))),
+      )
+      // An auth proxy can answer with an HTML login page at HTTP 200 (passes filterStatusOk); treat it as a re-auth error, not a decode failure.
+      const contentType = (response.headers["content-type"] ?? "").toLowerCase()
+      if (contentType.includes("html") || /^\s*<!doctype|^\s*<html/i.test(body)) {
+        return yield* Effect.die(new RemoteAuthError({ url: loginOrigin, remote: url }))
+      }
+      return yield* Schema.decodeEffect(Schema.fromJsonString(schema))(body).pipe(
+        Effect.catch((error) => Effect.die(new Error(`failed to decode remote config from ${url}: ${String(error)}`))),
       )
     })
 
     const loadConfig = Effect.fnUntraced(function* (
       text: string,
       options: { path: string } | { dir: string; source: string },
+      env?: Record<string, string>,
     ) {
       const source = "path" in options ? options.path : options.source
       const expanded = yield* Effect.promise(() =>
         ConfigVariable.substitute(
-          "path" in options ? { text, type: "path", path: options.path } : { text, type: "virtual", ...options },
+          "path" in options
+            ? { text, type: "path", path: options.path, env }
+            : { text, type: "virtual", ...options, env },
         ),
       )
       const parsed = ConfigParse.jsonc(expanded, source)
-      const data = ConfigParse.schema(Info, normalizeLoadedConfig(parsed, source), source)
+      const data = ConfigParse.schema(ConfigV1.Info, normalizeLoadedConfig(parsed), source)
       if (!("path" in options)) return data
 
       yield* Effect.promise(() => resolveLoadedPlugins(data, options.path))
+      if (!data.$schema) {
+        data.$schema = "https://opencode.ai/config.json"
+        const updated = text.replace(/^\s*\{/, '{\n  "$schema": "https://opencode.ai/config.json",')
+        yield* fs.writeFileString(options.path, updated).pipe(Effect.catch(() => Effect.void))
+      }
       return data
     })
 
-    const loadFile = Effect.fnUntraced(function* (filepath: string) {
-      log.info("loading", { path: filepath })
+    const loadFile = Effect.fnUntraced(function* (filepath: string, env?: Record<string, string>) {
+      yield* Effect.logInfo("loading", { path: filepath })
       const text = yield* readConfigFile(filepath)
       if (!text) return {} as Info
-      return yield* loadConfig(text, { path: filepath })
+      return yield* loadConfig(text, { path: filepath }, env)
     })
 
-    const loadGlobal = Effect.fnUntraced(function* () {
-      let result: Info = pipe(
-        {},
-        mergeDeep(yield* loadFile(path.join(Global.Path.config, "config.json"))),
-        mergeDeep(yield* loadFile(path.join(Global.Path.config, "mage.json"))),
-        mergeDeep(yield* loadFile(path.join(Global.Path.config, "mage.jsonc"))),
-      )
+    const loadGlobal = Effect.fnUntraced(function* (env?: Record<string, string>) {
+      let result: Info = {}
+      // Seed the default global config with the schema for editor completion, but avoid writing when the user
+      // explicitly routes config through env-provided paths or content.
+      if (!Flag.OPENCODE_CONFIG && !Flag.OPENCODE_CONFIG_DIR && !Flag.OPENCODE_CONFIG_CONTENT) {
+        const file = globalConfigFile()
+        if (!existsSync(file)) {
+          yield* fs
+            .writeWithDirs(file, JSON.stringify({ $schema: "https://opencode.ai/config.json" }, null, 2))
+            .pipe(Effect.catch(() => Effect.void))
+        }
+      }
+      result = mergeConfig(result, yield* loadFile(path.join(Global.Path.config, "config.json"), env))
+      result = mergeConfig(result, yield* loadFile(path.join(Global.Path.config, "opencode.json"), env))
+      result = mergeConfig(result, yield* loadFile(path.join(Global.Path.config, "opencode.jsonc"), env))
 
       const legacy = path.join(Global.Path.config, "config")
       if (existsSync(legacy)) {
@@ -403,12 +266,12 @@ export const layer = Layer.effect(
             .then(async (mod) => {
               const { provider, model, ...rest } = mod.default
               if (provider && model) result.model = `${provider}/${model}`
-              result["$schema"] = "https://mage.ai/config.json"
-              result = mergeDeep(result, rest)
+              result["$schema"] = "https://opencode.ai/config.json"
+              result = mergeConfig(result, rest)
               await fsNode.writeFile(path.join(Global.Path.config, "config.json"), JSON.stringify(result, null, 2))
               await fsNode.unlink(legacy)
             })
-            .catch(() => { }),
+            .catch(() => {}),
         )
       }
 
@@ -418,7 +281,7 @@ export const layer = Layer.effect(
     const [cachedGlobal, invalidateGlobal] = yield* Effect.cachedInvalidateWithTTL(
       loadGlobal().pipe(
         Effect.tapError((error) =>
-          Effect.sync(() => log.error("failed to load global config, using defaults", { error: String(error) })),
+          Effect.logError("failed to load global config, using defaults", { error: String(error) }),
         ),
         Effect.orElseSucceed((): Info => ({})),
       ),
@@ -430,6 +293,7 @@ export const layer = Layer.effect(
     })
 
     const ensureGitignore = Effect.fn("Config.ensureGitignore")(function* (dir: string) {
+      yield* fs.ensureDir(dir)
       const gitignore = path.join(dir, ".gitignore")
       const hasIgnore = yield* fs.existsSafe(gitignore)
       if (!hasIgnore) {
@@ -452,13 +316,14 @@ export const layer = Layer.effect(
         const auth = yield* authSvc.all().pipe(Effect.orDie)
 
         let result: Info = {}
+        const authEnv: Record<string, string> = {}
         const consoleManagedProviders = new Set<string>()
         let activeOrgName: string | undefined
 
         const pluginScopeForSource = Effect.fnUntraced(function* (source: string) {
           if (source.startsWith("http://") || source.startsWith("https://")) return "global"
-          if (source === "MAGE_CONFIG_CONTENT") return "local"
-          if (yield* InstanceRef.use((ctx) => Effect.succeed(Instance.containsPath(source, ctx)))) return "local"
+          if (source === "OPENCODE_CONFIG_CONTENT") return "local"
+          if (containsPath(source, ctx)) return "local"
           return "global"
         })
 
@@ -466,7 +331,7 @@ export const layer = Layer.effect(
           source: string,
           // mergePluginOrigins receives raw Specs from one config source, before provenance for this merge step
           // is attached.
-          list: ConfigPlugin.Spec[] | undefined,
+          list: ConfigPluginV1.Spec[] | undefined,
           // Scope can be inferred from the source path, but some callers already know whether the config should
           // behave as global or local and can pass that explicitly.
           kind?: ConfigPlugin.Scope,
@@ -491,36 +356,56 @@ export const layer = Layer.effect(
         for (const [key, value] of Object.entries(auth)) {
           if (value.type === "wellknown") {
             const url = key.replace(/\/+$/, "")
-            process.env[value.key] = value.token
-            log.debug("fetching remote config", { url: `${url}/.well-known/mage` })
-            const response = yield* Effect.promise(() => fetch(`${url}/.well-known/mage`))
-            if (!response.ok) {
-              throw new Error(`failed to fetch remote config from ${url}: ${response.status}`)
-            }
-            const wellknown = (yield* Effect.promise(() => response.json())) as { config?: Record<string, unknown> }
-            const remoteConfig = wellknown.config ?? {}
-            if (!remoteConfig.$schema) remoteConfig.$schema = "https://mage.ai/config.json"
-            const source = `${url}/.well-known/mage`
-            const next = yield* loadConfig(JSON.stringify(remoteConfig), {
-              dir: path.dirname(source),
-              source,
-            })
+            authEnv[value.key] = value.token
+            const wellknownURL = `${url}/.well-known/opencode`
+            yield* Effect.logDebug("fetching remote config", { url: wellknownURL })
+            const wellknown = yield* fetchRemoteJson(wellknownURL, undefined, ConfigV1.WellKnown, url)
+            const remote = yield* Effect.promise(() =>
+              substituteWellKnownRemoteConfig({
+                value: wellknown.remote_config,
+                dir: url,
+                source: wellknownURL,
+                env: authEnv,
+              }),
+            )
+            const fetchedConfig = remote
+              ? yield* Effect.gen(function* () {
+                  yield* Effect.logDebug("fetching remote config", { url: remote.url })
+                  const data = yield* fetchRemoteJson(remote.url, remote.headers, Schema.Json, url)
+                  if (isRecord(data) && isRecord(data.config)) return data.config
+                  if (isRecord(data)) return data
+                  return yield* Effect.die(
+                    new Error(`failed to decode remote config from ${remote.url}: expected object`),
+                  )
+                })
+              : {}
+            const remoteConfig = mergeConfig(isRecord(wellknown.config) ? wellknown.config : {}, fetchedConfig)
+            if (!remoteConfig.$schema) remoteConfig.$schema = "https://opencode.ai/config.json"
+            const source = wellknownURL
+            const next = yield* loadConfig(
+              JSON.stringify(remoteConfig),
+              {
+                dir: path.dirname(source),
+                source,
+              },
+              authEnv,
+            )
             yield* merge(source, next, "global")
-            log.debug("loaded remote config from well-known", { url })
+            yield* Effect.logDebug("loaded remote config from well-known", { url })
           }
         }
 
-        const global = yield* getGlobal()
+        const global = Object.keys(authEnv).length ? yield* loadGlobal(authEnv) : yield* getGlobal()
         yield* merge(Global.Path.config, global, "global")
 
-        if (Flag.MAGE_CONFIG) {
-          yield* merge(Flag.MAGE_CONFIG, yield* loadFile(Flag.MAGE_CONFIG))
-          log.debug("loaded custom config", { path: Flag.MAGE_CONFIG })
+        if (Flag.OPENCODE_CONFIG) {
+          yield* merge(Flag.OPENCODE_CONFIG, yield* loadFile(Flag.OPENCODE_CONFIG, authEnv))
+          yield* Effect.logDebug("loaded custom config", { path: Flag.OPENCODE_CONFIG })
         }
 
-        if (!Flag.MAGE_DISABLE_PROJECT_CONFIG) {
-          for (const file of yield* ConfigPaths.files("mage", ctx.directory, ctx.worktree).pipe(Effect.orDie)) {
-            yield* merge(file, yield* loadFile(file), "local")
+        if (!Flag.OPENCODE_DISABLE_PROJECT_CONFIG) {
+          for (const file of yield* ConfigPaths.files("opencode", ctx.directory, ctx.worktree).pipe(Effect.orDie)) {
+            yield* merge(file, yield* loadFile(file, authEnv), "local")
           }
         }
 
@@ -530,16 +415,18 @@ export const layer = Layer.effect(
 
         const directories = yield* ConfigPaths.directories(ctx.directory, ctx.worktree)
 
-        if (Flag.MAGE_CONFIG_DIR) {
-          log.debug("loading config from MAGE_CONFIG_DIR", { path: Flag.MAGE_CONFIG_DIR })
+        if (Flag.OPENCODE_CONFIG_DIR) {
+          yield* Effect.logDebug("loading config from OPENCODE_CONFIG_DIR", { path: Flag.OPENCODE_CONFIG_DIR })
         }
 
+        const deps: Fiber.Fiber<void>[] = []
+
         for (const dir of directories) {
-          if ((dir.endsWith(".mage") || dir === Flag.MAGE_CONFIG_DIR) && dir !== Global.Path.config) {
-            for (const file of ["mage.json", "mage.jsonc"]) {
+          if (dir.endsWith(".opencode") || dir === Flag.OPENCODE_CONFIG_DIR) {
+            for (const file of ["opencode.json", "opencode.jsonc"]) {
               const source = path.join(dir, file)
-              log.debug(`loading config from ${source}`)
-              yield* merge(source, yield* loadFile(source))
+              yield* Effect.logDebug(`loading config from ${source}`)
+              yield* merge(source, yield* loadFile(source, authEnv))
               result.agent ??= {}
               result.mode ??= {}
               result.plugin ??= []
@@ -548,23 +435,44 @@ export const layer = Layer.effect(
 
           yield* ensureGitignore(dir).pipe(Effect.orDie)
 
+          const dep = yield* npmSvc
+            .install(dir, {
+              add: [
+                {
+                  name: "@mybcabisnis/mage-plugin",
+                  version: InstallationLocal ? undefined : InstallationVersion,
+                },
+              ],
+            })
+            .pipe(
+              Effect.exit,
+              Effect.tap((exit) =>
+                Exit.isFailure(exit)
+                  ? Effect.logWarning("background dependency install failed", { dir, error: String(exit.cause) })
+                  : Effect.void,
+              ),
+              Effect.asVoid,
+              Effect.forkDetach,
+            )
+          deps.push(dep)
+
           result.command = mergeDeep(result.command ?? {}, yield* Effect.promise(() => ConfigCommand.load(dir)))
           result.agent = mergeDeep(result.agent ?? {}, yield* Effect.promise(() => ConfigAgent.load(dir)))
           result.agent = mergeDeep(result.agent ?? {}, yield* Effect.promise(() => ConfigAgent.loadMode(dir)))
-          // Auto-discovered plugins under `.mage/plugin(s)` are already local files, so ConfigPlugin.load
+          // Auto-discovered plugins under `.opencode/plugin(s)` are already local files, so ConfigPlugin.load
           // returns normalized Specs and we only need to attach origin metadata here.
           const list = yield* Effect.promise(() => ConfigPlugin.load(dir))
           yield* mergePluginOrigins(dir, list)
         }
 
-        if (process.env.MAGE_CONFIG_CONTENT) {
-          const source = "MAGE_CONFIG_CONTENT"
-          const next = yield* loadConfig(process.env.MAGE_CONFIG_CONTENT, {
+        if (process.env.OPENCODE_CONFIG_CONTENT) {
+          const source = "OPENCODE_CONFIG_CONTENT"
+          const next = yield* loadConfig(process.env.OPENCODE_CONFIG_CONTENT, {
             dir: ctx.directory,
             source,
           })
           yield* merge(source, next, "local")
-          log.debug("loaded custom config from MAGE_CONFIG_CONTENT")
+          yield* Effect.logDebug("loaded custom config from OPENCODE_CONFIG_CONTENT")
         }
 
         const activeAccount = Option.getOrUndefined(
@@ -580,8 +488,8 @@ export const layer = Layer.effect(
               { concurrency: 2 },
             )
             if (Option.isSome(tokenOpt)) {
-              process.env["MAGE_CONSOLE_TOKEN"] = tokenOpt.value
-              yield* env.set("MAGE_CONSOLE_TOKEN", tokenOpt.value)
+              process.env["OPENCODE_CONSOLE_TOKEN"] = tokenOpt.value
+              yield* env.set("OPENCODE_CONSOLE_TOKEN", tokenOpt.value)
             }
 
             if (Option.isSome(configOpt)) {
@@ -597,18 +505,17 @@ export const layer = Layer.effect(
             }
           }).pipe(
             Effect.withSpan("Config.loadActiveOrgConfig"),
-            Effect.catch((err) => {
-              log.debug("failed to fetch remote account config", {
+            Effect.catch((err) =>
+              Effect.logDebug("failed to fetch remote account config", {
                 error: err instanceof Error ? err.message : String(err),
-              })
-              return Effect.void
-            }),
+              }),
+            ),
           )
         }
 
         const managedDir = ConfigManaged.managedConfigDir()
         if (existsSync(managedDir)) {
-          for (const file of ["mage.json", "mage.jsonc"]) {
+          for (const file of ["opencode.json", "opencode.jsonc"]) {
             const source = path.join(managedDir, file)
             yield* merge(source, yield* loadFile(source), "global")
           }
@@ -635,15 +542,19 @@ export const layer = Layer.effect(
           })
         }
 
-        if (Flag.MAGE_PERMISSION) {
-          result.permission = mergeDeep(result.permission ?? {}, JSON.parse(Flag.MAGE_PERMISSION))
+        if (Flag.OPENCODE_PERMISSION) {
+          try {
+            result.permission = mergeDeep(result.permission ?? {}, JSON.parse(Flag.OPENCODE_PERMISSION))
+          } catch (err) {
+            yield* Effect.logWarning("OPENCODE_PERMISSION contains invalid JSON, skipping", { err })
+          }
         }
 
         if (result.tools) {
-          const perms: Record<string, ConfigPermission.Action> = {}
+          const perms: Record<string, ConfigPermissionV1.Action> = {}
           for (const [tool, enabled] of Object.entries(result.tools)) {
-            const action: ConfigPermission.Action = enabled ? "allow" : "deny"
-            if (tool === "write" || tool === "edit" || tool === "patch" || tool === "multiedit") {
+            const action: ConfigPermissionV1.Action = enabled ? "allow" : "deny"
+            if (tool === "write" || tool === "edit" || tool === "patch") {
               perms.edit = action
               continue
             }
@@ -652,27 +563,30 @@ export const layer = Layer.effect(
           result.permission = mergeDeep(perms, result.permission ?? {})
         }
 
+        if (!result.username) {
+          try {
+            result.username = os.userInfo().username || "user"
+          } catch (err) {
+            yield* Effect.logWarning("failed to read system username, using fallback", { err })
+            result.username = "user"
+          }
+        }
+
         if (result.autoshare === true && !result.share) {
           result.share = "auto"
         }
 
-        if (Flag.MAGE_DISABLE_AUTOCOMPACT) {
+        if (Flag.OPENCODE_DISABLE_AUTOCOMPACT) {
           result.compaction = { ...result.compaction, auto: false }
         }
-        // Enable pruning by default — erases old completed tool-output parts beyond
-        // the PRUNE_PROTECT (40k) window, freeing context accumulated from large
-        // file-read scans (e.g. FFL skill) without affecting "skill" outputs which
-        // are already in PRUNE_PROTECTED_TOOLS.
-        if (result.compaction?.prune === undefined) {
-          result.compaction = { ...result.compaction, prune: true }
-        }
-        if (Flag.MAGE_DISABLE_PRUNE) {
+        if (Flag.OPENCODE_DISABLE_PRUNE) {
           result.compaction = { ...result.compaction, prune: false }
         }
 
         return {
           config: result,
           directories,
+          deps,
           consoleState: {
             consoleManagedProviders: Array.from(consoleManagedProviders),
             activeOrgName,
@@ -680,7 +594,7 @@ export const layer = Layer.effect(
           },
         }
       },
-      Effect.provideService(AppFileSystem.Service, fs),
+      Effect.provideService(FSUtil.Service, fs),
     )
 
     const state = yield* InstanceState.make<State>(
@@ -702,54 +616,47 @@ export const layer = Layer.effect(
     })
 
     const waitForDependencies = Effect.fn("Config.waitForDependencies")(function* () {
-      yield* Effect.void
+      yield* InstanceState.useEffect(state, (s) =>
+        Effect.forEach(s.deps, Fiber.join, { concurrency: "unbounded" }).pipe(Effect.asVoid),
+      )
     })
 
     const update = Effect.fn("Config.update")(function* (config: Info) {
       const dir = yield* InstanceState.directory
-      const file = path.join(dir, "mage.json")
+      const file = path.join(dir, "config.json")
       const existing = yield* loadFile(file)
       yield* fs
         .writeFileString(file, JSON.stringify(mergeDeep(writable(existing), writable(config)), null, 2))
         .pipe(Effect.orDie)
-      yield* Effect.promise(() => Instance.dispose())
     })
 
-    const invalidate = Effect.fn("Config.invalidate")(function* (wait?: boolean) {
+    const invalidate = Effect.fn("Config.invalidate")(function* () {
       yield* invalidateGlobal
-      const task = Instance.disposeAll()
-        .catch(() => undefined)
-        .finally(() =>
-          GlobalBus.emit("event", {
-            directory: "global",
-            payload: {
-              type: Event.Disposed.type,
-              properties: {},
-            },
-          }),
-        )
-      if (wait) yield* Effect.promise(() => task)
-      else void task
     })
 
     const updateGlobal = Effect.fn("Config.updateGlobal")(function* (config: Info) {
       const file = globalConfigFile()
       const before = (yield* readConfigFile(file)) ?? "{}"
+      const patch = writableGlobal(config)
 
       let next: Info
+      let changed: boolean
       if (!file.endsWith(".jsonc")) {
-        const existing = ConfigParse.schema(Info, ConfigParse.jsonc(before, file), file)
-        const merged = mergeDeep(writable(existing), writable(config))
-        yield* fs.writeFileString(file, JSON.stringify(merged, null, 2)).pipe(Effect.orDie)
+        const existing = ConfigParse.schema(ConfigV1.Info, ConfigParse.jsonc(before, file), file)
+        const merged = mergeDeep(writable(existing), patch)
+        const serialized = JSON.stringify(merged, null, 2)
+        changed = serialized !== before
+        if (changed) yield* fs.writeFileString(file, serialized).pipe(Effect.orDie)
         next = merged
       } else {
-        const updated = patchJsonc(before, writable(config))
-        next = ConfigParse.schema(Info, ConfigParse.jsonc(updated, file), file)
-        yield* fs.writeFileString(file, updated).pipe(Effect.orDie)
+        const updated = patchJsonc(before, patch)
+        next = ConfigParse.schema(ConfigV1.Info, ConfigParse.jsonc(updated, file), file)
+        changed = updated !== before
+        if (changed) yield* fs.writeFileString(file, updated).pipe(Effect.orDie)
       }
 
-      yield* invalidate()
-      return next
+      if (changed) yield* invalidate()
+      return { info: next, changed }
     })
 
     return Service.of({
@@ -765,9 +672,10 @@ export const layer = Layer.effect(
   }),
 )
 
-export const defaultLayer = layer.pipe(
-  Layer.provide(AppFileSystem.defaultLayer),
-  Layer.provide(Env.defaultLayer),
-  Layer.provide(Auth.defaultLayer),
-  Layer.provide(Account.defaultLayer),
-)
+export const node = LayerNode.make({
+  service: Service,
+  layer: layer,
+  deps: [FSUtil.node, Auth.node, Account.node, Env.node, Npm.node, httpClient],
+})
+
+export * as Config from "./config"

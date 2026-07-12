@@ -3,7 +3,7 @@ import { rename, writeFile } from "node:fs/promises"
 import { randomInt } from "node:crypto"
 import { setTimeout as sleep } from "node:timers/promises"
 
-const DEV_DATA_FILE = "/tmp/mage-workspace-dev-data.json"
+const DEV_DATA_FILE = "/tmp/opencode-workspace-dev-data.json"
 const DEV_DATA_TEMP_FILE = `${DEV_DATA_FILE}.tmp`
 
 async function waitForHealth(port: number) {
@@ -16,7 +16,7 @@ async function waitForHealth(port: number) {
       if (response.ok) {
         return
       }
-    } catch { }
+    } catch {}
 
     await sleep(250)
   }
@@ -58,7 +58,7 @@ export const DebugWorkspacePlugin: Plugin = async ({ experimental_workspace }) =
 
       await waitForHealth(port)
     },
-    async remove(_config) { },
+    async remove(_config) {},
     target(_config) {
       return {
         type: "remote",

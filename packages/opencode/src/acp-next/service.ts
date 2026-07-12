@@ -30,7 +30,7 @@ import {
   type SetSessionModeResponse,
 } from "@agentclientprotocol/sdk"
 import { InstallationVersion } from "@mybcabisnis/mage-core/installation/version"
-import * as Log from "@mybcabisnis/mage-core/util/log"
+import * as Log from "@/util/log"
 import type { Message, OpencodeClient, SessionMessageResponse } from "@mybcabisnis/mage-sdk/v2"
 import { Context, Effect, Layer, ManagedRuntime } from "effect"
 import * as ACPNextError from "./error"

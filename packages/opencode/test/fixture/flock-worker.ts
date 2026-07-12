@@ -1,5 +1,5 @@
 import fs from "fs/promises"
-import { Flock } from "@mybcabisnis/mage-shared/util/flock"
+import { Flock } from "@mybcabisnis/mage-core/util/flock"
 
 type Msg = {
   key: string

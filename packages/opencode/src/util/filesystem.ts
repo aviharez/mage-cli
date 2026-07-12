@@ -1,10 +1,12 @@
 import { chmod, mkdir, readFile, stat as statFile, writeFile } from "fs/promises"
 import { createWriteStream, existsSync, statSync } from "fs"
 import { realpathSync } from "fs"
-import { dirname, join, relative, resolve as pathResolve, win32 } from "path"
+import { dirname, isAbsolute, join, resolve as pathResolve, win32 } from "path"
 import { Readable } from "stream"
 import { pipeline } from "stream/promises"
-import { Glob } from "@mybcabisnis/mage-shared/util/glob"
+import { Glob } from "@mybcabisnis/mage-core/util/glob"
+import { FSUtil } from "@mybcabisnis/mage-core/fs-util"
+import { fileURLToPath } from "url"
 
 // Fast sync version for metadata checks
 export async function exists(p: string): Promise<boolean> {
@@ -132,31 +134,20 @@ export function normalizePathPattern(p: string): string {
 // We cannot rely on path.resolve() here because git.exe may come from Git Bash, Cygwin, or MSYS2, so we need to translate these paths at the boundary.
 // Also resolves symlinks so that callers using the result as a cache key
 // always get the same canonical path for a given physical directory.
-const resolveCache = new Map<string, string>()
-const RESOLVE_CACHE_MAX = 512
-
 export function resolve(p: string): string {
-  const cached = resolveCache.get(p)
-  if (cached !== undefined) return cached
-
   const resolved = pathResolve(windowsPath(p))
-  let result: string
   try {
-    result = normalizePath(realpathSync(resolved))
+    return normalizePath(realpathSync(resolved))
   } catch (e) {
-    if (isEnoent(e)) {
-      result = normalizePath(resolved)
-    } else {
-      throw e
-    }
+    if (isEnoent(e)) return normalizePath(resolved)
+    throw e
   }
+}
 
-  if (resolveCache.size >= RESOLVE_CACHE_MAX) {
-    const firstKey = resolveCache.keys().next().value
-    if (firstKey !== undefined) resolveCache.delete(firstKey)
-  }
-  resolveCache.set(p, result)
-  return result
+export function resolveFilePath(root: string, file: string): string {
+  const raw = file.startsWith("file://") ? fileURLToPath(file) : file
+  if (isAbsolute(raw)) return raw
+  return pathResolve(root, raw)
 }
 
 export function windowsPath(p: string): string {
@@ -173,13 +164,11 @@ export function windowsPath(p: string): string {
   )
 }
 export function overlaps(a: string, b: string) {
-  const relA = relative(a, b)
-  const relB = relative(b, a)
-  return !relA || !relA.startsWith("..") || !relB || !relB.startsWith("..")
+  return FSUtil.overlaps(a, b)
 }
 
 export function contains(parent: string, child: string) {
-  return !relative(parent, child).startsWith("..")
+  return FSUtil.contains(parent, child)
 }
 
 export async function findUp(
@@ -258,3 +247,5 @@ export async function globUp(pattern: string, start: string, stop?: string) {
   }
   return result
 }
+
+export * as Filesystem from "./filesystem"

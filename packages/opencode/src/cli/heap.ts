@@ -1,10 +1,7 @@
 import path from "path"
 import { writeHeapSnapshot } from "node:v8"
-import { Flag } from "@/flag/flag"
-import { Global } from "@/global"
-import { Log } from "@/util"
-
-const log = Log.create({ service: "heap" })
+import { Flag } from "@mybcabisnis/mage-core/flag/flag"
+import { Global } from "@mybcabisnis/mage-core/global"
 const MINUTE = 60_000
 const LIMIT = 2 * 1024 * 1024 * 1024
 
@@ -13,7 +10,7 @@ let lock = false
 let armed = true
 
 export function start() {
-  if (!Flag.MAGE_AUTO_HEAP_SNAPSHOT) return
+  if (!Flag.OPENCODE_AUTO_HEAP_SNAPSHOT) return
   if (timer) return
 
   const run = async () => {
@@ -32,20 +29,9 @@ export function start() {
       Global.Path.log,
       `heap-${process.pid}-${new Date().toISOString().replace(/[:.]/g, "")}.heapsnapshot`,
     )
-    log.warn("heap usage exceeded limit", {
-      rss: stat.rss,
-      heap: stat.heapUsed,
-      file,
-    })
-
     await Promise.resolve()
       .then(() => writeHeapSnapshot(file))
-      .catch((err) => {
-        log.error("failed to write heap snapshot", {
-          error: err instanceof Error ? err.message : String(err),
-          file,
-        })
-      })
+      .catch(() => {})
 
     lock = false
   }

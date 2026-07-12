@@ -70,7 +70,8 @@ import type {
   LanguageModelV3StreamPart,
   LanguageModelV3ToolResultOutput,
 } from "@ai-sdk/provider"
-import { Log, Network } from "../util"
+import * as Log from "../util/log"
+import * as Network from "../util/network"
 
 const log = Log.create({ service: "merlin" })
 

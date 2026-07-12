@@ -1,6 +1,8 @@
 import path from "path"
 import z from "zod"
-import { Filesystem, Log, Network } from "@/util"
+import { Filesystem } from "@/util/filesystem"
+import * as Log from "@/util/log"
+import * as Network from "@/util/network"
 import { applyEdits, modify } from "jsonc-parser"
 
 const log = Log.create({ service: "marketplace" })

@@ -44,6 +44,10 @@
     "@mybcabisnis/mage-web#build": {
       "dependsOn": ["@mybcabisnis/mage#build"],
       "outputs": ["dist/**"]
+    },
+    "@mybcabisnis/mage-web-react#build": {
+      "dependsOn": ["@mybcabisnis/mage-ui-react#build"],
+      "outputs": ["dist/**"]
     }
   }
 }

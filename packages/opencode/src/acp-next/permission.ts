@@ -1,5 +1,5 @@
 import type { AgentSideConnection, PermissionOption, RequestPermissionResponse } from "@agentclientprotocol/sdk"
-import * as Log from "@mybcabisnis/mage-core/util/log"
+import * as Log from "@/util/log"
 import type { Event, OpencodeClient } from "@mybcabisnis/mage-sdk/v2"
 import { applyPatch } from "diff"
 import { exists, readText } from "@/util/filesystem"
