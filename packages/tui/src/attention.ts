@@ -14,12 +14,12 @@ import { AttentionSoundName, type TuiConfig } from "./config"
 import { Schema } from "effect"
 import stripAnsi from "strip-ansi"
 import * as TuiAudio from "./audio"
-import defaultSoundPath from "@mybcabisnis/mage-ui/audio/bip-bop-01.mp3" with { type: "file" }
-import questionSoundPath from "@mybcabisnis/mage-ui/audio/bip-bop-03.mp3" with { type: "file" }
-import permissionSoundPath from "@mybcabisnis/mage-ui/audio/staplebops-06.mp3" with { type: "file" }
-import errorSoundPath from "@mybcabisnis/mage-ui/audio/nope-03.mp3" with { type: "file" }
-import doneSoundPath from "@mybcabisnis/mage-ui/audio/bip-bop-01.mp3" with { type: "file" }
-import subagentDoneSoundPath from "@mybcabisnis/mage-ui/audio/yup-01.mp3" with { type: "file" }
+import defaultSoundPath from "@mybcabisnis/mage-ui-solid/audio/bip-bop-01.mp3" with { type: "file" }
+import questionSoundPath from "@mybcabisnis/mage-ui-solid/audio/bip-bop-03.mp3" with { type: "file" }
+import permissionSoundPath from "@mybcabisnis/mage-ui-solid/audio/staplebops-06.mp3" with { type: "file" }
+import errorSoundPath from "@mybcabisnis/mage-ui-solid/audio/nope-03.mp3" with { type: "file" }
+import doneSoundPath from "@mybcabisnis/mage-ui-solid/audio/bip-bop-01.mp3" with { type: "file" }
+import subagentDoneSoundPath from "@mybcabisnis/mage-ui-solid/audio/yup-01.mp3" with { type: "file" }
 
 type FocusState = "unknown" | "focused" | "blurred"
 

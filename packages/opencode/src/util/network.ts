@@ -20,10 +20,11 @@ let nodeDispatcherInit = false
  *
  *   - Bun (CLI / `bun run dev` web backend) honors a per-request `tls` option on
  *     fetch.
- *   - Node (the Electron desktop sidecar in packages/desktop) runs the prebuilt
- *     dist/node bundle and uses undici's fetch, which SILENTLY IGNORES the `tls`
- *     option. Without an undici dispatcher the desktop fails with "fetch failed"
- *     on the self-signed cert. We lazily build an Agent that skips verification.
+ *   - Node (any Node-hosted sidecar, e.g. an Electron desktop shell) runs the
+ *     prebuilt dist/node bundle and uses undici's fetch, which SILENTLY IGNORES
+ *     the `tls` option. Without an undici dispatcher such a host fails with
+ *     "fetch failed" on the self-signed cert. We lazily build an Agent that
+ *     skips verification.
  *
  * Spread the result into the fetch options, e.g.
  * `fetch(url, { ...init, ...(await insecureFetchInit()) })`.

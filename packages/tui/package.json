@@ -51,7 +51,7 @@
     "@mybcabisnis/mage-core": "workspace:*",
     "@mybcabisnis/mage-plugin": "workspace:*",
     "@mybcabisnis/mage-sdk": "workspace:*",
-    "@mybcabisnis/mage-ui": "workspace:*",
+    "@mybcabisnis/mage-ui-solid": "workspace:*",
     "@opentui/core": "catalog:",
     "@opentui/keymap": "catalog:",
     "@opentui/solid": "catalog:",

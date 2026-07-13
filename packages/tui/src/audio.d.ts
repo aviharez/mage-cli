@@ -3,7 +3,7 @@ declare module "*.mp3" {
   export default path
 }
 
-declare module "@mybcabisnis/mage-ui/audio/*.mp3" {
+declare module "@mybcabisnis/mage-ui-solid/audio/*.mp3" {
   const path: string
   export default path
 }

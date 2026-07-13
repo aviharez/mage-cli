@@ -7,8 +7,6 @@
   "packageManager": "bun@1.3.14",
   "scripts": {
     "dev": "MAGE_CONFIG_DIR=$PWD/packages/opencode/defaults bun run --cwd packages/opencode --conditions=browser src/index.ts",
-    "dev:web": "bun --cwd packages/app dev",
-    "dev:desktop": "bun --cwd packages/desktop dev",
     "dev:docs": "bun --cwd packages/web dev",
     "dev:serve": "MAGE_CONFIG_DIR=$PWD/packages/opencode/defaults MAGE_DISABLE_MODELS_FETCH=true bun run --cwd packages/opencode --conditions=browser src/index.ts serve --port 4096",
     "dev:web-react": "bun --cwd packages/web-react dev",
@@ -71,6 +69,7 @@
       "luxon": "3.6.1",
       "marked": "17.0.1",
       "marked-shiki": "1.2.1",
+      "@shikijs/stream": "4.2.0",
       "remend": "1.3.0",
       "@playwright/test": "1.59.1",
       "semver": "7.7.4",
@@ -129,7 +128,6 @@
   "dependencies": {
     "@aws-sdk/client-s3": "3.933.0",
     "@mybcabisnis/mage-core": "workspace:*",
-    "@mybcabisnis/mage-desktop": "workspace:*",
     "@mybcabisnis/mage-llm": "workspace:*",
     "@mybcabisnis/mage-web": "workspace:*",
     "@mybcabisnis/mage-plugin": "workspace:*",

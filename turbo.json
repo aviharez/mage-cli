@@ -18,29 +18,6 @@
       "outputs": [".artifacts/unit/junit.xml"],
       "passThroughEnv": ["*"]
     },
-    "@mybcabisnis/mage-app#test": {
-      "dependsOn": ["^build"],
-      "outputs": []
-    },
-    "@mybcabisnis/mage-app#test:ci": {
-      "dependsOn": ["^build"],
-      "outputs": [".artifacts/unit/junit.xml"],
-      "passThroughEnv": ["*"]
-    },
-    "@mybcabisnis/mage-ui#test": {
-      "dependsOn": ["^build"],
-      "outputs": [".artifacts/unit/junit.xml"],
-      "passThroughEnv": ["*"]
-    },
-    "@mybcabisnis/mage-ui#test:ci": {
-      "dependsOn": ["^build"],
-      "outputs": [".artifacts/unit/junit.xml"],
-      "passThroughEnv": ["*"]
-    },
-    "@mybcabisnis/mage-desktop#build": {
-      "dependsOn": ["@mybcabisnis/mage-app#build", "@mybcabisnis/mage-ui#build"],
-      "outputs": ["out/**"]
-    },
     "@mybcabisnis/mage-web#build": {
       "dependsOn": ["@mybcabisnis/mage#build"],
       "outputs": ["dist/**"]

@@ -28,9 +28,8 @@ Before running anything, determine what type of change this is. Read the diff or
 | Change type | Layers affected | How to run |
 |---|---|---|
 | Core logic / backend | `packages/opencode` | `bun run dev` (CLI mode) |
-| Web UI | `packages/app` | `bun run dev:web` |
-| Desktop shell | `packages/desktop` | `bun run dev:desktop` |
-| Plugin | `packages/plugin` | `bun run build:plugin`, then restart desktop |
+| Web UI | `packages/web-react` (+ `packages/ui-react`) | `bun run dev:serve` then `bun run dev:web-react` |
+| Plugin | `packages/plugin` | `bun run build:plugin` |
 | CLI / server | `packages/opencode/src/cli` | `bun run dev` |
 | Full-stack | all layers | start each relevant server |
 
@@ -65,12 +64,10 @@ Use the right command for the change:
 # Core / CLI changes
 bun run dev
 
-# Web UI changes
-bun run dev:web
-# Then open http://localhost:5173 (or whatever port Vite reports)
-
-# Desktop changes
-bun run dev:desktop
+# Web UI changes — needs both the API server and the web sidecar
+bun run dev:serve            # API server on :4096
+bun run dev:web-react        # web sidecar, proxies to :4096
+# Then open the URL the web-react dev server reports
 
 # Backend server (API/session mode)
 bun run dev:serve
@@ -138,7 +135,7 @@ bun test packages/<package>/src
 For end-to-end tests (if available):
 
 ```bash
-bun run --cwd packages/app test:e2e
+bun run --cwd packages/web-react test
 ```
 
 ---

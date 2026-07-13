@@ -512,7 +512,7 @@ function filePartToBase64(data: FilePart["data"]): string | null {
  * Collect every uploaded attachment across the conversation as base64 strings,
  * to populate Merlin's `file` field. Walks user messages for file content parts
  * — the same parts the prompt composer produces from the file-picker / paste /
- * drag-drop flows in packages/app.
+ * drag-drop flows in the web UI.
  */
 function extractFiles(options: LanguageModelV3CallOptions): string[] {
   const files: string[] = []
