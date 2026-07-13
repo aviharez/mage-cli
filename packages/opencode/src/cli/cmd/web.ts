@@ -5,6 +5,40 @@ import { withNetworkOptions, resolveNetworkOptions } from "../network"
 import { Flag } from "@mybcabisnis/mage-core/flag/flag"
 import open from "open"
 import { networkInterfaces } from "os"
+import path from "path"
+
+const WEB_UI_PORT = 3001
+
+/**
+ * Resolve the web-react sidecar's server entry point. In this monorepo
+ * checkout it sits alongside packages/opencode; in a packaged install it
+ * ships as a dependency of the mage package (see AGENTS.md distribution note).
+ */
+async function resolveWebUiServerEntry(): Promise<string | null> {
+  const candidates = [
+    path.resolve(import.meta.dirname, "../../../../web-react/server/index.js"),
+    path.resolve(import.meta.dirname, "../../../node_modules/@mybcabisnis/mage-web-react/server/index.js"),
+  ]
+  for (const candidate of candidates) {
+    if (await Bun.file(candidate).exists()) return candidate
+  }
+  return null
+}
+
+/** Poll the sidecar's /health endpoint until it responds or the timeout elapses. */
+async function waitForWebUiReady(url: string, timeoutMs = 15_000): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    try {
+      const res = await fetch(`${url}/health`)
+      if (res.ok) return true
+    } catch {
+      // not up yet
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250))
+  }
+  return false
+}
 
 function getNetworkIPs() {
   const nets = networkInterfaces()
@@ -46,38 +80,48 @@ export const WebCommand = effectCmd({
     UI.println(UI.logo("  "))
     UI.empty()
 
-    if (opts.hostname === "0.0.0.0") {
-      // Show localhost for local access
-      const localhostUrl = `http://localhost:${server.port}`
-      UI.println(UI.Style.TEXT_INFO_BOLD + "  Local access:      ", UI.Style.TEXT_NORMAL, localhostUrl)
-
-      // Show network IPs for remote access
-      const networkIPs = getNetworkIPs()
-      if (networkIPs.length > 0) {
-        for (const ip of networkIPs) {
-          UI.println(
-            UI.Style.TEXT_INFO_BOLD + "  Network access:    ",
-            UI.Style.TEXT_NORMAL,
-            `http://${ip}:${server.port}`,
-          )
-        }
-      }
-
-      if (opts.mdns) {
-        UI.println(
-          UI.Style.TEXT_INFO_BOLD + "  mDNS:              ",
-          UI.Style.TEXT_NORMAL,
-          `${opts.mdnsDomain}:${server.port}`,
-        )
-      }
-
-      // Open localhost in browser
-      open(localhostUrl).catch(() => {})
-    } else {
-      const displayUrl = server.url.toString()
-      UI.println(UI.Style.TEXT_INFO_BOLD + "  Web interface:    ", UI.Style.TEXT_NORMAL, displayUrl)
-      open(displayUrl).catch(() => {})
+    const webUiServerEntry = yield* Effect.promise(() => resolveWebUiServerEntry())
+    if (!webUiServerEntry) {
+      UI.println(
+        UI.Style.TEXT_WARNING_BOLD + "!  Web UI package (@mybcabisnis/mage-web-react) not found; ",
+        UI.Style.TEXT_NORMAL,
+        "serving API only.",
+      )
+      const apiUrl = server.url.toString()
+      UI.println(UI.Style.TEXT_INFO_BOLD + "  API:               ", UI.Style.TEXT_NORMAL, apiUrl)
+      open(apiUrl).catch(() => {})
+      yield* Effect.never
     }
+
+    const webUiHostname = opts.hostname === "0.0.0.0" ? "127.0.0.1" : opts.hostname
+    Bun.spawn(["bun", webUiServerEntry!, "--port", String(WEB_UI_PORT)], {
+      env: {
+        ...process.env,
+        OPENCODE_SKIP_START: "true",
+        OPENCODE_HOST: `http://${webUiHostname}:${server.port}`,
+        OPENCODE_PORT: String(server.port),
+      },
+      stdout: "inherit",
+      stderr: "inherit",
+      stdin: "ignore",
+    })
+
+    const webUiUrl = `http://localhost:${WEB_UI_PORT}`
+    const ready = yield* Effect.promise(() => waitForWebUiReady(webUiUrl))
+    if (!ready) {
+      UI.println(UI.Style.TEXT_WARNING_BOLD + "!  Web UI did not become ready in time; check its logs above.")
+    }
+
+    UI.println(UI.Style.TEXT_INFO_BOLD + "  Local access:      ", UI.Style.TEXT_NORMAL, webUiUrl)
+
+    if (opts.hostname === "0.0.0.0") {
+      const networkIPs = getNetworkIPs()
+      for (const ip of networkIPs) {
+        UI.println(UI.Style.TEXT_INFO_BOLD + "  Network access:    ", UI.Style.TEXT_NORMAL, `http://${ip}:${WEB_UI_PORT}`)
+      }
+    }
+
+    open(webUiUrl).catch(() => {})
 
     yield* Effect.never
   }),

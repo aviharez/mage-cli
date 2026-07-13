@@ -68,7 +68,6 @@ import { SessionExecution } from "@mybcabisnis/mage-core/session/execution"
 import * as SessionExecutionLocal from "@mybcabisnis/mage-core/session/execution/local"
 import { lazy } from "@/util/lazy"
 import { CorsConfig, isAllowedCorsOrigin, type CorsOptions } from "@mybcabisnis/mage-server/cors"
-import { serveUIEffect } from "@/server/shared/ui"
 import { ServerAuth } from "@/server/auth"
 import { InstanceHttpApi, RootHttpApi } from "./api"
 import { Api } from "@mybcabisnis/mage-server/api"
@@ -191,13 +190,29 @@ const docRoute = HttpRouter.use((router) => router.add("GET", "/doc", () => Effe
   Layer.provide(authOnlyRouterLayer),
 )
 
+// Mage's web UI is served by the separate @mybcabisnis/mage-web-react
+// process (`mage web` spawns it) rather than embedded in this binary or
+// proxied to an upstream host — see packages/opencode/src/cli/cmd/web.ts.
+const WEB_UI_NOT_BUILT_PAGE = `<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Mage — Web UI</title></head>
+<body style="font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#0d0d0d;color:#e0e0e0">
+<div style="max-width:520px;padding:2rem;border:1px solid #333;border-radius:8px;line-height:1.6">
+<h1 style="margin-top:0;font-size:1.4rem">This is the Mage API server</h1>
+<p>Run <code style="background:#1a1a1a;padding:.1em .4em;border-radius:4px">mage web</code> to start the web interface.</p>
+</div>
+</body>
+</html>`
+
 const uiRoute = HttpRouter.use((router) =>
   Effect.gen(function* () {
-    const fs = yield* FSUtil.Service
-    const client = yield* HttpClient.HttpClient
-    const flags = yield* RuntimeFlags.Service
-    yield* router.add("*", "/*", (request) =>
-      serveUIEffect(request, { fs, client, disableEmbeddedWebUi: flags.disableEmbeddedWebUi }),
+    yield* router.add("*", "/*", () =>
+      Effect.succeed(
+        HttpServerResponse.text(WEB_UI_NOT_BUILT_PAGE, {
+          status: 404,
+          headers: new Headers({ "content-type": "text/html; charset=utf-8" }),
+        }),
+      ),
     )
   }),
 ).pipe(Layer.provide(authOnlyRouterLayer))
