@@ -65,14 +65,19 @@ export function convertTool(mcpTool: MCPToolDef, client: Client, timeout?: numbe
           onprogress: () => {},
         },
       )
+      // Duplicate @modelcontextprotocol/sdk resolutions in the dependency tree (a
+      // transitive hoisting artifact, not a real API mismatch) make `content`
+      // resolve to `unknown` here even though the SDK's own .d.ts declares it
+      // fully. Narrow just the parts this function actually reads.
+      const content = result.content as ReadonlyArray<{ type: string; text?: string }>
       if (result.isError)
         throw new Error(
-          result.content
-            .flatMap((item) => (item.type === "text" ? [item.text] : []))
+          content
+            .flatMap((item) => (item.type === "text" ? [item.text!] : []))
             .filter((text) => text.trim())
             .join("\n\n") || "MCP tool returned an error",
         )
-      if (result.content.length > 0 || result.structuredContent === undefined || result.structuredContent === null)
+      if (content.length > 0 || result.structuredContent === undefined || result.structuredContent === null)
         return result
       return {
         ...result,

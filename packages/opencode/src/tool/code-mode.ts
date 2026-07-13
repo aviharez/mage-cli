@@ -158,14 +158,19 @@ const invokeChildTool = Effect.fn("CodeMode.invokeChildTool")(function* (input: 
           onprogress: () => {},
         },
       )
+      // Duplicate @modelcontextprotocol/sdk resolutions in the dependency tree (a
+      // transitive hoisting artifact, not a real API mismatch) make `content`
+      // resolve to `unknown` here even though the SDK's own .d.ts declares it
+      // fully. Narrow just the parts this function actually reads.
+      const content = raw.content as ReadonlyArray<{ type: string; text?: string }>
       if (raw.isError)
         throw new Error(
-          raw.content
-            .flatMap((item) => (item.type === "text" ? [item.text] : []))
+          content
+            .flatMap((item) => (item.type === "text" ? [item.text!] : []))
             .filter((text) => text.trim())
             .join("\n\n") || "MCP tool returned an error",
         )
-      return raw
+      return raw as CallToolResult
     })
   }).pipe(
     Effect.withSpan("Tool.execute", {
