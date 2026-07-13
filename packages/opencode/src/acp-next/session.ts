@@ -1,12 +1,13 @@
 import type { McpServer } from "@agentclientprotocol/sdk"
 import type { Message, Part } from "@mybcabisnis/mage-sdk/v2"
 import { Context, Effect, Layer, Ref } from "effect"
-import type { ModelID, ProviderID } from "../provider/schema"
+import type { ProviderV2 } from "@mybcabisnis/mage-core/provider"
+import type { ModelV2 } from "@mybcabisnis/mage-core/model"
 import * as ACPNextError from "./error"
 
 export type SelectedModel = {
-  providerID: ProviderID
-  modelID: ModelID
+  providerID: ProviderV2.ID
+  modelID: ModelV2.ID
 }
 
 export type KnownMessagePartMetadata = {
