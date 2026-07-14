@@ -13,7 +13,7 @@ mock.module('vscode', () => ({
 const { handleConfigBridgeMessage } = await import('./bridge-config-runtime.ts');
 
 const tempRoots = [];
-const originalOpencodeConfig = process.env.MAGE_CONFIG;
+const originalMageConfig = process.env.MAGE_CONFIG;
 
 const createCtx = (workingDirectory, restartImpl = async () => undefined) => {
   const restart = mock(restartImpl);
@@ -33,15 +33,15 @@ const deps = {
   saveMagicPromptOverride: async () => ({ version: 1, overrides: {} }),
   resetMagicPromptOverride: async () => ({ version: 1, overrides: {} }),
   resetAllMagicPromptOverrides: async () => ({ version: 1, overrides: {} }),
-  fetchOpenCodeSkillsFromApi: async () => null,
+  fetchMageSkillsFromApi: async () => null,
   clientReloadDelayMs: 800,
 };
 
 afterEach(() => {
-  if (originalOpencodeConfig === undefined) {
+  if (originalMageConfig === undefined) {
     delete process.env.MAGE_CONFIG;
   } else {
-    process.env.MAGE_CONFIG = originalOpencodeConfig;
+    process.env.MAGE_CONFIG = originalMageConfig;
   }
 
   for (const root of tempRoots.splice(0)) {
@@ -53,11 +53,11 @@ const readJson = (filePath) => JSON.parse(fs.readFileSync(filePath, 'utf8'));
 
 describe('VS Code config bridge plugin parity', () => {
   test('removes agent fields when update payload sends null', async () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-vscode-agent-null-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'mage-vscode-agent-null-'));
     tempRoots.push(root);
     const ctx = createCtx(root);
-    const configDir = path.join(root, '.opencode');
-    const configPath = path.join(configDir, 'opencode.json');
+    const configDir = path.join(root, '.mage');
+    const configPath = path.join(configDir, 'mage.json');
     fs.mkdirSync(configDir, { recursive: true });
     fs.writeFileSync(configPath, JSON.stringify({
       agent: {
@@ -86,7 +86,7 @@ describe('VS Code config bridge plugin parity', () => {
   });
 
   test('creates, lists, updates, and deletes project plugin entries', async () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-vscode-plugins-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'mage-vscode-plugins-'));
     tempRoots.push(root);
     const ctx = createCtx(root);
 
@@ -126,7 +126,7 @@ describe('VS Code config bridge plugin parity', () => {
     }, ctx, deps);
     expect(updated?.success).toBe(true);
 
-    const config = JSON.parse(fs.readFileSync(path.join(root, '.opencode', 'opencode.json'), 'utf8'));
+    const config = JSON.parse(fs.readFileSync(path.join(root, '.mage', 'mage.json'), 'utf8'));
     expect(config.plugin).toEqual([['plugin-b', { enabled: true }]]);
 
     const relisted = await handleConfigBridgeMessage({
@@ -145,7 +145,7 @@ describe('VS Code config bridge plugin parity', () => {
   });
 
   test('creates and reads project plugin files', async () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-vscode-plugin-files-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'mage-vscode-plugin-files-'));
     tempRoots.push(root);
     const ctx = createCtx(root);
 
@@ -179,10 +179,10 @@ describe('VS Code config bridge plugin parity', () => {
   });
 
   test('updates and deletes user plugin entries from MAGE_CONFIG source', async () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-vscode-custom-config-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'mage-vscode-custom-config-'));
     tempRoots.push(root);
     const configDir = path.join(root, 'custom-config');
-    const configPath = path.join(configDir, 'opencode.json');
+    const configPath = path.join(configDir, 'mage.json');
     fs.mkdirSync(configDir, { recursive: true });
     fs.writeFileSync(configPath, JSON.stringify({ plugin: ['custom-plugin'] }, null, 2), 'utf8');
     process.env.MAGE_CONFIG = configPath;
@@ -227,10 +227,10 @@ describe('VS Code config bridge plugin parity', () => {
   });
 
   test('writes user plugin files next to MAGE_CONFIG', async () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-vscode-custom-files-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'mage-vscode-custom-files-'));
     tempRoots.push(root);
     const configDir = path.join(root, 'custom-config');
-    const configPath = path.join(configDir, 'opencode.json');
+    const configPath = path.join(configDir, 'mage.json');
     fs.mkdirSync(configDir, { recursive: true });
     fs.writeFileSync(configPath, '{}', 'utf8');
     process.env.MAGE_CONFIG = configPath;
@@ -252,7 +252,7 @@ describe('VS Code config bridge plugin parity', () => {
   });
 
   test('reports plugin mutation success when restart fails after writing config', async () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-vscode-plugin-restart-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'mage-vscode-plugin-restart-'));
     tempRoots.push(root);
     const ctx = createCtx(root, async () => {
       throw new Error('restart failed');
@@ -272,6 +272,6 @@ describe('VS Code config bridge plugin parity', () => {
     expect(created?.success).toBe(true);
     expect(created?.data).toMatchObject({ success: true, requiresReload: false, reloadFailed: true });
     expect(created?.data?.warning).toContain('restart failed');
-    expect(readJson(path.join(root, '.opencode', 'opencode.json')).plugin).toEqual(['plugin-restart']);
+    expect(readJson(path.join(root, '.mage', 'mage.json')).plugin).toEqual(['plugin-restart']);
   });
 });

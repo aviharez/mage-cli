@@ -5,17 +5,17 @@ import os from 'node:os';
 import path from 'node:path';
 import { registerQuotaRoutes } from './routes.js';
 
-const previousDataDir = process.env.OPENCHAMBER_DATA_DIR;
-const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-go-routes-'));
-process.env.OPENCHAMBER_DATA_DIR = temporaryDirectory;
+const previousDataDir = process.env.MAGE_DATA_DIR;
+const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'mage-go-routes-'));
+process.env.MAGE_DATA_DIR = temporaryDirectory;
 
 afterAll(() => {
-  if (previousDataDir === undefined) delete process.env.OPENCHAMBER_DATA_DIR;
-  else process.env.OPENCHAMBER_DATA_DIR = previousDataDir;
+  if (previousDataDir === undefined) delete process.env.MAGE_DATA_DIR;
+  else process.env.MAGE_DATA_DIR = previousDataDir;
   fs.rmSync(temporaryDirectory, { recursive: true, force: true });
 });
 
-describe('OpenCode Go credential routes', () => {
+describe('Mage Go credential routes', () => {
   it('parses a JSON credential payload before validation', async () => {
     const originalFetch = globalThis.fetch;
     globalThis.fetch = mock(async () => new Response('rollingUsage:$R[1]={usagePercent:25,resetInSec:60}'));
@@ -25,7 +25,7 @@ describe('OpenCode Go credential routes', () => {
     try {
       const address = server.address();
       if (!address || typeof address === 'string') throw new Error('Test server did not start');
-      const response = await originalFetch(`http://127.0.0.1:${address.port}/api/quota/credentials/opencode-go`, {
+      const response = await originalFetch(`http://127.0.0.1:${address.port}/api/quota/credentials/mage-go`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ workspaceId: 'wrk_test', authCookie: 'auth=secret' }),

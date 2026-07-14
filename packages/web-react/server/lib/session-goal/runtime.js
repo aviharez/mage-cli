@@ -1,5 +1,5 @@
 // Session goal: a persisted, self-continuing objective attached to a session
-// (metadata.openchamber.goal). While the goal is active, the server keeps the
+// (metadata.mage.goal). While the goal is active, the server keeps the
 // session working toward it: after each busy→idle transition it accounts token
 // usage, asks the small model to audit progress (continue / complete /
 // blocked), and either re-prompts the session's own model with a continuation
@@ -20,16 +20,16 @@ import path from 'path';
 
 import { GOAL_OBJECTIVE_CHAR_LIMIT, readObjective } from './objectives.js';
 
-const OPENCHAMBER_SETTINGS_FILE = path.join(
-  process.env.OPENCHAMBER_DATA_DIR
-    ? path.resolve(process.env.OPENCHAMBER_DATA_DIR)
-    : path.join(os.homedir(), '.config', 'openchamber'),
+const MAGE_SETTINGS_FILE = path.join(
+  process.env.MAGE_DATA_DIR
+    ? path.resolve(process.env.MAGE_DATA_DIR)
+    : path.join(os.homedir(), '.config', 'mage'),
   'settings.json',
 );
 
 const isSessionGoalEnabled = () => {
   try {
-    const raw = fs.readFileSync(OPENCHAMBER_SETTINGS_FILE, 'utf8');
+    const raw = fs.readFileSync(MAGE_SETTINGS_FILE, 'utf8');
     const settings = JSON.parse(raw);
     return settings?.sessionGoalEnabled !== false;
   } catch {
@@ -188,7 +188,7 @@ const extractSessionUpdate = (payload) => {
 const parseGoalMetadata = (session) => {
   const metadata = session?.metadata;
   if (!metadata || typeof metadata !== 'object') return null;
-  const namespace = metadata.openchamber;
+  const namespace = metadata.mage;
   if (!namespace || typeof namespace !== 'object') return null;
   const goal = namespace.goal;
   if (!goal || typeof goal !== 'object') return null;
@@ -228,7 +228,7 @@ const messagePartsToText = (message) => {
     .slice(0, TRANSCRIPT_PART_CHAR_LIMIT);
 };
 
-// OpenCode reports tokens per message, and each turn's cache.read carries
+// Mage reports tokens per message, and each turn's cache.read carries
 // everything that was already paid for in earlier turns (past inputs and
 // outputs fold into the cache of the next turn). So the accumulated cost of
 // a whole run is simply the LATEST message's input + cache.read + output —
@@ -243,8 +243,8 @@ const messageTokenTotal = (info) => {
 };
 
 export const createSessionGoalRuntime = ({
-  buildOpenCodeUrl,
-  getOpenCodeAuthHeaders,
+  buildMageUrl,
+  getMageAuthHeaders,
   getSmallModelService,
   emitGoalNotification,
   idleQuietMs = IDLE_QUIET_MS,
@@ -263,8 +263,8 @@ export const createSessionGoalRuntime = ({
     }
   };
 
-  const openCodeFetch = async (fetchPath, { directory, method = 'GET', body, query } = {}) => {
-    const base = buildOpenCodeUrl(fetchPath, '');
+  const mageFetch = async (fetchPath, { directory, method = 'GET', body, query } = {}) => {
+    const base = buildMageUrl(fetchPath, '');
     const params = new URLSearchParams(query || {});
     if (directory) params.set('directory', directory);
     const search = params.toString();
@@ -274,19 +274,19 @@ export const createSessionGoalRuntime = ({
       headers: {
         Accept: 'application/json',
         ...(body ? { 'Content-Type': 'application/json' } : {}),
-        ...getOpenCodeAuthHeaders(),
+        ...getMageAuthHeaders(),
       },
       ...(body ? { body: JSON.stringify(body) } : {}),
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
     if (!response.ok) {
-      throw new Error(`OpenCode ${method} ${fetchPath} failed with ${response.status}`);
+      throw new Error(`Mage ${method} ${fetchPath} failed with ${response.status}`);
     }
     return response.json().catch(() => null);
   };
 
   const fetchRecentMessages = async (sessionId, directory) => {
-    const messages = await openCodeFetch(`/session/${encodeURIComponent(sessionId)}/message`, {
+    const messages = await mageFetch(`/session/${encodeURIComponent(sessionId)}/message`, {
       directory,
       query: { limit: String(MESSAGE_FETCH_LIMIT) },
     }).catch(() => null);
@@ -298,21 +298,21 @@ export const createSessionGoalRuntime = ({
   // Returns the written goal, or null when the stored goal no longer matches
   // the expected id (user replaced/cleared it while we worked).
   const writeGoal = async (sessionId, directory, expectedGoalId, mutate) => {
-    const session = await openCodeFetch(`/session/${encodeURIComponent(sessionId)}`, { directory });
+    const session = await mageFetch(`/session/${encodeURIComponent(sessionId)}`, { directory });
     const currentGoal = parseGoalMetadata(session);
     if (!currentGoal || currentGoal.id !== expectedGoalId) return null;
     const nextGoal = { ...currentGoal, ...mutate(currentGoal), updatedAt: Date.now() };
     const currentMetadata = session?.metadata && typeof session.metadata === 'object' ? session.metadata : {};
-    const currentNamespace = currentMetadata.openchamber && typeof currentMetadata.openchamber === 'object'
-      ? currentMetadata.openchamber
+    const currentNamespace = currentMetadata.mage && typeof currentMetadata.mage === 'object'
+      ? currentMetadata.mage
       : {};
-    await openCodeFetch(`/session/${encodeURIComponent(sessionId)}`, {
+    await mageFetch(`/session/${encodeURIComponent(sessionId)}`, {
       directory,
       method: 'PATCH',
       body: {
         metadata: {
           ...currentMetadata,
-          openchamber: { ...currentNamespace, goal: nextGoal },
+          mage: { ...currentNamespace, goal: nextGoal },
         },
       },
     });
@@ -353,7 +353,7 @@ export const createSessionGoalRuntime = ({
       const generated = await service.generateSmallModelText({
         // Background feature: conversation content must never leave the
         // session's own provider unless the user explicitly picked a small
-        // model (settings override / opencode config).
+        // model (settings override / mage config).
         restrictToPreferredProvider: true,
         // Instruct the language by example, not by description — account-side
         // personalization otherwise leaks a different language into the note.
@@ -392,7 +392,7 @@ export const createSessionGoalRuntime = ({
       ? lastAssistantInfo.agent
       : (typeof lastAssistantInfo?.mode === 'string' ? lastAssistantInfo.mode : '');
     const variant = typeof lastAssistantInfo?.variant === 'string' ? lastAssistantInfo.variant : '';
-    await openCodeFetch(`/session/${encodeURIComponent(sessionId)}/prompt_async`, {
+    await mageFetch(`/session/${encodeURIComponent(sessionId)}/prompt_async`, {
       directory,
       method: 'POST',
       body: {
@@ -407,7 +407,7 @@ export const createSessionGoalRuntime = ({
   const tick = async (sessionId, directory) => {
     if (!isSessionGoalEnabled()) return;
 
-    const session = await openCodeFetch(`/session/${encodeURIComponent(sessionId)}`, { directory })
+    const session = await mageFetch(`/session/${encodeURIComponent(sessionId)}`, { directory })
       .catch((error) => {
         console.warn(`[session-goal] session fetch failed: ${error?.message || error}`);
         return null;
@@ -420,7 +420,7 @@ export const createSessionGoalRuntime = ({
     if (!goal || goal.status !== 'active') return;
 
     // File-backed objectives: the metadata carries only a flag; the objective
-    // TEXT lives under the OpenChamber data dir keyed by session id and is
+    // TEXT lives under the Mage data dir keyed by session id and is
     // read fresh on every tick (live-editable). A missing file falls back to
     // whatever inline objective the metadata still has — the goal must never
     // die just because a file went away.
@@ -511,7 +511,7 @@ export const createSessionGoalRuntime = ({
       sawNewMessages = true;
       const total = messageTokenTotal(info);
       if (info.summary === true) {
-        // The summary message's own tokens are ZEROED by opencode — never
+        // The summary message's own tokens are ZEROED by mage — never
         // feed them into the closing value. Close the segment from what is
         // already known, with the previously displayed total as a continuity
         // floor (the latest pre-summary snapshot was already folded into
@@ -693,7 +693,7 @@ export const createSessionGoalRuntime = ({
   // "stop". Messages the user sends afterwards leave the paused goal alone;
   // Resume re-arms the loop (and kicks off immediately on an idle session).
   const pauseAfterAbort = async (sessionId, directory) => {
-    const session = await openCodeFetch(`/session/${encodeURIComponent(sessionId)}`, { directory })
+    const session = await mageFetch(`/session/${encodeURIComponent(sessionId)}`, { directory })
       .catch(() => null);
     const goal = parseGoalMetadata(session);
     if (!goal || goal.status !== 'active') return;

@@ -1,7 +1,7 @@
 import React from 'react';
 import morphdom from 'morphdom';
 import { renderMermaidASCII, renderMermaidSVG } from 'beautiful-mermaid';
-import type { Part } from '@opencode-ai/sdk/v2';
+import type { Part } from '@mybcabisnis/mage-sdk/v2';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n';
 import { runtimeFetch } from '@/lib/runtime-fetch';
@@ -84,7 +84,7 @@ const useExternalLinkInteractions = ({
         return;
       }
 
-      if (anchor.getAttribute('data-openchamber-file-link') === 'true') {
+      if (anchor.getAttribute('data-mage-file-link') === 'true') {
         return;
       }
 
@@ -140,10 +140,10 @@ interface MarkdownRendererProps {
   enableFileReferences?: boolean;
 }
 
-const FILE_LINK_SELECTOR = '[data-openchamber-file-link="true"]';
-const BLOCK_PATH_TOKEN_ATTR = 'data-openchamber-block-path-token';
+const FILE_LINK_SELECTOR = '[data-mage-file-link="true"]';
+const BLOCK_PATH_TOKEN_ATTR = 'data-mage-block-path-token';
 const BLOCK_PATH_TOKEN_SELECTOR = `[${BLOCK_PATH_TOKEN_ATTR}]`;
-const CODE_BLOCK_PATH_SCANNED_ATTR = 'data-openchamber-block-paths-scanned';
+const CODE_BLOCK_PATH_SCANNED_ATTR = 'data-mage-block-paths-scanned';
 // Matches `path[:line[:col]]` or `path:start-end` inside shell/grep-style
 // output. The regex is defined in `./fileReferenceParser`; the inline-code
 // pipeline reads full text content rather than using this regex.
@@ -268,12 +268,12 @@ const extractPathCandidateFromElement = (element: HTMLElement): string => {
 
 // Walks text nodes inside `<pre><code>` subtrees and wraps any substring that
 // looks like a `path[:line[:col]]` reference in a span carrying
-// `data-openchamber-block-path-token`. `annotateFileLinks` then promotes those
+// `data-mage-block-path-token`. `annotateFileLinks` then promotes those
 // spans into clickable file links via the same existing pipeline used for
 // inline code (parseFileReference → fileReferenceExists → openFileReference).
 //
 // Idempotent: each `<code>` node is marked with
-// `data-openchamber-block-paths-scanned` once processed so the walk is not
+// `data-mage-block-paths-scanned` once processed so the walk is not
 // repeated on the same element. When the renderer replaces the `<code>` subtree
 // (e.g. on content change during streaming), the new element lacks the marker and
 // will be rescanned on the next mutation-observer callback.
@@ -454,9 +454,9 @@ const useFileReferenceInteractions = ({
     const fileReferencesEnabled = enabled && !isMobileSurfaceRuntime();
 
     const clearFileLinkAttributes = (candidate: HTMLElement) => {
-      candidate.removeAttribute('data-openchamber-file-link');
-      candidate.removeAttribute('data-openchamber-file-ref');
-      candidate.removeAttribute('data-openchamber-file-path');
+      candidate.removeAttribute('data-mage-file-link');
+      candidate.removeAttribute('data-mage-file-ref');
+      candidate.removeAttribute('data-mage-file-path');
       if (candidate.getAttribute('title') === 'Open file') {
         candidate.removeAttribute('title');
       }
@@ -539,9 +539,9 @@ const useFileReferenceInteractions = ({
             return;
           }
 
-          candidate.setAttribute('data-openchamber-file-link', 'true');
-          candidate.setAttribute('data-openchamber-file-ref', latestRawCandidate);
-          candidate.setAttribute('data-openchamber-file-path', latestResolved.resolvedPath);
+          candidate.setAttribute('data-mage-file-link', 'true');
+          candidate.setAttribute('data-mage-file-ref', latestRawCandidate);
+          candidate.setAttribute('data-mage-file-path', latestResolved.resolvedPath);
           candidate.setAttribute('title', 'Open file');
           if (candidate.tagName.toLowerCase() !== 'a') {
             candidate.setAttribute('role', 'button');
@@ -552,7 +552,7 @@ const useFileReferenceInteractions = ({
     };
 
     const openFileReference = async (sourceElement: HTMLElement) => {
-      const raw = sourceElement.getAttribute('data-openchamber-file-ref') || extractPathCandidateFromElement(sourceElement);
+      const raw = sourceElement.getAttribute('data-mage-file-ref') || extractPathCandidateFromElement(sourceElement);
       const resolved = getResolvedReference(raw, effectiveDirectory);
       if (!resolved) {
         return;
@@ -614,7 +614,7 @@ const useFileReferenceInteractions = ({
       }
 
       const target = event.target;
-      if (!(target instanceof HTMLElement) || target.getAttribute('data-openchamber-file-link') !== 'true') {
+      if (!(target instanceof HTMLElement) || target.getAttribute('data-mage-file-link') !== 'true') {
         return;
       }
 
@@ -937,7 +937,7 @@ const useMorphdomMarkdown = ({
   // Synchronous first paint: while the async parse is in-flight, show escaped
   // plain text immediately so there is no blank frame on initial mount. Only
   // runs when the target is empty — subsequent updates keep the prior rich DOM
-  // until the next async render morphs in (no flash). Mirrors OpenCode's
+  // until the next async render morphs in (no flash). Mirrors Mage's
   // `initialValue: fallback(text)` resource pattern.
   React.useLayoutEffect(() => {
     const container = containerRef.current;

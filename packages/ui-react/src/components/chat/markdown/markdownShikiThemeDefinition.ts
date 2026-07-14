@@ -3,14 +3,14 @@
 // Token colors reference CSS custom properties (`--md-syntax-*`) instead of
 // concrete colors, so a highlighted code block does NOT need to be re-tokenized
 // when the app theme changes — only the CSS variables on the markdown container
-// update, and the browser repaints. This mirrors OpenCode's `var(--syntax-*)`
+// update, and the browser repaints. This mirrors Mage's `var(--syntax-*)`
 // theme approach and keeps highlighting results cacheable across theme switches.
 //
 // This module is intentionally dependency-free (no `@pierre/diffs`, no React) so
 // it can be imported from inside the Shiki Web Worker bundle without dragging in
 // main-thread-only modules.
 
-export const MARKDOWN_SHIKI_THEME = 'openchamber-md';
+export const MARKDOWN_SHIKI_THEME = 'mage-md';
 
 // Loosely typed on purpose: consumers (`@pierre/diffs` registration and the raw
 // Shiki worker) each cast to their own theme type. The shape is a standard

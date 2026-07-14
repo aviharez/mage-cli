@@ -108,8 +108,8 @@ bun run build:mage
 # Publish to BCA Artifactory
 bun run publish:mage
 
-# Or run directly in packages/opencode:
-cd packages/opencode
+# Or run directly in packages/mage:
+cd packages/mage
 bun run build
 bun run publish
 ```

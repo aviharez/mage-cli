@@ -24,8 +24,8 @@ const searchFilesMock = mock(() => {
   return request.promise;
 });
 
-mock.module('@/lib/opencode/client', () => ({
-  opencodeClient: {
+mock.module('@/lib/mage/client', () => ({
+  mageClient: {
     searchFiles: searchFilesMock,
   },
 }));

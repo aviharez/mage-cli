@@ -1,7 +1,7 @@
 # Event Stream Module Documentation
 
 ## Purpose
-This module contains the OpenChamber message-stream WebSocket protocol and runtime bridge. It keeps the browser-facing WebSocket transport separate from the upstream OpenCode SSE transport.
+This module contains the Mage message-stream WebSocket protocol and runtime bridge. It keeps the browser-facing WebSocket transport separate from the upstream Mage SSE transport.
 
 ## Entrypoints and structure
 - `packages/web/server/lib/event-stream/index.js`: public entrypoint re-exporting protocol and runtime helpers.
@@ -33,26 +33,26 @@ This module contains the OpenChamber message-stream WebSocket protocol and runti
 ### Upstream reader helpers
 - `DEFAULT_UPSTREAM_STALL_TIMEOUT_MS`: default idle timeout before an attached upstream SSE fetch is aborted for reconnect.
 - `DEFAULT_UPSTREAM_RECONNECT_DELAY_MS`: default delay between upstream reconnect attempts.
-- `createUpstreamSseReader(...)`: creates a start/stop reader for OpenCode SSE streams. The reader parses SSE blocks, tracks the latest `Last-Event-ID`, reconnects after closed or stalled upstream streams, and reports events through callbacks.
+- `createUpstreamSseReader(...)`: creates a start/stop reader for Mage SSE streams. The reader parses SSE blocks, tracks the latest `Last-Event-ID`, reconnects after closed or stalled upstream streams, and reports events through callbacks.
 
 ## Runtime behavior
 - Browser clients connect to the WS endpoints above.
-- OpenChamber still fetches OpenCode upstream event streams over SSE.
-- The web server creates one shared global message-stream hub. OpenCode watcher side effects and global WS clients subscribe to that hub, so there is one upstream `/global/event` SSE reader for both server-side processing and browser fan-out.
+- Mage still fetches Mage upstream event streams over SSE.
+- The web server creates one shared global message-stream hub. Mage watcher side effects and global WS clients subscribe to that hub, so there is one upstream `/global/event` SSE reader for both server-side processing and browser fan-out.
 - The global hub keeps a bounded replay buffer keyed by SSE `eventId` so reconnecting browser clients can receive buffered events after their requested `Last-Event-ID`.
 - Directory WS clients still attach one upstream `/event?directory=...` SSE reader per connection because directory streams are scoped.
 - If an upstream SSE stream stalls after the browser WS is already ready, the reader aborts that upstream fetch and reconnects upstream with `Last-Event-ID`, keeping the browser WS alive when recovery is fast.
 - When the shared global upstream reconnects after it was previously ready, the global WS bridge sends a fresh `ready` frame to already-ready browser clients. The browser treats this as a reconnect edge and can run scoped state repair without requiring the browser WS to close.
 - Health checks are reserved for initial upstream connect failures and explicit upstream-unavailable responses, not for ordinary stall recovery on an already-established stream.
-- Global synthetic events such as `openchamber:session-status`, `openchamber:session-activity`, `openchamber:notification`, and `openchamber:heartbeat` are preserved on the WS path, but heartbeat frames are emitted only while an upstream SSE stream is actively attached.
+- Global synthetic events such as `mage:session-status`, `mage:session-activity`, `mage:notification`, and `mage:heartbeat` are preserved on the WS path, but heartbeat frames are emitted only while an upstream SSE stream is actively attached.
 - Global UI broadcasts are fan-out capable across both SSE and WS clients.
-- The reusable upstream reader centralizes SSE fetch/parsing/reconnect behavior for the WS runtime and OpenCode watcher. Additional event consumers should move to it only with parity tests for their lifecycle and error semantics.
+- The reusable upstream reader centralizes SSE fetch/parsing/reconnect behavior for the WS runtime and Mage watcher. Additional event consumers should move to it only with parity tests for their lifecycle and error semantics.
 - Browser transport concerns live in the WS bridge modules; server-side global stream ownership lives in `global-hub.js`.
 
 ## Notes for contributors
 - Keep protocol helpers pure and small so they can be unit tested without spinning up a server.
 - Keep `runtime.js` focused on WebSocket upgrade and endpoint dispatch. Put global browser-client lifecycle in `global-ws-bridge.js`, directory stream lifecycle in `directory-ws-bridge.js`, and upstream stream sharing in `global-hub.js`.
-- Do not change upstream OpenCode transport assumptions here; OpenCode remains SSE-based.
+- Do not change upstream Mage transport assumptions here; Mage remains SSE-based.
 - Keep global replay bounded; do not turn it into an unbounded event log.
 
 ## Testing

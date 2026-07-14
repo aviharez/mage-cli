@@ -1,4 +1,4 @@
-import type { Agent } from "@opencode-ai/sdk/v2";
+import type { Agent } from "@mybcabisnis/mage-sdk/v2";
 
 interface AgentMentionSource {
   value: string;

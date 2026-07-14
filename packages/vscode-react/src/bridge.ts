@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { type OpenCodeManager } from './opencode';
+import { type MageManager } from './mage';
 import { handleStandardGitBridgeMessage } from './bridge-git-runtime';
 import { handleSpecialGitBridgeMessage } from './bridge-git-special-runtime';
 import { handleFsBridgeMessage } from './bridge-fs-runtime';
@@ -7,7 +7,7 @@ import { handleConfigBridgeMessage } from './bridge-config-runtime';
 import { handleSystemBridgeMessage } from './bridge-system-runtime';
 import { handleProxyBridgeMessage } from './bridge-proxy-runtime';
 import {
-  fetchOpenCodeSkillsFromApi,
+  fetchMageSkillsFromApi,
   persistSettings,
   readSettings,
   readMagicPromptOverrides,
@@ -49,14 +49,14 @@ export interface BridgeResponse {
 }
 
 export interface BridgeContext {
-  manager?: OpenCodeManager;
+  manager?: MageManager;
   context?: vscode.ExtensionContext;
 }
 
 const CLIENT_RELOAD_DELAY_MS = 800;
 
-const UPDATE_CHECK_URL = process.env.OPENCHAMBER_UPDATE_API_URL || 'https://api.openchamber.dev/v1/update/check';
-const GITHUB_BACKEND_DISABLED_ERROR = 'OpenChamber VS Code backend GitHub integration is disabled. Use native VS Code GitHub integrations.';
+const UPDATE_CHECK_URL = process.env.MAGE_UPDATE_API_URL || 'https://api.mage.dev/v1/update/check';
+const GITHUB_BACKEND_DISABLED_ERROR = 'Mage VS Code backend GitHub integration is disabled. Use native VS Code GitHub integrations.';
 
 
 export async function handleBridgeMessage(message: BridgeRequest, ctx?: BridgeContext): Promise<BridgeResponse> {
@@ -101,7 +101,7 @@ export async function handleBridgeMessage(message: BridgeRequest, ctx?: BridgeCo
         saveMagicPromptOverride,
         resetMagicPromptOverride,
         resetAllMagicPromptOverrides,
-        fetchOpenCodeSkillsFromApi,
+        fetchMageSkillsFromApi,
         clientReloadDelayMs: CLIENT_RELOAD_DELAY_MS,
       },
     );

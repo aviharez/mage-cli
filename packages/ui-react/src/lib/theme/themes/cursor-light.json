@@ -2,13 +2,13 @@
   "metadata": {
     "id": "cursor-light",
     "name": "Cursor",
-    "description": "Ported from OpenCode Cursor theme (light variant)",
-    "author": "OpenCode",
+    "description": "Ported from Mage Cursor theme (light variant)",
+    "author": "Mage",
     "version": "1.0.0",
     "variant": "light",
     "tags": [
       "light",
-      "opencode",
+      "mage",
       "ported",
       "cursor"
     ]

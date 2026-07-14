@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import type { Session } from '@opencode-ai/sdk/v2';
+import type { Session } from '@mybcabisnis/mage-sdk/v2';
 import { prunePinnedSessionIds } from './pinnedSessionCleanup';
 
 const makeSession = (id: string): Pick<Session, 'id'> => ({ id });

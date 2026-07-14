@@ -6,7 +6,7 @@ import { createApnsRuntime } from './apns-runtime.js';
 // A real P-256 key so the ES256 signing path (direct mode) runs for real.
 const { privateKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
 const P8 = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
-const APNS_CONFIG = { keyId: 'KEY123', teamId: 'TEAM123', p8: P8, bundleId: 'com.openchamber.app', environment: 'sandbox' };
+const APNS_CONFIG = { keyId: 'KEY123', teamId: 'TEAM123', p8: P8, bundleId: 'com.mage.app', environment: 'sandbox' };
 
 // In-memory fs so add-then-read reflects within a test.
 const createMemoryFs = () => {
@@ -67,8 +67,8 @@ const isSend = ([url]) => String(url) === 'https://relay.test/v1/push/send';
 
 afterEach(() => {
   vi.unstubAllGlobals();
-  delete process.env.OPENCHAMBER_PUSH_RELAY_URL;
-  delete process.env.OPENCHAMBER_PUSH_RELAY_DISABLED;
+  delete process.env.MAGE_PUSH_RELAY_URL;
+  delete process.env.MAGE_PUSH_RELAY_DISABLED;
 });
 
 describe('apns runtime relay mode (default)', () => {
@@ -84,7 +84,7 @@ describe('apns runtime relay mode (default)', () => {
           }),
     );
     vi.stubGlobal('fetch', fetchMock);
-    process.env.OPENCHAMBER_PUSH_RELAY_URL = 'https://relay.test/v1/push/send';
+    process.env.MAGE_PUSH_RELAY_URL = 'https://relay.test/v1/push/send';
 
     const runtime = createApnsRuntime(makeDeps());
     await runtime.addOrUpdateApnsToken('s1', 'tokenA');
@@ -130,7 +130,7 @@ describe('apns runtime relay mode (default)', () => {
   it('reuses one persisted keypair (same serverId) across register + send', async () => {
     const fetchMock = vi.fn(async () => jsonResponse({ ok: true, results: [] }));
     vi.stubGlobal('fetch', fetchMock);
-    process.env.OPENCHAMBER_PUSH_RELAY_URL = 'https://relay.test/v1/push/send';
+    process.env.MAGE_PUSH_RELAY_URL = 'https://relay.test/v1/push/send';
 
     const deps = makeDeps();
     const runtime = createApnsRuntime(deps);
@@ -155,7 +155,7 @@ describe('apns runtime relay mode (default)', () => {
 
 describe('apns runtime direct fallback (relay disabled)', () => {
   it('signs an ES256 JWT and sends over http2 when relay is disabled', async () => {
-    process.env.OPENCHAMBER_PUSH_RELAY_DISABLED = 'true';
+    process.env.MAGE_PUSH_RELAY_DISABLED = 'true';
     const targeted = [];
     const http2 = {
       connect: () => ({

@@ -1,10 +1,10 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useEffect, useRef, useCallback, useMemo } from "react"
-import type { Event, Message, Part } from "@opencode-ai/sdk/v2/client"
-import type { Session } from "@opencode-ai/sdk/v2"
+import type { Event, Message, Part } from "@mybcabisnis/mage-sdk/v2/client"
+import type { Session } from "@mybcabisnis/mage-sdk/v2"
 import type { StoreApi } from "zustand"
 import { useStore } from "zustand"
-import type { OpencodeClient } from "@opencode-ai/sdk/v2/client"
+import type { MageClient } from "@mybcabisnis/mage-sdk/v2/client"
 import { createEventPipeline } from "./event-pipeline"
 import { isVSCodeRuntime } from "@/lib/desktop"
 import { isMobileSurfaceRuntime } from "@/lib/runtimeSurface"
@@ -28,7 +28,7 @@ import { stripMessageDiffSnapshots, stripSessionDiffSnapshots } from "./sanitize
 import { applySessionEventToGlobalSessions } from "./session-event-router"
 import { syncDebug } from "./debug"
 import { getReconnectCandidateSessionIds } from "./reconnect-recovery"
-import { opencodeClient } from "@/lib/opencode/client"
+import { mageClient } from "@/lib/mage/client"
 import { usePermissionStore } from "@/stores/permissionStore"
 import { useConfigStore } from "@/stores/useConfigStore"
 import { useTodosPersistStore } from "@/stores/useTodosPersistStore"
@@ -36,7 +36,7 @@ import { toast } from "@/components/ui"
 import { appendNotification } from "./notification-store"
 import { applyGlobalSessionStatusEvent } from "./global-session-status"
 import type { State } from "./types"
-import type { SessionStatus } from "@opencode-ai/sdk/v2/client"
+import type { SessionStatus } from "@mybcabisnis/mage-sdk/v2/client"
 import type { PermissionRequest } from "@/types/permission"
 import type { QuestionRequest } from "@/types/question"
 import * as sessionActions from "./session-actions"
@@ -58,11 +58,11 @@ import { runtimeFetch } from "@/lib/runtime-fetch"
 
 type SyncSystem = {
   childStores: ChildStoreManager
-  sdk: OpencodeClient
+  sdk: MageClient
   directory: string
 }
 
-const SYNC_CONTEXT_GLOBAL_KEY = "__openchamber_sync_context__"
+const SYNC_CONTEXT_GLOBAL_KEY = "__mage_sync_context__"
 type SyncGlobal = typeof globalThis & {
   [SYNC_CONTEXT_GLOBAL_KEY]?: React.Context<SyncSystem | null>
 }
@@ -257,7 +257,7 @@ async function materializeSessionFromServer(
     messageID: options?.messageID,
     partID: options?.partID,
   })
-  const scopedClient = opencodeClient.getScopedSdkClient(directory)
+  const scopedClient = mageClient.getScopedSdkClient(directory)
   const result = await retry(async () => {
     const response = await scopedClient.session.messages({ sessionID, limit: SESSION_MATERIALIZATION_MESSAGE_LIMIT })
     assertSdkSuccess(response, "session.messages")
@@ -340,7 +340,7 @@ const asOptionalString = (value: unknown): string | undefined => {
 }
 
 const handleUiNotificationEvent = (payload: Event, fallbackDirectory: string): boolean => {
-  if ((payload as { type?: unknown }).type !== "openchamber:notification") {
+  if ((payload as { type?: unknown }).type !== "mage:notification") {
     return false
   }
 
@@ -421,7 +421,7 @@ function getViewedSessionMaterializationTarget(directory: string) {
   }
 }
 
-function toSessionStatus(status: Awaited<ReturnType<typeof opencodeClient.getSessionStatus>>[string] | undefined): SessionStatus | undefined {
+function toSessionStatus(status: Awaited<ReturnType<typeof mageClient.getSessionStatus>>[string] | undefined): SessionStatus | undefined {
   if (!status) return undefined
   if (status.type === "idle" || status.type === "busy") {
     return { type: status.type }
@@ -450,7 +450,7 @@ function getActiveSessionCandidateIds(directory: string, state: DirectoryStore):
 }
 
 type DirectorySessionStatusSnapshot = NonNullable<
-  Awaited<ReturnType<typeof opencodeClient.getSessionStatusForDirectory>>
+  Awaited<ReturnType<typeof mageClient.getSessionStatusForDirectory>>
 >
 
 // How a /session/status snapshot is reconciled into the store.
@@ -518,7 +518,7 @@ async function resyncDirectorySessionStatuses(
   candidateSessionIds: string[],
   mode: StatusSnapshotMode,
 ): Promise<DirectorySessionStatusSnapshot | null> {
-  const nextStatuses = await opencodeClient.getSessionStatusForDirectory(directory)
+  const nextStatuses = await mageClient.getSessionStatusForDirectory(directory)
   // null = fetch failed; preserve existing state. {} or populated = a snapshot
   // of active sessions — reconciled per `mode` (absence ≠ idle under monotonic).
   if (nextStatuses === null) return null
@@ -572,7 +572,7 @@ const SHOULD_DISPATCH_VSCODE_NOTIFICATIONS = isVSCodeRuntime()
 
 const dispatchVSCodeRuntimeNotificationEvent = (directory: string, payload: Event) => {
   if (!SHOULD_DISPATCH_VSCODE_NOTIFICATIONS || typeof window === "undefined") return
-  window.dispatchEvent(new CustomEvent("openchamber:vscode-notification-event", {
+  window.dispatchEvent(new CustomEvent("mage:vscode-notification-event", {
     detail: { directory, payload },
   }))
 }
@@ -1058,7 +1058,7 @@ export async function resyncBlockingRequestsForDirectory(
     const beforeSignatures = new Map(
       candidates.map((sessionId) => [sessionId, requestSignature(before.question[sessionId])]),
     )
-    const pendingQuestions = await opencodeClient.listPendingQuestions({ directories: [directory] })
+    const pendingQuestions = await mageClient.listPendingQuestions({ directories: [directory] })
     const grouped: Record<string, QuestionRequest[]> = {}
     for (const q of pendingQuestions) {
       if (!q?.id || !q.sessionID) continue
@@ -1117,7 +1117,7 @@ export async function resyncBlockingRequestsForDirectory(
     const beforeSignatures = new Map(
       candidates.map((sessionId) => [sessionId, requestSignature(before.permission[sessionId])]),
     )
-    const pendingPermissions = await opencodeClient.listPendingPermissions({ directories: [directory] })
+    const pendingPermissions = await mageClient.listPendingPermissions({ directories: [directory] })
     const grouped: Record<string, PermissionRequest[]> = {}
     for (const permission of pendingPermissions) {
       if (!permission?.id || !permission.sessionID) continue
@@ -1156,7 +1156,7 @@ export async function resyncBlockingRequestsForDirectory(
             // returns "unknown". This permanently disables auto-accept
             // (acknowledged scope tradeoff — project requires SDK 1.17.12)
             // but does not falsely report permissions as resolved.
-            const outcome = await opencodeClient.fetchPermission(
+            const outcome = await mageClient.fetchPermission(
               permission.sessionID,
               permission.id,
             )
@@ -1238,7 +1238,7 @@ async function resyncDirectoryAfterReconnect(
 
   await resyncDirectorySessionStatuses(directory, store, candidateSessionIds, "authoritative")
 
-  const scopedClient = opencodeClient.getScopedSdkClient(directory)
+  const scopedClient = mageClient.getScopedSdkClient(directory)
   await Promise.all(candidateSessionIds.map(async (sessionId) => {
     syncDebug.recovery.materializing({ reason, directory, sessionID: sessionId })
     const [sessionResponse, messageResponse] = await Promise.all([
@@ -1328,7 +1328,7 @@ function handleEvent(
   childStores: ChildStoreManager,
   routingIndex: EventRoutingIndex,
 ) {
-  if ((payload as { type?: unknown }).type === "openchamber:permission-auto-accept.updated") {
+  if ((payload as { type?: unknown }).type === "mage:permission-auto-accept.updated") {
     const properties = (payload as unknown as { properties?: unknown }).properties
     if (properties && typeof properties === "object") {
       const snapshot = properties as { sessions?: unknown }
@@ -1638,19 +1638,19 @@ function handleEvent(
 // Provider
 // ---------------------------------------------------------------------------
 
-const dispatchOpenCodeUpdateAvailable = (payload: { version: string }) => {
+const dispatchMageUpdateAvailable = (payload: { version: string }) => {
   if (typeof window === "undefined") return
-  window.dispatchEvent(new CustomEvent("openchamber:opencode-update-available", { detail: payload }))
+  window.dispatchEvent(new CustomEvent("mage:mage-update-available", { detail: payload }))
 }
 
-let bundledOpenCodeRuntimeCache: { runtimeKey: string; promise: Promise<boolean> } | null = null
+let bundledMageRuntimeCache: { runtimeKey: string; promise: Promise<boolean> } | null = null
 
-const isBundledOpenCodeRuntime = async () => {
+const isBundledMageRuntime = async () => {
   const runtimeKey = getRuntimeKey()
-  if (!bundledOpenCodeRuntimeCache || bundledOpenCodeRuntimeCache.runtimeKey !== runtimeKey) {
-    bundledOpenCodeRuntimeCache = {
+  if (!bundledMageRuntimeCache || bundledMageRuntimeCache.runtimeKey !== runtimeKey) {
+    bundledMageRuntimeCache = {
       runtimeKey,
-      promise: runtimeFetch("/api/config/opencode-resolution", { signal: AbortSignal.timeout(4000) })
+      promise: runtimeFetch("/api/config/mage-resolution", { signal: AbortSignal.timeout(4000) })
         .then(async (response) => {
           if (response.ok) {
             const resolution = await response.json() as { source?: unknown; detectedSourceNow?: unknown }
@@ -1659,26 +1659,26 @@ const isBundledOpenCodeRuntime = async () => {
 
           const healthResponse = await runtimeFetch("/health", { signal: AbortSignal.timeout(4000) })
           if (!healthResponse.ok) return false
-          const health = await healthResponse.json() as { opencodeBinarySource?: unknown }
-          return health.opencodeBinarySource === "bundled"
+          const health = await healthResponse.json() as { mageBinarySource?: unknown }
+          return health.mageBinarySource === "bundled"
         })
         .catch(() => false),
     }
   }
-  return bundledOpenCodeRuntimeCache.promise
+  return bundledMageRuntimeCache.promise
 }
 
-const dispatchOpenCodeUpdateAvailableUnlessBundled = (payload: { version: string }) => {
+const dispatchMageUpdateAvailableUnlessBundled = (payload: { version: string }) => {
   if (typeof window === "undefined") return
-  void isBundledOpenCodeRuntime().then((isBundled) => {
+  void isBundledMageRuntime().then((isBundled) => {
     if (!isBundled) {
-      dispatchOpenCodeUpdateAvailable(payload)
+      dispatchMageUpdateAvailable(payload)
     }
   })
 }
 
 export function SyncProvider(props: {
-  sdk: OpencodeClient
+  sdk: MageClient
   directory: string
   children: React.ReactNode
 }) {
@@ -1795,7 +1795,7 @@ export function SyncProvider(props: {
 
               const sessions = rootSessions.concat(childSessions)
               // Race guard: if the list came back empty but event pipeline
-              // already populated the store, don't clobber. OpenCode can
+              // already populated the store, don't clobber. Mage can
               // answer HTTP with empty sessions while WS delivers session
               // events for the same data (disk warmup race on app launch).
               const currentSessions = store.getState().session
@@ -1811,7 +1811,7 @@ export function SyncProvider(props: {
           })
 
           // VS Code-only race: the bridge can answer with an empty 200 (instead
-          // of a retryable 503) while OpenCode is still warming up, which the two
+          // of a retryable 503) while Mage is still warming up, which the two
           // retry layers inside loadSessions can't catch. Re-run a few times there.
           //
           // On web/desktop this retry is both redundant and harmful: loadSessions
@@ -1896,7 +1896,7 @@ export function SyncProvider(props: {
             ? (payload.properties as { version: string }).version
             : ""
           if (version) {
-            dispatchOpenCodeUpdateAvailableUnlessBundled({ version })
+            dispatchMageUpdateAvailableUnlessBundled({ version })
           }
         }
         handleEvent(directory, payload, childStores, routingIndex)
@@ -1963,7 +1963,7 @@ export function SyncProvider(props: {
     ) => {
       if (parentSessionIds.length === 0) return
       try {
-        const scopedClient = opencodeClient.getScopedSdkClient(directory)
+        const scopedClient = mageClient.getScopedSdkClient(directory)
         const result = await scopedClient.session.list({ directory, limit: 200 })
         const allSessions = ((result as { data?: unknown }).data ?? []) as Session[]
         const state = store.getState()
@@ -2054,7 +2054,7 @@ export function SyncProvider(props: {
               triggerDirectoryResync(directory, "stale-status-resync")
             }
 
-            // Discover child sessions created by other OpenCode instances
+            // Discover child sessions created by other Mage instances
             // that didn't broadcast a session.created event on this stream.
             const lastChildDiscoveryAt = lastChildDiscoveryAtByDirectoryRef.current.get(directory) ?? 0
             if (now - lastChildDiscoveryAt >= CHILD_SESSION_DISCOVERY_INTERVAL_MS) {
@@ -2122,7 +2122,7 @@ export function SyncProvider(props: {
     setActionRefs(
       props.sdk,
       childStores,
-      () => opencodeClient.getDirectory() || props.directory,
+      () => mageClient.getDirectory() || props.directory,
     )
   }, [props.sdk, props.directory, childStores, routingIndex])
 

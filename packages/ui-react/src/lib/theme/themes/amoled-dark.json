@@ -2,13 +2,13 @@
   "metadata": {
     "id": "amoled-dark",
     "name": "AMOLED",
-    "description": "Ported from OpenCode AMOLED theme (dark variant)",
-    "author": "OpenCode",
+    "description": "Ported from Mage AMOLED theme (dark variant)",
+    "author": "Mage",
     "version": "1.0.0",
     "variant": "dark",
     "tags": [
       "dark",
-      "opencode",
+      "mage",
       "ported",
       "amoled"
     ]

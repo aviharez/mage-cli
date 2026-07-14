@@ -5,8 +5,8 @@ import { createUpstreamSseReader } from './upstream-reader.js';
 const MESSAGE_STREAM_GLOBAL_REPLAY_LIMIT = 2048;
 
 export function createGlobalMessageStreamHub({
-  buildOpenCodeUrl,
-  getOpenCodeAuthHeaders,
+  buildMageUrl,
+  getMageAuthHeaders,
   fetchImpl = fetch,
   upstreamStallTimeoutMs,
   upstreamReconnectDelayMs,
@@ -67,13 +67,13 @@ export function createGlobalMessageStreamHub({
       buildUrl: () => {
         buildUrlFailed = false;
         try {
-          return new URL(buildOpenCodeUrl('/global/event', ''));
+          return new URL(buildMageUrl('/global/event', ''));
         } catch {
           buildUrlFailed = true;
-          throw new Error('OpenCode service unavailable');
+          throw new Error('Mage service unavailable');
         }
       },
-      getHeaders: getOpenCodeAuthHeaders,
+      getHeaders: getMageAuthHeaders,
       onConnect() {
         connected = true;
         const wasReady = everConnected;

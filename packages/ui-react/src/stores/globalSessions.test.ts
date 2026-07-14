@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import type { OpencodeClient } from '@opencode-ai/sdk/v2'
+import type { MageClient } from '@mybcabisnis/mage-sdk/v2'
 
 import { listGlobalSessionPages } from './globalSessions'
 
@@ -16,7 +16,7 @@ describe('listGlobalSessionPages', () => {
                 title: 'Alpha',
                 time: { created: 1, updated: 2 },
                 metadata: {
-                  openchamber: {
+                  mage: {
                     kind: 'review',
                     originalSessionID: 'ses_original',
                   },
@@ -35,7 +35,7 @@ describe('listGlobalSessionPages', () => {
           }),
         },
       },
-    } as unknown as OpencodeClient
+    } as unknown as MageClient
 
     const sessions = await listGlobalSessionPages(apiClient, { archived: false, pageSize: 500 })
     const session = sessions[0] as typeof sessions[number] & {
@@ -46,7 +46,7 @@ describe('listGlobalSessionPages', () => {
     }
 
     expect(session.metadata).toEqual({
-      openchamber: {
+      mage: {
         kind: 'review',
         originalSessionID: 'ses_original',
       },
@@ -81,7 +81,7 @@ describe('listGlobalSessionPages', () => {
           },
         },
       },
-    } as unknown as OpencodeClient
+    } as unknown as MageClient
 
     const sessions = await listGlobalSessionPages(apiClient, {
       directory: '/repo',

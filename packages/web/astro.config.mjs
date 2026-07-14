@@ -213,10 +213,10 @@ function configSchema() {
     name: "configSchema",
     hooks: {
       "astro:build:done": async () => {
-        // Only regenerate when running inside the full monorepo (opencode source + Bun present).
+        // Only regenerate when running inside the full monorepo (mage source + Bun present).
         // In standalone / Docker builds the vendored public/config.json + public/tui.json are
         // copied to dist/ by Astro automatically, so this is safely skipped.
-        const schemaScript = "../opencode/script/schema.ts"
+        const schemaScript = "../mage/script/schema.ts"
         if (!existsSync(schemaScript)) {
           console.log("skipping config schema generation (standalone build)")
           return

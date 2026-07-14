@@ -12,8 +12,8 @@ const packageJson = JSON.parse(readFileSync(path.resolve(__dirname, 'package.jso
 // hoisting can place this package-local rather than at the workspace root.
 // The package only defines an "import" export condition, so ESM resolution
 // (not createRequire) is required.
-const opencodeSdkV2ClientPath = fileURLToPath(import.meta.resolve('@opencode-ai/sdk/v2/client'));
-const pwaDevEnabled = process.env.OPENCHAMBER_DISABLE_PWA_DEV !== '1';
+const mageSdkV2ClientPath = fileURLToPath(import.meta.resolve('@mybcabisnis/mage-sdk/v2/client'));
+const pwaDevEnabled = process.env.MAGE_DISABLE_PWA_DEV !== '1';
 const reactScanToggle = (process.env.VITE_ENABLE_REACT_SCAN ?? '').toLowerCase();
 const enableReactScan = reactScanToggle === '1' || reactScanToggle === 'true' || reactScanToggle === 'on' || reactScanToggle === 'yes';
 
@@ -66,8 +66,8 @@ export default defineConfig({
   ],
   resolve: {
     alias: [
-      { find: '@opencode-ai/sdk/v2', replacement: opencodeSdkV2ClientPath },
-      { find: '@openchamber/ui', replacement: path.resolve(__dirname, '../ui-react/src') },
+      { find: '@mybcabisnis/mage-sdk/v2', replacement: mageSdkV2ClientPath },
+      { find: '@mage/ui', replacement: path.resolve(__dirname, '../ui-react/src') },
       { find: '@web', replacement: path.resolve(__dirname, './src') },
       { find: '@', replacement: path.resolve(__dirname, '../ui-react/src') },
     ],
@@ -81,21 +81,21 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(packageJson.version),
   },
   optimizeDeps: {
-    include: ['@opencode-ai/sdk/v2'],
+    include: ['@mybcabisnis/mage-sdk/v2'],
   },
   server: {
     port: 5173,
     proxy: {
       '/auth': {
-        target: `http://127.0.0.1:${process.env.OPENCHAMBER_PORT || 3001}`,
+        target: `http://127.0.0.1:${process.env.MAGE_PORT || 3001}`,
         changeOrigin: true,
       },
       '/health': {
-        target: `http://127.0.0.1:${process.env.OPENCHAMBER_PORT || 3001}`,
+        target: `http://127.0.0.1:${process.env.MAGE_PORT || 3001}`,
         changeOrigin: true,
       },
       '/api': {
-        target: `http://127.0.0.1:${process.env.OPENCHAMBER_PORT || 3001}`,
+        target: `http://127.0.0.1:${process.env.MAGE_PORT || 3001}`,
         changeOrigin: true,
         ws: true,
       },
@@ -114,6 +114,13 @@ export default defineConfig({
       external: ['node:child_process', 'node:fs', 'node:path', 'node:url'],
       output: {
         manualChunks(id) {
+          // @mybcabisnis/mage-sdk is a workspace package (symlinked source,
+          // not an installed npm package), so its resolved id never contains
+          // a 'node_modules/' segment — check it before the node_modules gate
+          // below, or its code silently falls into the default (unchunked)
+          // main bundle instead of its own vendor chunk.
+          if (id.includes('/sdk/js/src/')) return 'vendor-mage-sdk';
+
           if (!id.includes('node_modules')) return undefined;
 
           const match = id.split('node_modules/')[1];
@@ -125,7 +132,7 @@ export default defineConfig({
           if (packageName === 'react' || packageName === 'react-dom') return 'vendor-react';
           if (packageName === 'zustand' || packageName === 'zustand/middleware') return 'vendor-zustand';
 
-          if (packageName === '@opencode-ai/sdk') return 'vendor-opencode-sdk';
+          if (packageName === '@mybcabisnis/mage-sdk') return 'vendor-mage-sdk';
           if (packageName.includes('remark') || packageName.includes('rehype') || packageName === 'react-markdown') return 'vendor-markdown';
           if (packageName === '@base-ui/react' || packageName.startsWith('@base-ui')) return 'vendor-base-ui';
           if (packageName.includes('react-syntax-highlighter') || packageName.includes('highlight.js')) return 'vendor-syntax';

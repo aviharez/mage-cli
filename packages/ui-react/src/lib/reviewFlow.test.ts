@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
-import type { Message } from '@opencode-ai/sdk/v2/client';
+import type { Message } from '@mybcabisnis/mage-sdk/v2/client';
 import { switchRuntimeEndpoint } from './runtime-switch';
 
 import {

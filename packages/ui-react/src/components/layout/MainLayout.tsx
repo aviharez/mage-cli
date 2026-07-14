@@ -11,7 +11,7 @@ import { ContextPanel } from './ContextPanel';
 import { ErrorBoundary } from '../ui/ErrorBoundary';
 import { CommandPalette } from '../ui/CommandPalette';
 import { HelpDialog } from '../ui/HelpDialog';
-import { OpenCodeStatusDialog } from '../ui/OpenCodeStatusDialog';
+import { MageStatusDialog } from '../ui/MageStatusDialog';
 import { SessionSidebar } from '@/components/session/SessionSidebar';
 import { SessionDialogs } from '@/components/session/SessionDialogs';
 import { DiffWorkerProvider } from '@/contexts/DiffWorkerProvider';
@@ -391,7 +391,7 @@ export const MainLayout: React.FC = () => {
             >
                 <CommandPalette />
                 <HelpDialog />
-                <OpenCodeStatusDialog />
+                <MageStatusDialog />
                 <SessionDialogs />
 
                 {isMobile ? (

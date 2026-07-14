@@ -586,7 +586,7 @@ export const GitView: React.FC<GitViewProps> = ({ isActive }) => {
     if (normalizedFromMeta) {
       const looksLikeCorruptedSelfTarget =
         normalizedFromMeta === current &&
-        normalizedFromMeta.startsWith('opencode/') &&
+        normalizedFromMeta.startsWith('mage/') &&
         normalizedRoot.length > 0 &&
         normalizedRoot !== normalizedFromMeta;
 
@@ -646,7 +646,7 @@ export const GitView: React.FC<GitViewProps> = ({ isActive }) => {
   // Conflict state persistence key
   const conflictStorageKey = React.useMemo(() => {
     if (!currentSessionId) return null;
-    return `openchamber.conflict:${currentSessionId}`;
+    return `mage.conflict:${currentSessionId}`;
   }, [currentSessionId]);
 
   // Save conflict state to localStorage

@@ -1,10 +1,10 @@
 import { create } from 'zustand';
-import type { Session } from '@opencode-ai/sdk/v2';
+import type { Session } from '@mybcabisnis/mage-sdk/v2';
 import { routeMessage, useSessionUIStore } from '@/sync/session-ui-store';
 import { devtools } from 'zustand/middleware';
 import type { CreateMultiRunParams, CreateMultiRunResult } from '@/types/multirun';
-import { opencodeClient } from '@/lib/opencode/client';
-import { getWorktreeSetupWaitEnabled, saveWorktreeSetupCommands } from '@/lib/openchamberConfig';
+import { mageClient } from '@/lib/mage/client';
+import { getWorktreeSetupWaitEnabled, saveWorktreeSetupCommands } from '@/lib/mageConfig';
 import type { ProjectRef } from '@/lib/worktrees/worktreeManager';
 import { createWorktreeWithDefaults, resolveRootTrackingRemote } from '@/lib/worktrees/worktreeCreate';
 import { waitForWorktreeBootstrap } from '@/lib/worktrees/worktreeBootstrap';
@@ -51,7 +51,7 @@ const registerCreatedSession = (session: Session, directory: string): Session =>
     : ({ ...session, directory: normalizedDirectory } as Session);
 
   registerSessionDirectory(session.id, normalizedDirectory);
-  useSessionUIStore.getState().markSessionAsOpenChamberCreated(session.id);
+  useSessionUIStore.getState().markSessionAsMageCreated(session.id);
   useGlobalSessionsStore.getState().upsertSession(sessionWithDirectory);
 
   try {
@@ -210,9 +210,9 @@ export const useMultiRunStore = create<MultiRunStore>()(
 
               try {
                 if (!shouldIsolateRuns) {
-                  const session = await opencodeClient.withDirectory(
+                  const session = await mageClient.withDirectory(
                     directory,
-                    () => opencodeClient.createSession({ title: sessionTitle }),
+                    () => mageClient.createSession({ title: sessionTitle }),
                   );
                   registerCreatedSession(session, directory);
 
@@ -249,9 +249,9 @@ export const useMultiRunStore = create<MultiRunStore>()(
                   await waitForWorktreeBootstrap(worktreeMetadata.path);
                 }
 
-                const session = await opencodeClient.withDirectory(
+                const session = await mageClient.withDirectory(
                   worktreeMetadata.path,
-                  () => opencodeClient.createSession({ title: sessionTitle }),
+                  () => mageClient.createSession({ title: sessionTitle }),
                 );
                 registerCreatedSession(session, worktreeMetadata.path);
 

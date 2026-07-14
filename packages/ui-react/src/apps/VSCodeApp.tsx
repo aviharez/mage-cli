@@ -11,7 +11,7 @@ import { VSCodeLayout } from '@/components/layout/VSCodeLayout';
 import { usePushVisibilityBeacon } from '@/hooks/usePushVisibilityBeacon';
 import { useRouter } from '@/hooks/useRouter';
 import { useWindowTitle } from '@/hooks/useWindowTitle';
-import { opencodeClient } from '@/lib/opencode/client';
+import { mageClient } from '@/lib/mage/client';
 import type { RuntimeAPIs } from '@/lib/api/types';
 import { runtimeFetch } from '@/lib/runtime-fetch';
 import { useFeatureFlagsStore } from '@/stores/useFeatureFlagsStore';
@@ -27,7 +27,7 @@ type VSCodePanelType = 'chat' | 'agentManager';
 
 declare global {
   interface Window {
-    __OPENCHAMBER_PANEL_TYPE__?: VSCodePanelType;
+    __MAGE_PANEL_TYPE__?: VSCodePanelType;
   }
 }
 
@@ -43,7 +43,7 @@ export function VSCodeApp({ apis }: VSCodeAppProps) {
   const refreshGitHubAuthStatus = useGitHubAuthStore((state) => state.refreshStatus);
   const setPlanModeEnabled = useFeatureFlagsStore((state) => state.setPlanModeEnabled);
   const panelType = typeof window !== 'undefined'
-    ? window.__OPENCHAMBER_PANEL_TYPE__
+    ? window.__MAGE_PANEL_TYPE__
     : 'chat';
 
   React.useEffect(() => {
@@ -101,7 +101,7 @@ export function VSCodeApp({ apis }: VSCodeAppProps) {
   if (panelType === 'agentManager') {
     return (
       <ErrorBoundary>
-        <SyncProvider sdk={opencodeClient.getSdkClient()} directory={currentDirectory || ''}>
+        <SyncProvider sdk={mageClient.getSdkClient()} directory={currentDirectory || ''}>
           <RuntimeAPIProvider apis={apis}>
             <TooltipProvider delayDuration={300} skipDelayDuration={150}>
               <div className="h-full text-foreground bg-background">
@@ -118,7 +118,7 @@ export function VSCodeApp({ apis }: VSCodeAppProps) {
 
   return (
     <ErrorBoundary>
-      <SyncProvider sdk={opencodeClient.getSdkClient()} directory={currentDirectory || ''}>
+      <SyncProvider sdk={mageClient.getSdkClient()} directory={currentDirectory || ''}>
         <RuntimeAPIProvider apis={apis}>
           <FireworksProvider>
             <TooltipProvider delayDuration={300} skipDelayDuration={150}>

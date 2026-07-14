@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import type { Message, Part } from '@opencode-ai/sdk/v2/client'
+import type { Message, Part } from '@mybcabisnis/mage-sdk/v2/client'
 
 import { shouldFetchSessionForRenderableSync, hasUserMessage } from './use-sync'
 import { mergeOptimisticPage } from './optimistic'
@@ -47,7 +47,7 @@ function userMessage(id: string): Message {
   return { id, sessionID: 'ses_1', role: 'user', time: { created: 1 } } as Message
 }
 function assistantMessageWithClientRole(id: string): Message {
-  // OpenCode sets clientRole on the wire; role may be absent.
+  // Mage sets clientRole on the wire; role may be absent.
   return { id, sessionID: 'ses_1', clientRole: 'user', time: { created: 1 } } as unknown as Message
 }
 function textPart(id: string, messageID: string): Part {

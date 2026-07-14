@@ -7,7 +7,7 @@
  */
 
 import { create } from "zustand"
-import type { Message, SessionStatus } from "@opencode-ai/sdk/v2/client"
+import type { Message, SessionStatus } from "@mybcabisnis/mage-sdk/v2/client"
 import type { State } from "./types"
 
 type StreamPhase = "streaming" | "cooldown" | "completed"

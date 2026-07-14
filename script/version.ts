@@ -21,10 +21,10 @@ import path from "path"
 
 const root = path.resolve(import.meta.dir, "..")
 
-// ── Read current version from opencode (source of truth) ─────────────────────
-const opencodePkgPath = path.join(root, "packages/opencode/package.json")
-const opencodePkg = await Bun.file(opencodePkgPath).json()
-const currentVersion: string = opencodePkg.version
+// ── Read current version from mage (source of truth) ─────────────────────
+const magePkgPath = path.join(root, "packages/mage/package.json")
+const magePkg = await Bun.file(magePkgPath).json()
+const currentVersion: string = magePkg.version
 
 // ── Resolve target version ────────────────────────────────────────────────────
 const arg = process.argv[2]

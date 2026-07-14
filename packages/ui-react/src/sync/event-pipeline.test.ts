@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import type { Event, OpencodeClient } from "@opencode-ai/sdk/v2/client"
+import type { Event, MageClient } from "@mybcabisnis/mage-sdk/v2/client"
 import { createEventPipeline } from "./event-pipeline"
 
 const failAfter = (ms: number) => new Promise<never>((_, reject) => {
@@ -33,7 +33,7 @@ function deltaEvent(delta: string): Event {
   } as Event
 }
 
-function createSdk(events: Event[], streamFinished: () => void): OpencodeClient {
+function createSdk(events: Event[], streamFinished: () => void): MageClient {
   return {
     global: {
       event: async ({ signal }: { signal: AbortSignal }) => ({
@@ -52,7 +52,7 @@ function createSdk(events: Event[], streamFinished: () => void): OpencodeClient 
         })(),
       }),
     },
-  } as unknown as OpencodeClient
+  } as unknown as MageClient
 }
 
 describe("createEventPipeline", () => {
@@ -142,7 +142,7 @@ describe("createEventPipeline", () => {
     })).toEqual(["updated:a", "delta:b", "updated:ab", "delta:c"])
   })
 
-  test("normalizes openchamber session status events", async () => {
+  test("normalizes mage session status events", async () => {
     let resolveStreamFinished!: () => void
     const streamFinished = new Promise<void>((resolve) => {
       resolveStreamFinished = resolve
@@ -154,7 +154,7 @@ describe("createEventPipeline", () => {
     const pipeline = createEventPipeline({
       sdk: createSdk([
         {
-          type: "openchamber:session-status",
+          type: "mage:session-status",
           properties: {
             sessionID: "ses_1",
             status: "idle",

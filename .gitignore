@@ -18,7 +18,7 @@ ts-dist
 /result
 refs
 Session.vim
-/opencode.json
+/mage.json
 a.out
 target
 .scripts
@@ -26,7 +26,7 @@ target
 .claude/settings.local.json
 
 # Local dev files
-opencode-dev
+mage-dev
 UPCOMING_CHANGELOG.md
 logs/
 *.bun-build

@@ -11,7 +11,7 @@ import os from 'os';
 import crypto from 'crypto';
 import http2 from 'node:http2';
 import { createUiAuth } from './lib/ui-auth/ui-auth.js';
-import { createTunnelAuth } from './lib/opencode/tunnel-auth.js';
+import { createTunnelAuth } from './lib/mage/tunnel-auth.js';
 import { createManagedTunnelConfigRuntime } from './lib/tunnels/managed-config.js';
 import { createTunnelProviderRegistry } from './lib/tunnels/registry.js';
 import { createCloudflareTunnelProvider } from './lib/tunnels/providers/cloudflare.js';
@@ -47,38 +47,38 @@ import {
   UPSTREAM_STALL_TIMEOUT_CONCURRENT_MS,
 } from './lib/event-stream/index.js';
 import { createFsSearchRuntime as createFsSearchRuntimeFactory } from './lib/fs/search.js';
-import { createOpenCodeLifecycleRuntime } from './lib/opencode/lifecycle.js';
-import { createOpenCodeEnvRuntime } from './lib/opencode/env-runtime.js';
-import { resolveOpenCodeEnvConfig } from './lib/opencode/env-config.js';
-import { createHmrStateRuntime } from './lib/opencode/hmr-state-runtime.js';
-import { createOpenCodeNetworkRuntime } from './lib/opencode/network-runtime.js';
-import { createOpenCodeAuthStateRuntime } from './lib/opencode/auth-state-runtime.js';
-import { createProjectDirectoryRuntime } from './lib/opencode/project-directory-runtime.js';
-import { createSettingsNormalizationRuntime } from './lib/opencode/settings-normalization-runtime.js';
-import { createSettingsHelpers } from './lib/opencode/settings-helpers.js';
-import { createThemeRuntime } from './lib/opencode/theme-runtime.js';
-import { createFeatureRoutesRuntime } from './lib/opencode/feature-routes-runtime.js';
-import { parseServeCliOptions } from './lib/opencode/cli-options.js';
+import { createMageLifecycleRuntime } from './lib/mage/lifecycle.js';
+import { createMageEnvRuntime } from './lib/mage/env-runtime.js';
+import { resolveMageEnvConfig } from './lib/mage/env-config.js';
+import { createHmrStateRuntime } from './lib/mage/hmr-state-runtime.js';
+import { createMageNetworkRuntime } from './lib/mage/network-runtime.js';
+import { createMageAuthStateRuntime } from './lib/mage/auth-state-runtime.js';
+import { createProjectDirectoryRuntime } from './lib/mage/project-directory-runtime.js';
+import { createSettingsNormalizationRuntime } from './lib/mage/settings-normalization-runtime.js';
+import { createSettingsHelpers } from './lib/mage/settings-helpers.js';
+import { createThemeRuntime } from './lib/mage/theme-runtime.js';
+import { createFeatureRoutesRuntime } from './lib/mage/feature-routes-runtime.js';
+import { parseServeCliOptions } from './lib/mage/cli-options.js';
 import {
   registerAuthAndAccessRoutes,
   registerCommonRequestMiddleware,
   registerServerStatusRoutes,
-} from './lib/opencode/core-routes.js';
-import { registerOpenChamberRoutes } from './lib/opencode/openchamber-routes.js';
-import { createServerUtilsRuntime } from './lib/opencode/server-utils-runtime.js';
-import { createStaticRoutesRuntime } from './lib/opencode/static-routes-runtime.js';
-import { createSettingsRuntime } from './lib/opencode/settings-runtime.js';
-import { createOpenCodeResolutionRuntime } from './lib/opencode/opencode-resolution-runtime.js';
-import { createBootstrapRuntime } from './lib/opencode/bootstrap-runtime.js';
-import { createSessionRuntime } from './lib/opencode/session-runtime.js';
-import { createOpenCodeWatcherRuntime } from './lib/opencode/watcher.js';
+} from './lib/mage/core-routes.js';
+import { registerMageRoutes } from './lib/mage/mage-routes.js';
+import { createServerUtilsRuntime } from './lib/mage/server-utils-runtime.js';
+import { createStaticRoutesRuntime } from './lib/mage/static-routes-runtime.js';
+import { createSettingsRuntime } from './lib/mage/settings-runtime.js';
+import { createMageResolutionRuntime } from './lib/mage/mage-resolution-runtime.js';
+import { createBootstrapRuntime } from './lib/mage/bootstrap-runtime.js';
+import { createSessionRuntime } from './lib/mage/session-runtime.js';
+import { createMageWatcherRuntime } from './lib/mage/watcher.js';
 import { createSessionAssistRuntime } from './lib/session-assist/runtime.js';
 import { createSessionGoalRuntime } from './lib/session-goal/runtime.js';
 import { createScheduledTasksRuntime } from './lib/scheduled-tasks/runtime.js';
-import { createServerStartupRuntime } from './lib/opencode/server-startup-runtime.js';
-import { createTunnelWiringRuntime } from './lib/opencode/tunnel-wiring-runtime.js';
-import { createStartupPipelineRuntime } from './lib/opencode/startup-pipeline-runtime.js';
-import { runCliEntryIfMain } from './lib/opencode/cli-entry-runtime.js';
+import { createServerStartupRuntime } from './lib/mage/server-startup-runtime.js';
+import { createTunnelWiringRuntime } from './lib/mage/tunnel-wiring-runtime.js';
+import { createStartupPipelineRuntime } from './lib/mage/startup-pipeline-runtime.js';
+import { runCliEntryIfMain } from './lib/mage/cli-entry-runtime.js';
 import { registerNotificationRoutes } from './lib/notifications/routes.js';
 import { createNotificationEmitterRuntime } from './lib/notifications/emitter-runtime.js';
 import { createNotificationTriggerRuntime } from './lib/notifications/runtime.js';
@@ -86,7 +86,7 @@ import { createPushRuntime } from './lib/notifications/push-runtime.js';
 import { createApnsRuntime } from './lib/notifications/apns-runtime.js';
 import { createNotificationTemplateRuntime } from './lib/notifications/template-runtime.js';
 import { createPermissionAutoAcceptRuntime } from './lib/permission-auto-accept/runtime.js';
-import { createGracefulShutdownRuntime } from './lib/opencode/shutdown-runtime.js';
+import { createGracefulShutdownRuntime } from './lib/mage/shutdown-runtime.js';
 import { createProjectConfigRuntime } from './lib/projects/project-config.js';
 import { createRemoteClientAuthRuntime } from './lib/client-auth/remote-clients.js';
 import { createClientPairingRuntime } from './lib/client-auth/pairing.js';
@@ -100,10 +100,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const DEFAULT_PORT = 3000;
-const DESKTOP_NOTIFY_PREFIX = '[OpenChamberDesktopNotify] ';
+const DESKTOP_NOTIFY_PREFIX = '[MageDesktopNotify] ';
 const uiNotificationClients = new Set();
 const uiNotificationWsClients = new Set();
-const uiOpenChamberEventClients = new Set();
+const uiMageEventClients = new Set();
 const HEALTH_CHECK_INTERVAL = 15000;
 const SHUTDOWN_TIMEOUT = 10000;
 const MODELS_DEV_API_URL = 'https://models.dev/api.json';
@@ -143,12 +143,12 @@ const SSE_PATH_PREFIXES = [
   '/api/event',
   '/api/global/event',
   '/api/notifications/stream',
-  '/api/openchamber/events',
-  '/api/openchamber/realtime-proxy/sse',
+  '/api/mage/events',
+  '/api/mage/realtime-proxy/sse',
 ];
 
 function shouldSkipCompression(req, res) {
-  if (process.env.OPENCHAMBER_RUNTIME === 'desktop') {
+  if (process.env.MAGE_RUNTIME === 'desktop') {
     return true;
   }
 
@@ -173,7 +173,7 @@ function shouldSkipCompression(req, res) {
   return headerIncludesEventStream(res.getHeader('Content-Type'));
 }
 
-const OPENCHAMBER_VERSION = (() => {
+const MAGE_VERSION = (() => {
   try {
     const packagePath = path.resolve(__dirname, '..', 'package.json');
     const raw = fs.readFileSync(packagePath, 'utf8');
@@ -201,13 +201,13 @@ const isEnvFlagDisabled = (value) => {
 };
 
 const shouldSkipApiCompression = () => {
-  if (isEnvFlagEnabled(process.env.OPENCHAMBER_SKIP_API_COMPRESSION)) return true;
-  if (isEnvFlagEnabled(process.env.OPENCHAMBER_COMPRESS_API)) return false;
-  if (isEnvFlagDisabled(process.env.OPENCHAMBER_COMPRESS_API)) return true;
-  return process.env.OPENCHAMBER_RUNTIME === 'desktop';
+  if (isEnvFlagEnabled(process.env.MAGE_SKIP_API_COMPRESSION)) return true;
+  if (isEnvFlagEnabled(process.env.MAGE_COMPRESS_API)) return false;
+  if (isEnvFlagDisabled(process.env.MAGE_COMPRESS_API)) return true;
+  return process.env.MAGE_RUNTIME === 'desktop';
 };
 
-const OPENCHAMBER_VERBOSE_REQUEST_LOGS = isEnvFlagEnabled(process.env.OPENCHAMBER_VERBOSE_REQUEST_LOGS);
+const MAGE_VERBOSE_REQUEST_LOGS = isEnvFlagEnabled(process.env.MAGE_VERBOSE_REQUEST_LOGS);
 
 const PLAN_MODE_EXPERIMENT_ENABLED =
   isEnvFlagEnabled(process.env.MAGE_EXPERIMENTAL_PLAN_MODE)
@@ -247,9 +247,9 @@ const sanitizeModelRefs = (...args) => settingsNormalizationRuntime.sanitizeMode
 const sanitizeSkillCatalogs = (...args) => settingsNormalizationRuntime.sanitizeSkillCatalogs(...args);
 const sanitizeProjects = (...args) => settingsNormalizationRuntime.sanitizeProjects(...args);
 
-const OPENCHAMBER_USER_CONFIG_ROOT = path.join(os.homedir(), '.config', 'openchamber');
-const OPENCHAMBER_USER_THEMES_DIR = path.join(OPENCHAMBER_USER_CONFIG_ROOT, 'themes');
-const OPENCHAMBER_PROJECTS_CONFIG_DIR = path.join(OPENCHAMBER_USER_CONFIG_ROOT, 'projects');
+const MAGE_USER_CONFIG_ROOT = path.join(os.homedir(), '.config', 'mage');
+const MAGE_USER_THEMES_DIR = path.join(MAGE_USER_CONFIG_ROOT, 'themes');
+const MAGE_PROJECTS_CONFIG_DIR = path.join(MAGE_USER_CONFIG_ROOT, 'projects');
 
 const MAX_THEME_JSON_BYTES = 512 * 1024;
 
@@ -257,7 +257,7 @@ const MAX_THEME_JSON_BYTES = 512 * 1024;
 const themeRuntime = createThemeRuntime({
   fsPromises,
   path,
-  themesDir: OPENCHAMBER_USER_THEMES_DIR,
+  themesDir: MAGE_USER_THEMES_DIR,
   maxThemeJsonBytes: MAX_THEME_JSON_BYTES,
   logger: console,
 });
@@ -278,16 +278,16 @@ const maybeCacheSessionInfoFromEvent = (...args) => notificationTemplateRuntime.
 const buildTemplateVariables = (...args) => notificationTemplateRuntime.buildTemplateVariables(...args);
 const getCachedZenModels = (...args) => notificationTemplateRuntime.getCachedZenModels(...args);
 
-const OPENCHAMBER_DATA_DIR = process.env.OPENCHAMBER_DATA_DIR
-  ? path.resolve(process.env.OPENCHAMBER_DATA_DIR)
-  : path.join(os.homedir(), '.config', 'openchamber');
-const SETTINGS_FILE_PATH = path.join(OPENCHAMBER_DATA_DIR, 'settings.json');
-const PUSH_SUBSCRIPTIONS_FILE_PATH = path.join(OPENCHAMBER_DATA_DIR, 'push-subscriptions.json');
-const APNS_TOKENS_FILE_PATH = path.join(OPENCHAMBER_DATA_DIR, 'apns-tokens.json');
-const REMOTE_CLIENTS_FILE_PATH = path.join(OPENCHAMBER_DATA_DIR, 'remote-clients.json');
-const CLIENT_PAIRING_SESSIONS_FILE_PATH = path.join(OPENCHAMBER_DATA_DIR, 'client-pairing-sessions.json');
-const CLOUDFLARE_MANAGED_REMOTE_TUNNELS_FILE_PATH = path.join(OPENCHAMBER_DATA_DIR, 'cloudflare-managed-remote-tunnels.json');
-const CLOUDFLARE_LEGACY_NAMED_TUNNELS_FILE_PATH = path.join(OPENCHAMBER_DATA_DIR, 'cloudflare-named-tunnels.json');
+const MAGE_DATA_DIR = process.env.MAGE_DATA_DIR
+  ? path.resolve(process.env.MAGE_DATA_DIR)
+  : path.join(os.homedir(), '.config', 'mage');
+const SETTINGS_FILE_PATH = path.join(MAGE_DATA_DIR, 'settings.json');
+const PUSH_SUBSCRIPTIONS_FILE_PATH = path.join(MAGE_DATA_DIR, 'push-subscriptions.json');
+const APNS_TOKENS_FILE_PATH = path.join(MAGE_DATA_DIR, 'apns-tokens.json');
+const REMOTE_CLIENTS_FILE_PATH = path.join(MAGE_DATA_DIR, 'remote-clients.json');
+const CLIENT_PAIRING_SESSIONS_FILE_PATH = path.join(MAGE_DATA_DIR, 'client-pairing-sessions.json');
+const CLOUDFLARE_MANAGED_REMOTE_TUNNELS_FILE_PATH = path.join(MAGE_DATA_DIR, 'cloudflare-managed-remote-tunnels.json');
+const CLOUDFLARE_LEGACY_NAMED_TUNNELS_FILE_PATH = path.join(MAGE_DATA_DIR, 'cloudflare-named-tunnels.json');
 const CLOUDFLARE_MANAGED_REMOTE_TUNNELS_VERSION = 1;
 
 const managedTunnelConfigRuntime = createManagedTunnelConfigRuntime({
@@ -461,34 +461,34 @@ const getUpstreamStallTimeoutMs = () => (
 const projectConfigRuntime = createProjectConfigRuntime({
   fsPromises,
   path,
-  projectsDirPath: OPENCHAMBER_PROJECTS_CONFIG_DIR,
+  projectsDirPath: MAGE_PROJECTS_CONFIG_DIR,
 });
 
 // HMR-persistent state via globalThis
-// These values survive Vite HMR reloads to prevent zombie OpenCode processes
+// These values survive Vite HMR reloads to prevent zombie Mage processes
 const hmrStateRuntime = createHmrStateRuntime({
   globalThisLike: globalThis,
   os,
   processLike: process,
-  stateKey: '__openchamberHmrState',
+  stateKey: '__mageHmrState',
 });
 const hmrState = hmrStateRuntime.getOrCreateHmrState();
-hmrStateRuntime.ensureUserProvidedOpenCodePassword(hmrState);
+hmrStateRuntime.ensureUserProvidedMagePassword(hmrState);
 
 // Non-HMR state (safe to reset on reload)
 let healthCheckInterval = null;
 let server = null;
 let expressApp = null;
 let currentRestartPromise = null;
-let isRestartingOpenCode = false;
-let openCodeApiPrefix = '';
-let openCodeApiPrefixDetected = true;
-let openCodeApiDetectionTimer = null;
-let lastOpenCodeError = null;
-let lastOpenCodeLaunchDiagnostics = null;
-let isOpenCodeReady = false;
-let openCodeNotReadySince = 0;
-let isExternalOpenCode = false;
+let isRestartingMage = false;
+let mageApiPrefix = '';
+let mageApiPrefixDetected = true;
+let mageApiDetectionTimer = null;
+let lastMageError = null;
+let lastMageLaunchDiagnostics = null;
+let isMageReady = false;
+let mageNotReadySince = 0;
+let isExternalMage = false;
 let exitOnShutdown = true;
 let uiAuthController = null;
 let activeTunnelController = null;
@@ -504,25 +504,25 @@ let runtimeManagedRemoteTunnelHostname = '';
 let terminalRuntime = null;
 let dictationRuntime = null;
 let messageStreamRuntime = null;
-const userProvidedOpenCodePassword = hmrStateRuntime.getUserProvidedOpenCodePassword(hmrState);
-const initialOpenCodeAuthState = hmrStateRuntime.resolveOpenCodeAuthFromState({
+const userProvidedMagePassword = hmrStateRuntime.getUserProvidedMagePassword(hmrState);
+const initialMageAuthState = hmrStateRuntime.resolveMageAuthFromState({
   hmrState,
-  userProvidedOpenCodePassword,
+  userProvidedMagePassword,
 });
-let openCodeAuthPassword = initialOpenCodeAuthState.openCodeAuthPassword;
-let openCodeAuthSource = initialOpenCodeAuthState.openCodeAuthSource;
+let mageAuthPassword = initialMageAuthState.mageAuthPassword;
+let mageAuthSource = initialMageAuthState.mageAuthSource;
 
 // Sync helper - call after modifying any HMR state variable
 const syncToHmrState = () => {
   hmrStateRuntime.syncStateFromRuntime(hmrState, {
-    openCodeProcess,
-    openCodePort,
-    openCodeBaseUrl,
+    mageProcess,
+    magePort,
+    mageBaseUrl,
     isShuttingDown,
     signalsAttached,
-    openCodeWorkingDirectory,
-    openCodeAuthPassword,
-    openCodeAuthSource,
+    mageWorkingDirectory,
+    mageAuthPassword,
+    mageAuthSource,
   });
 };
 
@@ -530,172 +530,172 @@ const syncToHmrState = () => {
 const syncFromHmrState = () => {
   const restored = hmrStateRuntime.restoreRuntimeFromState({
     hmrState,
-    userProvidedOpenCodePassword,
+    userProvidedMagePassword,
   });
-  openCodeProcess = restored.openCodeProcess;
-  openCodePort = restored.openCodePort;
-  openCodeBaseUrl = restored.openCodeBaseUrl;
+  mageProcess = restored.mageProcess;
+  magePort = restored.magePort;
+  mageBaseUrl = restored.mageBaseUrl;
   isShuttingDown = restored.isShuttingDown;
   signalsAttached = restored.signalsAttached;
-  openCodeWorkingDirectory = restored.openCodeWorkingDirectory;
-  openCodeAuthPassword = restored.openCodeAuthPassword;
-  openCodeAuthSource = restored.openCodeAuthSource;
+  mageWorkingDirectory = restored.mageWorkingDirectory;
+  mageAuthPassword = restored.mageAuthPassword;
+  mageAuthSource = restored.mageAuthSource;
 };
 
 // Module-level variables that shadow HMR state
 // These are synced to/from hmrState to survive HMR reloads
-let openCodeProcess = hmrState.openCodeProcess;
-let openCodePort = hmrState.openCodePort;
-let openCodeBaseUrl = hmrState.openCodeBaseUrl ?? null;
+let mageProcess = hmrState.mageProcess;
+let magePort = hmrState.magePort;
+let mageBaseUrl = hmrState.mageBaseUrl ?? null;
 let isShuttingDown = hmrState.isShuttingDown;
 let signalsAttached = hmrState.signalsAttached;
-let openCodeWorkingDirectory = hmrState.openCodeWorkingDirectory;
+let mageWorkingDirectory = hmrState.mageWorkingDirectory;
 
 const {
-  configuredOpenCodePort: ENV_CONFIGURED_MAGE_PORT,
-  configuredOpenCodeHost: ENV_CONFIGURED_MAGE_HOST,
+  configuredMagePort: ENV_CONFIGURED_MAGE_PORT,
+  configuredMageHost: ENV_CONFIGURED_MAGE_HOST,
   effectivePort: ENV_EFFECTIVE_PORT,
-  configuredOpenCodeHostname: ENV_CONFIGURED_MAGE_HOSTNAME,
-} = resolveOpenCodeEnvConfig({
+  configuredMageHostname: ENV_CONFIGURED_MAGE_HOSTNAME,
+} = resolveMageEnvConfig({
   env: process.env,
   logger: console,
 });
 
 const ENV_SKIP_MAGE_START = process.env.MAGE_SKIP_START === 'true' ||
-                                    process.env.OPENCHAMBER_SKIP_MAGE_START === 'true';
+                                    process.env.MAGE_SKIP_MAGE_START === 'true';
 const ENV_DESKTOP_NOTIFY = (() => {
-  if (process.env.OPENCHAMBER_DESKTOP_NOTIFY === 'true') {
+  if (process.env.MAGE_DESKTOP_NOTIFY === 'true') {
     return true;
   }
 
-  if (process.env.OPENCHAMBER_RUNTIME === 'desktop') {
+  if (process.env.MAGE_RUNTIME === 'desktop') {
     return true;
   }
 
   const argv0 = typeof process.argv?.[0] === 'string' ? process.argv[0] : '';
   const argv1 = typeof process.argv?.[1] === 'string' ? process.argv[1] : '';
-  return /openchamber-server/i.test(argv0) || /openchamber-server/i.test(argv1);
+  return /mage-server/i.test(argv0) || /mage-server/i.test(argv1);
 })();
-const openCodeAuthStateRuntime = createOpenCodeAuthStateRuntime({
+const mageAuthStateRuntime = createMageAuthStateRuntime({
   crypto,
   process,
-  getAuthPassword: () => openCodeAuthPassword,
+  getAuthPassword: () => mageAuthPassword,
   setAuthPassword: (value) => {
-    openCodeAuthPassword = value;
+    mageAuthPassword = value;
   },
-  getAuthSource: () => openCodeAuthSource,
+  getAuthSource: () => mageAuthSource,
   setAuthSource: (value) => {
-    openCodeAuthSource = value;
+    mageAuthSource = value;
   },
-  getUserProvidedPassword: () => userProvidedOpenCodePassword,
+  getUserProvidedPassword: () => userProvidedMagePassword,
   syncToHmrState,
 });
 
-const getOpenCodeAuthHeaders = (...args) => openCodeAuthStateRuntime.getOpenCodeAuthHeaders(...args);
-const isOpenCodeConnectionSecure = (...args) => openCodeAuthStateRuntime.isOpenCodeConnectionSecure(...args);
-const ensureLocalOpenCodeServerPassword = (...args) => openCodeAuthStateRuntime.ensureLocalOpenCodeServerPassword(...args);
+const getMageAuthHeaders = (...args) => mageAuthStateRuntime.getMageAuthHeaders(...args);
+const isMageConnectionSecure = (...args) => mageAuthStateRuntime.isMageConnectionSecure(...args);
+const ensureLocalMageServerPassword = (...args) => mageAuthStateRuntime.ensureLocalMageServerPassword(...args);
 
-const openCodeNetworkState = {};
-Object.defineProperties(openCodeNetworkState, {
-  openCodePort: { get: () => openCodePort, set: (value) => { openCodePort = value; } },
-  openCodeBaseUrl: { get: () => openCodeBaseUrl, set: (value) => { openCodeBaseUrl = value; } },
-  openCodeApiPrefix: { get: () => openCodeApiPrefix, set: (value) => { openCodeApiPrefix = value; } },
-  openCodeApiPrefixDetected: { get: () => openCodeApiPrefixDetected, set: (value) => { openCodeApiPrefixDetected = value; } },
-  openCodeApiDetectionTimer: { get: () => openCodeApiDetectionTimer, set: (value) => { openCodeApiDetectionTimer = value; } },
+const mageNetworkState = {};
+Object.defineProperties(mageNetworkState, {
+  magePort: { get: () => magePort, set: (value) => { magePort = value; } },
+  mageBaseUrl: { get: () => mageBaseUrl, set: (value) => { mageBaseUrl = value; } },
+  mageApiPrefix: { get: () => mageApiPrefix, set: (value) => { mageApiPrefix = value; } },
+  mageApiPrefixDetected: { get: () => mageApiPrefixDetected, set: (value) => { mageApiPrefixDetected = value; } },
+  mageApiDetectionTimer: { get: () => mageApiDetectionTimer, set: (value) => { mageApiDetectionTimer = value; } },
 });
 
-const openCodeNetworkRuntime = createOpenCodeNetworkRuntime({
-  state: openCodeNetworkState,
-  getOpenCodeAuthHeaders,
-  configuredOpenCodeHostname: ENV_CONFIGURED_MAGE_HOSTNAME,
+const mageNetworkRuntime = createMageNetworkRuntime({
+  state: mageNetworkState,
+  getMageAuthHeaders,
+  configuredMageHostname: ENV_CONFIGURED_MAGE_HOSTNAME,
 });
 
-const waitForReady = (...args) => openCodeNetworkRuntime.waitForReady(...args);
-const normalizeApiPrefix = (...args) => openCodeNetworkRuntime.normalizeApiPrefix(...args);
-const setDetectedOpenCodeApiPrefix = (...args) => openCodeNetworkRuntime.setDetectedOpenCodeApiPrefix(...args);
-const buildOpenCodeUrl = (...args) => openCodeNetworkRuntime.buildOpenCodeUrl(...args);
-const ensureOpenCodeApiPrefix = (...args) => openCodeNetworkRuntime.ensureOpenCodeApiPrefix(...args);
-const scheduleOpenCodeApiDetection = (...args) => openCodeNetworkRuntime.scheduleOpenCodeApiDetection(...args);
+const waitForReady = (...args) => mageNetworkRuntime.waitForReady(...args);
+const normalizeApiPrefix = (...args) => mageNetworkRuntime.normalizeApiPrefix(...args);
+const setDetectedMageApiPrefix = (...args) => mageNetworkRuntime.setDetectedMageApiPrefix(...args);
+const buildMageUrl = (...args) => mageNetworkRuntime.buildMageUrl(...args);
+const ensureMageApiPrefix = (...args) => mageNetworkRuntime.ensureMageApiPrefix(...args);
+const scheduleMageApiDetection = (...args) => mageNetworkRuntime.scheduleMageApiDetection(...args);
 
 const ENV_CONFIGURED_API_PREFIX = normalizeApiPrefix(
-  process.env.MAGE_API_PREFIX || process.env.OPENCHAMBER_API_PREFIX || ''
+  process.env.MAGE_API_PREFIX || process.env.MAGE_API_PREFIX || ''
 );
 
   if (ENV_CONFIGURED_API_PREFIX && ENV_CONFIGURED_API_PREFIX !== '') {
-  console.warn('Ignoring configured OpenCode API prefix; API runs at root.');
+  console.warn('Ignoring configured Mage API prefix; API runs at root.');
 }
 
 let cachedLoginShellEnvSnapshot;
-let resolvedOpencodeBinary = null;
-let resolvedOpencodeBinarySource = null;
+let resolvedMageBinary = null;
+let resolvedMageBinarySource = null;
 let resolvedNodeBinary = null;
 let resolvedBunBinary = null;
 let resolvedGitBinary = null;
-let useWslForOpencode = false;
+let useWslForMage = false;
 let resolvedWslBinary = null;
-let resolvedWslOpencodePath = null;
+let resolvedWslMagePath = null;
 let resolvedWslDistro = null;
 
-const openCodeEnvState = {};
-Object.defineProperties(openCodeEnvState, {
+const mageEnvState = {};
+Object.defineProperties(mageEnvState, {
   cachedLoginShellEnvSnapshot: { get: () => cachedLoginShellEnvSnapshot, set: (value) => { cachedLoginShellEnvSnapshot = value; } },
-  resolvedOpencodeBinary: { get: () => resolvedOpencodeBinary, set: (value) => { resolvedOpencodeBinary = value; } },
-  resolvedOpencodeBinarySource: { get: () => resolvedOpencodeBinarySource, set: (value) => { resolvedOpencodeBinarySource = value; } },
+  resolvedMageBinary: { get: () => resolvedMageBinary, set: (value) => { resolvedMageBinary = value; } },
+  resolvedMageBinarySource: { get: () => resolvedMageBinarySource, set: (value) => { resolvedMageBinarySource = value; } },
   resolvedNodeBinary: { get: () => resolvedNodeBinary, set: (value) => { resolvedNodeBinary = value; } },
   resolvedBunBinary: { get: () => resolvedBunBinary, set: (value) => { resolvedBunBinary = value; } },
   resolvedGitBinary: { get: () => resolvedGitBinary, set: (value) => { resolvedGitBinary = value; } },
-  useWslForOpencode: { get: () => useWslForOpencode, set: (value) => { useWslForOpencode = value; } },
+  useWslForMage: { get: () => useWslForMage, set: (value) => { useWslForMage = value; } },
   resolvedWslBinary: { get: () => resolvedWslBinary, set: (value) => { resolvedWslBinary = value; } },
-  resolvedWslOpencodePath: { get: () => resolvedWslOpencodePath, set: (value) => { resolvedWslOpencodePath = value; } },
+  resolvedWslMagePath: { get: () => resolvedWslMagePath, set: (value) => { resolvedWslMagePath = value; } },
   resolvedWslDistro: { get: () => resolvedWslDistro, set: (value) => { resolvedWslDistro = value; } },
 });
 
-const openCodeEnvRuntime = createOpenCodeEnvRuntime({
-  state: openCodeEnvState,
+const mageEnvRuntime = createMageEnvRuntime({
+  state: mageEnvState,
   normalizeDirectoryPath,
   readSettingsFromDiskMigrated,
 });
 
-const applyLoginShellEnvSnapshot = (...args) => openCodeEnvRuntime.applyLoginShellEnvSnapshot(...args);
-const getLoginShellEnvSnapshot = (...args) => openCodeEnvRuntime.getLoginShellEnvSnapshot(...args);
-const ensureOpencodeCliEnv = (...args) => openCodeEnvRuntime.ensureOpencodeCliEnv(...args);
-const applyOpencodeBinaryFromSettings = (...args) => openCodeEnvRuntime.applyOpencodeBinaryFromSettings(...args);
-const resolveOpencodeCliPath = (...args) => openCodeEnvRuntime.resolveOpencodeCliPath(...args);
-const isExecutable = (...args) => openCodeEnvRuntime.isExecutable(...args);
-const searchPathFor = (...args) => openCodeEnvRuntime.searchPathFor(...args);
-const resolveGitBinaryForSpawn = (...args) => openCodeEnvRuntime.resolveGitBinaryForSpawn(...args);
-const resolveManagedOpenCodeLaunchSpec = (...args) => openCodeEnvRuntime.resolveManagedOpenCodeLaunchSpec(...args);
-const clearResolvedOpenCodeBinary = (...args) => openCodeEnvRuntime.clearResolvedOpenCodeBinary(...args);
-const openCodeResolutionRuntime = createOpenCodeResolutionRuntime({
+const applyLoginShellEnvSnapshot = (...args) => mageEnvRuntime.applyLoginShellEnvSnapshot(...args);
+const getLoginShellEnvSnapshot = (...args) => mageEnvRuntime.getLoginShellEnvSnapshot(...args);
+const ensureMageCliEnv = (...args) => mageEnvRuntime.ensureMageCliEnv(...args);
+const applyMageBinaryFromSettings = (...args) => mageEnvRuntime.applyMageBinaryFromSettings(...args);
+const resolveMageCliPath = (...args) => mageEnvRuntime.resolveMageCliPath(...args);
+const isExecutable = (...args) => mageEnvRuntime.isExecutable(...args);
+const searchPathFor = (...args) => mageEnvRuntime.searchPathFor(...args);
+const resolveGitBinaryForSpawn = (...args) => mageEnvRuntime.resolveGitBinaryForSpawn(...args);
+const resolveManagedMageLaunchSpec = (...args) => mageEnvRuntime.resolveManagedMageLaunchSpec(...args);
+const clearResolvedMageBinary = (...args) => mageEnvRuntime.clearResolvedMageBinary(...args);
+const mageResolutionRuntime = createMageResolutionRuntime({
   path,
-  resolveOpencodeCliPath,
-  applyOpencodeBinaryFromSettings,
-  ensureOpencodeCliEnv,
-  resolveManagedOpenCodeLaunchSpec,
+  resolveMageCliPath,
+  applyMageBinaryFromSettings,
+  ensureMageCliEnv,
+  resolveManagedMageLaunchSpec,
   getResolvedState: () => ({
-    resolvedOpencodeBinary,
-    resolvedOpencodeBinarySource,
-    useWslForOpencode,
+    resolvedMageBinary,
+    resolvedMageBinarySource,
+    useWslForMage,
     resolvedWslBinary,
-    resolvedWslOpencodePath,
+    resolvedWslMagePath,
     resolvedWslDistro,
     resolvedNodeBinary,
     resolvedBunBinary,
   }),
-  setResolvedOpencodeBinarySource: (value) => {
-    resolvedOpencodeBinarySource = value;
+  setResolvedMageBinarySource: (value) => {
+    resolvedMageBinarySource = value;
   },
 });
-const getOpenCodeResolutionSnapshot = (...args) =>
-  openCodeResolutionRuntime.getOpenCodeResolutionSnapshot(...args);
+const getMageResolutionSnapshot = (...args) =>
+  mageResolutionRuntime.getMageResolutionSnapshot(...args);
 
 applyLoginShellEnvSnapshot();
 
 notificationTemplateRuntime = createNotificationTemplateRuntime({
   readSettingsFromDisk,
   persistSettings,
-  buildOpenCodeUrl,
-  getOpenCodeAuthHeaders,
+  buildMageUrl,
+  getMageAuthHeaders,
   resolveGitBinaryForSpawn,
 });
 
@@ -712,8 +712,8 @@ const notificationTriggerRuntime = createNotificationTriggerRuntime({
   sendPushToAllUiSessions,
   sendApnsToAllUiSessions,
   isAnyInteractiveClientVisible,
-  buildOpenCodeUrl,
-  getOpenCodeAuthHeaders,
+  buildMageUrl,
+  getMageAuthHeaders,
 });
 
 const maybeSendPushForTrigger = (...args) => notificationTriggerRuntime.maybeSendPushForTrigger(...args);
@@ -721,14 +721,14 @@ const setAutoAcceptSession = (sessionId, enabled) => permissionAutoAcceptRuntime
 clearPendingPushBadge = () => notificationTriggerRuntime.clearPendingPushBadge();
 
 const sessionAssistRuntime = createSessionAssistRuntime({
-  buildOpenCodeUrl,
-  getOpenCodeAuthHeaders,
+  buildMageUrl,
+  getMageAuthHeaders,
   getSmallModelService: async () => import('./lib/small-model/index.js'),
 });
 
 const sessionGoalRuntime = createSessionGoalRuntime({
-  buildOpenCodeUrl,
-  getOpenCodeAuthHeaders,
+  buildMageUrl,
+  getMageAuthHeaders,
   getSmallModelService: async () => import('./lib/small-model/index.js'),
   emitGoalNotification: async ({ sessionId, directory, status, goal }) => {
     // The goal settle notification replaces the per-turn ready notifications
@@ -767,15 +767,15 @@ const sessionGoalRuntime = createSessionGoalRuntime({
 });
 
 const globalMessageStreamHub = createGlobalMessageStreamHub({
-  buildOpenCodeUrl,
-  getOpenCodeAuthHeaders,
+  buildMageUrl,
+  getMageAuthHeaders,
   upstreamStallTimeoutMs: getUpstreamStallTimeoutMs,
 });
 
 const permissionAutoAcceptRuntime = createPermissionAutoAcceptRuntime({
   globalEventHub: globalMessageStreamHub,
-  buildOpenCodeUrl,
-  getOpenCodeAuthHeaders,
+  buildMageUrl,
+  getMageAuthHeaders,
   readSettingsFromDiskMigrated,
   persistSettings,
   broadcastGlobalUiEvent,
@@ -785,21 +785,21 @@ notificationTriggerRuntime.setGetIsSessionAutoAccepting(
   (sessionId, directory) => permissionAutoAcceptRuntime.isSessionAutoAccepting(sessionId, directory),
 );
 
-const openCodeWatcherRuntime = createOpenCodeWatcherRuntime({
-  waitForOpenCodePort: (...args) => waitForOpenCodePort(...args),
-  buildOpenCodeUrl,
-  getOpenCodeAuthHeaders,
+const mageWatcherRuntime = createMageWatcherRuntime({
+  waitForMagePort: (...args) => waitForMagePort(...args),
+  buildMageUrl,
+  getMageAuthHeaders,
   parseSseDataPayload: (...args) => parseSseDataPayload(...args),
   globalEventHub: globalMessageStreamHub,
   onPayload: (payload) => {
     maybeCacheSessionInfoFromEvent(payload);
     void maybeSendPushForTrigger(payload);
-    sessionRuntime.processOpenCodeSsePayload(payload);
+    sessionRuntime.processMageSsePayload(payload);
   },
 });
 
 // Session-assist subscribes to the hub directly: it needs the envelope's
-// directory to route its own OpenCode calls to the right instance.
+// directory to route its own Mage calls to the right instance.
 console.log('[session-assist] listening for session events');
 globalMessageStreamHub.subscribeEvent((event) => {
   const raw = event?.payload;
@@ -836,7 +836,7 @@ const processForwardedEventPayload = (payload, emitSyntheticEvent) => {
   }
 
   emitSyntheticEvent({
-    type: 'openchamber:session-status',
+    type: 'mage:session-status',
     properties: {
       sessionID: sessionId,
       status,
@@ -857,7 +857,7 @@ const processForwardedEventPayload = (payload, emitSyntheticEvent) => {
   });
 
   emitSyntheticEvent({
-    type: 'openchamber:session-activity',
+    type: 'mage:session-activity',
     properties: {
       sessionId,
       phase: status === 'busy' || status === 'retry' ? 'busy' : 'idle',
@@ -871,32 +871,32 @@ const serverUtilsRuntime = createServerUtilsRuntime({
   os,
   path,
   process,
-  openCodeReadyGraceMs: OPEN_CODE_READY_GRACE_MS,
+  mageReadyGraceMs: OPEN_CODE_READY_GRACE_MS,
   longRequestTimeoutMs: LONG_REQUEST_TIMEOUT_MS,
   getRuntime: () => ({
-    openCodePort,
-    openCodeBaseUrl,
-    openCodeNotReadySince,
-    isOpenCodeReady,
-    isRestartingOpenCode,
+    magePort,
+    mageBaseUrl,
+    mageNotReadySince,
+    isMageReady,
+    isRestartingMage,
   }),
-  getOpenCodeAuthHeaders,
-  buildOpenCodeUrl,
-  ensureOpenCodeApiPrefix,
+  getMageAuthHeaders,
+  buildMageUrl,
+  ensureMageApiPrefix,
   getUiNotificationClients: () => uiNotificationClients,
-  getOpenCodePort: () => openCodePort,
-  setOpenCodePortState: (value) => {
-    openCodePort = value;
+  getMagePort: () => magePort,
+  setMagePortState: (value) => {
+    magePort = value;
   },
   syncToHmrState,
-  markOpenCodeNotReady: () => {
-    isOpenCodeReady = false;
+  markMageNotReady: () => {
+    isMageReady = false;
   },
-  setOpenCodeNotReadySince: (value) => {
-    openCodeNotReadySince = value;
+  setMageNotReadySince: (value) => {
+    mageNotReadySince = value;
   },
-  clearLastOpenCodeError: () => {
-    lastOpenCodeError = null;
+  clearLastMageError: () => {
+    lastMageError = null;
   },
   getLoginShellPath: () => {
     const snapshot = getLoginShellEnvSnapshot();
@@ -907,10 +907,10 @@ const serverUtilsRuntime = createServerUtilsRuntime({
   },
 });
 
-const setOpenCodePort = (...args) => serverUtilsRuntime.setOpenCodePort(...args);
-const waitForOpenCodePort = (...args) => serverUtilsRuntime.waitForOpenCodePort(...args);
+const setMagePort = (...args) => serverUtilsRuntime.setMagePort(...args);
+const waitForMagePort = (...args) => serverUtilsRuntime.waitForMagePort(...args);
 const buildAugmentedPath = (...args) => serverUtilsRuntime.buildAugmentedPath(...args);
-const buildManagedOpenCodePath = (...args) => serverUtilsRuntime.buildManagedOpenCodePath(...args);
+const buildManagedMagePath = (...args) => serverUtilsRuntime.buildManagedMagePath(...args);
 const parseSseDataPayload = (...args) => serverUtilsRuntime.parseSseDataPayload(...args);
 const staticRoutesRuntime = createStaticRoutesRuntime({
   fs,
@@ -919,8 +919,8 @@ const staticRoutesRuntime = createStaticRoutesRuntime({
   __dirname,
   express,
   resolveProjectDirectory,
-  buildOpenCodeUrl,
-  getOpenCodeAuthHeaders,
+  buildMageUrl,
+  getMageAuthHeaders,
   readSettingsFromDiskMigrated,
   normalizePwaAppName,
   normalizePwaOrientation,
@@ -948,7 +948,7 @@ const bootstrapRuntime = createBootstrapRuntime({
   registerAuthAndAccessRoutes,
   registerTtsRoutes,
   registerNotificationRoutes,
-  registerOpenChamberRoutes,
+  registerMageRoutes,
   express,
 });
 const tunnelWiringRuntime = createTunnelWiringRuntime({
@@ -992,33 +992,33 @@ const startupPipelineRuntime = createStartupPipelineRuntime({
   createServerStartupRuntime,
 });
 
-const openCodeLifecycleState = {};
-Object.defineProperties(openCodeLifecycleState, {
-  openCodeProcess: { get: () => openCodeProcess, set: (value) => { openCodeProcess = value; } },
-  openCodePort: { get: () => openCodePort, set: (value) => { openCodePort = value; } },
-  openCodeBaseUrl: { get: () => openCodeBaseUrl, set: (value) => { openCodeBaseUrl = value; } },
-  openCodeWorkingDirectory: { get: () => openCodeWorkingDirectory, set: (value) => { openCodeWorkingDirectory = value; } },
+const mageLifecycleState = {};
+Object.defineProperties(mageLifecycleState, {
+  mageProcess: { get: () => mageProcess, set: (value) => { mageProcess = value; } },
+  magePort: { get: () => magePort, set: (value) => { magePort = value; } },
+  mageBaseUrl: { get: () => mageBaseUrl, set: (value) => { mageBaseUrl = value; } },
+  mageWorkingDirectory: { get: () => mageWorkingDirectory, set: (value) => { mageWorkingDirectory = value; } },
   currentRestartPromise: { get: () => currentRestartPromise, set: (value) => { currentRestartPromise = value; } },
-  isRestartingOpenCode: { get: () => isRestartingOpenCode, set: (value) => { isRestartingOpenCode = value; } },
-  openCodeApiPrefix: { get: () => openCodeApiPrefix, set: (value) => { openCodeApiPrefix = value; } },
-  openCodeApiPrefixDetected: { get: () => openCodeApiPrefixDetected, set: (value) => { openCodeApiPrefixDetected = value; } },
-  openCodeApiDetectionTimer: { get: () => openCodeApiDetectionTimer, set: (value) => { openCodeApiDetectionTimer = value; } },
-  lastOpenCodeError: { get: () => lastOpenCodeError, set: (value) => { lastOpenCodeError = value; } },
-  lastOpenCodeLaunchDiagnostics: { get: () => lastOpenCodeLaunchDiagnostics, set: (value) => { lastOpenCodeLaunchDiagnostics = value; } },
-  isOpenCodeReady: { get: () => isOpenCodeReady, set: (value) => { isOpenCodeReady = value; } },
-  openCodeNotReadySince: { get: () => openCodeNotReadySince, set: (value) => { openCodeNotReadySince = value; } },
-  isExternalOpenCode: { get: () => isExternalOpenCode, set: (value) => { isExternalOpenCode = value; } },
+  isRestartingMage: { get: () => isRestartingMage, set: (value) => { isRestartingMage = value; } },
+  mageApiPrefix: { get: () => mageApiPrefix, set: (value) => { mageApiPrefix = value; } },
+  mageApiPrefixDetected: { get: () => mageApiPrefixDetected, set: (value) => { mageApiPrefixDetected = value; } },
+  mageApiDetectionTimer: { get: () => mageApiDetectionTimer, set: (value) => { mageApiDetectionTimer = value; } },
+  lastMageError: { get: () => lastMageError, set: (value) => { lastMageError = value; } },
+  lastMageLaunchDiagnostics: { get: () => lastMageLaunchDiagnostics, set: (value) => { lastMageLaunchDiagnostics = value; } },
+  isMageReady: { get: () => isMageReady, set: (value) => { isMageReady = value; } },
+  mageNotReadySince: { get: () => mageNotReadySince, set: (value) => { mageNotReadySince = value; } },
+  isExternalMage: { get: () => isExternalMage, set: (value) => { isExternalMage = value; } },
   isShuttingDown: { get: () => isShuttingDown, set: (value) => { isShuttingDown = value; } },
   healthCheckInterval: { get: () => healthCheckInterval, set: (value) => { healthCheckInterval = value; } },
   expressApp: { get: () => expressApp, set: (value) => { expressApp = value; } },
-  useWslForOpencode: { get: () => useWslForOpencode, set: (value) => { useWslForOpencode = value; } },
+  useWslForMage: { get: () => useWslForMage, set: (value) => { useWslForMage = value; } },
   resolvedWslBinary: { get: () => resolvedWslBinary, set: (value) => { resolvedWslBinary = value; } },
-  resolvedWslOpencodePath: { get: () => resolvedWslOpencodePath, set: (value) => { resolvedWslOpencodePath = value; } },
+  resolvedWslMagePath: { get: () => resolvedWslMagePath, set: (value) => { resolvedWslMagePath = value; } },
   resolvedWslDistro: { get: () => resolvedWslDistro, set: (value) => { resolvedWslDistro = value; } },
 });
 
-const openCodeLifecycleRuntime = createOpenCodeLifecycleRuntime({
-  state: openCodeLifecycleState,
+const mageLifecycleRuntime = createMageLifecycleRuntime({
+  state: mageLifecycleState,
   env: {
     ENV_CONFIGURED_MAGE_PORT,
     ENV_CONFIGURED_MAGE_HOST,
@@ -1028,45 +1028,45 @@ const openCodeLifecycleRuntime = createOpenCodeLifecycleRuntime({
   },
   syncToHmrState,
   syncFromHmrState,
-  getOpenCodeAuthHeaders,
-  buildOpenCodeUrl,
+  getMageAuthHeaders,
+  buildMageUrl,
   waitForReady,
   normalizeApiPrefix,
-  applyOpencodeBinaryFromSettings,
-  ensureOpencodeCliEnv,
-  ensureLocalOpenCodeServerPassword,
-  resolveManagedOpenCodeLaunchSpec,
-  setOpenCodePort,
-  setDetectedOpenCodeApiPrefix,
+  applyMageBinaryFromSettings,
+  ensureMageCliEnv,
+  ensureLocalMageServerPassword,
+  resolveManagedMageLaunchSpec,
+  setMagePort,
+  setDetectedMageApiPrefix,
   setupProxy: (...args) => setupProxy(...args),
-  ensureOpenCodeApiPrefix,
-  clearResolvedOpenCodeBinary,
+  ensureMageApiPrefix,
+  clearResolvedMageBinary,
   buildAugmentedPath,
-  buildManagedOpenCodePath,
-  getManagedOpenCodeShellEnvSnapshot: getLoginShellEnvSnapshot,
+  buildManagedMagePath,
+  getManagedMageShellEnvSnapshot: getLoginShellEnvSnapshot,
   getActiveSessionCount,
 });
 
-const restartOpenCode = (...args) => openCodeLifecycleRuntime.restartOpenCode(...args);
-const waitForOpenCodeReady = (...args) => openCodeLifecycleRuntime.waitForOpenCodeReady(...args);
-const waitForAgentPresence = (...args) => openCodeLifecycleRuntime.waitForAgentPresence(...args);
-const refreshOpenCodeAfterConfigChange = (...args) => openCodeLifecycleRuntime.refreshOpenCodeAfterConfigChange(...args);
-const startHealthMonitoring = () => openCodeLifecycleRuntime.startHealthMonitoring(HEALTH_CHECK_INTERVAL);
-const triggerHealthCheck = () => openCodeLifecycleRuntime.triggerHealthCheck();
+const restartMage = (...args) => mageLifecycleRuntime.restartMage(...args);
+const waitForMageReady = (...args) => mageLifecycleRuntime.waitForMageReady(...args);
+const waitForAgentPresence = (...args) => mageLifecycleRuntime.waitForAgentPresence(...args);
+const refreshMageAfterConfigChange = (...args) => mageLifecycleRuntime.refreshMageAfterConfigChange(...args);
+const startHealthMonitoring = () => mageLifecycleRuntime.startHealthMonitoring(HEALTH_CHECK_INTERVAL);
+const triggerHealthCheck = () => mageLifecycleRuntime.triggerHealthCheck();
 const scheduledTasksRuntime = createScheduledTasksRuntime({
   projectConfigRuntime,
   listProjects: async () => {
     const settings = await readSettingsFromDiskMigrated();
     return sanitizeProjects(settings?.projects || []);
   },
-  buildOpenCodeUrl,
-  getOpenCodeAuthHeaders,
-  waitForOpenCodeReady,
+  buildMageUrl,
+  getMageAuthHeaders,
+  waitForMageReady,
   emitTaskRunEvent: (event) => {
-    for (const client of uiOpenChamberEventClients) {
+    for (const client of uiMageEventClients) {
       try {
         writeSseEvent(client, {
-          type: 'openchamber:scheduled-task-ran',
+          type: 'mage:scheduled-task-ran',
           properties: {
             projectId: event.projectID,
             taskId: event.taskID,
@@ -1076,7 +1076,7 @@ const scheduledTasksRuntime = createScheduledTasksRuntime({
           },
         });
       } catch {
-        uiOpenChamberEventClients.delete(client);
+        uiMageEventClients.delete(client);
       }
     }
   },
@@ -1088,28 +1088,28 @@ const ensureGlobalWatcherStarted = async () => {
     return globalWatcherStartPromise;
   }
 
-  globalWatcherStartPromise = openCodeWatcherRuntime.start().catch((error) => {
+  globalWatcherStartPromise = mageWatcherRuntime.start().catch((error) => {
     globalWatcherStartPromise = null;
     throw error;
   });
 
   return globalWatcherStartPromise;
 };
-const bootstrapOpenCodeAtStartup = async (...args) => {
-  await openCodeLifecycleRuntime.bootstrapOpenCodeAtStartup(...args);
-  scheduleOpenCodeApiDetection();
-  if (openCodeLifecycleState.openCodeProcess && !openCodeLifecycleState.isExternalOpenCode) {
+const bootstrapMageAtStartup = async (...args) => {
+  await mageLifecycleRuntime.bootstrapMageAtStartup(...args);
+  scheduleMageApiDetection();
+  if (mageLifecycleState.mageProcess && !mageLifecycleState.isExternalMage) {
     startHealthMonitoring();
   }
   // The global watcher used to start only for desktop notifications; the
   // session-assist runtime also rides its event hub, so it now starts
-  // unconditionally once OpenCode is up.
+  // unconditionally once Mage is up.
   void ensureGlobalWatcherStarted().catch((error) => {
     console.warn(`Global event watcher startup failed: ${error?.message || error}`);
   });
 };
-const killProcessOnPort = (...args) => openCodeLifecycleRuntime.killProcessOnPort(...args);
-const waitForPortRelease = (...args) => openCodeLifecycleRuntime.waitForPortRelease(...args);
+const killProcessOnPort = (...args) => mageLifecycleRuntime.killProcessOnPort(...args);
+const waitForPortRelease = (...args) => mageLifecycleRuntime.waitForPortRelease(...args);
 
 const fetchAgentsSnapshot = (...args) => serverUtilsRuntime.fetchAgentsSnapshot(...args);
 const fetchProvidersSnapshot = (...args) => serverUtilsRuntime.fetchProvidersSnapshot(...args);
@@ -1124,7 +1124,7 @@ const gracefulShutdownRuntime = createGracefulShutdownRuntime({
     isShuttingDown = value;
   },
   syncToHmrState,
-  openCodeWatcherRuntime,
+  mageWatcherRuntime,
   sessionAssistRuntime,
   sessionGoalRuntime,
   sessionRuntime,
@@ -1138,11 +1138,11 @@ const gracefulShutdownRuntime = createGracefulShutdownRuntime({
   setMessageStreamRuntime: (value) => {
     messageStreamRuntime = value;
   },
-  shouldSkipOpenCodeStop: () => ENV_SKIP_MAGE_START || isExternalOpenCode,
-  getOpenCodePort: () => openCodePort,
-  getOpenCodeProcess: () => openCodeProcess,
-  setOpenCodeProcess: (value) => {
-    openCodeProcess = value;
+  shouldSkipMageStop: () => ENV_SKIP_MAGE_START || isExternalMage,
+  getMagePort: () => magePort,
+  getMageProcess: () => mageProcess,
+  setMageProcess: (value) => {
+    mageProcess = value;
   },
   killProcessOnPort,
   waitForPortRelease,
@@ -1165,8 +1165,8 @@ async function main(options = {}) {
   const port = Number.isFinite(options.port) && options.port >= 0 ? Math.trunc(options.port) : DEFAULT_PORT;
   const host = typeof options.host === 'string' && options.host.length > 0 ? options.host : undefined;
   const effectiveBindHost = host
-    || (typeof process.env.OPENCHAMBER_HOST === 'string' && process.env.OPENCHAMBER_HOST.trim().length > 0
-      ? process.env.OPENCHAMBER_HOST.trim()
+    || (typeof process.env.MAGE_HOST === 'string' && process.env.MAGE_HOST.trim().length > 0
+      ? process.env.MAGE_HOST.trim()
       : '127.0.0.1');
 
   // Pairing transports advertised to the create-device dialog. LAN reachability is
@@ -1216,7 +1216,7 @@ async function main(options = {}) {
   };
   const uiPassword = typeof options.uiPassword === 'string'
     ? options.uiPassword
-    : (typeof process.env.OPENCHAMBER_UI_PASSWORD === 'string' ? process.env.OPENCHAMBER_UI_PASSWORD : null);
+    : (typeof process.env.MAGE_UI_PASSWORD === 'string' ? process.env.MAGE_UI_PASSWORD : null);
   if (
     isNetworkExposedBindHost(effectiveBindHost)
     && !(typeof uiPassword === 'string' && uiPassword.trim().length > 0)
@@ -1225,7 +1225,7 @@ async function main(options = {}) {
     throw new Error(getUnauthenticatedLanErrorMessage(effectiveBindHost));
   }
   const tryCfTunnel = options.tryCfTunnel === true;
-  const apiOnly = options.apiOnly === true || isEnvFlagEnabled(process.env.OPENCHAMBER_API_ONLY);
+  const apiOnly = options.apiOnly === true || isEnvFlagEnabled(process.env.MAGE_API_ONLY);
   const shouldUseCanonicalTunnelConfig = typeof options.tunnelMode === 'string'
     || typeof options.tunnelProvider === 'string'
     || options.tunnelConfigPath === null
@@ -1264,14 +1264,14 @@ async function main(options = {}) {
     ? options.getDesktopRuntimeConfig
     : null;
 
-  console.log(`Starting OpenChamber on port ${port === 0 ? 'auto' : port}`);
+  console.log(`Starting Mage on port ${port === 0 ? 'auto' : port}`);
 
   const sayTTSCapability = await detectSayTtsCapability(process);
 
   const app = express();
   const serverStartedAt = new Date().toISOString();
   const packagedClientOrigins = new Set([
-    'openchamber-ui://app',
+    'mage-ui://app',
     'capacitor://localhost',
     'http://localhost',
     'https://localhost',
@@ -1295,7 +1295,7 @@ async function main(options = {}) {
       res.setHeader('Access-Control-Allow-Origin', origin);
       res.setHeader('Access-Control-Allow-Credentials', 'true');
       res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,Accept,X-Requested-With,Cache-Control,X-OpenCode-Directory,X-OpenCode-Directory-Encoding');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,Accept,X-Requested-With,Cache-Control,X-Mage-Directory,X-Mage-Directory-Encoding');
       res.setHeader('Access-Control-Expose-Headers', 'x-next-cursor');
       res.setHeader('Vary', 'Origin');
       if (req.method === 'OPTIONS') {
@@ -1323,33 +1323,33 @@ async function main(options = {}) {
 
   const bootstrapResult = bootstrapRuntime.setupBaseRoutes(app, {
     process,
-    openchamberVersion: OPENCHAMBER_VERSION,
-    runtimeName: process.env.OPENCHAMBER_RUNTIME || 'web',
+    mageVersion: MAGE_VERSION,
+    runtimeName: process.env.MAGE_RUNTIME || 'web',
     serverStartedAt,
     gracefulShutdown,
     getHealthSnapshot: () => {
-      const launchSpec = resolvedOpencodeBinary && !useWslForOpencode
-        ? resolveManagedOpenCodeLaunchSpec(resolvedOpencodeBinary)
+      const launchSpec = resolvedMageBinary && !useWslForMage
+        ? resolveManagedMageLaunchSpec(resolvedMageBinary)
         : null;
       return {
-        openCodePort,
-        openCodeRunning: Boolean(openCodePort && isOpenCodeReady && !isRestartingOpenCode),
-        openCodeSecureConnection: isOpenCodeConnectionSecure(),
-        openCodeAuthSource: openCodeAuthSource || null,
-        openCodeApiPrefix: '',
-        openCodeApiPrefixDetected: true,
-        isOpenCodeReady,
-        lastOpenCodeError,
-        lastOpenCodeLaunchDiagnostics,
-        opencodeBinaryResolved: resolvedOpencodeBinary || null,
-        opencodeBinarySource: resolvedOpencodeBinarySource || null,
-        opencodeLaunchBinary: launchSpec?.binary || null,
-        opencodeLaunchArgs: launchSpec?.args || [],
-        opencodeLaunchWrapperType: launchSpec?.wrapperType || null,
-        opencodeViaWsl: useWslForOpencode,
-        opencodeWslBinary: resolvedWslBinary || null,
-        opencodeWslPath: resolvedWslOpencodePath || null,
-        opencodeWslDistro: resolvedWslDistro || null,
+        magePort,
+        mageRunning: Boolean(magePort && isMageReady && !isRestartingMage),
+        mageSecureConnection: isMageConnectionSecure(),
+        mageAuthSource: mageAuthSource || null,
+        mageApiPrefix: '',
+        mageApiPrefixDetected: true,
+        isMageReady,
+        lastMageError,
+        lastMageLaunchDiagnostics,
+        mageBinaryResolved: resolvedMageBinary || null,
+        mageBinarySource: resolvedMageBinarySource || null,
+        mageLaunchBinary: launchSpec?.binary || null,
+        mageLaunchArgs: launchSpec?.args || [],
+        mageLaunchWrapperType: launchSpec?.wrapperType || null,
+        mageViaWsl: useWslForMage,
+        mageWslBinary: resolvedWslBinary || null,
+        mageWslPath: resolvedWslMagePath || null,
+        mageWslDistro: resolvedWslDistro || null,
         nodeBinaryResolved: resolvedNodeBinary || null,
         bunBinaryResolved: resolvedBunBinary || null,
         desktopNotifyEnabled: ENV_DESKTOP_NOTIFY,
@@ -1357,7 +1357,7 @@ async function main(options = {}) {
         apiOnly,
       };
     },
-    verboseRequestLogs: OPENCHAMBER_VERBOSE_REQUEST_LOGS,
+    verboseRequestLogs: MAGE_VERBOSE_REQUEST_LOGS,
     uiPassword,
     tunnelAuthController,
     remoteClientAuthRuntime,
@@ -1380,9 +1380,9 @@ async function main(options = {}) {
     getServerLabel: () => {
       try {
         const name = os.hostname();
-        return typeof name === 'string' && name.trim().length > 0 ? name.trim() : 'OpenChamber';
+        return typeof name === 'string' && name.trim().length > 0 ? name.trim() : 'Mage';
       } catch {
-        return 'OpenChamber';
+        return 'Mage';
       }
     },
     readSettingsFromDiskMigrated,
@@ -1409,7 +1409,7 @@ async function main(options = {}) {
     path,
     server,
     __dirname,
-    openchamberDataDir: OPENCHAMBER_DATA_DIR,
+    mageDataDir: MAGE_DATA_DIR,
     modelsDevApiUrl: MODELS_DEV_API_URL,
     modelsMetadataCacheTtl: MODELS_METADATA_CACHE_TTL,
     fetchFreeZenModels,
@@ -1460,15 +1460,15 @@ async function main(options = {}) {
     spawn,
     resolveGitBinaryForSpawn,
     createFsSearchRuntime: createFsSearchRuntimeFactory,
-    openchamberDataDir: OPENCHAMBER_DATA_DIR,
-    openchamberUserConfigRoot: OPENCHAMBER_USER_CONFIG_ROOT,
+    mageDataDir: MAGE_DATA_DIR,
+    mageUserConfigRoot: MAGE_USER_CONFIG_ROOT,
     normalizeDirectoryPath,
     resolveProjectDirectory,
     resolveOptionalProjectDirectory,
     validateDirectoryPath,
     readCustomThemesFromDisk,
-    refreshOpenCodeAfterConfigChange,
-    getOpenCodeResolutionSnapshot,
+    refreshMageAfterConfigChange,
+    getMageResolutionSnapshot,
     formatSettingsResponse,
     readSettingsFromDisk,
     readSettingsFromDiskMigrated,
@@ -1476,13 +1476,13 @@ async function main(options = {}) {
     sanitizeProjects,
     sanitizeSkillCatalogs,
     isUnsafeSkillRelativePath,
-    buildOpenCodeUrl,
-    getOpenCodeAuthHeaders,
-    getOpenCodePort: () => openCodePort,
+    buildMageUrl,
+    getMageAuthHeaders,
+    getMagePort: () => magePort,
     buildAugmentedPath,
     projectConfigRuntime,
     scheduledTasksRuntime,
-    getOpenChamberEventClients: () => uiOpenChamberEventClients,
+    getMageEventClients: () => uiMageEventClients,
     writeSseEvent,
     permissionAutoAcceptRuntime,
   });
@@ -1513,8 +1513,8 @@ async function main(options = {}) {
     isExecutable,
     isRequestOriginAllowed,
     rejectWebSocketUpgrade,
-    buildOpenCodeUrl,
-    getOpenCodeAuthHeaders,
+    buildMageUrl,
+    getMageAuthHeaders,
     globalEventHub: globalMessageStreamHub,
     processForwardedEventPayload,
     messageStreamWsClients: uiNotificationWsClients,
@@ -1523,8 +1523,8 @@ async function main(options = {}) {
     terminalRebindWindowMs: TERMINAL_INPUT_WS_REBIND_WINDOW_MS,
     terminalMaxRebindsPerWindow: TERMINAL_INPUT_WS_MAX_REBINDS_PER_WINDOW,
     setupProxy,
-    scheduleOpenCodeApiDetection,
-    bootstrapOpenCodeAtStartup,
+    scheduleMageApiDetection,
+    bootstrapMageAtStartup,
     triggerHealthCheck,
     staticRoutesRuntime,
     process,
@@ -1549,7 +1549,7 @@ async function main(options = {}) {
     tunnelRuntimeContext,
     attachSignals,
     apiOnly,
-    dictationModelsDir: path.join(OPENCHAMBER_USER_CONFIG_ROOT, 'speech-models'),
+    dictationModelsDir: path.join(MAGE_USER_CONFIG_ROOT, 'speech-models'),
   });
   terminalRuntime = startupPipelineResult.terminalRuntime;
   dictationRuntime = startupPipelineResult.dictationRuntime;
@@ -1566,7 +1566,7 @@ async function main(options = {}) {
   // device/session exists, stop it (and clear a stale enabled flag) otherwise.
   void relayService.reconcile();
 
-  // Relay demand can change outside our routes: `openchamber connect-url
+  // Relay demand can change outside our routes: `mage connect-url
   // --relay` writes a pending relay session straight to the on-disk store, and
   // pending sessions expire without any request hitting us. Poll reconcile so a
   // headless instance picks the relay up (or drops it) within a minute.
@@ -1579,7 +1579,7 @@ async function main(options = {}) {
     expressApp: app,
     httpServer: server,
     getPort: () => tunnelRuntimeContext.getActivePort(),
-    getOpenCodePort: () => openCodePort,
+    getMagePort: () => magePort,
     getTunnelUrl: () => tunnelService.getPublicUrl(),
     getQuitRiskStatus: () => ({
       tunnel: {
@@ -1587,20 +1587,20 @@ async function main(options = {}) {
       },
       scheduledTasks: scheduledTasksRuntime.getStatus(),
     }),
-    isReady: () => isOpenCodeReady,
-    restartOpenCode: () => restartOpenCode(),
-    getOpenCodeProcessInfo: () => {
-      const managed = Boolean((openCodeProcess || openCodePort) && !ENV_SKIP_MAGE_START && !isExternalOpenCode);
+    isReady: () => isMageReady,
+    restartMage: () => restartMage(),
+    getMageProcessInfo: () => {
+      const managed = Boolean((mageProcess || magePort) && !ENV_SKIP_MAGE_START && !isExternalMage);
       // Only ever expose pid/port for a server WE manage. The Electron-side
       // killer kills by port (lsof + kill -KILL), so returning a port we don't
-      // own — e.g. an external/desktop OpenCode on 4096 we attached to — would
+      // own — e.g. an external/desktop Mage on 4096 we attached to — would
       // let a single miscomputed `managed` flag take down the user's separate
       // server. Structurally withhold what isn't ours so the killer has no
       // target, instead of relying on the flag check alone.
       return {
         managed,
-        pid: managed && typeof openCodeProcess?.pid === 'number' ? openCodeProcess.pid : null,
-        port: managed ? openCodePort : null,
+        pid: managed && typeof mageProcess?.pid === 'number' ? mageProcess.pid : null,
+        port: managed ? magePort : null,
       };
     },
     stop: (shutdownOptions = {}) => {
@@ -1637,7 +1637,7 @@ runCliEntryIfMain({
 export {
   gracefulShutdown,
   setupProxy,
-  restartOpenCode,
+  restartMage,
   main as startWebUiServer,
   parseServeCliOptions as parseArgs,
 };

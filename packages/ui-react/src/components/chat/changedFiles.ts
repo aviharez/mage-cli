@@ -1,4 +1,4 @@
-import type { ToolPart } from '@opencode-ai/sdk/v2';
+import type { ToolPart } from '@mybcabisnis/mage-sdk/v2';
 import { getRelativeFilePath, toAbsoluteFilePath } from '@/lib/path-utils';
 
 export interface ChangedFile {

@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Part } from '@opencode-ai/sdk/v2';
+import type { Part } from '@mybcabisnis/mage-sdk/v2';
 import type { ContentChangeReason } from '@/hooks/useChatAutoFollow';
 import { useUIStore } from '@/stores/useUIStore';
 import { ReasoningTimelineBlock } from './ReasoningPart';

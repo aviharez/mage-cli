@@ -30,7 +30,7 @@ const tempDirs = [];
 
 /** Create a temp dir and register it for afterEach cleanup. */
 const createTempDir = () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-git-service-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mage-git-service-'));
   tempDirs.push(dir);
   return dir;
 };
@@ -351,7 +351,7 @@ describe('createWorktree', () => {
         returnAfterDirectoryCreated: true,
       })).rejects.toThrow(`Branch is already checked out in ${canonicalWorktree}`);
 
-      const candidateDirectory = path.join(dataHome, 'opencode', 'worktree', projectID, 'feature-in-use');
+      const candidateDirectory = path.join(dataHome, 'mage', 'worktree', projectID, 'feature-in-use');
       expect(fs.existsSync(candidateDirectory)).toBe(false);
     } finally {
       if (previousXdgDataHome === undefined) {

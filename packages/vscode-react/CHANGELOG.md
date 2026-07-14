@@ -6,7 +6,7 @@
 - Chat: Mermaid diagrams now have zoom controls (thanks to @c-w-xiaohei).
 - Chat: code blocks can show line numbers that stay aligned while streaming, and a new Wrap Code Block Lines setting controls long-line wrapping.
 - Chat: with Sticky User Header enabled, user messages no longer float over earlier messages in long conversations.
-- Chat: if sending a message times out or loses the connection after OpenCode accepted it, the extension now keeps the sent message instead of rolling it back as failed.
+- Chat: if sending a message times out or loses the connection after Mage accepted it, the extension now keeps the sent message instead of rolling it back as failed.
 - Editor Integration: the "Add to Context" command and active-editor pin-selection now use workspace-relative filenames so the model reads the correct file when names collide (thanks to @Catan).
 
 ## [1.14.1] - 2026-07-07
@@ -20,12 +20,12 @@
 
 - Chat: loading older messages keeps your scroll position steady.
 - Chat: the stop button now aborts sessions running in a different project or worktree than the currently open one — previously those aborts silently did nothing.
-- Startup: on Windows, OpenCode installed via npm now launches from paths with spaces (such as C:\Program Files\nodejs), a binary path pasted with surrounding quotes into the Opencode Binary setting works, and discovery also checks the system-wide npm prefix and Scoop's shims.
+- Startup: on Windows, Mage installed via npm now launches from paths with spaces (such as C:\Program Files\nodejs), a binary path pasted with surrounding quotes into the Mage Binary setting works, and discovery also checks the system-wide npm prefix and Scoop's shims.
 
 ## [1.13.9] - 2026-07-02
 
 - Agents: clearing optional agent fields now removes them from agent config instead of saving `null` values.
-- Startup: the extension no longer picks OpenCode desktop app installs when looking for the standalone OpenCode CLI.
+- Startup: the extension no longer picks Mage desktop app installs when looking for the standalone Mage CLI.
 - Chat: fixed edge cases where late-loading tool content, subagent content, or streaming Thinking blocks could pull the conversation away from the latest message or fight manual scrolling.
 - Chat: embedded JSON examples in messages no longer render as generated-result cards.
 - Sync: chat state now recovers after idle reconnects instead of leaving sessions stuck in a stale busy state.
@@ -55,7 +55,7 @@
 - Chat: sending a message now closes an open question prompt instead of leaving stale question UI in the composer (thanks to @tomzx).
 - Chat: conversations pinned to the bottom no longer jiggle or double-scroll after sending, and revisiting older sessions snaps to the latest message without a smooth-scroll delay.
 - Models: the model picker now remembers provider group expansion and custom ordering, and Shift+Delete removes a recent model from recents (thanks to @makeittech).
-- Agents: agent edits against an external OpenCode server no longer show a saved-state update when the save did not succeed (thanks to @makeittech).
+- Agents: agent edits against an external Mage server no longer show a saved-state update when the save did not succeed (thanks to @makeittech).
 - Providers: the add-provider form no longer loses the selected provider during background provider refreshes (thanks to @IbrahimKhan12).
 
 ## [1.13.3] - 2026-06-24
@@ -72,14 +72,14 @@
 - Settings: font size and padding preferences now apply inside the extension webview (thanks to @Sin991114).
 - Settings/Skills: the skills catalog refreshes after catalog settings change (thanks to @gokulkgm).
 - Usage: MiniMax M3 and Token Plan usage now handle the provider's latest API response format (thanks to @baruchvitorino).
-- Startup: managed OpenCode server processes left behind by a previous extension crash are cleaned up on the next start.
+- Startup: managed Mage server processes left behind by a previous extension crash are cleaned up on the next start.
 
 ## [1.13.2] - 2026-06-18
 
 - Chat/Performance: long conversations and large session lists now stay smooth and responsive while a response is streaming (thanks to @bashrusakh).
 - Chat: the end of a streamed response is no longer occasionally cut off — messages now always settle on their complete text (thanks to @IbrahimKhan12).
 - Chat: paragraphs in assistant messages now have proper spacing instead of collapsing into a single block (thanks to @foundryseven).
-- Startup: the extension starts faster by no longer waiting on default OpenCode config, while your manual and per-directory model selections are preserved.
+- Startup: the extension starts faster by no longer waiting on default Mage config, while your manual and per-directory model selections are preserved.
 
 ## [1.13.1] - 2026-06-17
 
@@ -94,7 +94,7 @@
 ## [1.13.0] - 2026-06-15
 
 - Startup: the extension opens faster — recent sessions, models, providers, and projects appear instantly from cache and refresh in the background, and the loading screen no longer lingers after the interface is ready.
-- Startup: requests made while OpenCode is still starting now wait briefly for it to become ready instead of failing, and if OpenCode fails to start the error now includes what it reported.
+- Startup: requests made while Mage is still starting now wait briefly for it to become ready instead of failing, and if Mage fails to start the error now includes what it reported.
 - Sessions: the list now groups sessions under their workspace, so pinning sessions and moving them into folders work as expected.
 - Sessions: session rows now use a cleaner single-line layout, and a new control next to "archive all" toggles archived sessions on or off.
 - Chat: custom-answer question textareas resize more steadily while typing (thanks to @bigcoder84).
@@ -104,7 +104,7 @@
 - Sessions: session menus now include a delete action (thanks to @ShogunPanda).
 - Sessions: deleting a parent session no longer brings deleted child sessions back into the sidebar (thanks to @panzeyu2013).
 - Sessions: switching sessions no longer leaves the chat area blank in some cases (thanks to @panzeyu2013).
-- Settings/MCP: importing MCP snippets from OpenCode config works again (thanks to @youzini).
+- Settings/MCP: importing MCP snippets from Mage config works again (thanks to @youzini).
 
 ## [1.12.4] - 2026-06-11
 
@@ -123,11 +123,11 @@
 
 ## [1.12.3] - 2026-06-05
 
-- Startup: OpenCode health checks now work with OpenCode 1.15.x.
+- Startup: Mage health checks now work with Mage 1.15.x.
 
 ## [1.12.2] - 2026-06-05
 
-- Startup/Windows: the extension now detects more OpenCode installs from PATH, npm, Scoop, and Chocolatey.
+- Startup/Windows: the extension now detects more Mage installs from PATH, npm, Scoop, and Chocolatey.
 - Chat: prompts sent while creating or switching target sessions now stay attached to the intended workspace directory.
 - Files: chat and tool links now handle Windows drive-letter and backslash paths.
 
@@ -139,9 +139,9 @@
 - Chat: completed responses no longer lose late-arriving summaries, token counts, errors, structured output, or changed-file details.
 - Chat: question cards now show an error or no-longer-pending message when submit or dismiss fails instead of silently doing nothing.
 - Chat: the first prompt in a new session no longer gets stuck before sending.
-- Sessions: session titles update from live session events, and the extension now consistently loads all existing OpenCode sessions.
+- Sessions: session titles update from live session events, and the extension now consistently loads all existing Mage sessions.
 - Sessions: recent sessions now stay visible inside project groups, and new or worktree sessions stay in the correct project/worktree group.
-- Settings/OpenCode: OpenCode CLI path, update-notification preference, keyboard shortcuts, and protected-session settings now stay saved after changes.
+- Settings/Mage: Mage CLI path, update-notification preference, keyboard shortcuts, and protected-session settings now stay saved after changes.
 - UI/Time: the time-format preference now applies to chat timestamps, usage reset times, scheduled tasks, passkeys, and usage last-updated times.
 
 ## [1.12.0] - 2026-06-03
@@ -161,7 +161,7 @@
 
 ## [1.11.6] - 2026-05-25
 
-- Settings/Plugins: added a Plugins page for managing opencode plugins, with npm update checks and user/project scopes (thanks to @Quat3rnion).
+- Settings/Plugins: added a Plugins page for managing mage plugins, with npm update checks and user/project scopes (thanks to @Quat3rnion).
 - Perf: Git repository lookups in the extension now avoid repeating the same Git read commands during refreshes.
 
 ## [1.11.5] - 2026-05-25
@@ -198,7 +198,7 @@
 - Chat: thinking blocks can now be collapsed, and expanding tool details feels smooth (thanks to @ermanhavuc).
 - Chat: reverting or forking messages now keeps file attachments in place, with clearer undo/redo controls (thanks to @youfch, @ermanhavuc).
 - Sessions: root project sessions now show up correctly in the session switcher (thanks to @isanchez404).
-- Skills: installed skills now match OpenCode's own skill list more closely.
+- Skills: installed skills now match Mage's own skill list more closely.
 
 ## [1.11.1] - 2026-05-15
 
@@ -252,7 +252,7 @@
 - Chat/Timeline: added full-text timeline search across user, assistant, and tool messages in a session.
 - Chat/Reliability: pending questions now survive session switches and directory eviction.
 - Reliability/Sync: aligned session status parsing and reconnect reconciliation (thanks to @vhqtvn).
-- Startup/Reliability: configured OpenCode CLI paths are now validated before managed startup, with clearer errors for missing, non-executable, or app-bundle paths.
+- Startup/Reliability: configured Mage CLI paths are now validated before managed startup, with clearer errors for missing, non-executable, or app-bundle paths.
 - Performance/Reliability: reduced duplicate extension initialization, deferred heavier views, lowered managed runtime status overhead, optimized markdown file-link detection, reduced sync recovery payloads, and suppressed expected missing-directory noise.
 
 ## [1.10.0] - 2026-05-05
@@ -263,7 +263,7 @@
 - Chat/Streaming: reduced text flicker, preserved first chunks reliably, and kept long agent sessions from hanging during active responses (thanks to @pasta-paul).
 - Chat/Scrolling: preserved per-session scroll position and kept generated prompts scrolled into view (thanks to @jwcrystal).
 - Settings/UI: improved settings scrolling and empty states (thanks to @Yabuku-xD).
-- Models/Providers: fixed slash-containing model IDs, refreshed model metadata after OpenCode restarts, and added safer concurrency controls for sessions sharing the same provider (thanks to @yart, @Yabuku-xD).
+- Models/Providers: fixed slash-containing model IDs, refreshed model metadata after Mage restarts, and added safer concurrency controls for sessions sharing the same provider (thanks to @yart, @Yabuku-xD).
 - GitHub/MCP: improved fork-aware issue and pull-request listing, PR status handling, and remote MCP header handling (thanks to @corrm, @ricautomation).
 
 ## [1.9.10] - 2026-04-28
@@ -274,7 +274,7 @@
 - Sessions/Sidebar: fixed stale session, folder, project, and worktree state after mutations, and polished pinned-session indicators (thanks to @corrm, @Yabuku-xD).
 - Windows: normalized drive-letter paths in extension webviews (thanks to @sdunfeng).
 - Usage: added MiniMax and Ollama quota support.
-- Reliability/Startup: hardened managed OpenCode startup, preserved shell PATH reliably, and improved stream/proxy recovery with heartbeat support (thanks to @An-jinu).
+- Reliability/Startup: hardened managed Mage startup, preserved shell PATH reliably, and improved stream/proxy recovery with heartbeat support (thanks to @An-jinu).
 
 ## [1.9.9] - 2026-04-26
 
@@ -303,12 +303,12 @@
 - Files: open editors now refresh file content after external changes.
 - Settings/MCP: improved MCP auth flow with remote config support and clearer diagnostics (thanks to @daveotero).
 - Chat/Questions: single-choice questions now use radio selection.
-- Reliability: config resolution now matches OpenCode behavior more closely.
+- Reliability: config resolution now matches Mage behavior more closely.
 - Reliability/Streaming: strengthened bootstrap and connection recovery paths.
 
 ## [1.9.6] - 2026-04-17
 
-- Reliability: improved startup shell detection to avoid false OpenCode discovery on POSIX login shells.
+- Reliability: improved startup shell detection to avoid false Mage discovery on POSIX login shells.
 - Reliability/Streaming: moved to a WebSocket-first message stream with SSE fallback and added safer compression handling.
 - Sessions/Worktrees: enforced worktree isolation for session and Git flows.
 - Chat/Export: added export session as Markdown and improved empty-state/export behavior (thanks to @coldbrow).
@@ -321,7 +321,7 @@
 - Sync/Performance: optimized multi-session streaming with per-directory queues, event coalescing, and parts-gap recovery for steady live updates in busy workspaces (thanks to @jwcrystal).
 - Task/Reliability: hardened subagent session resolution and polling lifecycle handling to reduce silent task failures (thanks to @jwcrystal).
 - Sessions/UI: kept active sessions visible in Recent, auto-expanded parent groups for subagent sessions, and hid empty archived/folder sections (thanks to @jwcrystal).
-- Models: restored model-variant compatibility with newer OpenCode runtimes (thanks to @Chi-square-test).
+- Models: restored model-variant compatibility with newer Mage runtimes (thanks to @Chi-square-test).
 - Usage: added Zhipu AI Coding Plan tracking (thanks to @cainiao1992).
 
 ## [1.9.4] - 2026-04-07
@@ -462,7 +462,7 @@
 - Settings: added customizable keyboard shortcuts for chat actions, panel toggles, and services (thanks to @nelsonPires5).
 - UI: unified clipboard copy behavior.
 - Reliability: improved startup environment detection by capturing login-shell environment snapshots.
-- Reliability: refactored OpenCode config/auth integration into domain modules for steady provider auth and command loading flows (thanks to @nelsonPires5).
+- Reliability: refactored Mage config/auth integration into domain modules for steady provider auth and command loading flows (thanks to @nelsonPires5).
 
 ## [1.7.2] - 2026-02-20
 
@@ -479,8 +479,8 @@
 - Chat: added a shell mode triggered by leading `!`, with inline output visibility/copy.
 - Chat: improved delegated-task clarity with richer subtask bubbles, better task-detail rendering, and parent-chat surfacing for child permission/question requests.
 - Chat: improved `@` mention autocomplete by prioritizing agents and cleaning up ordering.
-- Skills: discovery now uses OpenCode API as the source of truth with safer fallback scanning.
-- Skills: upgraded editing/install UX with better code editing, syntax-aware related files, and clearer location targeting across user/project .opencode and .agents scopes.
+- Skills: discovery now uses Mage API as the source of truth with safer fallback scanning.
+- Skills: upgraded editing/install UX with better code editing, syntax-aware related files, and clearer location targeting across user/project .mage and .agents scopes.
 
 ## [1.7.0] - 2026-02-17
 
@@ -512,14 +512,14 @@
 ## [1.6.6] - 2026-02-9
 
 - Usage: added per-model quota groups in the header and fixed provider dropdown scrolling for easier usage tracking (thanks to @nelsonPires5, @gsxdsm).
-- Reliability: fixed OpenCode auth pass-through/proxy behavior to reduce failed extension requests (thanks to @gsxdsm).
+- Reliability: fixed Mage auth pass-through/proxy behavior to reduce failed extension requests (thanks to @gsxdsm).
 
 ## [1.6.5] - 2026-02-6
 
-- Settings: added an OpenCode CLI path override.
+- Settings: added an Mage CLI path override.
 - Chat: added arrow-key prompt history and an optional setting to persist input drafts between restarts (thanks to @gsxdsm).
 - Chat: thinking/reasoning blocks now render consistently, and justification visibility settings now apply reliably (thanks to @gsxdsm).
-- Reliability: improved OpenCode binary resolution and HOME-path handling for steady local startup.
+- Reliability: improved Mage binary resolution and HOME-path handling for steady local startup.
 
 ## [1.6.4] - 2026-02-5
 
@@ -557,7 +557,7 @@
 
 ## [1.5.9] - 2026-01-28
 
-- Agent Manager: migrated to the OpenCode SDK worktree implementation; sessions in worktrees are now completely isolated.
+- Agent Manager: migrated to the Mage SDK worktree implementation; sessions in worktrees are now completely isolated.
 - Agent Manager: worktree setup commands are now persistent per project and automatically saved/restored.
 
 
@@ -607,7 +607,7 @@
 
 - Chat: optimized message loading for opening sessions.
 - Layout: tuned responsive breakpoint and server readiness timeout for steady startup.
-- Reliability: improved OpenCode process cleanup to reduce orphaned servers.
+- Reliability: improved Mage process cleanup to reduce orphaned servers.
 
 
 ## [1.5.1] - 2026-01-16
@@ -617,9 +617,9 @@
 
 ## [1.5.0] - 2026-01-16
 
-- Improved OpenCode server management to ensure it initializes within the workspace directory.
+- Improved Mage server management to ensure it initializes within the workspace directory.
 - Enhanced extension startup with context-aware readiness checks for the current workspace.
-- Fixed orphaned OpenCode processes not being cleaned up on restart or exit.
+- Fixed orphaned Mage processes not being cleaned up on restart or exit.
 - Session tabs: fixed opening new session in editor tab; title bar button now opens new session tab, sidebar button opens current or new session.
 - Layout: added responsive expanded layout showing sessions sidebar + chat side-by-side when extension is wide enough (≥700px).
 - Layout: extension now opens to sessions list instead of new session draft.
@@ -652,7 +652,7 @@
 
 ## [1.4.6] - 2026-01-09
 
-- Switched OpenCode CLI management to the SDK.
+- Switched Mage CLI management to the SDK.
 - Input: removed auto-complete and auto-correction.
 - Shortcuts: switched the agent cycling shortcut from Shift+Tab back to Tab.
 - Chat: added question tool support with a rich UI for interaction.
@@ -685,7 +685,7 @@
 ## [1.4.3] - 2026-01-04
 
 - Added Agent Manager panel to run the same prompt across up to 5 models in parallel (thanks to @wienans).
-- Added permission prompt UI for tools configured with "ask" in opencode.json, showing requested patterns and "Always Allow" options (thanks to @aptdnfapt).
+- Added permission prompt UI for tools configured with "ask" in mage.json, showing requested patterns and "Always Allow" options (thanks to @aptdnfapt).
 - Added "Open subAgent session" button on task tool outputs to quickly navigate to child sessions (thanks to @aptdnfapt).
 - Improved activation reliability and error handling.
 
@@ -695,7 +695,7 @@
 - Added timeline dialog (`/timeline` command or Cmd/Ctrl+T) for navigating, reverting, and forking from any point in the conversation (thanks to @aptdnfapt).
 - Added `/undo` and `/redo` commands for reverting and restoring messages in a session (thanks to @aptdnfapt).
 - Added fork button on user messages to create a new session from any point (thanks to @aptdnfapt).
-- Migrated to OpenCode SDK v2 with improved API types and streaming.
+- Migrated to Mage SDK v2 with improved API types and streaming.
 
 
 ## [1.4.1] - 2026-01-02
@@ -763,7 +763,7 @@
 
 ## [1.3.3] - 2025-12-25
 
-- Fixed startup, more reliable OpenCode CLI/API management, and stabilized API proxying/streaming.
+- Fixed startup, more reliable Mage CLI/API management, and stabilized API proxying/streaming.
 - Added an animated loading screen and introduced command for status/debug output.
 - Fixed session activity tracking.
 - Fixed directory path handling (including `~` expansion) to prevent invalid paths and related Git/worktree errors.

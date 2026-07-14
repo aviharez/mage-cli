@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import type { OpencodeClient, Session } from '@opencode-ai/sdk/v2';
-import { opencodeClient } from '@/lib/opencode/client';
+import type { MageClient, Session } from '@mybcabisnis/mage-sdk/v2';
+import { mageClient } from '@/lib/mage/client';
 import { listGlobalSessionPages } from '@/stores/globalSessions';
 import { getReviewTransferDirection, type ReviewTransferDirection } from '@/lib/reviewFlow';
 import { getOriginalSessionID, getReviewSessionID } from '@/lib/sessionReviewMetadata';
@@ -221,7 +221,7 @@ type DirectoryPageResult = {
 };
 
 const fetchDirectoryPages = async (
-  sdk: OpencodeClient,
+  sdk: MageClient,
   directories: Set<string>,
   archived: boolean,
 ): Promise<DirectoryPageResult> => {
@@ -394,7 +394,7 @@ export const useGlobalSessionsStore = create<GlobalSessionsState>((set, get) => 
       const current = get();
 
       try {
-        const sdk = opencodeClient.getSdkClient();
+        const sdk = mageClient.getSdkClient();
         const [activeResult, archivedResult] = await Promise.allSettled([
           listGlobalSessionPages(sdk, { archived: false, pageSize: PAGE_SIZE }),
           listGlobalSessionPages(sdk, { archived: true, pageSize: PAGE_SIZE }),
@@ -449,7 +449,7 @@ export const useGlobalSessionsStore = create<GlobalSessionsState>((set, get) => 
       return { activeSessions: state.activeSessions, archivedSessions: state.archivedSessions };
     }
 
-    const sdk = opencodeClient.getSdkClient();
+    const sdk = mageClient.getSdkClient();
     const [active, archived] = await Promise.all([
       fetchDirectoryPages(sdk, directorySet, false),
       fetchDirectoryPages(sdk, directorySet, true),

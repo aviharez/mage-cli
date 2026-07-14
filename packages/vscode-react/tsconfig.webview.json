@@ -17,7 +17,7 @@
     "paths": {
       "@/*": ["../ui-react/src/*"],
       "@vscode/*": ["./webview/*"],
-      "@openchamber/ui/*": ["../ui-react/src/*"]
+      "@mage/ui/*": ["../ui-react/src/*"]
     }
   },
   "include": ["webview/**/*", "../ui-react/src/**/*"]

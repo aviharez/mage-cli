@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import type { Message, Part } from '@opencode-ai/sdk/v2';
+import type { Message, Part } from '@mybcabisnis/mage-sdk/v2';
 import { buildTurnWindowModel, updateTurnWindowModelIncremental } from './windowTurns';
 import type { ChatMessageEntry } from './types';
 

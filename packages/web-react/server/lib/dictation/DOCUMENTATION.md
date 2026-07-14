@@ -19,7 +19,7 @@ same status/download/delete routes.
   `/api/dictation/ws` WebSocket endpoint (auth-gated the same way as the
   terminal WS: UI session token or `oc_url_token`, plus origin check).
   Created from the startup pipeline (`startup-pipeline-runtime.js`) before
-  the generic OpenCode proxy so routes are not shadowed.
+  the generic Mage proxy so routes are not shadowed.
 - `stream-manager.js` — `DictationStreamManager`, one per WS connection.
   Chunk reordering by `seq` + ack, resampling to the provider rate,
   auto-commit every ~15 s of audio, silence suppression by PCM peak,
@@ -60,4 +60,4 @@ openaiCompatible?: { baseUrl, model, apiKey } }`.
   expected to retain unacked segments for retry/replay.
 - Silence-only segments (peak < 300) are cleared, never committed, so
   Whisper-style providers do not hallucinate on silence.
-- Model files live under `~/.config/openchamber/speech-models`.
+- Model files live under `~/.config/mage/speech-models`.

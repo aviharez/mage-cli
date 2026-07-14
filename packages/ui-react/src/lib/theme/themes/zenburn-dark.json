@@ -2,13 +2,13 @@
   "metadata": {
     "id": "zenburn-dark",
     "name": "Zenburn",
-    "description": "Ported from OpenCode Zenburn theme (dark variant)",
-    "author": "OpenCode",
+    "description": "Ported from Mage Zenburn theme (dark variant)",
+    "author": "Mage",
     "version": "1.0.0",
     "variant": "dark",
     "tags": [
       "dark",
-      "opencode",
+      "mage",
       "ported",
       "zenburn"
     ]

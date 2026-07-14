@@ -2,13 +2,13 @@
   "metadata": {
     "id": "github-light",
     "name": "GitHub",
-    "description": "Ported from OpenCode GitHub theme (light variant)",
-    "author": "OpenCode",
+    "description": "Ported from Mage GitHub theme (light variant)",
+    "author": "Mage",
     "version": "1.0.0",
     "variant": "light",
     "tags": [
       "light",
-      "opencode",
+      "mage",
       "ported",
       "github"
     ]

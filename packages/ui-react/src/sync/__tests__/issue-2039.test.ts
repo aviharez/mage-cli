@@ -55,8 +55,8 @@ mock.module("@/stores/utils/safeStorage", () => ({
   getDeferredSafeStorage: () => deferredStorage,
 }))
 
-mock.module("@/lib/opencode/client", () => ({
-  opencodeClient: {
+mock.module("@/lib/mage/client", () => ({
+  mageClient: {
     getDirectory: () => null,
     setDirectory: mock(() => undefined),
   },

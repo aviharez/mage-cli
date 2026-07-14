@@ -11,7 +11,7 @@ import { useUIStore } from '@/stores/useUIStore';
 import { isVSCodeRuntime } from '@/lib/desktop';
 import { useMobileAutocompleteMaxHeight } from './useMobileAutocompleteMaxHeight';
 
-type CommandSource = 'openchamber' | 'opencode' | 'skill';
+type CommandSource = 'mage' | 'mage' | 'skill';
 
 export interface CommandInfo {
   id: string;
@@ -21,7 +21,7 @@ export interface CommandInfo {
   agent?: string;
   model?: string;
   isBuiltIn?: boolean;
-  isOpenChamber?: boolean;
+  isMage?: boolean;
   isSkill?: boolean;
   scope?: string;
 }
@@ -117,9 +117,9 @@ export const CommandAutocomplete = React.forwardRef<CommandAutocompleteHandle, C
       try {
         const skillNames = new Set(skills.map((skill) => skill.name));
         const customCommands: CommandInfo[] = commandsWithMetadata.map((cmd, index) => ({
-          id: `opencode:${cmd.scope ?? 'global'}:${cmd.name}:${cmd.agent ?? ''}:${cmd.model ?? ''}:${index}`,
+          id: `mage:${cmd.scope ?? 'global'}:${cmd.name}:${cmd.agent ?? ''}:${cmd.model ?? ''}:${index}`,
           name: cmd.name,
-          source: 'opencode',
+          source: 'mage',
           description: cmd.description,
           agent: cmd.agent ?? undefined,
           model: cmd.model ?? undefined,
@@ -128,7 +128,7 @@ export const CommandAutocomplete = React.forwardRef<CommandAutocompleteHandle, C
           scope: cmd.scope,
         }));
         const skillCommands: CommandInfo[] = skills.map((skill, index) => ({
-          id: `skill:${skill.scope}:${skill.source ?? 'opencode'}:${skill.name}:${index}`,
+          id: `skill:${skill.scope}:${skill.source ?? 'mage'}:${skill.name}:${index}`,
           name: skill.name,
           source: 'skill',
           description: skill.description,
@@ -138,52 +138,52 @@ export const CommandAutocomplete = React.forwardRef<CommandAutocompleteHandle, C
 
         const builtInCommands: CommandInfo[] = [
           ...(hasSession && !hasMessagesInCurrentSession
-            ? [{ id: 'openchamber:init', name: 'init', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.initDescription'), isBuiltIn: true }]
+            ? [{ id: 'mage:init', name: 'init', source: 'mage' as const, description: t('chat.commandAutocomplete.command.initDescription'), isBuiltIn: true }]
             : []
           ),
           ...(hasSession  // Show when session exists, not when hasMessages
             ? [
-                { id: 'openchamber:undo', name: 'undo', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.undoDescription'), isBuiltIn: true },
-                { id: 'openchamber:redo', name: 'redo', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.redoDescription'), isBuiltIn: true },
-                { id: 'openchamber:timeline', name: 'timeline', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.timelineDescription'), isBuiltIn: true },
+                { id: 'mage:undo', name: 'undo', source: 'mage' as const, description: t('chat.commandAutocomplete.command.undoDescription'), isBuiltIn: true },
+                { id: 'mage:redo', name: 'redo', source: 'mage' as const, description: t('chat.commandAutocomplete.command.redoDescription'), isBuiltIn: true },
+                { id: 'mage:timeline', name: 'timeline', source: 'mage' as const, description: t('chat.commandAutocomplete.command.timelineDescription'), isBuiltIn: true },
               ]
             : []
           ),
-          { id: 'openchamber:compact', name: 'compact', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.compactDescription'), isBuiltIn: true },
+          { id: 'mage:compact', name: 'compact', source: 'mage' as const, description: t('chat.commandAutocomplete.command.compactDescription'), isBuiltIn: true },
           ...(hasSession
-            ? [{ id: 'openchamber:summary', name: 'summary', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.summaryDescription'), isOpenChamber: true }]
+            ? [{ id: 'mage:summary', name: 'summary', source: 'mage' as const, description: t('chat.commandAutocomplete.command.summaryDescription'), isMage: true }]
             : []
           ),
           ...(canStartSessionCommand
-            ? [{ id: 'openchamber:workspace-review', name: 'workspace-review', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.workspaceReviewDescription'), isOpenChamber: true }]
+            ? [{ id: 'mage:workspace-review', name: 'workspace-review', source: 'mage' as const, description: t('chat.commandAutocomplete.command.workspaceReviewDescription'), isMage: true }]
             : []
           ),
           ...(canUseReviewHandoffFlow
-            ? [{ id: 'openchamber:handoff-review', name: 'handoff-review', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.handoffReviewDescription'), isOpenChamber: true }]
+            ? [{ id: 'mage:handoff-review', name: 'handoff-review', source: 'mage' as const, description: t('chat.commandAutocomplete.command.handoffReviewDescription'), isMage: true }]
             : []
           ),
           ...(canStartSessionCommand
-            ? [{ id: 'openchamber:plan-feature', name: 'plan-feature', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.featurePlanDescription'), isOpenChamber: true }]
+            ? [{ id: 'mage:plan-feature', name: 'plan-feature', source: 'mage' as const, description: t('chat.commandAutocomplete.command.featurePlanDescription'), isMage: true }]
             : []
           ),
           ...(canStartSessionCommand
-            ? [{ id: 'openchamber:craft-goal', name: 'craft-goal', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.craftGoalDescription'), isOpenChamber: true }]
+            ? [{ id: 'mage:craft-goal', name: 'craft-goal', source: 'mage' as const, description: t('chat.commandAutocomplete.command.craftGoalDescription'), isMage: true }]
             : []
           ),
           ...(canStartSessionCommand
-            ? [{ id: 'openchamber:catch-up', name: 'catch-up', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.catchUpDescription'), isOpenChamber: true }]
+            ? [{ id: 'mage:catch-up', name: 'catch-up', source: 'mage' as const, description: t('chat.commandAutocomplete.command.catchUpDescription'), isMage: true }]
             : []
           ),
           ...(canStartSessionCommand
-            ? [{ id: 'openchamber:debug', name: 'debug', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.debugDescription'), isOpenChamber: true }]
+            ? [{ id: 'mage:debug', name: 'debug', source: 'mage' as const, description: t('chat.commandAutocomplete.command.debugDescription'), isMage: true }]
             : []
           ),
           ...(canStartSessionCommand
-            ? [{ id: 'openchamber:weigh', name: 'weigh', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.weighDescription'), isOpenChamber: true }]
+            ? [{ id: 'mage:weigh', name: 'weigh', source: 'mage' as const, description: t('chat.commandAutocomplete.command.weighDescription'), isMage: true }]
             : []
           ),
           ...(canStartSessionCommand
-            ? [{ id: 'openchamber:explore', name: 'explore', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.exploreDescription'), isOpenChamber: true }]
+            ? [{ id: 'mage:explore', name: 'explore', source: 'mage' as const, description: t('chat.commandAutocomplete.command.exploreDescription'), isMage: true }]
             : []
           ),
         ];
@@ -211,52 +211,52 @@ export const CommandAutocomplete = React.forwardRef<CommandAutocompleteHandle, C
         const allowInitCommand = !hasMessagesInCurrentSession;
         const builtInCommands: CommandInfo[] = [
           ...(hasSession && !hasMessagesInCurrentSession
-            ? [{ id: 'openchamber:init', name: 'init', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.initDescription'), isBuiltIn: true }]
+            ? [{ id: 'mage:init', name: 'init', source: 'mage' as const, description: t('chat.commandAutocomplete.command.initDescription'), isBuiltIn: true }]
             : []
           ),
           ...(hasSession  // Show when session exists, not when hasMessages
             ? [
-                { id: 'openchamber:undo', name: 'undo', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.undoDescription'), isBuiltIn: true },
-                { id: 'openchamber:redo', name: 'redo', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.redoDescription'), isBuiltIn: true },
-                { id: 'openchamber:timeline', name: 'timeline', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.timelineDescription'), isBuiltIn: true },
+                { id: 'mage:undo', name: 'undo', source: 'mage' as const, description: t('chat.commandAutocomplete.command.undoDescription'), isBuiltIn: true },
+                { id: 'mage:redo', name: 'redo', source: 'mage' as const, description: t('chat.commandAutocomplete.command.redoDescription'), isBuiltIn: true },
+                { id: 'mage:timeline', name: 'timeline', source: 'mage' as const, description: t('chat.commandAutocomplete.command.timelineDescription'), isBuiltIn: true },
               ]
             : []
           ),
-          { id: 'openchamber:compact', name: 'compact', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.compactDescription'), isBuiltIn: true },
+          { id: 'mage:compact', name: 'compact', source: 'mage' as const, description: t('chat.commandAutocomplete.command.compactDescription'), isBuiltIn: true },
           ...(hasSession
-            ? [{ id: 'openchamber:summary', name: 'summary', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.summaryDescription'), isOpenChamber: true }]
+            ? [{ id: 'mage:summary', name: 'summary', source: 'mage' as const, description: t('chat.commandAutocomplete.command.summaryDescription'), isMage: true }]
             : []
           ),
           ...(canStartSessionCommand
-            ? [{ id: 'openchamber:workspace-review', name: 'workspace-review', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.workspaceReviewDescription'), isOpenChamber: true }]
+            ? [{ id: 'mage:workspace-review', name: 'workspace-review', source: 'mage' as const, description: t('chat.commandAutocomplete.command.workspaceReviewDescription'), isMage: true }]
             : []
           ),
           ...(canUseReviewHandoffFlow
-            ? [{ id: 'openchamber:handoff-review', name: 'handoff-review', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.handoffReviewDescription'), isOpenChamber: true }]
+            ? [{ id: 'mage:handoff-review', name: 'handoff-review', source: 'mage' as const, description: t('chat.commandAutocomplete.command.handoffReviewDescription'), isMage: true }]
             : []
           ),
           ...(canStartSessionCommand
-            ? [{ id: 'openchamber:plan-feature', name: 'plan-feature', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.featurePlanDescription'), isOpenChamber: true }]
+            ? [{ id: 'mage:plan-feature', name: 'plan-feature', source: 'mage' as const, description: t('chat.commandAutocomplete.command.featurePlanDescription'), isMage: true }]
             : []
           ),
           ...(canStartSessionCommand
-            ? [{ id: 'openchamber:craft-goal', name: 'craft-goal', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.craftGoalDescription'), isOpenChamber: true }]
+            ? [{ id: 'mage:craft-goal', name: 'craft-goal', source: 'mage' as const, description: t('chat.commandAutocomplete.command.craftGoalDescription'), isMage: true }]
             : []
           ),
           ...(canStartSessionCommand
-            ? [{ id: 'openchamber:catch-up', name: 'catch-up', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.catchUpDescription'), isOpenChamber: true }]
+            ? [{ id: 'mage:catch-up', name: 'catch-up', source: 'mage' as const, description: t('chat.commandAutocomplete.command.catchUpDescription'), isMage: true }]
             : []
           ),
           ...(canStartSessionCommand
-            ? [{ id: 'openchamber:debug', name: 'debug', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.debugDescription'), isOpenChamber: true }]
+            ? [{ id: 'mage:debug', name: 'debug', source: 'mage' as const, description: t('chat.commandAutocomplete.command.debugDescription'), isMage: true }]
             : []
           ),
           ...(canStartSessionCommand
-            ? [{ id: 'openchamber:weigh', name: 'weigh', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.weighDescription'), isOpenChamber: true }]
+            ? [{ id: 'mage:weigh', name: 'weigh', source: 'mage' as const, description: t('chat.commandAutocomplete.command.weighDescription'), isMage: true }]
             : []
           ),
           ...(canStartSessionCommand
-            ? [{ id: 'openchamber:explore', name: 'explore', source: 'openchamber' as const, description: t('chat.commandAutocomplete.command.exploreDescription'), isOpenChamber: true }]
+            ? [{ id: 'mage:explore', name: 'explore', source: 'mage' as const, description: t('chat.commandAutocomplete.command.exploreDescription'), isMage: true }]
             : []
           ),
         ];
@@ -367,7 +367,7 @@ export const CommandAutocomplete = React.forwardRef<CommandAutocompleteHandle, C
           <div>
             {commands.map((command, index) => {
               const isSystem = command.isBuiltIn;
-              const isOpenChamberBadge = command.isOpenChamber;
+              const isMageBadge = command.isMage;
               return (
                 <div
                   key={command.id}
@@ -445,9 +445,9 @@ export const CommandAutocomplete = React.forwardRef<CommandAutocompleteHandle, C
                           {t('chat.commandAutocomplete.badge.command')}
                         </span>
                       )}
-                      {isOpenChamberBadge ? (
+                      {isMageBadge ? (
                         <span className={NEUTRAL_BADGE_CLASS}>
-                          OpenChamber
+                          Mage
                         </span>
                       ) : isSystem ? (
                         <span className={NEUTRAL_BADGE_CLASS}>

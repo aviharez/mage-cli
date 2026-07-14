@@ -30,7 +30,7 @@ type MiniChatLayoutProps = {
 const compactPath = (value: string | null | undefined): string => {
   const path = typeof value === 'string' ? value.trim() : '';
   if (!path) return '';
-  const home = typeof window !== 'undefined' ? window.__OPENCHAMBER_HOME__ : '';
+  const home = typeof window !== 'undefined' ? window.__MAGE_HOME__ : '';
   if (home && path === home) return '~';
   if (home && path.startsWith(`${home}/`)) return `~/${path.slice(home.length + 1)}`;
   const segments = path.split('/').filter(Boolean);
@@ -67,11 +67,11 @@ const MiniChatHeader: React.FC<{ mode: MiniChatMode }> = ({ mode }) => {
     return normalizePath(state.newSessionDraft.bootstrapPendingDirectory ?? state.newSessionDraft.directoryOverride ?? '');
   });
   const [pinned, setPinned] = React.useState(false);
-  const macosMajor = typeof window !== 'undefined' ? window.__OPENCHAMBER_MACOS_MAJOR__ ?? 0 : 0;
+  const macosMajor = typeof window !== 'undefined' ? window.__MAGE_MACOS_MAJOR__ ?? 0 : 0;
   const hasMacTrafficLights = Number.isFinite(macosMajor) && macosMajor > 0;
   const isWindowsElectronDesktop = typeof window !== 'undefined'
-    && Boolean(window.__OPENCHAMBER_ELECTRON__)
-    && window.__OPENCHAMBER_PLATFORM__ === 'win32';
+    && Boolean(window.__MAGE_ELECTRON__)
+    && window.__MAGE_PLATFORM__ === 'win32';
   const macosHeaderSizeClass = hasMacTrafficLights
     ? macosMajor >= 26
       ? 'h-12'
@@ -126,7 +126,7 @@ const MiniChatHeader: React.FC<{ mode: MiniChatMode }> = ({ mode }) => {
   }, [openDirectory, projects, sessionWorktreeMetadata?.projectDirectory, worktreeAttachment?.worktreeRoot]);
   const projectLabel = React.useMemo(() => {
     const project = pathMatchedProject ?? activeProject;
-    if (!project) return directoryLabel || 'OpenChamber';
+    if (!project) return directoryLabel || 'Mage';
     const label = project.label?.trim();
     if (label) return label;
     const segments = project.path.split(/[\\/]/).filter(Boolean);

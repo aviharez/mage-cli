@@ -168,7 +168,7 @@ export function ThemeSystemProvider({ children, defaultThemeId }: ThemeSystemPro
     if (typeof window === 'undefined' || !isVSCodeRuntime()) {
       return null;
     }
-    const existing = (window as unknown as { __OPENCHAMBER_VSCODE_THEME__?: Theme }).__OPENCHAMBER_VSCODE_THEME__;
+    const existing = (window as unknown as { __MAGE_VSCODE_THEME__?: Theme }).__MAGE_VSCODE_THEME__;
     return existing || null;
   });
   const isVSCode = useMemo(() => isVSCodeRuntime(), []);
@@ -299,13 +299,13 @@ export function ThemeSystemProvider({ children, defaultThemeId }: ThemeSystemPro
       }
     };
 
-    const existing = (window as unknown as { __OPENCHAMBER_VSCODE_THEME__?: Theme }).__OPENCHAMBER_VSCODE_THEME__;
+    const existing = (window as unknown as { __MAGE_VSCODE_THEME__?: Theme }).__MAGE_VSCODE_THEME__;
     if (existing) {
       applyVSCodeTheme(existing);
     }
 
-    window.addEventListener('openchamber:vscode-theme', handleThemeEvent as EventListener);
-    return () => window.removeEventListener('openchamber:vscode-theme', handleThemeEvent as EventListener);
+    window.addEventListener('mage:vscode-theme', handleThemeEvent as EventListener);
+    return () => window.removeEventListener('mage:vscode-theme', handleThemeEvent as EventListener);
   }, [isVSCode]);
 
   const updateBrowserChrome = useCallback((theme: Theme) => {
@@ -313,7 +313,7 @@ export function ThemeSystemProvider({ children, defaultThemeId }: ThemeSystemPro
       return;
     }
     const hasMacVibrancy = document.documentElement.hasAttribute('data-oc-vibrancy')
-      || window.__OPENCHAMBER_ELECTRON__?.macVibrancy === true;
+      || window.__MAGE_ELECTRON__?.macVibrancy === true;
     const chromeColor = hasMacVibrancy ? 'transparent' : theme.colors.surface.background;
 
     document.body.style.backgroundColor = chromeColor;
@@ -508,14 +508,14 @@ export function ThemeSystemProvider({ children, defaultThemeId }: ThemeSystemPro
     }
 
     const scopedWindow = window as unknown as {
-      __openchamberApplyThemeSync?: (payload: ThemeSyncPayload) => void;
+      __mageApplyThemeSync?: (payload: ThemeSyncPayload) => void;
     };
 
-    scopedWindow.__openchamberApplyThemeSync = applyIncomingThemeSync;
+    scopedWindow.__mageApplyThemeSync = applyIncomingThemeSync;
 
     return () => {
-      if (scopedWindow.__openchamberApplyThemeSync === applyIncomingThemeSync) {
-        delete scopedWindow.__openchamberApplyThemeSync;
+      if (scopedWindow.__mageApplyThemeSync === applyIncomingThemeSync) {
+        delete scopedWindow.__mageApplyThemeSync;
       }
     };
   }, [applyIncomingThemeSync]);
@@ -535,7 +535,7 @@ export function ThemeSystemProvider({ children, defaultThemeId }: ThemeSystemPro
         payload?: ThemeSyncPayload;
       };
 
-      if (data?.type !== 'openchamber:theme-sync' || !data.payload) {
+      if (data?.type !== 'mage:theme-sync' || !data.payload) {
         return;
       }
 
@@ -624,8 +624,8 @@ export function ThemeSystemProvider({ children, defaultThemeId }: ThemeSystemPro
       });
     };
 
-    window.addEventListener('openchamber:settings-synced', handleSettingsSynced);
-    return () => window.removeEventListener('openchamber:settings-synced', handleSettingsSynced);
+    window.addEventListener('mage:settings-synced', handleSettingsSynced);
+    return () => window.removeEventListener('mage:settings-synced', handleSettingsSynced);
   }, []);
 
   const setTheme = useCallback(

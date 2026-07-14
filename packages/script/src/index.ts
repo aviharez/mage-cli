@@ -39,9 +39,9 @@ const IS_PREVIEW = CHANNEL !== "latest"
 
 const VERSION = await (async () => {
   if (env.MAGE_VERSION) return env.MAGE_VERSION
-  const opencodePkgPath = path.resolve(import.meta.dir, "../../opencode/package.json")
-  const opencodePkg = await Bun.file(opencodePkgPath).json()
-  const version = opencodePkg.version || "0.0.1"
+  const magePkgPath = path.resolve(import.meta.dir, "../../mage/package.json")
+  const magePkg = await Bun.file(magePkgPath).json()
+  const version = magePkg.version || "0.0.1"
 
   if (IS_PREVIEW) {
     const sanitizedChannel = CHANNEL.replace(/[^a-zA-Z0-9-]/g, "-")
@@ -57,7 +57,7 @@ const VERSION = await (async () => {
   return version
 })()
 
-const bot = ["actions-user", "opencode", "opencode-agent[bot]"]
+const bot = ["actions-user", "mage", "mage-agent[bot]"]
 const team = [...bot]
 
 export const Script = {
@@ -77,4 +77,4 @@ export const Script = {
     return team
   },
 }
-console.log(`opencode script`, JSON.stringify(Script, null, 2))
+console.log(`mage script`, JSON.stringify(Script, null, 2))

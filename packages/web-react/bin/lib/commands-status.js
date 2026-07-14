@@ -88,7 +88,7 @@ async function statusCommand(options = {}) {
     return;
   }
 
-  clackIntro('OpenChamber Status');
+  clackIntro('Mage Status');
 
   if (runningCount === 0) {
     logStatus('warning', 'stopped');

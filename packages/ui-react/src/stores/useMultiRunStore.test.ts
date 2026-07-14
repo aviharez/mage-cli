@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, mock, test } from 'bun:test';
-import type { Session } from '@opencode-ai/sdk/v2';
+import type { Session } from '@mybcabisnis/mage-sdk/v2';
 
 const upsertedSessions: Session[] = [];
 const registeredDirectories: Array<{ sessionID: string; directory: string }> = [];
@@ -36,7 +36,7 @@ mock.module('@/sync/session-ui-store', () => ({
   routeMessage: mock(() => Promise.resolve()),
   useSessionUIStore: {
     getState: () => ({
-      markSessionAsOpenChamberCreated: mock(() => undefined),
+      markSessionAsMageCreated: mock(() => undefined),
       setWorktreeMetadata: (sessionId: string, metadata: { path: string }) => {
         worktreeMetadataCalls.push({ sessionId, path: metadata.path });
       },
@@ -44,8 +44,8 @@ mock.module('@/sync/session-ui-store', () => ({
   },
 }));
 
-mock.module('@/lib/opencode/client', () => ({
-  opencodeClient: {
+mock.module('@/lib/mage/client', () => ({
+  mageClient: {
     withDirectory: async (directory: string, fn: () => Promise<Session>) => {
       const previous = currentDirectory;
       currentDirectory = directory;
@@ -88,7 +88,7 @@ mock.module('@/lib/worktrees/worktreeStatus', () => ({
   getRootBranch: mock(() => Promise.resolve('main')),
 }));
 
-mock.module('@/lib/openchamberConfig', () => ({
+mock.module('@/lib/mageConfig', () => ({
   getWorktreeSetupWaitEnabled: mock(() => Promise.resolve(waitForWorktreeSetup)),
   saveWorktreeSetupCommands: mock(() => Promise.resolve()),
 }));

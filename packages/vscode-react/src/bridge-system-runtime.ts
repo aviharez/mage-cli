@@ -3,10 +3,10 @@ import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { randomUUID } from 'crypto';
-import { removeProviderConfig, getProviderSources } from './opencodeConfig';
-import { getProviderAuth, removeProviderAuth } from './opencodeAuth';
+import { removeProviderConfig, getProviderSources } from './mageConfig';
+import { getProviderAuth, removeProviderAuth } from './mageAuth';
 import { fetchQuotaForProvider, listConfiguredQuotaProviders } from './quotaProviders';
-import { fetchOpenCodeGoUsage } from './opencodeGoQuota';
+import { fetchMageGoUsage } from './mageGoQuota';
 import { credentialStatus, deleteCredential, importCursorCredential, normalizeCredential, readCredential, validateCredential, writeCredential, type ManagedProvider } from './quotaCredentials';
 import { getSessionActivitySnapshot } from './sessionActivityWatcher';
 import type { BridgeContext, BridgeResponse } from './bridge';
@@ -45,12 +45,12 @@ const claimNotification = (key: string): boolean => {
 };
 
 
-const getOpenChamberConfigDir = (): string => {
+const getMageConfigDir = (): string => {
   if (process.platform === 'win32') {
     const appData = process.env.APPDATA;
-    if (appData) return path.join(appData, 'openchamber');
+    if (appData) return path.join(appData, 'mage');
   }
-  return path.join(os.homedir(), '.config', 'openchamber');
+  return path.join(os.homedir(), '.config', 'mage');
 };
 
 const sanitizeInstallScope = (scope: string): 'vscode' | 'web' => {
@@ -59,7 +59,7 @@ const sanitizeInstallScope = (scope: string): 'vscode' | 'web' => {
 };
 
 const getOrCreateInstallId = (scope: string): string => {
-  const configDir = getOpenChamberConfigDir();
+  const configDir = getMageConfigDir();
   const normalizedScope = sanitizeInstallScope(scope);
   const idPath = path.join(configDir, `install-id-${normalizedScope}`);
 
@@ -95,7 +95,7 @@ type ParsedDiffHunk = {
   newLines: string[];
 };
 
-const VIRTUAL_DIFF_SCHEME = 'openchamber-diff';
+const VIRTUAL_DIFF_SCHEME = 'mage-diff';
 const virtualDiffContents = new Map<string, string>();
 let virtualDiffCounter = 0;
 let virtualDiffProviderDisposable: vscode.Disposable | null = null;
@@ -218,7 +218,7 @@ export async function handleSystemBridgeMessage(
   const { id, type, payload } = message;
 
   switch (type) {
-    case 'api:opencode/directory': {
+    case 'api:mage/directory': {
       const target = (payload as { path?: string })?.path;
       if (!target) {
         return { id, type, success: false, error: 'Path is required' };
@@ -228,7 +228,7 @@ export async function handleSystemBridgeMessage(
       const resolvedPath = deps.resolveUserPath(target, baseDirectory);
       const result = await ctx?.manager?.setWorkingDirectory(resolvedPath);
       if (!result) {
-        return { id, type, success: false, error: 'OpenCode manager unavailable' };
+        return { id, type, success: false, error: 'Mage manager unavailable' };
       }
       return { id, type, success: true, data: result };
     }
@@ -243,20 +243,20 @@ export async function handleSystemBridgeMessage(
       }
     }
 
-    case 'api:opencode/version': {
+    case 'api:mage/version': {
       try {
         const apiUrl = ctx?.manager?.getApiUrl();
         if (!apiUrl) {
-          return { id, type, success: true, data: { version: null, error: 'OpenCode manager unavailable' } };
+          return { id, type, success: true, data: { version: null, error: 'Mage manager unavailable' } };
         }
         const base = `${apiUrl.replace(/\/+$/, '')}/`;
         const response = await fetch(new URL('global/health', base).toString(), {
           method: 'GET',
-          headers: { Accept: 'application/json', ...ctx?.manager?.getOpenCodeAuthHeaders() },
+          headers: { Accept: 'application/json', ...ctx?.manager?.getMageAuthHeaders() },
         });
         const health = await response.json().catch(() => null) as { version?: unknown; error?: unknown } | null;
         if (!response.ok) {
-          const message = typeof health?.error === 'string' ? health.error : response.statusText || 'Failed to read OpenCode version';
+          const message = typeof health?.error === 'string' ? health.error : response.statusText || 'Failed to read Mage version';
           return { id, type, success: true, data: { version: null, error: message } };
         }
         const version = typeof health?.version === 'string' && health.version.trim().length > 0
@@ -285,7 +285,7 @@ export async function handleSystemBridgeMessage(
       return { id, type, success: true, data: { models } };
     }
 
-    case 'api:openchamber:update-check': {
+    case 'api:mage:update-check': {
       try {
         const body = (payload && typeof payload === 'object' ? payload : {}) as Record<string, unknown>;
         const currentVersion = typeof body.currentVersion === 'string' && body.currentVersion.trim().length > 0
@@ -486,7 +486,7 @@ export async function handleSystemBridgeMessage(
     case 'api:quota:credentials': {
       const { providerId, method, credential: input } = (payload || {}) as { providerId?: ManagedProvider; method?: string; credential?: unknown };
       try {
-        if (!providerId || !['opencode-go', 'ollama-cloud', 'cursor'].includes(providerId)) return { id, type, success: false, error: 'Unsupported credential provider' };
+        if (!providerId || !['mage-go', 'ollama-cloud', 'cursor'].includes(providerId)) return { id, type, success: false, error: 'Unsupported credential provider' };
         if (method === 'GET') return { id, type, success: true, data: credentialStatus(providerId) };
         if (method === 'DELETE') { deleteCredential(providerId); return { id, type, success: true, data: { configured: false } }; }
         if (method === 'IMPORT') {
@@ -498,14 +498,14 @@ export async function handleSystemBridgeMessage(
         if (method === 'PUT') {
           const credential = normalizeCredential(providerId, input);
           if (!credential) return { id, type, success: false, error: 'Invalid credential' };
-          if (providerId === 'opencode-go') await fetchOpenCodeGoUsage(credential as { workspaceId: string; authCookie: string });
+          if (providerId === 'mage-go') await fetchMageGoUsage(credential as { workspaceId: string; authCookie: string });
           else await validateCredential(providerId, credential);
           return { id, type, success: true, data: writeCredential(providerId, credential) };
         }
         if (method === 'VALIDATE') {
           const credential = readCredential(providerId);
           if (!credential) return { id, type, success: false, error: 'Not configured' };
-          if (providerId === 'opencode-go') await fetchOpenCodeGoUsage(credential as { workspaceId: string; authCookie: string });
+          if (providerId === 'mage-go') await fetchMageGoUsage(credential as { workspaceId: string; authCookie: string });
           else await validateCredential(providerId, credential);
           return { id, type, success: true, data: { valid: true } };
         }

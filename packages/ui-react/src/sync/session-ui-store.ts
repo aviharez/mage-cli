@@ -13,10 +13,10 @@
  */
 
 import { create } from "zustand"
-import type { Session, Part, Message, TextPart } from "@opencode-ai/sdk/v2/client"
+import type { Session, Part, Message, TextPart } from "@mybcabisnis/mage-sdk/v2/client"
 import type { AttachedFile, SessionContextUsage, SessionWorktreeAttachment } from "@/stores/types/sessionTypes"
 import type { WorktreeMetadata } from "@/types/worktree"
-import { opencodeClient } from "@/lib/opencode/client"
+import { mageClient } from "@/lib/mage/client"
 import { runtimeFetch } from "@/lib/runtime-fetch"
 import { useConfigStore } from "@/stores/useConfigStore"
 import { useProjectsStore } from "@/stores/useProjectsStore"
@@ -31,7 +31,7 @@ import { flattenAssistantTextParts } from "@/lib/messages/messageText"
 import { composeForkSessionMessage } from "@/lib/messages/executionMeta"
 import { waitForPendingDraftWorktreeRequest } from "@/lib/worktrees/pendingDraftWorktree"
 import { waitForWorktreeBootstrap } from "@/lib/worktrees/worktreeBootstrap"
-import { getWorktreeSetupWaitEnabled } from "@/lib/openchamberConfig"
+import { getWorktreeSetupWaitEnabled } from "@/lib/mageConfig"
 import { resolveProjectForSessionDirectory } from "@/lib/projectResolution"
 import {
   getSyncSessions,
@@ -91,7 +91,7 @@ export function routeMessage(params: {
 }): Promise<void> {
   const requestDirectory = params.directory ?? undefined
   if (params.inputMode === "shell") {
-    return opencodeClient.shellSession({
+    return mageClient.shellSession({
       sessionId: params.sessionId,
       directory: requestDirectory,
       agent: params.agent ?? "",
@@ -109,7 +109,7 @@ export function routeMessage(params: {
     const syncCommands = dirState?.command ?? []
     const storeCommands = useCommandsStore.getState().commands
 
-    // OpenCode registers every skill as a command (source: "skill"), but the
+    // Mage registers every skill as a command (source: "skill"), but the
     // commands store filters skills out and the synced command list is only
     // hydrated at bootstrap. Consult the live skills store so a skill selected
     // from the slash menu is invoked via session.command (injecting its
@@ -127,7 +127,7 @@ export function routeMessage(params: {
         agent: params.agent,
         directory: requestDirectory,
         files: params.files,
-        send: (messageID) => opencodeClient.sendCommand({
+        send: (messageID) => mageClient.sendCommand({
           id: params.sessionId,
           providerID: params.providerID,
           modelID: params.modelID,
@@ -152,7 +152,7 @@ export function routeMessage(params: {
     agent: params.agent,
     directory: requestDirectory,
     files: params.files,
-    send: (messageID) => opencodeClient.sendMessage({
+    send: (messageID) => mageClient.sendMessage({
       id: params.sessionId,
       providerID: params.providerID,
       modelID: params.modelID,
@@ -262,10 +262,10 @@ export type SessionUIState = {
   clearAbortPrompt: () => void
   armAbortPrompt: (durationMs?: number) => number | null
   clearError: () => void
-  markSessionAsOpenChamberCreated: (sessionId: string) => void
-  isOpenChamberCreatedSession: (sessionId: string) => boolean
+  markSessionAsMageCreated: (sessionId: string) => void
+  isMageCreatedSession: (sessionId: string) => boolean
   getContextUsage: (contextLimit: number, outputLimit: number) => SessionContextUsage | null
-  initializeNewOpenChamberSession: (sessionId: string, agents: unknown[]) => void
+  initializeNewMageSession: (sessionId: string, agents: unknown[]) => void
   setWorktreeMetadata: (sessionId: string, metadata: WorktreeMetadata | null) => void
   overrideNewSessionDraftTarget: (options: Record<string, unknown>) => void
   resolvePendingDraftWorktreeTarget: (requestId: string, directory: string | null, options?: Record<string, unknown>) => void
@@ -493,7 +493,7 @@ export async function materializeOpenDraftSession(selection: {
     useSelectionStore.getState().saveAgentModelVariantForSession(created.id, effectiveDraftAgent, selection.providerID, selection.modelID, selection.variant)
   }
 
-  store.initializeNewOpenChamberSession(created.id, configState.agents ?? [])
+  store.initializeNewMageSession(created.id, configState.agents ?? [])
 
   store.setCurrentSession(created.id, createdDirectory)
 
@@ -594,7 +594,7 @@ export const useSessionUIStore = create<SessionUIState>()((set, get) => ({
       id,
       (sid) => get().worktreeMetadata.get(sid),
     )
-    const fallbackDir = opencodeClient.getDirectory() ?? directoryState.currentDirectory ?? null
+    const fallbackDir = mageClient.getDirectory() ?? directoryState.currentDirectory ?? null
     const resolvedDir = (directoryHint ? normalizePath(directoryHint) : null) ?? sessionDir ?? fallbackDir
     const projectsState = useProjectsStore.getState()
     const sessionProject = resolvedDir
@@ -624,9 +624,9 @@ export const useSessionUIStore = create<SessionUIState>()((set, get) => ({
       if (sessionProject && projectsState.activeProjectId !== sessionProject.id) {
         projectsState.setActiveProjectIdOnly(sessionProject.id)
       }
-      opencodeClient.setDirectory(resolvedDir ?? undefined)
+      mageClient.setDirectory(resolvedDir ?? undefined)
     } catch (e) {
-      console.warn("Failed to set OpenCode directory for session switch:", e)
+      console.warn("Failed to set Mage directory for session switch:", e)
     }
 
     // Defer viewport anchor save for previous session — not needed for the
@@ -690,7 +690,7 @@ export const useSessionUIStore = create<SessionUIState>()((set, get) => ({
       pendingChangesBarDismissed: new Map(),
     })
     if (restoredSessionId) {
-      setActiveSession(restoredDirectory ?? opencodeClient.getDirectory() ?? "", restoredSessionId)
+      setActiveSession(restoredDirectory ?? mageClient.getDirectory() ?? "", restoredSessionId)
     } else {
       setActiveSession("", "")
     }
@@ -780,8 +780,8 @@ export const useSessionUIStore = create<SessionUIState>()((set, get) => ({
 
     // Config (providers/agents/default model+agent) lives at the PROJECT level. When the user
     // came from a worktree session, `directory` is the worktree path, whose provider list does
-    // not include project/global-scoped providers (e.g. the default agent's non-opencode model)
-    // — resolving defaults against it would wrongly fall back to opencode/big-pickle. Activate
+    // not include project/global-scoped providers (e.g. the default agent's non-mage model)
+    // — resolving defaults against it would wrongly fall back to mage/big-pickle. Activate
     // the project's config instead so the default cascade matches app startup, then re-apply it
     // (a fresh draft must start from defaults, not inherit the previous session's selection).
     const configDirectory = normalizePath(selectedProject?.path ?? null) ?? directory
@@ -870,14 +870,14 @@ export const useSessionUIStore = create<SessionUIState>()((set, get) => ({
 
   clearError: () => set({ error: null }),
 
-  markSessionAsOpenChamberCreated: (sessionId) =>
+  markSessionAsMageCreated: (sessionId) =>
     set((s) => {
       const next = new Set(s.webUICreatedSessions)
       next.add(sessionId)
       return { webUICreatedSessions: next }
     }),
 
-  isOpenChamberCreatedSession: (sessionId) => get().webUICreatedSessions.has(sessionId),
+  isMageCreatedSession: (sessionId) => get().webUICreatedSessions.has(sessionId),
 
   getContextUsage: (contextLimit: number, outputLimit: number) => {
     if (get().newSessionDraft?.open) return null
@@ -921,7 +921,7 @@ export const useSessionUIStore = create<SessionUIState>()((set, get) => ({
     }
   },
 
-  initializeNewOpenChamberSession: () => {
+  initializeNewMageSession: () => {
     // Stub — was a no-op in old store
   },
 
@@ -1206,7 +1206,7 @@ export const useSessionUIStore = create<SessionUIState>()((set, get) => ({
     get().closeNewSessionDraft()
 
     try {
-      const dir = directoryOverride ?? opencodeClient.getDirectory()
+      const dir = directoryOverride ?? mageClient.getDirectory()
       const session = await createSessionAction(title, dir, parentID ?? null, metadata)
       if (!session) return null
 
@@ -1417,7 +1417,7 @@ export const useSessionUIStore = create<SessionUIState>()((set, get) => ({
 
     if (!pID || !mID) return
 
-    const sourceDirectory = normalizePath(directory ?? opencodeClient.getDirectory() ?? null)
+    const sourceDirectory = normalizePath(directory ?? mageClient.getDirectory() ?? null)
     let sessionDirectory = sourceDirectory
     let createdWorktree: WorktreeMetadata | null = null
     let createdWorktreeProject: { id: string; path: string } | null = null
@@ -1434,12 +1434,12 @@ export const useSessionUIStore = create<SessionUIState>()((set, get) => ({
         sourceWorktreeMetadata?.projectDirectory ?? null,
       )
       if (!project?.path) {
-        throw new Error("Project is not registered in OpenChamber")
+        throw new Error("Project is not registered in Mage")
       }
 
       const [branchNameModule, configModule, createModule] = await Promise.all([
         import("@/lib/git/branchNameGenerator"),
-        import("@/lib/openchamberConfig"),
+        import("@/lib/mageConfig"),
         import("@/lib/worktrees/worktreeCreate"),
       ])
       const branchName = branchNameModule.generateBranchName()

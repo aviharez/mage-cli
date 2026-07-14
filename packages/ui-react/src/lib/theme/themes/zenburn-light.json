@@ -2,13 +2,13 @@
   "metadata": {
     "id": "zenburn-light",
     "name": "Zenburn",
-    "description": "Ported from OpenCode Zenburn theme (light variant)",
-    "author": "OpenCode",
+    "description": "Ported from Mage Zenburn theme (light variant)",
+    "author": "Mage",
     "version": "1.0.0",
     "variant": "light",
     "tags": [
       "light",
-      "opencode",
+      "mage",
       "ported",
       "zenburn"
     ]

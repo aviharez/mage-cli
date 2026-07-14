@@ -1,11 +1,11 @@
 import express from 'express';
 import { deleteManagedCredential, getManagedCredentialStatus, normalizers, readManagedCredential, writeManagedCredential } from './credentials/providers.js';
-import { fetchOpenCodeGoUsage } from './providers/opencode-go.js';
+import { fetchMageGoUsage } from './providers/mage-go.js';
 import { fetchOllamaCloudUsage } from './providers/ollama-cloud.js';
 import { importCursorCredential, validateCursorCredential } from './providers/cursor.js';
 
 const validators = {
-  'opencode-go': fetchOpenCodeGoUsage,
+  'mage-go': fetchMageGoUsage,
   'ollama-cloud': fetchOllamaCloudUsage,
   cursor: validateCursorCredential,
 };

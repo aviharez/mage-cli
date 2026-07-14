@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-import { opencodeClient } from '@/lib/opencode/client';
+import { mageClient } from '@/lib/mage/client';
 import { getRegisteredRuntimeAPIs } from '@/contexts/runtimeAPIRegistry';
 import type { ProjectEntry } from '@/lib/api/types';
 import type { DesktopSettings } from '@/lib/desktop';
@@ -77,7 +77,7 @@ const ACTIVE_PROJECT_STORAGE_KEY = 'activeProjectId';
 
 const getLocalRuntimeOrigin = (): string => {
   if (typeof window === 'undefined') return '';
-  const value = (window as typeof window & { __OPENCHAMBER_LOCAL_ORIGIN__?: string }).__OPENCHAMBER_LOCAL_ORIGIN__;
+  const value = (window as typeof window & { __MAGE_LOCAL_ORIGIN__?: string }).__MAGE_LOCAL_ORIGIN__;
   return typeof value === 'string' ? value.trim().replace(/\/+$/, '') : '';
 };
 
@@ -490,7 +490,7 @@ const createVSCodeWorkspaceProjects = (
   const activeProjectId = activeProject?.id ?? projects[0]?.id ?? null;
 
   if (streamDebugEnabled()) {
-    console.log('[OpenChamber][VSCode][projects] Using workspace projects', projects);
+    console.log('[Mage][VSCode][projects] Using workspace projects', projects);
   }
 
   return { projects, activeProjectId, activeProject: activeProject ?? projects[0] ?? null };
@@ -645,7 +645,7 @@ export const useProjectsStore = create<ProjectsStore>()(
       if (nextActiveId) {
         const nextActive = nextProjects.find((project) => project.id === nextActiveId);
         if (nextActive) {
-          opencodeClient.setDirectory(nextActive.path);
+          mageClient.setDirectory(nextActive.path);
           useDirectoryStore.getState().setDirectory(nextActive.path, { showOverlay: false });
         }
       } else {
@@ -674,7 +674,7 @@ export const useProjectsStore = create<ProjectsStore>()(
       set({ projects: nextProjects, activeProjectId: id });
       persistProjects(nextProjects, id, get().manualProjectOrder);
 
-      opencodeClient.setDirectory(target.path);
+      mageClient.setDirectory(target.path);
       useDirectoryStore.getState().setDirectory(target.path, { showOverlay: false });
     },
 
@@ -951,7 +951,7 @@ export const useProjectsStore = create<ProjectsStore>()(
       if (incomingActive) {
         const activeProject = incomingProjects.find((project) => project.id === incomingActive);
         if (activeProject) {
-          opencodeClient.setDirectory(activeProject.path);
+          mageClient.setDirectory(activeProject.path);
           useDirectoryStore.getState().setDirectory(activeProject.path, { showOverlay: false });
         }
       }
@@ -985,7 +985,7 @@ export const useProjectsStore = create<ProjectsStore>()(
       }
 
       if (result.activeProject) {
-        opencodeClient.setDirectory(result.activeProject.path);
+        mageClient.setDirectory(result.activeProject.path);
         useDirectoryStore.getState().setDirectory(result.activeProject.path, { showOverlay: false });
       }
 
@@ -1004,7 +1004,7 @@ export const useProjectsStore = create<ProjectsStore>()(
 );
 
 if (typeof window !== 'undefined') {
-  window.addEventListener('openchamber:settings-synced', (event: Event) => {
+  window.addEventListener('mage:settings-synced', (event: Event) => {
     const detail = (event as CustomEvent<DesktopSettings>).detail;
     if (detail && typeof detail === 'object') {
       useProjectsStore.getState().synchronizeFromSettings(detail);

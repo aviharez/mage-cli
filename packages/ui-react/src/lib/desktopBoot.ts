@@ -2,7 +2,7 @@
  * Authoritative desktop boot outcome types and UI-facing resolver.
  *
  * The Rust backend computes a `DesktopBootOutcome` at startup and injects
- * it as `window.__OPENCHAMBER_DESKTOP_BOOT_OUTCOME__`. This module provides
+ * it as `window.__MAGE_DESKTOP_BOOT_OUTCOME__`. This module provides
  * pure functions to read that outcome and derive the minimal UI state
  * needed for the loading/chooser/recovery/main decision.
  */
@@ -231,7 +231,7 @@ export type DesktopBootFlowRestartInput = {
  *
  * Desktop shells must wait until a valid boot outcome is injected by the native host.
  * For non-main views (chooser, recovery), the splash can dismiss as soon as
- * the outcome is known — `isInitialized` is not required because OpenCode
+ * the outcome is known — `isInitialized` is not required because Mage
  * may not be available in those flows.
  * For main views, both `isInitialized` and `bootOutcomeKnown` are required.
  * Non-desktop shells only need the app to be initialized.
@@ -273,8 +273,8 @@ export function getInjectedBootOutcome(): DesktopBootOutcome | null {
     return null;
   }
 
-  const raw = (window as { __OPENCHAMBER_DESKTOP_BOOT_OUTCOME__?: unknown })
-    .__OPENCHAMBER_DESKTOP_BOOT_OUTCOME__;
+  const raw = (window as { __MAGE_DESKTOP_BOOT_OUTCOME__?: unknown })
+    .__MAGE_DESKTOP_BOOT_OUTCOME__;
 
   const result = validateBootOutcome(raw);
   return result.valid ? result.outcome : null;
@@ -293,8 +293,8 @@ export function getBootInjectionStatus(): BootInjectionStatus {
     return 'not-injected';
   }
 
-  const raw = (window as { __OPENCHAMBER_DESKTOP_BOOT_OUTCOME__?: unknown })
-    .__OPENCHAMBER_DESKTOP_BOOT_OUTCOME__;
+  const raw = (window as { __MAGE_DESKTOP_BOOT_OUTCOME__?: unknown })
+    .__MAGE_DESKTOP_BOOT_OUTCOME__;
 
   if (raw === undefined || raw === null) {
     return 'not-injected';

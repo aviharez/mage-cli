@@ -1,5 +1,5 @@
 import React from 'react';
-import { OpenChamberLogo } from '@/components/ui/OpenChamberLogo';
+import { MageLogo } from '@/components/ui/MageLogo';
 import { useThemeSystem } from '@/contexts/useThemeSystem';
 import { useGlobalSyncStore } from '@/sync/global-sync-store';
 import { useI18n } from '@/lib/i18n';
@@ -13,10 +13,10 @@ const ChatEmptyState: React.FC = () => {
 
     return (
         <div className="flex flex-col items-center justify-center min-h-full w-full gap-6">
-            <OpenChamberLogo width={140} height={140} className="opacity-20" />
+            <MageLogo width={140} height={140} className="opacity-20" />
             {initError ? (
                 <div className="flex flex-col items-center gap-2 max-w-md text-center px-4">
-                    <span className="text-body-md font-medium text-destructive">{t('chat.emptyState.opencodeUnreachable')}</span>
+                    <span className="text-body-md font-medium text-destructive">{t('chat.emptyState.mageUnreachable')}</span>
                     <span className="text-body-sm" style={{ color: textColor }}>
                         {initError.message}
                     </span>

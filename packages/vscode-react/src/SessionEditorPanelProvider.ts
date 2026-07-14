@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { handleBridgeMessage, type BridgeRequest, type BridgeResponse } from './bridge';
 import { getThemeKindName } from './theme';
-import type { OpenCodeManager, ConnectionStatus } from './opencode';
+import type { MageManager, ConnectionStatus } from './mage';
 import { getWebviewShikiThemes } from './shikiThemes';
 import { getWebviewHtml } from './webviewHtml';
 import { openSseProxy } from './sseProxy';
@@ -37,7 +37,7 @@ const isSameActiveEditorFilePayload = (a: ActiveEditorFilePayload | null, b: Act
 };
 
 export class SessionEditorPanelProvider {
-  public static readonly viewType = 'openchamber.sessionEditor';
+  public static readonly viewType = 'mage.sessionEditor';
 
   private _cachedStatus: ConnectionStatus = 'connecting';
   private _cachedError?: string;
@@ -52,7 +52,7 @@ export class SessionEditorPanelProvider {
   constructor(
     private readonly _context: vscode.ExtensionContext,
     private readonly _extensionUri: vscode.Uri,
-    private readonly _openCodeManager?: OpenCodeManager
+    private readonly _mageManager?: MageManager
   ) {
     this._webviewDevServerUrl = resolveWebviewDevServerUrl(this._context);
 
@@ -130,13 +130,13 @@ export class SessionEditorPanelProvider {
 
     panel.webview.onDidReceiveMessage(async (message: BridgeRequest) => {
       if (message.type === 'restartApi') {
-        await this._openCodeManager?.restart();
+        await this._mageManager?.restart();
         return;
       }
 
       if (message.type === 'vscode:command') {
         const { command, args } = (message.payload || {}) as { command?: unknown; args?: unknown[] };
-        if (command === 'openchamber.updateSessionEditorTitle') {
+        if (command === 'mage.updateSessionEditorTitle') {
           const title = typeof args?.[1] === 'string' && args[1].trim().length > 0 ? args[1].trim() : t('Session');
           state.panel.title = title;
           state.panel.webview.postMessage({ id: message.id, type: message.type, success: true, data: { result: true } });
@@ -157,13 +157,13 @@ export class SessionEditorPanelProvider {
       }
 
       const response = await handleBridgeMessage(message, {
-        manager: this._openCodeManager,
+        manager: this._mageManager,
         context: this._context,
       });
       state.panel.webview.postMessage(response);
 
       if (message.type === 'api:config/settings:save' && response.success) {
-        void vscode.commands.executeCommand('openchamber.internal.settingsSynced', response.data);
+        void vscode.commands.executeCommand('mage.internal.settingsSynced', response.data);
       }
     }, null, this._context.subscriptions);
   }
@@ -408,7 +408,7 @@ export class SessionEditorPanelProvider {
     const { path, headers } = (payload || {}) as { path?: string; headers?: Record<string, string> };
     const normalizedPath = typeof path === 'string' && path.trim().length > 0 ? path.trim() : '/event';
 
-    if (!this._openCodeManager) {
+    if (!this._mageManager) {
       return {
         id,
         type,
@@ -422,7 +422,7 @@ export class SessionEditorPanelProvider {
 
     try {
       const start = await openSseProxy({
-        manager: this._openCodeManager,
+        manager: this._mageManager,
         path: normalizedPath,
         headers: this._buildSseHeaders(headers),
         signal: controller.signal,
@@ -487,7 +487,7 @@ export class SessionEditorPanelProvider {
     );
     const workspaceFolders = resolveWorkspaceFolders(vscode.workspace.workspaceFolders ?? []);
     const initialStatus = this._cachedStatus;
-    const cliAvailable = this._openCodeManager?.isCliAvailable() ?? false;
+    const cliAvailable = this._mageManager?.isCliAvailable() ?? false;
 
     return getWebviewHtml({
       webview,

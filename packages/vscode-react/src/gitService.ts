@@ -837,14 +837,14 @@ const MAGE_NOUNS = [
 
 const MAGE_WORKTREE_ATTEMPTS = 26;
 
-const getOpenCodeDataPath = () => {
+const getMageDataPath = () => {
   const xdgDataHome = process.env.XDG_DATA_HOME || path.join(os.homedir(), '.local', 'share');
-  return path.join(xdgDataHome, 'opencode');
+  return path.join(xdgDataHome, 'mage');
 };
 
 const pickRandom = (values: string[]) => values[Math.floor(Math.random() * values.length)];
 
-const generateOpenCodeRandomName = () => `${pickRandom(MAGE_ADJECTIVES)}-${pickRandom(MAGE_NOUNS)}`;
+const generateMageRandomName = () => `${pickRandom(MAGE_ADJECTIVES)}-${pickRandom(MAGE_NOUNS)}`;
 
 const slugWorktreeName = (value: string) => {
   return String(value || '')
@@ -1025,9 +1025,9 @@ const runGitCommandOrThrow = async (cwd: string, args: string[], fallbackMessage
   return result;
 };
 
-const ensureOpenCodeProjectId = async (primaryWorktree: string): Promise<string> => {
+const ensureMageProjectId = async (primaryWorktree: string): Promise<string> => {
   const gitDir = path.join(primaryWorktree, '.git');
-  const idFile = path.join(gitDir, 'opencode');
+  const idFile = path.join(gitDir, 'mage');
   const existing = await fs.promises.readFile(idFile, 'utf8').then((value) => value.trim()).catch(() => '');
   if (existing) {
     return existing;
@@ -1047,7 +1047,7 @@ const ensureOpenCodeProjectId = async (primaryWorktree: string): Promise<string>
 
   const projectId = roots[0] || '';
   if (!projectId) {
-    throw new Error('Failed to derive OpenCode project ID');
+    throw new Error('Failed to derive Mage project ID');
   }
 
   await fs.promises.mkdir(gitDir, { recursive: true }).catch(() => undefined);
@@ -1075,8 +1075,8 @@ const resolveWorktreeProjectContext = async (directory: string) => {
   );
   const commonDir = path.resolve(sandbox, commonResult.stdout.trim());
   const primaryWorktree = path.dirname(commonDir);
-  const projectID = await ensureOpenCodeProjectId(primaryWorktree);
-  const worktreeRoot = path.join(getOpenCodeDataPath(), 'worktree', projectID);
+  const projectID = await ensureMageProjectId(primaryWorktree);
+  const worktreeRoot = path.join(getMageDataPath(), 'worktree', projectID);
 
   return { projectID, sandbox, primaryWorktree, worktreeRoot };
 };
@@ -1089,13 +1089,13 @@ const listWorktreeEntries = async (directory: string): Promise<WorktreeListEntry
 const resolveWorktreeNameCandidates = (baseName: string): string[] => {
   const normalizedBase = slugWorktreeName(baseName || '');
   if (!normalizedBase) {
-    return Array.from({ length: MAGE_WORKTREE_ATTEMPTS }, () => generateOpenCodeRandomName());
+    return Array.from({ length: MAGE_WORKTREE_ATTEMPTS }, () => generateMageRandomName());
   }
   return Array.from({ length: MAGE_WORKTREE_ATTEMPTS }, (_, index) => {
     if (index === 0) {
       return normalizedBase;
     }
-    return `${normalizedBase}-${generateOpenCodeRandomName()}`;
+    return `${normalizedBase}-${generateMageRandomName()}`;
   });
 };
 
@@ -1117,7 +1117,7 @@ const resolveCandidateDirectory = async (
       return { name, directory, branch: explicitBranchName };
     }
 
-    const branch = `openchamber/${name}`;
+    const branch = `mage/${name}`;
     const branchRef = `refs/heads/${branch}`;
     const branchExists = await runGitCommand(primaryWorktree, ['show-ref', '--verify', '--quiet', branchRef]);
     if (branchExists.success) {
@@ -1245,7 +1245,7 @@ const runWorktreeStartCommand = async (directory: string, command: string): Prom
 };
 
 const loadProjectStartCommand = async (projectID: string): Promise<string> => {
-  const storagePath = path.join(getOpenCodeDataPath(), 'storage', 'project', `${projectID}.json`);
+  const storagePath = path.join(getMageDataPath(), 'storage', 'project', `${projectID}.json`);
   try {
     const raw = await fs.promises.readFile(storagePath, 'utf8');
     const parsed = JSON.parse(raw) as { commands?: { start?: string } };
@@ -1257,7 +1257,7 @@ const loadProjectStartCommand = async (projectID: string): Promise<string> => {
 };
 
 const getProjectStoragePath = (projectID: string) => {
-  return path.join(getOpenCodeDataPath(), 'storage', 'project', `${projectID}.json`);
+  return path.join(getMageDataPath(), 'storage', 'project', `${projectID}.json`);
 };
 
 const updateProjectSandboxes = async (
@@ -1352,7 +1352,7 @@ const cleanupFailedFastWorktreeCreate = async (
     try {
       await syncProjectSandboxRemove(context.projectID, context.primaryWorktree, candidateDirectory);
     } catch (error) {
-      console.warn('[GitService] Failed to clean up OpenCode sandbox metadata after worktree failure:', error instanceof Error ? error.message : String(error));
+      console.warn('[GitService] Failed to clean up Mage sandbox metadata after worktree failure:', error instanceof Error ? error.message : String(error));
     }
   }
 
@@ -1840,7 +1840,7 @@ async function attachGitWorktreeToCandidate(
   try {
     await syncProjectSandboxAdd(context.projectID, context.primaryWorktree, candidate.directory);
   } catch (error) {
-    console.warn('[GitService] Failed to sync OpenCode sandbox metadata (add):', error instanceof Error ? error.message : String(error));
+    console.warn('[GitService] Failed to sync Mage sandbox metadata (add):', error instanceof Error ? error.message : String(error));
   }
 
   const shouldSetUpstream = Boolean(input?.setUpstream);
@@ -1906,7 +1906,7 @@ export async function createWorktree(directory: string, input: CreateGitWorktree
     try {
       await syncProjectSandboxAdd(context.projectID, context.primaryWorktree, candidate.directory);
     } catch (error) {
-      console.warn('[GitService] Failed to sync OpenCode sandbox metadata (add):', error instanceof Error ? error.message : String(error));
+      console.warn('[GitService] Failed to sync Mage sandbox metadata (add):', error instanceof Error ? error.message : String(error));
     }
 
     setWorktreeBootstrapState(candidate.directory, WORKTREE_BOOTSTRAP_PENDING);
@@ -1998,7 +1998,7 @@ export async function removeWorktree(directory: string, input: RemoveGitWorktree
     try {
       await syncProjectSandboxRemove(context.projectID, context.primaryWorktree, targetDirectory);
     } catch (error) {
-      console.warn('[GitService] Failed to sync OpenCode sandbox metadata (remove):', error instanceof Error ? error.message : String(error));
+      console.warn('[GitService] Failed to sync Mage sandbox metadata (remove):', error instanceof Error ? error.message : String(error));
     }
 
     clearWorktreeBootstrapState(targetDirectory);
@@ -2026,7 +2026,7 @@ export async function removeWorktree(directory: string, input: RemoveGitWorktree
   try {
     await syncProjectSandboxRemove(context.projectID, context.primaryWorktree, matchedEntry.worktree);
   } catch (error) {
-    console.warn('[GitService] Failed to sync OpenCode sandbox metadata (remove):', error instanceof Error ? error.message : String(error));
+    console.warn('[GitService] Failed to sync Mage sandbox metadata (remove):', error instanceof Error ? error.message : String(error));
   }
 
   clearWorktreeBootstrapState(matchedEntry.worktree);
@@ -2355,7 +2355,7 @@ export async function applyGitHunk(
 
   const flags = HUNK_ACTION_ARGS[action];
   const tmpDir = os.tmpdir();
-  const tmpPath = path.join(tmpDir, `openchamber-hunk-${Date.now()}-${Math.random().toString(36).slice(2)}.patch`);
+  const tmpPath = path.join(tmpDir, `mage-hunk-${Date.now()}-${Math.random().toString(36).slice(2)}.patch`);
 
   try {
     await fs.promises.writeFile(tmpPath, patch, 'utf8');
@@ -2773,7 +2773,7 @@ export async function countGitStashFiles(directory: string, refs: string[]): Pro
 }
 
 export async function stashGitChanges(directory: string, options: { message?: string } = {}): Promise<{ success: boolean; created: boolean; message: string; output: string }> {
-  const message = options.message?.trim() || `OpenChamber stash ${new Date().toISOString()}`;
+  const message = options.message?.trim() || `Mage stash ${new Date().toISOString()}`;
   const result = await execGit(['stash', 'push', '--include-untracked', '-m', message], directory);
   if (result.exitCode !== 0) throw new Error(result.stderr.trim() || 'Failed to stash changes');
   const output = result.stdout.trim() || result.stderr.trim();

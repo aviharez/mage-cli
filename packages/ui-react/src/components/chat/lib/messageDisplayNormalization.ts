@@ -1,4 +1,4 @@
-import type { Part } from '@opencode-ai/sdk/v2';
+import type { Part } from '@mybcabisnis/mage-sdk/v2';
 
 import { filterSyntheticParts } from '@/lib/messages/synthetic';
 import { normalizeParts } from '../message/partUtils';

@@ -140,16 +140,16 @@ export function createGlobalMessageStreamWsBridge({
       const error = status.error;
       if (error?.type === 'upstream_unavailable') {
         closeClientsWithInitialError({
-          message: `OpenCode event stream unavailable (${error.status})`,
-          closeReason: 'OpenCode event stream unavailable',
+          message: `Mage event stream unavailable (${error.status})`,
+          closeReason: 'Mage event stream unavailable',
           triggerHealthCheckFor: error.response,
         });
         return;
       }
 
       closeClientsWithInitialError({
-        message: status.buildUrlFailed ? 'OpenCode service unavailable' : 'Failed to connect to OpenCode event stream',
-        closeReason: status.buildUrlFailed ? 'OpenCode service unavailable' : 'Failed to connect to OpenCode event stream',
+        message: status.buildUrlFailed ? 'Mage service unavailable' : 'Failed to connect to Mage event stream',
+        closeReason: status.buildUrlFailed ? 'Mage service unavailable' : 'Failed to connect to Mage event stream',
         triggerHealthCheckFor: !status.buildUrlFailed,
       });
       return;
@@ -177,7 +177,7 @@ export function createGlobalMessageStreamWsBridge({
         return;
       }
 
-      sendMessageStreamWsEvent(socket, { type: 'openchamber:heartbeat', timestamp: Date.now() }, { directory: 'global' });
+      sendMessageStreamWsEvent(socket, { type: 'mage:heartbeat', timestamp: Date.now() }, { directory: 'global' });
     }, heartbeatIntervalMs);
 
     socket.on('close', () => {

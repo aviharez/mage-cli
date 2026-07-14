@@ -17,8 +17,8 @@
     "paths": {
       "@/*": ["../ui-react/src/*", "./src/*"],
       "@web/*": ["./src/*"],
-      "@openchamber/ui/*": ["../ui-react/src/*"],
-      "@openchamber/web/*": ["./src/*"]
+      "@mage/ui/*": ["../ui-react/src/*"],
+      "@mage/web/*": ["./src/*"]
     }
   },
   "include": ["src", "../ui-react/src", "../ui-react/src/types/**/*"]

@@ -1,5 +1,5 @@
 // Hub marketplace data
-// Built-in skills are auto-generated from packages/opencode/defaults/skills/*/SKILL.md
+// Built-in skills are auto-generated from packages/mage/defaults/skills/*/SKILL.md
 // by packages/web/script/gen-skills.ts (run via `bun run gen:skills` or automatically
 // during `bun run build` via the prebuild hook). The committed JSON is the fallback
 // for standalone / Docker builds where the monorepo is not present.
@@ -33,7 +33,7 @@ export interface HubItem {
 
 // Derive a compact glyph from a package name
 function glyph(name: string): string {
-  const clean = name.replace(/^[@/][^/]+\//, "").replace(/^opencode-/, "")
+  const clean = name.replace(/^[@/][^/]+\//, "").replace(/^mage-/, "")
   return clean.slice(0, 2).toUpperCase()
 }
 
@@ -76,12 +76,12 @@ const BUILTIN_SKILLS: HubItem[] = (builtinSkillsRaw as any[]).map((raw) => ({
 // Curated hand-picked list; will expand once the registry has entries.
 const DOWNLOADABLE_SKILLS: HubItem[] = [
   // {
-  //   name: "opencode-aws-expert",
+  //   name: "mage-aws-expert",
   //   author: "community",
   //   description:
   //     "Expert guidance for AWS infrastructure — IAM policies, CDK stacks, Lambda, ECS, and cost optimization recommendations.",
   //   kind: "skill",
-  //   install: "opencode-aws-expert",
+  //   install: "mage-aws-expert",
   //   installKind: "file",
   //   glyph: "AW",
   //   bg: "#2a1f1a",

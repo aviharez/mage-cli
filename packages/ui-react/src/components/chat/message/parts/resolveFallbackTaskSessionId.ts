@@ -6,7 +6,7 @@
  * Conservative: only returns a session id when the match is unambiguous.
  */
 
-import type { Session, SessionStatus } from '@opencode-ai/sdk/v2/client';
+import type { Session, SessionStatus } from '@mybcabisnis/mage-sdk/v2/client';
 
 /**
  * Fallback is intentionally narrow: only sessions created shortly after the

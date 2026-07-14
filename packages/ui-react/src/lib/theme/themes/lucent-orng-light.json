@@ -2,13 +2,13 @@
   "metadata": {
     "id": "lucent-orng-light",
     "name": "Lucent Orng",
-    "description": "Ported from OpenCode Lucent Orng theme (light variant)",
-    "author": "OpenCode",
+    "description": "Ported from Mage Lucent Orng theme (light variant)",
+    "author": "Mage",
     "version": "1.0.0",
     "variant": "light",
     "tags": [
       "light",
-      "opencode",
+      "mage",
       "ported",
       "lucent-orng"
     ]

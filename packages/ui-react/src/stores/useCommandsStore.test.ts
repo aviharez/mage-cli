@@ -19,8 +19,8 @@ const withDirectoryMock = async (directory: string | null, callback: () => Promi
 const getDirectoryMock = () => getDirectoryImpl();
 const runtimeFetchMock = async () => runtimeFetchImpl();
 
-mock.module('@/lib/opencode/client', () => ({
-  opencodeClient: {
+mock.module('@/lib/mage/client', () => ({
+  mageClient: {
     getDirectory: getDirectoryMock,
     listCommandsWithDetails: listCommandsWithDetailsMock,
     withDirectory: withDirectoryMock,

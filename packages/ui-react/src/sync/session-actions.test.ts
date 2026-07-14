@@ -94,9 +94,9 @@ const mockSdk = {
   },
 }
 
-// Mock opencodeClient singleton
-mock.module("@/lib/opencode/client", () => ({
-  opencodeClient: {
+// Mock mageClient singleton
+mock.module("@/lib/mage/client", () => ({
+  mageClient: {
     getScopedSdkClient: (directory: string) => {
       scopedClientDirectories.push(directory)
       return mockScopedClient
@@ -200,7 +200,7 @@ mock.module("./sync-refs", () => ({
 import { create, type StoreApi } from "zustand"
 import { INITIAL_STATE } from "./types"
 import type { DirectoryStore } from "./child-store"
-import type { Message, OpencodeClient, Part, Session } from "@opencode-ai/sdk/v2/client"
+import type { Message, MageClient, Part, Session } from "@mybcabisnis/mage-sdk/v2/client"
 
 type OptimisticAddCall = { sessionID: string; directory?: string | null; message: Message; parts: Part[] }
 type OptimisticRemoveCall = { sessionID: string; directory?: string | null; messageID: string }
@@ -268,7 +268,7 @@ describe("shareSession live state", () => {
     sessionShareResult = { data: unsharedSession }
 
     const { setActionRefs, unshareSession } = await import("./session-actions")
-    setActionRefs(mockSdk as unknown as OpencodeClient, childStores, () => "/current/project")
+    setActionRefs(mockSdk as unknown as MageClient, childStores, () => "/current/project")
 
     const result = await unshareSession("session-a")
 
@@ -287,7 +287,7 @@ describe("shareSession live state", () => {
     sessionShareResult = { data: sharedSession }
 
     const { setActionRefs, shareSession } = await import("./session-actions")
-    setActionRefs(mockSdk as unknown as OpencodeClient, childStores, () => "/current/project")
+    setActionRefs(mockSdk as unknown as MageClient, childStores, () => "/current/project")
 
     const result = await shareSession("session-a")
 
@@ -315,7 +315,7 @@ describe("shareSession live state", () => {
     sessionShareResult = { data: unsharedSession }
 
     const { setActionRefs, unshareSession } = await import("./session-actions")
-    setActionRefs(mockSdk as unknown as OpencodeClient, childStores, () => "/current/project")
+    setActionRefs(mockSdk as unknown as MageClient, childStores, () => "/current/project")
 
     await unshareSession("session-a")
 
@@ -339,7 +339,7 @@ describe("shareSession live state", () => {
     sessionShareResult = { data: sessionWithDiff }
 
     const { setActionRefs, shareSession } = await import("./session-actions")
-    setActionRefs(mockSdk as unknown as OpencodeClient, childStores, () => "/current/project")
+    setActionRefs(mockSdk as unknown as MageClient, childStores, () => "/current/project")
 
     const result = await shareSession("session-a")
 
@@ -368,7 +368,7 @@ describe("updateSessionTitle live state", () => {
     sessionUpdateResult = { data: updatedSession }
 
     const { setActionRefs, updateSessionTitle } = await import("./session-actions")
-    setActionRefs(mockSdk as unknown as OpencodeClient, childStores, () => "/current/project")
+    setActionRefs(mockSdk as unknown as MageClient, childStores, () => "/current/project")
 
     await updateSessionTitle("session-a", "New Title")
 
@@ -400,7 +400,7 @@ describe("optimisticSend target directory", () => {
     let sentMessageID = ""
 
     const { optimisticSend, setActionRefs, setOptimisticRefs } = await import("./session-actions")
-    setActionRefs(mockSdk as unknown as OpencodeClient, childStores, () => "/current/project")
+    setActionRefs(mockSdk as unknown as MageClient, childStores, () => "/current/project")
     setOptimisticRefs(
       (input) => {
         optimisticAdd = input
@@ -441,7 +441,7 @@ describe("optimisticSend target directory", () => {
     switchRuntimeEndpoint({ apiBaseUrl: "http://runtime-a.test", runtimeKey: "runtime-a" })
 
     const { optimisticSend, setActionRefs, setOptimisticRefs } = await import("./session-actions")
-    setActionRefs(mockSdk as unknown as OpencodeClient, childStores, () => "/target/project")
+    setActionRefs(mockSdk as unknown as MageClient, childStores, () => "/target/project")
     setOptimisticRefs(
       (input) => {
         optimisticAdd = input
@@ -490,7 +490,7 @@ describe("optimisticSend target directory", () => {
     let sentMessageID = ""
 
     const { optimisticSend, setActionRefs, setOptimisticRefs } = await import("./session-actions")
-    setActionRefs(mockSdk as unknown as OpencodeClient, childStores, () => "/target/project")
+    setActionRefs(mockSdk as unknown as MageClient, childStores, () => "/target/project")
     setOptimisticRefs(
       () => {},
       (input) => {
@@ -535,7 +535,7 @@ describe("optimisticSend target directory", () => {
     let optimisticConfirm: OptimisticRemoveCall | null = null
 
     const { optimisticSend, setActionRefs, setOptimisticRefs } = await import("./session-actions")
-    setActionRefs(mockSdk as unknown as OpencodeClient, childStores, () => "/target/project")
+    setActionRefs(mockSdk as unknown as MageClient, childStores, () => "/target/project")
     setOptimisticRefs(
       () => {},
       (input) => {
@@ -593,7 +593,7 @@ describe("respondToPermission passes directory", () => {
     const childStores = createChildStores([["/test/project", store]])
 
     const { setActionRefs, respondToPermission } = await import("./session-actions")
-    setActionRefs(mockSdk as unknown as OpencodeClient, childStores, () => "/test/project")
+    setActionRefs(mockSdk as unknown as MageClient, childStores, () => "/test/project")
 
     await respondToPermission("session-a", "perm-1", "once")
 
@@ -607,7 +607,7 @@ describe("respondToPermission passes directory", () => {
     const childStores = createChildStores([])
 
     const { setActionRefs, respondToPermission } = await import("./session-actions")
-    setActionRefs(mockSdk as unknown as OpencodeClient, childStores, () => "/test/project")
+    setActionRefs(mockSdk as unknown as MageClient, childStores, () => "/test/project")
 
     await respondToPermission("session-b", "perm-2", "always")
 
@@ -621,7 +621,7 @@ describe("respondToPermission passes directory", () => {
     const childStores = createChildStores([])
 
     const { setActionRefs, respondToPermission } = await import("./session-actions")
-    setActionRefs(mockSdk as unknown as OpencodeClient, childStores, () => "/fallback/dir")
+    setActionRefs(mockSdk as unknown as MageClient, childStores, () => "/fallback/dir")
 
     await respondToPermission("unknown-session", "perm-3", "reject")
 
@@ -661,7 +661,7 @@ describe("revertToMessage passes session directory", () => {
     sessionRevertResult = { data: { id: "session-a", time: { created: 1, updated: 2 }, revert: { messageID: "msg_2" } } }
 
     const { setActionRefs, revertToMessage } = await import("./session-actions")
-    setActionRefs(mockSdk as unknown as OpencodeClient, childStores, () => "/current/project")
+    setActionRefs(mockSdk as unknown as MageClient, childStores, () => "/current/project")
 
     await revertToMessage("session-a", "msg_2")
 
@@ -684,7 +684,7 @@ describe("revertToMessage passes session directory", () => {
     sessionRevertResult = { error: { message: "rejected" }, response: { status: 500 } }
 
     const { setActionRefs, revertToMessage } = await import("./session-actions")
-    setActionRefs(mockSdk as unknown as OpencodeClient, childStores, () => "/test/project")
+    setActionRefs(mockSdk as unknown as MageClient, childStores, () => "/test/project")
 
     let thrown: unknown
     try {
@@ -721,7 +721,7 @@ describe("dismissPermission passes directory", () => {
     const childStores = createChildStores([["/test/project", store]])
 
     const { setActionRefs, dismissPermission } = await import("./session-actions")
-    setActionRefs(mockSdk as unknown as OpencodeClient, childStores, () => "/test/project")
+    setActionRefs(mockSdk as unknown as MageClient, childStores, () => "/test/project")
 
     await dismissPermission("session-a", "perm-10")
 
@@ -743,7 +743,7 @@ describe("respondToQuestion passes directory", () => {
     const childStores = createChildStores([])
 
     const { setActionRefs, respondToQuestion } = await import("./session-actions")
-    setActionRefs(mockSdk as unknown as OpencodeClient, childStores, () => "/test/project")
+    setActionRefs(mockSdk as unknown as MageClient, childStores, () => "/test/project")
 
     await respondToQuestion("session-a", "q-1", [["answer1"]])
 
@@ -770,7 +770,7 @@ describe("respondToQuestion passes directory", () => {
     questionReplyError = Object.assign(new Error("question.reply failed (404): QuestionNotFoundError"), { status: 404 })
 
     const { setActionRefs, respondToQuestion } = await import("./session-actions")
-    setActionRefs(mockSdk as unknown as OpencodeClient, childStores, () => "/test/project")
+    setActionRefs(mockSdk as unknown as MageClient, childStores, () => "/test/project")
 
     let thrown: unknown
     try {
@@ -795,7 +795,7 @@ describe("rejectQuestion passes directory", () => {
     const childStores = createChildStores([])
 
     const { setActionRefs, rejectQuestion } = await import("./session-actions")
-    setActionRefs(mockSdk as unknown as OpencodeClient, childStores, () => "/test/project")
+    setActionRefs(mockSdk as unknown as MageClient, childStores, () => "/test/project")
 
     await rejectQuestion("session-a", "q-2")
 
@@ -831,7 +831,7 @@ describe("dismissOpenQuestionsForSession", () => {
     const childStores = createChildStores([["/test/project", store]])
 
     const { setActionRefs, dismissOpenQuestionsForSession } = await import("./session-actions")
-    setActionRefs(mockSdk as unknown as OpencodeClient, childStores, () => "/test/project")
+    setActionRefs(mockSdk as unknown as MageClient, childStores, () => "/test/project")
 
     const dismissed = await dismissOpenQuestionsForSession("session-a")
 
@@ -855,7 +855,7 @@ describe("dismissOpenQuestionsForSession", () => {
     const childStores = createChildStores([["/test/project", store]])
 
     const { setActionRefs, dismissOpenQuestionsForSession } = await import("./session-actions")
-    setActionRefs(mockSdk as unknown as OpencodeClient, childStores, () => "/test/project")
+    setActionRefs(mockSdk as unknown as MageClient, childStores, () => "/test/project")
 
     const dismissed = await dismissOpenQuestionsForSession("session-a")
 
@@ -880,7 +880,7 @@ describe("dismissOpenQuestionsForSession", () => {
     questionRejectError = Object.assign(new Error("question.reject failed (404): QuestionNotFoundError"), { status: 404 })
 
     const { setActionRefs, dismissOpenQuestionsForSession } = await import("./session-actions")
-    setActionRefs(mockSdk as unknown as OpencodeClient, childStores, () => "/test/project")
+    setActionRefs(mockSdk as unknown as MageClient, childStores, () => "/test/project")
 
     const dismissed = await dismissOpenQuestionsForSession("session-a")
 

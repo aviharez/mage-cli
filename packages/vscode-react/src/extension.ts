@@ -2,14 +2,14 @@ import * as vscode from 'vscode';
 import { ChatViewProvider } from './ChatViewProvider';
 import { AgentManagerPanelProvider } from './AgentManagerPanelProvider';
 import { SessionEditorPanelProvider } from './SessionEditorPanelProvider';
-import { createOpenCodeManager, type OpenCodeManager } from './opencode';
+import { createMageManager, type MageManager } from './mage';
 import { startGlobalEventWatcher, stopGlobalEventWatcher, setChatViewProvider } from './sessionActivityWatcher';
 import { resolveWorkspaceFolders } from './workspaceResolver';
 
 let chatViewProvider: ChatViewProvider | undefined;
 let agentManagerProvider: AgentManagerPanelProvider | undefined;
 let sessionEditorProvider: SessionEditorPanelProvider | undefined;
-let openCodeManager: OpenCodeManager | undefined;
+let mageManager: MageManager | undefined;
 let outputChannel: vscode.OutputChannel | undefined;
 
 let activeSessionId: string | null = null;
@@ -17,7 +17,7 @@ let activeSessionTitle: string | null = null;
 
 const t = vscode.l10n.t;
 
-const SETTINGS_KEY = 'openchamber.settings';
+const SETTINGS_KEY = 'mage.settings';
 const CHAT_VIEW_BOOTSTRAP_DELAY_MS = 80;
 
 const waitForChatViewBootstrap = () => new Promise<void>((resolve) => setTimeout(resolve, CHAT_VIEW_BOOTSTRAP_DELAY_MS));
@@ -38,7 +38,7 @@ const formatDurationMs = (value: number | null | undefined) => {
 };
 
 export async function activate(context: vscode.ExtensionContext) {
-  outputChannel = vscode.window.createOutputChannel('OpenChamber');
+  outputChannel = vscode.window.createOutputChannel('Mage');
 
   let moveToRightSidebarScheduled = false;
 
@@ -80,12 +80,12 @@ export async function activate(context: vscode.ExtensionContext) {
     if (!moveCommandId) return 'unsupported';
 
     try {
-      await vscode.commands.executeCommand('openchamber.chatView.focus');
+      await vscode.commands.executeCommand('mage.chatView.focus');
       await vscode.commands.executeCommand(moveCommandId);
       return 'moved';
     } catch (error) {
       outputChannel?.appendLine(
-        `[OpenChamber] Failed moving chat view to right sidebar (command=${moveCommandId}): ${error instanceof Error ? error.message : String(error)}`
+        `[Mage] Failed moving chat view to right sidebar (command=${moveCommandId}): ${error instanceof Error ? error.message : String(error)}`
       );
       return 'failed';
     }
@@ -94,9 +94,9 @@ export async function activate(context: vscode.ExtensionContext) {
   const maybeMoveChatToRightSidebarOnStartup = async () => {
     if (isCursorLikeHost()) return;
 
-    const attempted = context.globalState.get<boolean>('openchamber.sidebarAutoMoveAttempted') || false;
+    const attempted = context.globalState.get<boolean>('mage.sidebarAutoMoveAttempted') || false;
     if (attempted) return;
-    await context.globalState.update('openchamber.sidebarAutoMoveAttempted', true);
+    await context.globalState.update('mage.sidebarAutoMoveAttempted', true);
 
     if (moveToRightSidebarScheduled) return;
     moveToRightSidebarScheduled = true;
@@ -115,18 +115,18 @@ export async function activate(context: vscode.ExtensionContext) {
 
 
   // Migration: clear legacy auto-set API URLs (ports 47680-47689 were auto-assigned by older extension versions)
-  const config = vscode.workspace.getConfiguration('openchamber');
+  const config = vscode.workspace.getConfiguration('mage');
   const legacyApiUrl = config.get<string>('apiUrl') || '';
   if (/^https?:\/\/localhost:4768\d\/?$/.test(legacyApiUrl.trim())) {
     await config.update('apiUrl', '', vscode.ConfigurationTarget.Global);
   }
 
-  // Create OpenCode manager first
-  openCodeManager = createOpenCodeManager(context);
+  // Create Mage manager first
+  mageManager = createMageManager(context);
 
   // Create chat view provider with manager reference
-  // The webview will show a loading state until OpenCode is ready
-  chatViewProvider = new ChatViewProvider(context, context.extensionUri, openCodeManager);
+  // The webview will show a loading state until Mage is ready
+  chatViewProvider = new ChatViewProvider(context, context.extensionUri, mageManager);
 
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(
@@ -138,25 +138,25 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // Register sidebar/focus commands AFTER the webview view provider is registered
   context.subscriptions.push(
-    vscode.commands.registerCommand('openchamber.openSidebar', async () => {
+    vscode.commands.registerCommand('mage.openSidebar', async () => {
       // Best-effort: open the container (if available), then focus the chat view.
       try {
-        await vscode.commands.executeCommand('workbench.view.extension.openchamber');
+        await vscode.commands.executeCommand('workbench.view.extension.mage');
       } catch (e) {
-        outputChannel?.appendLine(`[OpenChamber] workbench.view.extension.openchamber failed: ${e}`);
+        outputChannel?.appendLine(`[Mage] workbench.view.extension.mage failed: ${e}`);
       }
 
       try {
-        await vscode.commands.executeCommand('openchamber.chatView.focus');
+        await vscode.commands.executeCommand('mage.chatView.focus');
       } catch (e) {
-        outputChannel?.appendLine(`[OpenChamber] openchamber.chatView.focus failed: ${e}`);
-        vscode.window.showErrorMessage(t('OpenChamber: Failed to open sidebar - {0}', String(e)));
+        outputChannel?.appendLine(`[Mage] mage.chatView.focus failed: ${e}`);
+        vscode.window.showErrorMessage(t('Mage: Failed to open sidebar - {0}', String(e)));
         return false;
       }
 
       if (!chatViewProvider?.hasResolvedView()) {
-        outputChannel?.appendLine('[OpenChamber] Chat sidebar focus completed before the webview was resolved');
-        vscode.window.showWarningMessage(t('OpenChamber: Chat sidebar is not ready'));
+        outputChannel?.appendLine('[Mage] Chat sidebar focus completed before the webview was resolved');
+        vscode.window.showWarningMessage(t('Mage: Chat sidebar is not ready'));
         return false;
       }
 
@@ -165,15 +165,15 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   const revealChatViewForPayload = async () => {
-    const opened = await vscode.commands.executeCommand<boolean>('openchamber.openSidebar');
+    const opened = await vscode.commands.executeCommand<boolean>('mage.openSidebar');
     if (!opened) {
       return false;
     }
 
     await waitForChatViewBootstrap();
     if (!chatViewProvider?.hasResolvedView()) {
-      outputChannel?.appendLine('[OpenChamber] Chat sidebar webview was disposed before payload delivery');
-      vscode.window.showWarningMessage(t('OpenChamber: Chat sidebar is not ready'));
+      outputChannel?.appendLine('[Mage] Chat sidebar webview was disposed before payload delivery');
+      vscode.window.showWarningMessage(t('Mage: Chat sidebar is not ready'));
       return false;
     }
 
@@ -181,19 +181,19 @@ export async function activate(context: vscode.ExtensionContext) {
   };
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('openchamber.focusChat', async () => {
-      await vscode.commands.executeCommand('openchamber.chatView.focus');
+    vscode.commands.registerCommand('mage.focusChat', async () => {
+      await vscode.commands.executeCommand('mage.chatView.focus');
     })
   );
 
   void maybeMoveChatToRightSidebarOnStartup();
 
   // Create Agent Manager panel provider
-  agentManagerProvider = new AgentManagerPanelProvider(context, context.extensionUri, openCodeManager);
-  sessionEditorProvider = new SessionEditorPanelProvider(context, context.extensionUri, openCodeManager);
+  agentManagerProvider = new AgentManagerPanelProvider(context, context.extensionUri, mageManager);
+  sessionEditorProvider = new SessionEditorPanelProvider(context, context.extensionUri, mageManager);
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('openchamber.internal.settingsSynced', (settings: unknown) => {
+    vscode.commands.registerCommand('mage.internal.settingsSynced', (settings: unknown) => {
       chatViewProvider?.notifySettingsSynced(settings);
       sessionEditorProvider?.notifySettingsSynced(settings);
       agentManagerProvider?.notifySettingsSynced(settings);
@@ -209,13 +209,13 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('openchamber.openAgentManager', () => {
+    vscode.commands.registerCommand('mage.openAgentManager', () => {
       agentManagerProvider?.createOrShow();
     })
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('openchamber.setActiveSession', (sessionId: unknown, title?: unknown) => {
+    vscode.commands.registerCommand('mage.setActiveSession', (sessionId: unknown, title?: unknown) => {
       if (typeof sessionId === 'string' && sessionId.trim().length > 0) {
         activeSessionId = sessionId.trim();
         activeSessionTitle = typeof title === 'string' && title.trim().length > 0 ? title.trim() : null;
@@ -228,9 +228,9 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('openchamber.openActiveSessionInEditor', () => {
+    vscode.commands.registerCommand('mage.openActiveSessionInEditor', () => {
       if (!activeSessionId) {
-        vscode.window.showInformationMessage(t('OpenChamber: No active session'));
+        vscode.window.showInformationMessage(t('Mage: No active session'));
         return;
       }
       sessionEditorProvider?.createOrShow(activeSessionId, activeSessionTitle ?? undefined);
@@ -238,7 +238,7 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('openchamber.openSessionInEditor', (sessionId: string, title?: string) => {
+    vscode.commands.registerCommand('mage.openSessionInEditor', (sessionId: string, title?: string) => {
       if (typeof sessionId !== 'string' || sessionId.trim().length === 0) {
         return;
       }
@@ -247,13 +247,13 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('openchamber.openNewSessionInEditor', () => {
+    vscode.commands.registerCommand('mage.openNewSessionInEditor', () => {
       sessionEditorProvider?.createOrShowNewSession();
     })
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('openchamber.openCurrentOrNewSessionInEditor', () => {
+    vscode.commands.registerCommand('mage.openCurrentOrNewSessionInEditor', () => {
       if (activeSessionId) {
         sessionEditorProvider?.createOrShow(activeSessionId, activeSessionTitle ?? undefined);
       } else {
@@ -263,28 +263,28 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('openchamber.restartApi', async () => {
+    vscode.commands.registerCommand('mage.restartApi', async () => {
       try {
         // Prefer the full in-app reload flow (overlay + managed restart via the
         // bridge + config/data refresh) driven by the webview — same as after an
-        // OpenCode update. Fall back to a bare manager restart when no webview is
+        // Mage update. Fall back to a bare manager restart when no webview is
         // open to drive it.
-        if (chatViewProvider?.reloadOpenCode()) {
+        if (chatViewProvider?.reloadMage()) {
           return;
         }
-        await openCodeManager?.restart();
-        vscode.window.showInformationMessage(t('OpenChamber: API connection restarted'));
+        await mageManager?.restart();
+        vscode.window.showInformationMessage(t('Mage: API connection restarted'));
       } catch (e) {
-        vscode.window.showErrorMessage(t('OpenChamber: Failed to restart API - {0}', String(e)));
+        vscode.window.showErrorMessage(t('Mage: Failed to restart API - {0}', String(e)));
       }
     })
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('openchamber.addToContext', async () => {
+    vscode.commands.registerCommand('mage.addToContext', async () => {
       const editor = vscode.window.activeTextEditor;
       if (!editor) {
-        vscode.window.showWarningMessage(t('OpenChamber [Add to Context]: No active editor'));
+        vscode.window.showWarningMessage(t('Mage [Add to Context]: No active editor'));
         return;
       }
 
@@ -292,7 +292,7 @@ export async function activate(context: vscode.ExtensionContext) {
       const selectedText = editor.document.getText(selection);
 
       if (!selectedText) {
-        vscode.window.showWarningMessage(t('OpenChamber [Add to Context]: No text selected'));
+        vscode.window.showWarningMessage(t('Mage [Add to Context]: No text selected'));
         return;
       }
 
@@ -321,7 +321,7 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('openchamber.attachExplorerToChat', async (resource?: vscode.Uri, resources?: vscode.Uri[]) => {
+    vscode.commands.registerCommand('mage.attachExplorerToChat', async (resource?: vscode.Uri, resources?: vscode.Uri[]) => {
       const uriCandidates: vscode.Uri[] = [];
       if (Array.isArray(resources)) {
         uriCandidates.push(...resources.filter((entry): entry is vscode.Uri => entry instanceof vscode.Uri));
@@ -374,7 +374,7 @@ export async function activate(context: vscode.ExtensionContext) {
       }
 
       if (attachedFiles.length === 0) {
-        vscode.window.showWarningMessage(t('OpenChamber: No file selected to mention'));
+        vscode.window.showWarningMessage(t('Mage: No file selected to mention'));
         return;
       }
 
@@ -386,16 +386,16 @@ export async function activate(context: vscode.ExtensionContext) {
       }
 
       if (skippedEntries.length > 0) {
-        vscode.window.showInformationMessage(t('OpenChamber: Some selected entries were skipped (folders or unsupported resources)'));
+        vscode.window.showInformationMessage(t('Mage: Some selected entries were skipped (folders or unsupported resources)'));
       }
     })
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('openchamber.explain', async () => {
+    vscode.commands.registerCommand('mage.explain', async () => {
       const editor = vscode.window.activeTextEditor;
       if (!editor) {
-        vscode.window.showWarningMessage(t('OpenChamber [Explain]: No active editor'));
+        vscode.window.showWarningMessage(t('Mage [Explain]: No active editor'));
         return;
       }
 
@@ -427,10 +427,10 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('openchamber.improveCode', async () => {
+    vscode.commands.registerCommand('mage.improveCode', async () => {
       const editor = vscode.window.activeTextEditor;
       if (!editor) {
-        vscode.window.showWarningMessage(t('OpenChamber [Improve Code]: No active editor'));
+        vscode.window.showWarningMessage(t('Mage [Improve Code]: No active editor'));
         return;
       }
 
@@ -438,7 +438,7 @@ export async function activate(context: vscode.ExtensionContext) {
       const selectedText = editor.document.getText(selection);
 
       if (!selectedText) {
-        vscode.window.showWarningMessage(t('OpenChamber [Improve Code]: No text selected'));
+        vscode.window.showWarningMessage(t('Mage [Improve Code]: No text selected'));
         return;
       }
 
@@ -460,12 +460,12 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('openchamber.newSession', async (directory?: unknown) => {
+    vscode.commands.registerCommand('mage.newSession', async (directory?: unknown) => {
       const candidates = resolveWorkspaceFolders(vscode.workspace.workspaceFolders ?? []);
       let folderPath: string | undefined = typeof directory === 'string' ? directory : undefined;
 
       if (!folderPath && candidates.length === 0) {
-        vscode.window.showInformationMessage('OpenChamber: No folder is open. Open a folder to start a new session.');
+        vscode.window.showInformationMessage('Mage: No folder is open. Open a folder to start a new session.');
         return;
       }
 
@@ -482,10 +482,10 @@ export async function activate(context: vscode.ExtensionContext) {
         return;
       }
 
-      if (openCodeManager) {
-        const result = await openCodeManager.setWorkingDirectory(folderPath);
+      if (mageManager) {
+        const result = await mageManager.setWorkingDirectory(folderPath);
         if (!result.success) {
-          vscode.window.showErrorMessage(`OpenChamber: ${result.error}`);
+          vscode.window.showErrorMessage(`Mage: ${result.error}`);
           return;
         }
       }
@@ -509,23 +509,23 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('openchamber.showSettings', () => {
+    vscode.commands.registerCommand('mage.showSettings', () => {
       chatViewProvider?.showSettings();
     })
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('openchamber.showOpenCodeStatus', async () => {
-      const config = vscode.workspace.getConfiguration('openchamber');
+    vscode.commands.registerCommand('mage.showMageStatus', async () => {
+      const config = vscode.workspace.getConfiguration('mage');
       const configuredApiUrl = (config.get<string>('apiUrl') || '').trim();
 
       const extensionVersion = String(context.extension?.packageJSON?.version || '');
       const workspaceFolders = (vscode.workspace.workspaceFolders || []).map((folder) => folder.uri.fsPath);
       const primaryWorkspace = workspaceFolders[0] || '';
 
-      const debug = openCodeManager?.getDebugInfo();
-      const resolvedApiUrl = openCodeManager?.getApiUrl();
-      const workingDirectory = openCodeManager?.getWorkingDirectory() ?? '';
+      const debug = mageManager?.getDebugInfo();
+      const resolvedApiUrl = mageManager?.getApiUrl();
+      const workingDirectory = mageManager?.getWorkingDirectory() ?? '';
       const workingDirectoryMatchesWorkspace = Boolean(primaryWorkspace && workingDirectory === primaryWorkspace);
       let resolvedApiPath = '';
       if (resolvedApiUrl) {
@@ -540,11 +540,11 @@ export async function activate(context: vscode.ExtensionContext) {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), timeoutMs);
         const startedAt = Date.now();
-        const openCodeAuthHeaders = openCodeManager?.getOpenCodeAuthHeaders() || {};
+        const mageAuthHeaders = mageManager?.getMageAuthHeaders() || {};
         try {
           const resp = await fetch(input, {
             method: 'GET',
-            headers: { Accept: 'application/json', ...openCodeAuthHeaders },
+            headers: { Accept: 'application/json', ...mageAuthHeaders },
             signal: controller.signal,
           });
           const elapsedMs = Date.now() - startedAt;
@@ -625,39 +625,39 @@ export async function activate(context: vscode.ExtensionContext) {
 
       const lines = [
         `Time: ${new Date().toISOString()}`,
-        `OpenChamber version: ${extensionVersion || '(unknown)'}`,
-        `OpenCode Version: ${debug?.version ?? '(unknown)'}`,
+        `Mage version: ${extensionVersion || '(unknown)'}`,
+        `Mage Version: ${debug?.version ?? '(unknown)'}`,
         `VS Code version: ${vscode.version}`,
         `Platform: ${process.platform} ${process.arch}`,
         `Workspace folders: ${workspaceFolders.length}${workspaceFolders.length ? ` (${workspaceFolders.join(', ')})` : ''}`,
-        `Status: ${openCodeManager?.getStatus() ?? 'unknown'}`,
+        `Status: ${mageManager?.getStatus() ?? 'unknown'}`,
         `Working directory: ${workingDirectory}`,
         `Working dir matches workspace: ${workingDirectoryMatchesWorkspace ? 'yes' : 'no'}`,
         `API URL (configured): ${configuredApiUrl || '(none)'}`,
-        `OpenCode binary (configured): ${(vscode.workspace.getConfiguration('openchamber').get<string>('opencodeBinary') || '').trim() || '(none)'}`,
-        `API URL (resolved): ${openCodeManager?.getApiUrl() ?? '(none)'}`,
+        `Mage binary (configured): ${(vscode.workspace.getConfiguration('mage').get<string>('mageBinary') || '').trim() || '(none)'}`,
+        `API URL (resolved): ${mageManager?.getApiUrl() ?? '(none)'}`,
         `API URL path: ${resolvedApiPath || '(none)'}`,
         debug
-          ? `OpenCode server URL: ${debug.serverUrl ?? '(none)'}`
-          : `OpenCode server URL: (unknown)`,
+          ? `Mage server URL: ${debug.serverUrl ?? '(none)'}`
+          : `Mage server URL: (unknown)`,
         debug
-          ? `OpenCode mode: ${debug.mode} (starts=${debug.startCount}, restarts=${debug.restartCount})`
-          : `OpenCode mode: (unknown)`,
+          ? `Mage mode: ${debug.mode} (starts=${debug.startCount}, restarts=${debug.restartCount})`
+          : `Mage mode: (unknown)`,
         debug
-          ? `Secure OpenCode connection: ${debug.secureConnection ? 'true' : 'false'}`
-          : `Secure OpenCode connection: (unknown)`,
+          ? `Secure Mage connection: ${debug.secureConnection ? 'true' : 'false'}`
+          : `Secure Mage connection: (unknown)`,
         debug
-          ? `OpenCode auth source: ${debug.authSource ?? '(none)'}`
-          : `OpenCode auth source: (unknown)`,
+          ? `Mage auth source: ${debug.authSource ?? '(none)'}`
+          : `Mage auth source: (unknown)`,
         debug
-          ? `OpenCode CLI path: ${debug.cliPath || '(not found)'}`
-          : `OpenCode CLI path: (unknown)`,
+          ? `Mage CLI path: ${debug.cliPath || '(not found)'}`
+          : `Mage CLI path: (unknown)`,
         debug
-          ? `OpenCode detected port: ${debug.detectedPort ?? '(none)'}`
-          : `OpenCode detected port: (unknown)`,
+          ? `Mage detected port: ${debug.detectedPort ?? '(none)'}`
+          : `Mage detected port: (unknown)`,
         debug
-          ? `OpenCode API prefix: ${debug.apiPrefixDetected ? (debug.apiPrefix || '(root)') : '(unknown)'}`
-          : `OpenCode API prefix: (unknown)`,
+          ? `Mage API prefix: ${debug.apiPrefixDetected ? (debug.apiPrefix || '(root)') : '(unknown)'}`
+          : `Mage API prefix: (unknown)`,
         debug
           ? `Last start: ${formatIso(debug.lastStartAt)}`
           : `Last start: (unknown)`,
@@ -680,7 +680,7 @@ export async function activate(context: vscode.ExtensionContext) {
         probes.length ? '' : '',
         ...(probes.length
           ? [
-              'OpenCode API probes:',
+              'Mage API probes:',
               ...probes.map((probe) => {
                 if (!probe.result) return `- ${probe.label}: (no url)`;
                 const { ok, status, elapsedMs, summary } = probe.result;
@@ -724,31 +724,31 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // Subscribe to status changes - this broadcasts to webview
   context.subscriptions.push(
-    openCodeManager.onStatusChange((status, error) => {
+    mageManager.onStatusChange((status, error) => {
       chatViewProvider?.updateConnectionStatus(status, error);
       agentManagerProvider?.updateConnectionStatus(status, error);
       sessionEditorProvider?.updateConnectionStatus(status, error);
 
       // Start/stop global event watcher based on connection status
       // Mirrors web server and desktop behavior
-      if (status === 'connected' && chatViewProvider && openCodeManager) {
+      if (status === 'connected' && chatViewProvider && mageManager) {
         setChatViewProvider(chatViewProvider);
-        void startGlobalEventWatcher(openCodeManager, chatViewProvider);
+        void startGlobalEventWatcher(mageManager, chatViewProvider);
       } else if (status === 'disconnected' || status === 'error') {
         stopGlobalEventWatcher();
       }
     })
   );
 
-  // Start OpenCode API without blocking activation.
+  // Start Mage API without blocking activation.
   // Blocking here delays webview resolution and causes a blank panel until startup completes.
-  void openCodeManager.start();
+  void mageManager.start();
 }
 
 export async function deactivate() {
   stopGlobalEventWatcher();
-  await openCodeManager?.stop();
-  openCodeManager = undefined;
+  await mageManager?.stop();
+  mageManager = undefined;
   chatViewProvider = undefined;
   agentManagerProvider = undefined;
   sessionEditorProvider = undefined;

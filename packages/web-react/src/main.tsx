@@ -1,20 +1,20 @@
 import { createConfiguredWebAPIs, getDesktopRelayRestoreReady } from './runtimeConfig';
 import { registerSW } from 'virtual:pwa-register';
 
-import type { RuntimeAPIs } from '@openchamber/ui/lib/api/types';
-import { getStoredMobileLayoutPreference } from '@openchamber/ui/lib/mobileLayoutPreference';
-import type { HostedSurface } from '@openchamber/ui/lib/runtimeSurface';
-import '@openchamber/ui/index.css';
-import '@openchamber/ui/styles/fonts';
+import type { RuntimeAPIs } from '@mage/ui/lib/api/types';
+import { getStoredMobileLayoutPreference } from '@mage/ui/lib/mobileLayoutPreference';
+import type { HostedSurface } from '@mage/ui/lib/runtimeSurface';
+import '@mage/ui/index.css';
+import '@mage/ui/styles/fonts';
 
 declare global {
   interface Window {
-    __OPENCHAMBER_RUNTIME_APIS__?: RuntimeAPIs;
-    __OPENCHAMBER_SURFACE__?: HostedSurface;
+    __MAGE_RUNTIME_APIS__?: RuntimeAPIs;
+    __MAGE_SURFACE__?: HostedSurface;
   }
 }
 
-window.__OPENCHAMBER_RUNTIME_APIS__ = createConfiguredWebAPIs();
+window.__MAGE_RUNTIME_APIS__ = createConfiguredWebAPIs();
 
 const isCoarsePointer = (): boolean => {
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
@@ -37,7 +37,7 @@ const detectHostedSurface = (): HostedSurface => {
 };
 
 const hostedSurface = detectHostedSurface();
-window.__OPENCHAMBER_SURFACE__ = hostedSurface;
+window.__MAGE_SURFACE__ = hostedSurface;
 
 type PrerenderingDocument = Document & {
   prerendering?: boolean;
@@ -105,16 +105,16 @@ const unregisterDevelopmentServiceWorkers = (): void => {
 };
 
 if (hostedSurface === 'mobile') {
-  void import('@openchamber/ui/apps/renderMobileApp')
+  void import('@mage/ui/apps/renderMobileApp')
     .then(({ renderMobileApp }) => {
-      renderMobileApp(window.__OPENCHAMBER_RUNTIME_APIS__ ?? createConfiguredWebAPIs());
+      renderMobileApp(window.__MAGE_RUNTIME_APIS__ ?? createConfiguredWebAPIs());
     });
 } else {
   // Hold the render (HTML splash stays up) until a desktop relay-host restore
   // has picked its transport — otherwise the app boots against a not-yet-chosen
   // endpoint and flashes the auth screen before the tunnel connects. Resolves
   // immediately when no relay host is involved.
-  void getDesktopRelayRestoreReady().then(() => import('@openchamber/ui/main'));
+  void getDesktopRelayRestoreReady().then(() => import('@mage/ui/main'));
 }
 
 if (import.meta.env.PROD) {

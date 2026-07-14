@@ -106,9 +106,9 @@ const phaseLabelKey = (phase?: string): I18nKey => {
     case 'remote_probe':
       return 'settings.remoteInstances.page.phase.probingRemote';
     case 'installing':
-      return 'settings.remoteInstances.page.phase.installingOpenChamber';
+      return 'settings.remoteInstances.page.phase.installingMage';
     case 'updating':
-      return 'settings.remoteInstances.page.phase.updatingOpenChamber';
+      return 'settings.remoteInstances.page.phase.updatingMage';
     case 'server_detecting':
       return 'settings.remoteInstances.page.phase.detectingServer';
     case 'server_starting':
@@ -367,11 +367,11 @@ const normalizeForSave = (instance: DesktopSshInstance): DesktopSshInstance => {
           ? Math.max(1, Math.min(65535, Math.round(instance.localForward.preferredLocalPort)))
           : undefined,
     },
-    remoteOpenchamber: {
-      ...instance.remoteOpenchamber,
+    remoteMage: {
+      ...instance.remoteMage,
       preferredPort:
-        typeof instance.remoteOpenchamber.preferredPort === 'number'
-          ? Math.max(1, Math.min(65535, Math.round(instance.remoteOpenchamber.preferredPort)))
+        typeof instance.remoteMage.preferredPort === 'number'
+          ? Math.max(1, Math.min(65535, Math.round(instance.remoteMage.preferredPort)))
           : undefined,
     },
     portForwards: forwards,
@@ -1103,14 +1103,14 @@ export const RemoteInstancesPage: React.FC = () => {
     }
 
     if (
-      normalized.auth.openchamberPassword?.enabled &&
-      normalized.auth.openchamberPassword.value?.trim() &&
-      normalized.auth.openchamberPassword.store !== 'settings'
+      normalized.auth.magePassword?.enabled &&
+      normalized.auth.magePassword.value?.trim() &&
+      normalized.auth.magePassword.store !== 'settings'
     ) {
       const store = window.confirm(t('settings.remoteInstances.page.confirm.storeUiPasswordPlaintext'));
-      normalized.auth.openchamberPassword.store = store ? 'settings' : 'never';
+      normalized.auth.magePassword.store = store ? 'settings' : 'never';
       if (!store) {
-        normalized.auth.openchamberPassword.value = undefined;
+        normalized.auth.magePassword.value = undefined;
       }
     }
 
@@ -1923,7 +1923,7 @@ export const RemoteInstancesPage: React.FC = () => {
     );
   }
 
-  const isManagedMode = draft.remoteOpenchamber.mode === 'managed';
+  const isManagedMode = draft.remoteMage.mode === 'managed';
   const instanceTitle = draft.nickname?.trim() || draft.sshParsed?.destination || draft.id;
 
   return (
@@ -2081,12 +2081,12 @@ export const RemoteInstancesPage: React.FC = () => {
                 />
             </div>
             <Select
-              value={draft.remoteOpenchamber.mode}
+              value={draft.remoteMage.mode}
               onValueChange={(value) =>
                 updateDraft((current) => ({
                   ...current,
-                  remoteOpenchamber: {
-                    ...current.remoteOpenchamber,
+                  remoteMage: {
+                    ...current.remoteMage,
                     mode: value === 'external' ? 'external' : 'managed',
                   },
                 }))
@@ -2115,12 +2115,12 @@ export const RemoteInstancesPage: React.FC = () => {
               max={65535}
               step={1}
               className="w-20 tabular-nums"
-              value={draft.remoteOpenchamber.preferredPort}
+              value={draft.remoteMage.preferredPort}
               onValueChange={(next) => {
                 updateDraft((current) => ({
                   ...current,
-                  remoteOpenchamber: {
-                    ...current.remoteOpenchamber,
+                  remoteMage: {
+                    ...current.remoteMage,
                     preferredPort: Number.isFinite(next) && next > 0 ? next : undefined,
                   },
                 }));
@@ -2128,8 +2128,8 @@ export const RemoteInstancesPage: React.FC = () => {
               onClear={() => {
                 updateDraft((current) => ({
                   ...current,
-                  remoteOpenchamber: {
-                    ...current.remoteOpenchamber,
+                  remoteMage: {
+                    ...current.remoteMage,
                     preferredPort: undefined,
                   },
                 }));
@@ -2147,12 +2147,12 @@ export const RemoteInstancesPage: React.FC = () => {
                 />
               </div>
               <Select
-                value={draft.remoteOpenchamber.installMethod}
+                value={draft.remoteMage.installMethod}
                 onValueChange={(value) =>
                   updateDraft((current) => ({
                     ...current,
-                    remoteOpenchamber: {
-                      ...current.remoteOpenchamber,
+                    remoteMage: {
+                      ...current.remoteMage,
                       installMethod:
                         value === 'npm' || value === 'download_release' || value === 'upload_bundle'
                           ? value
@@ -2184,12 +2184,12 @@ export const RemoteInstancesPage: React.FC = () => {
               </div>
               <div className="flex w-full items-center gap-2 md:max-w-xs">
                 <Switch
-                  checked={draft.remoteOpenchamber.keepRunning}
+                  checked={draft.remoteMage.keepRunning}
                   onCheckedChange={(checked) =>
                     updateDraft((current) => ({
                       ...current,
-                      remoteOpenchamber: {
-                        ...current.remoteOpenchamber,
+                      remoteMage: {
+                        ...current.remoteMage,
                         keepRunning: checked,
                       },
                     }))
@@ -2335,16 +2335,16 @@ export const RemoteInstancesPage: React.FC = () => {
             <Input
               className="h-7 md:max-w-sm"
               type="password"
-              value={draft.auth.openchamberPassword?.value || ''}
+              value={draft.auth.magePassword?.value || ''}
               onChange={(event) =>
                 updateDraft((current) => ({
                   ...current,
                   auth: {
                     ...current.auth,
-                    openchamberPassword: {
+                    magePassword: {
                       enabled: event.target.value.trim().length > 0,
                       value: event.target.value,
-                      store: current.auth.openchamberPassword?.store || 'never',
+                      store: current.auth.magePassword?.store || 'never',
                     },
                   },
                 }))

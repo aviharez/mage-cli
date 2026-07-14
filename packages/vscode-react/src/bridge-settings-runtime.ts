@@ -2,12 +2,12 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { BUILT_IN_SKILL_LOCATION, type DiscoveredSkill, type SkillScope, type SkillSource } from './opencodeConfig';
+import { BUILT_IN_SKILL_LOCATION, type DiscoveredSkill, type SkillScope, type SkillSource } from './mageConfig';
 import type { BridgeContext } from './bridge';
 
-const SETTINGS_KEY = 'openchamber.settings';
-const OPENCHAMBER_SHARED_SETTINGS_PATH = path.join(os.homedir(), '.config', 'openchamber', 'settings.json');
-const OPENCHAMBER_MAGIC_PROMPTS_PATH = path.join(os.homedir(), '.config', 'openchamber', 'magic-prompts.json');
+const SETTINGS_KEY = 'mage.settings';
+const MAGE_SHARED_SETTINGS_PATH = path.join(os.homedir(), '.config', 'mage', 'settings.json');
+const MAGE_MAGIC_PROMPTS_PATH = path.join(os.homedir(), '.config', 'mage', 'magic-prompts.json');
 const MAGIC_PROMPTS_FILE_VERSION = 1;
 const MAGIC_PROMPT_ID_PATTERN = /^[a-z0-9._-]{1,160}$/;
 const MAGIC_PROMPT_TEXT_MAX_LENGTH = 200_000;
@@ -58,12 +58,12 @@ const inferSkillScopeAndSourceFromLocation = (location: string, workingDirectory
     ? 'agents'
     : resolvedPath.includes(`${path.sep}.claude${path.sep}skills${path.sep}`)
       ? 'claude'
-      : 'opencode';
+      : 'mage';
 
   const projectAncestors = getProjectAncestors(workingDirectory);
   const isProjectScoped = projectAncestors.some((ancestor) => {
     const candidates = [
-      path.join(ancestor, '.opencode'),
+      path.join(ancestor, '.mage'),
       path.join(ancestor, '.claude', 'skills'),
       path.join(ancestor, '.agents', 'skills'),
     ];
@@ -76,8 +76,8 @@ const inferSkillScopeAndSourceFromLocation = (location: string, workingDirectory
 
   const home = os.homedir();
   const userRoots = [
-    path.join(home, '.config', 'opencode'),
-    path.join(home, '.opencode'),
+    path.join(home, '.config', 'mage'),
+    path.join(home, '.mage'),
     path.join(home, '.claude', 'skills'),
     path.join(home, '.agents', 'skills'),
     process.env.MAGE_CONFIG_DIR ? path.resolve(process.env.MAGE_CONFIG_DIR) : null,
@@ -90,7 +90,7 @@ const inferSkillScopeAndSourceFromLocation = (location: string, workingDirectory
   return { scope: 'user', source };
 };
 
-export const fetchOpenCodeSkillsFromApi = async (
+export const fetchMageSkillsFromApi = async (
   ctx: BridgeContext | undefined,
   workingDirectory?: string,
 ): Promise<DiscoveredSkill[] | null> => {
@@ -110,7 +110,7 @@ export const fetchOpenCodeSkillsFromApi = async (
       method: 'GET',
       headers: {
         Accept: 'application/json',
-        ...(ctx?.manager?.getOpenCodeAuthHeaders() || {}),
+        ...(ctx?.manager?.getMageAuthHeaders() || {}),
       },
       signal: AbortSignal.timeout(8_000),
     });
@@ -138,7 +138,7 @@ export const fetchOpenCodeSkillsFromApi = async (
             name,
             path: location,
             scope: 'user',
-            source: 'opencode',
+            source: 'mage',
             description,
             content,
           } as DiscoveredSkill;
@@ -161,7 +161,7 @@ export const fetchOpenCodeSkillsFromApi = async (
 
 const readSharedSettingsFromDisk = (): Record<string, unknown> => {
   try {
-    const raw = fs.readFileSync(OPENCHAMBER_SHARED_SETTINGS_PATH, 'utf8');
+    const raw = fs.readFileSync(MAGE_SHARED_SETTINGS_PATH, 'utf8');
     const parsed = JSON.parse(raw) as unknown;
     if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
       return parsed as Record<string, unknown>;
@@ -174,14 +174,14 @@ const readSharedSettingsFromDisk = (): Record<string, unknown> => {
 
 const writeSharedSettingsToDisk = async (changes: Record<string, unknown>): Promise<void> => {
   try {
-    await fs.promises.mkdir(path.dirname(OPENCHAMBER_SHARED_SETTINGS_PATH), { recursive: true });
+    await fs.promises.mkdir(path.dirname(MAGE_SHARED_SETTINGS_PATH), { recursive: true });
     const current = readSharedSettingsFromDisk();
     const next: Record<string, unknown> = { ...current, ...changes };
     // Atomic write: tmp file + rename. Readers never see a partial/truncated
     // JSON that would fail to parse and silently get coerced to {}.
-    const tmp = `${OPENCHAMBER_SHARED_SETTINGS_PATH}.tmp-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const tmp = `${MAGE_SHARED_SETTINGS_PATH}.tmp-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     await fs.promises.writeFile(tmp, JSON.stringify(next, null, 2), 'utf8');
-    await fs.promises.rename(tmp, OPENCHAMBER_SHARED_SETTINGS_PATH);
+    await fs.promises.rename(tmp, MAGE_SHARED_SETTINGS_PATH);
   } catch {
     // ignore
   }
@@ -207,7 +207,7 @@ const sanitizeMagicPromptOverrides = (input: unknown): Record<string, string> =>
 
 const readMagicPromptFile = (): { version: number; overrides: Record<string, string> } => {
   try {
-    const raw = fs.readFileSync(OPENCHAMBER_MAGIC_PROMPTS_PATH, 'utf8');
+    const raw = fs.readFileSync(MAGE_MAGIC_PROMPTS_PATH, 'utf8');
     const parsed = JSON.parse(raw) as { overrides?: unknown };
     return {
       version: MAGIC_PROMPTS_FILE_VERSION,
@@ -222,8 +222,8 @@ const readMagicPromptFile = (): { version: number; overrides: Record<string, str
 };
 
 const writeMagicPromptFile = async (state: { version: number; overrides: Record<string, string> }): Promise<void> => {
-  await fs.promises.mkdir(path.dirname(OPENCHAMBER_MAGIC_PROMPTS_PATH), { recursive: true });
-  await fs.promises.writeFile(OPENCHAMBER_MAGIC_PROMPTS_PATH, JSON.stringify(state, null, 2), 'utf8');
+  await fs.promises.mkdir(path.dirname(MAGE_MAGIC_PROMPTS_PATH), { recursive: true });
+  await fs.promises.writeFile(MAGE_MAGIC_PROMPTS_PATH, JSON.stringify(state, null, 2), 'utf8');
 };
 
 const stripDerived = (source: Record<string, unknown>): Record<string, unknown> => {
@@ -268,8 +268,8 @@ const readPersistedSettings = (ctx?: BridgeContext): Record<string, unknown> => 
 
 export const readSettings = (ctx?: BridgeContext): Record<string, unknown> => {
   const persisted = readPersistedSettings(ctx);
-  const persistedOpencodeBinary =
-    typeof persisted.opencodeBinary === 'string' ? String(persisted.opencodeBinary).trim() : '';
+  const persistedMageBinary =
+    typeof persisted.mageBinary === 'string' ? String(persisted.mageBinary).trim() : '';
   const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
   const themeVariant =
     vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.Light ||
@@ -281,7 +281,7 @@ export const readSettings = (ctx?: BridgeContext): Record<string, unknown> => {
     ...persisted,
     themeVariant,
     lastDirectory: workspaceFolder,
-    opencodeBinary: persistedOpencodeBinary || undefined,
+    mageBinary: persistedMageBinary || undefined,
   };
 };
 
@@ -291,7 +291,7 @@ export const persistSettings = async (changes: Record<string, unknown>, ctx?: Br
 
   const keysToClear = new Set<string>();
 
-  for (const key of ['defaultModel', 'defaultVariant', 'defaultAgent', 'defaultGitIdentityId', 'opencodeBinary', 'smallModelOverride']) {
+  for (const key of ['defaultModel', 'defaultVariant', 'defaultAgent', 'defaultGitIdentityId', 'mageBinary', 'smallModelOverride']) {
     const value = restChanges[key];
     if (typeof value === 'string' && value.trim().length === 0) {
       keysToClear.add(key);
@@ -340,8 +340,8 @@ export const persistSettings = async (changes: Record<string, unknown>, ctx?: Br
     delete restChanges.usageRefreshIntervalMs;
   }
 
-  if (typeof restChanges.opencodeBinary === 'string') {
-    restChanges.opencodeBinary = restChanges.opencodeBinary.trim();
+  if (typeof restChanges.mageBinary === 'string') {
+    restChanges.mageBinary = restChanges.mageBinary.trim();
   }
 
   // Persistable state = current persisted (no derived fields) + sanitized changes.
@@ -362,9 +362,9 @@ export const persistSettings = async (changes: Record<string, unknown>, ctx?: Br
     ...persistable,
     themeVariant: current.themeVariant,
     lastDirectory: current.lastDirectory,
-    opencodeBinary:
-      typeof persistable.opencodeBinary === 'string' && persistable.opencodeBinary.length > 0
-        ? persistable.opencodeBinary
+    mageBinary:
+      typeof persistable.mageBinary === 'string' && persistable.mageBinary.length > 0
+        ? persistable.mageBinary
         : undefined,
   };
 };

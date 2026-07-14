@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { createOpencodeClient } from '@opencode-ai/sdk/v2';
+import { createMageClient } from '@mybcabisnis/mage-sdk/v2';
 import * as gitService from './gitService';
 import type { BridgeContext, BridgeResponse } from './bridge';
 
@@ -66,7 +66,7 @@ const assertBridgeSdkSuccess = (result: BridgeSdkResult<unknown>, operation: str
   }
 };
 
-const createBridgeGitClient = (apiUrl: string, authHeaders?: Record<string, string>) => createOpencodeClient({
+const createBridgeGitClient = (apiUrl: string, authHeaders?: Record<string, string>) => createMageClient({
   baseUrl: apiUrl.replace(/\/+$/, ''),
   headers: authHeaders || {},
 });
@@ -335,7 +335,7 @@ export async function handleSpecialGitBridgeMessage(
       try {
         const apiUrl = ctx?.manager?.getApiUrl();
         if (!apiUrl) {
-          return { id, type, success: false, error: 'OpenCode API unavailable' };
+          return { id, type, success: false, error: 'Mage API unavailable' };
         }
 
         const settings = deps.readSettings(ctx) as Record<string, unknown>;
@@ -343,7 +343,7 @@ export async function handleSpecialGitBridgeMessage(
           { providerId, modelId, zenModel: payloadZenModel },
           settings,
           apiUrl,
-          ctx?.manager?.getOpenCodeAuthHeaders()
+          ctx?.manager?.getMageAuthHeaders()
         );
         const raw = await generateBridgeTextWithSessionFlow({
           apiUrl,
@@ -351,7 +351,7 @@ export async function handleSpecialGitBridgeMessage(
           prompt,
           providerID,
           modelID,
-          authHeaders: ctx?.manager?.getOpenCodeAuthHeaders(),
+          authHeaders: ctx?.manager?.getMageAuthHeaders(),
         });
         if (!raw) {
           return { id, type, success: false, error: 'No PR description returned by generator' };

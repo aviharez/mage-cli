@@ -1,6 +1,6 @@
 # CLI Module Map
 
-This directory contains the non-entrypoint implementation for the OpenChamber CLI. `packages/web/bin/cli.js` should stay thin: it owns bootstrap, command wiring, top-level dispatch, signal/cancel handling, and compatibility exports. Domain logic belongs in these modules.
+This directory contains the non-entrypoint implementation for the Mage CLI. `packages/web/bin/cli.js` should stay thin: it owns bootstrap, command wiring, top-level dispatch, signal/cancel handling, and compatibility exports. Domain logic belongs in these modules.
 
 ## Entrypoint Boundary
 
@@ -14,38 +14,38 @@ This directory contains the non-entrypoint implementation for the OpenChamber CL
 Command modules implement user-facing commands and preserve output contracts across interactive, non-TTY, `--quiet`, and `--json` modes. They should use `../cli-output.js` for presentation helpers and keep safety validation in command logic, not prompts.
 
 - `commands-serve.js`
-  - Implements `openchamber serve`.
-  - Owns OpenCode CLI checks, port resolution, log rotation, PID/instance registry writes, foreground/background server launch, startup summaries, and foreground shutdown behavior.
+  - Implements `mage serve`.
+  - Owns Mage CLI checks, port resolution, log rotation, PID/instance registry writes, foreground/background server launch, startup summaries, and foreground shutdown behavior.
 
 - `commands-lifecycle.js`
-  - Implements `openchamber stop` and `openchamber restart`.
+  - Implements `mage stop` and `mage restart`.
   - Owns lifecycle stop/restart semantics, desktop-managed port rejection, unmanaged instance shutdown attempts, PID/instance cleanup, and restart reuse of stored instance options.
 
 - `commands-status.js`
-  - Implements `openchamber status`.
+  - Implements `mage status`.
   - Formats discovered instances and tunnel readiness/status for human, quiet, and JSON output.
 
 - `commands-logs.js`
-  - Implements `openchamber logs`.
+  - Implements `mage logs`.
   - Resolves log files, tails recent lines, and follows log output.
 
 - `commands-startup.js`
-  - Implements `openchamber startup`.
+  - Implements `mage startup`.
   - Handles startup subcommand dispatch and presentation around the lower-level startup service helpers.
 
 - `commands-connect-url.js`
-  - Implements `openchamber connect-url`.
+  - Implements `mage connect-url`.
   - Finds or starts a local instance and prints the browser/connect URL according to the selected output mode.
-  - Emits a **pairing v2** link (`openchamber://connect?v=2&p=<base64url>`): it creates a one-time pairing session in the shared store (`client-pairing-sessions.json`) and encodes the pairing id + secret + transport candidates. The client redeems the secret over whichever candidate connects first (`/api/client-auth/pairing/redeem`). No standalone token is embedded — the QR itself is the single-use credential.
+  - Emits a **pairing v2** link (`mage://connect?v=2&p=<base64url>`): it creates a one-time pairing session in the shared store (`client-pairing-sessions.json`) and encodes the pairing id + secret + transport candidates. The client redeems the secret over whichever candidate connects first (`/api/client-auth/pairing/redeem`). No standalone token is embedded — the QR itself is the single-use credential.
   - The default form advertises the resolved server URL as a direct (lan/tunnel) candidate and folds in a relay candidate when the host relay is enabled, so one link works on-LAN and off-network.
-  - `--relay` builds a relay-only pairing link (the sole candidate is the relay transport), for sharing with a device that is not on the host's network — no server URL, no auto-start. The relay endpoint follows `OPENCHAMBER_RELAY_URL` / the stored setting / the default, matching the running host; the host must be running with the relay enabled to serve the redeem over the tunnel.
+  - `--relay` builds a relay-only pairing link (the sole candidate is the relay transport), for sharing with a device that is not on the host's network — no server URL, no auto-start. The relay endpoint follows `MAGE_RELAY_URL` / the stored setting / the default, matching the running host; the host must be running with the relay enabled to serve the redeem over the tunnel.
 
 - `commands-update.js`
-  - Implements `openchamber update`.
+  - Implements `mage update`.
   - Loads the package-manager helper, performs update flow, and coordinates restart behavior after updates.
 
 - `commands-tunnel.js`
-  - Implements `openchamber tunnel` and its subcommands: `profile`, `providers`, `ready`, `doctor`, `status`, `start`, `stop`, and `completion`.
+  - Implements `mage tunnel` and its subcommands: `profile`, `providers`, `ready`, `doctor`, `status`, `start`, `stop`, and `completion`.
   - Owns tunnel-specific command flow, interactive prompt decisions, managed-local/managed-remote startup, QR display rules, tunnel start/stop API calls, and tunnel profile command handling.
   - Receives `serveCommand` and `stopCommand` by dependency injection. Do not reach back into `cli.js` command globals from this module.
 

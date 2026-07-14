@@ -77,7 +77,7 @@ const resolveOutsideFileGrant = async ({ token, targetPath, scope, fsPromises })
 };
 
 const createCommandTimeoutMs = () => {
-  const raw = Number(process.env.OPENCHAMBER_FS_EXEC_TIMEOUT_MS);
+  const raw = Number(process.env.MAGE_FS_EXEC_TIMEOUT_MS);
   if (Number.isFinite(raw) && raw > 0) return raw;
   return 5 * 60 * 1000;
 };
@@ -87,13 +87,13 @@ const createCommandTimeoutMs = () => {
 // absorbs the burst of identical lookups a fresh client (e.g. right after a
 // page reload) fires for every project. Set to 0 to disable caching.
 const createGitReadCacheTtlMs = () => {
-  const raw = Number(process.env.OPENCHAMBER_GIT_READ_CACHE_TTL_MS);
+  const raw = Number(process.env.MAGE_GIT_READ_CACHE_TTL_MS);
   if (Number.isFinite(raw) && raw >= 0) return raw;
   return 30 * 1000;
 };
 
 const createGitCheckIgnoreTimeoutMs = () => {
-  const raw = Number(process.env.OPENCHAMBER_GIT_CHECK_IGNORE_TIMEOUT_MS);
+  const raw = Number(process.env.MAGE_GIT_CHECK_IGNORE_TIMEOUT_MS);
   if (Number.isFinite(raw) && raw >= 0) return raw;
   return 2500;
 };
@@ -159,7 +159,7 @@ const isPathWithinRoot = (resolvedPath, rootPath, path, os) => {
   return true;
 };
 
-const resolveWorkspacePath = ({ targetPath, baseDirectory, path, os, normalizeDirectoryPath, openchamberUserConfigRoot }) => {
+const resolveWorkspacePath = ({ targetPath, baseDirectory, path, os, normalizeDirectoryPath, mageUserConfigRoot }) => {
   const normalized = normalizeDirectoryPath(targetPath);
   if (!normalized || typeof normalized !== 'string') {
     return { ok: false, error: 'Path is required' };
@@ -172,8 +172,8 @@ const resolveWorkspacePath = ({ targetPath, baseDirectory, path, os, normalizeDi
     return { ok: true, base: resolvedBase, resolved };
   }
 
-  if (isPathWithinRoot(resolved, openchamberUserConfigRoot, path, os)) {
-    return { ok: true, base: path.resolve(openchamberUserConfigRoot), resolved };
+  if (isPathWithinRoot(resolved, mageUserConfigRoot, path, os)) {
+    return { ok: true, base: path.resolve(mageUserConfigRoot), resolved };
   }
 
   return { ok: false, error: 'Path is outside of active workspace' };
@@ -212,7 +212,7 @@ const resolveWorkspacePathFromWorktrees = async ({ targetPath, baseDirectory, pa
   return { ok: false, error: 'Path is outside of active workspace' };
 };
 
-const resolveWorkspacePathFromContext = async ({ req, targetPath, resolveProjectDirectory, path, os, normalizeDirectoryPath, openchamberUserConfigRoot }) => {
+const resolveWorkspacePathFromContext = async ({ req, targetPath, resolveProjectDirectory, path, os, normalizeDirectoryPath, mageUserConfigRoot }) => {
   const resolvedProject = await resolveProjectDirectory(req);
   if (!resolvedProject.directory) {
     return { ok: false, error: resolvedProject.error || 'Active workspace is required' };
@@ -224,7 +224,7 @@ const resolveWorkspacePathFromContext = async ({ req, targetPath, resolveProject
     path,
     os,
     normalizeDirectoryPath,
-    openchamberUserConfigRoot,
+    mageUserConfigRoot,
   });
   if (resolved.ok || resolved.error !== 'Path is outside of active workspace') {
     return resolved;
@@ -281,7 +281,7 @@ const escapeCloneSshKeyPath = (sshKeyPath) => {
   return `'${normalized.replace(/'/g, "'\\''")}'`;
 };
 
-const resolveReadPathFromContext = async ({ req, targetPath, scope, resolveProjectDirectory, path, os, fsPromises, normalizeDirectoryPath, openchamberUserConfigRoot }) => {
+const resolveReadPathFromContext = async ({ req, targetPath, scope, resolveProjectDirectory, path, os, fsPromises, normalizeDirectoryPath, mageUserConfigRoot }) => {
   if (req.query?.allowOutsideWorkspace === 'true') {
     const normalized = normalizeDirectoryPath(targetPath);
     if (!normalized || typeof normalized !== 'string') {
@@ -303,7 +303,7 @@ const resolveReadPathFromContext = async ({ req, targetPath, scope, resolveProje
     path,
     os,
     normalizeDirectoryPath,
-    openchamberUserConfigRoot,
+    mageUserConfigRoot,
   });
 };
 
@@ -387,7 +387,7 @@ export const registerFsRoutes = (app, dependencies) => {
     resolveProjectDirectory,
     buildAugmentedPath,
     resolveGitBinaryForSpawn,
-    openchamberUserConfigRoot,
+    mageUserConfigRoot,
   } = dependencies;
   const realpathCache = createRealpathCache({
     realpath: fsPromises.realpath.bind(fsPromises),
@@ -572,7 +572,7 @@ export const registerFsRoutes = (app, dependencies) => {
           path,
           os,
           normalizeDirectoryPath,
-          openchamberUserConfigRoot,
+          mageUserConfigRoot,
         });
         if (!resolved.ok) {
           return res.status(400).json({ error: resolved.error });
@@ -714,7 +714,7 @@ export const registerFsRoutes = (app, dependencies) => {
         os,
         fsPromises,
         normalizeDirectoryPath,
-        openchamberUserConfigRoot,
+        mageUserConfigRoot,
       });
       if (!resolved.ok) {
         if (req.query?.allowOutsideWorkspace === 'true') {
@@ -771,7 +771,7 @@ export const registerFsRoutes = (app, dependencies) => {
         os,
         fsPromises,
         normalizeDirectoryPath,
-        openchamberUserConfigRoot,
+        mageUserConfigRoot,
       });
       if (!resolved.ok) {
         if (req.query?.allowOutsideWorkspace === 'true') {
@@ -842,7 +842,7 @@ export const registerFsRoutes = (app, dependencies) => {
         os,
         fsPromises,
         normalizeDirectoryPath,
-        openchamberUserConfigRoot,
+        mageUserConfigRoot,
       });
       if (!resolved.ok) {
         if (req.query?.allowOutsideWorkspace === 'true') {
@@ -930,7 +930,7 @@ export const registerFsRoutes = (app, dependencies) => {
         path,
         os,
         normalizeDirectoryPath,
-        openchamberUserConfigRoot,
+        mageUserConfigRoot,
       });
       if (!resolved.ok) {
         return res.status(400).json({ error: resolved.error });
@@ -989,7 +989,7 @@ export const registerFsRoutes = (app, dependencies) => {
         path,
         os,
         normalizeDirectoryPath,
-        openchamberUserConfigRoot,
+        mageUserConfigRoot,
       });
       if (!resolved.ok) {
         return res.status(400).json({ error: resolved.error });
@@ -1048,7 +1048,7 @@ export const registerFsRoutes = (app, dependencies) => {
         path,
         os,
         normalizeDirectoryPath,
-        openchamberUserConfigRoot,
+        mageUserConfigRoot,
       });
       if (!resolved.ok) {
         return res.status(400).json({ error: resolved.error });
@@ -1086,7 +1086,7 @@ export const registerFsRoutes = (app, dependencies) => {
         path,
         os,
         normalizeDirectoryPath,
-        openchamberUserConfigRoot,
+        mageUserConfigRoot,
       });
       if (!resolvedOld.ok) {
         return res.status(400).json({ error: resolvedOld.error });
@@ -1099,7 +1099,7 @@ export const registerFsRoutes = (app, dependencies) => {
         path,
         os,
         normalizeDirectoryPath,
-        openchamberUserConfigRoot,
+        mageUserConfigRoot,
       });
       if (!resolvedNew.ok) {
         return res.status(400).json({ error: resolvedNew.error });
@@ -1203,7 +1203,7 @@ export const registerFsRoutes = (app, dependencies) => {
         path,
         os,
         normalizeDirectoryPath,
-        openchamberUserConfigRoot,
+        mageUserConfigRoot,
       });
       if (!resolvedForWorkspace.ok) {
         console.warn(`Rejected /api/fs/exec outside workspace: ${resolvedForWorkspace.error}`);
@@ -1301,7 +1301,7 @@ export const registerFsRoutes = (app, dependencies) => {
     const isPlansDirectory = (value) => {
       if (!value || typeof value !== 'string') return false;
       const normalized = value.replace(/\\/g, '/').replace(/\/+$/, '');
-      return normalized.endsWith('/.opencode/plans') || normalized.endsWith('.opencode/plans');
+      return normalized.endsWith('/.mage/plans') || normalized.endsWith('.mage/plans');
     };
 
     try {

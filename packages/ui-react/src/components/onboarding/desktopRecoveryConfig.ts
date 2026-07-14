@@ -42,8 +42,8 @@ export function getDesktopRecoveryConfig(
   switch (variant) {
     case 'local-unavailable':
       return {
-        title: 'Local OpenCode Unavailable',
-        description: 'OpenCode CLI could not be started or is not installed. Install OpenCode or connect to a remote server instead.',
+        title: 'Local Mage Unavailable',
+        description: 'Mage CLI could not be started or is not installed. Install Mage or connect to a remote server instead.',
         titleKey: 'onboarding.desktopRecovery.localUnavailable.title',
         descriptionKey: 'onboarding.desktopRecovery.localUnavailable.description',
         iconKey: 'local',
@@ -99,7 +99,7 @@ export function getDesktopRecoveryConfig(
       const host = formatHostDisplay(hostLabel, hostUrl);
       return {
         title: 'Incompatible Server',
-        description: `The server at "${host || 'unknown'}" is not running OpenChamber. Verify the address points to an OpenChamber server.`,
+        description: `The server at "${host || 'unknown'}" is not running Mage. Verify the address points to an Mage server.`,
         titleKey: 'onboarding.desktopRecovery.incompatibleServer.title',
         descriptionKey: 'onboarding.desktopRecovery.incompatibleServer.description',
         descriptionParams: host ? { host } : undefined,
@@ -118,7 +118,7 @@ export function getDesktopRecoveryConfig(
       const host = formatHostDisplay(hostLabel, hostUrl);
       return {
         title: 'Server Update Required',
-        description: `The OpenChamber server at "${host || 'unknown'}" is not compatible with this app version. Update OpenChamber on the server, then try again.`,
+        description: `The Mage server at "${host || 'unknown'}" is not compatible with this app version. Update Mage on the server, then try again.`,
         titleKey: 'onboarding.desktopRecovery.remoteIncompatible.title',
         descriptionKey: 'onboarding.desktopRecovery.remoteIncompatible.description',
         descriptionParams: host ? { host } : undefined,

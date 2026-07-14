@@ -82,7 +82,7 @@ const toNavigationUrl = (rawUrl: string): string => {
 
 const getLocalOrigin = (): string => {
   if (typeof window === 'undefined') return '';
-  return window.__OPENCHAMBER_LOCAL_ORIGIN__ || window.location.origin;
+  return window.__MAGE_LOCAL_ORIGIN__ || window.location.origin;
 };
 
 const getLocalClientToken = async (): Promise<string> => {
@@ -283,7 +283,7 @@ const resolveCurrentHost = (hosts: DesktopHost[]) => {
     return { id: match.id, label: match.label, url: normalizeHostUrl(match.url) || match.url };
   }
 
-  if (currentHref.startsWith('openchamber-ui://')) {
+  if (currentHref.startsWith('mage-ui://')) {
     return { id: LOCAL_HOST_ID, label: 'Local', url: normalizedLocal };
   }
 

@@ -1,4 +1,4 @@
-import type { Message, Part } from '@opencode-ai/sdk/v2/client';
+import type { Message, Part } from '@mybcabisnis/mage-sdk/v2/client';
 import type { State } from './types';
 
 type UserMessageHistoryRecord = {

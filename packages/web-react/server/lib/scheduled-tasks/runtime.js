@@ -1,7 +1,7 @@
-import { createOpencodeClient } from '@opencode-ai/sdk/v2';
+import { createMageClient } from '@mybcabisnis/mage-sdk/v2';
 import { DateTime } from 'luxon';
 import parser from 'cron-parser';
-import { expandSnippets } from '../opencode/snippets.js';
+import { expandSnippets } from '../mage/snippets.js';
 
 const DEFAULT_GLOBAL_CONCURRENCY = 4;
 const DEFAULT_PROJECT_CONCURRENCY = 2;
@@ -221,9 +221,9 @@ export const createScheduledTasksRuntime = (deps) => {
   const {
     projectConfigRuntime,
     listProjects,
-    buildOpenCodeUrl,
-    getOpenCodeAuthHeaders,
-    waitForOpenCodeReady,
+    buildMageUrl,
+    getMageAuthHeaders,
+    waitForMageReady,
     emitTaskRunEvent,
     logger = console,
     maxGlobalConcurrency = DEFAULT_GLOBAL_CONCURRENCY,
@@ -445,7 +445,7 @@ export const createScheduledTasksRuntime = (deps) => {
   const createTaskGoal = async ({ baseUrl, authHeaders, sessionID, projectPath, task }) => {
     const now = Date.now();
     // File-backed objective keyed by session id: metadata stays light, the
-    // full expanded prompt lives under the OpenChamber data dir. If the file
+    // full expanded prompt lives under the Mage data dir. If the file
     // write fails, fall back to an inline (clamped) objective.
     // Oversized prompts are distilled into audit criteria by the small model
     // (the working agent gets the full prompt in chat anyway); on distill
@@ -514,7 +514,7 @@ export const createScheduledTasksRuntime = (deps) => {
         'content-type': 'application/json',
         accept: 'application/json',
       },
-      body: JSON.stringify({ metadata: { openchamber: { goal } } }),
+      body: JSON.stringify({ metadata: { mage: { goal } } }),
     });
     if (!response.ok) {
       throw new Error(`goal metadata patch failed (${response.status})`);
@@ -580,13 +580,13 @@ export const createScheduledTasksRuntime = (deps) => {
       throw new Error('project path is unavailable');
     }
 
-    if (typeof waitForOpenCodeReady === 'function') {
-      await waitForOpenCodeReady(10_000, 250);
+    if (typeof waitForMageReady === 'function') {
+      await waitForMageReady(10_000, 250);
     }
 
-    const baseUrl = buildOpenCodeUrl('/', '').replace(/\/$/, '');
-    const authHeaders = getOpenCodeAuthHeaders();
-    const client = createOpencodeClient({
+    const baseUrl = buildMageUrl('/', '').replace(/\/$/, '');
+    const authHeaders = getMageAuthHeaders();
+    const client = createMageClient({
       baseUrl,
       headers: authHeaders,
     });

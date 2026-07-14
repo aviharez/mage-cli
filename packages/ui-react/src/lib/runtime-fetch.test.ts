@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { createOpencodeClient } from '@opencode-ai/sdk/v2';
+import { createMageClient } from '@mybcabisnis/mage-sdk/v2';
 import { buildRuntimeFetchUrl, isLatin1Safe, runtimeFetch, sanitizeHeadersForBrowser } from './runtime-fetch';
 import { clearRuntimeAuthCredentialProvider, setRuntimeBearerToken } from './runtime-auth';
 import { configureRuntimeUrlResolver, getRuntimeUrlResolver, setRuntimeUrlResolver } from './runtime-url';
@@ -34,10 +34,10 @@ describe('buildRuntimeFetchUrl', () => {
       configureRuntimeUrlResolver({ apiBaseUrl: 'https://api.example' });
       Object.defineProperty(globalThis, 'window', {
         configurable: true,
-        value: { location: { origin: 'openchamber-ui://app', href: 'openchamber-ui://app/index.html' } },
+        value: { location: { origin: 'mage-ui://app', href: 'mage-ui://app/index.html' } },
       });
 
-      expect(buildRuntimeFetchUrl('openchamber-ui://app/api/config/settings')).toBe('https://api.example/api/config/settings');
+      expect(buildRuntimeFetchUrl('mage-ui://app/api/config/settings')).toBe('https://api.example/api/config/settings');
       expect(buildRuntimeFetchUrl('https://external.example/api/config/settings')).toBe('https://external.example/api/config/settings');
     } finally {
       setRuntimeUrlResolver(previous);
@@ -75,7 +75,7 @@ describe('runtimeFetch transport contract', () => {
         });
       }) as typeof fetch;
 
-      const client = createOpencodeClient({
+      const client = createMageClient({
         baseUrl: 'https://app.example/api',
         fetch: runtimeFetch,
       });
@@ -396,17 +396,17 @@ describe('runtimeFetch header sanitization', () => {
 
   test('sanitizeHeadersForBrowser leaves Latin-1 directory hints unchanged', () => {
     const path = 'C:\\work\\foo%20bar';
-    const result = sanitizeHeadersForBrowser({ 'x-opencode-directory': path });
+    const result = sanitizeHeadersForBrowser({ 'x-mage-directory': path });
     expect(result).toBeFalsy();
   });
 
   test('sanitizeHeadersForBrowser encodes non-Latin-1 directory hints with marker', () => {
     const path = 'D:\\文件夹';
-    const result = sanitizeHeadersForBrowser({ 'x-opencode-directory': path });
+    const result = sanitizeHeadersForBrowser({ 'x-mage-directory': path });
     expect(result).toBeTruthy();
     const encoded = Object.fromEntries(result!);
-    expect(encoded['x-opencode-directory']).toBe(encodeURIComponent(path));
-    expect(encoded['x-opencode-directory-encoding']).toBe('uri');
+    expect(encoded['x-mage-directory']).toBe(encodeURIComponent(path));
+    expect(encoded['x-mage-directory-encoding']).toBe('uri');
   });
 
   test('sanitizeHeadersForBrowser returns undefined for empty/undefined input', () => {
@@ -445,15 +445,15 @@ describe('runtimeFetch header sanitization', () => {
       }) as typeof fetch;
 
       await runtimeFetch('/api/config/providers', {
-        headers: { 'x-opencode-directory': 'D:\\文件夹' },
+        headers: { 'x-mage-directory': 'D:\\文件夹' },
       });
 
       expect(calls).toHaveLength(1);
-      const encoded = calls[0].headers.get('x-opencode-directory');
+      const encoded = calls[0].headers.get('x-mage-directory');
       expect(encoded).not.toBe('D:\\文件夹');
       // decodeURIComponent round-trips back to original
       expect(decodeURIComponent(encoded!)).toBe('D:\\文件夹');
-      expect(calls[0].headers.get('x-opencode-directory-encoding')).toBe('uri');
+      expect(calls[0].headers.get('x-mage-directory-encoding')).toBe('uri');
     } finally {
       setRuntimeUrlResolver(previous);
       Object.defineProperty(globalThis, 'window', { configurable: true, value: originalWindow });

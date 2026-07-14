@@ -2,8 +2,8 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 
-const MAGE_CONFIG_DIR = path.join(os.homedir(), '.config', 'opencode');
-const MAGE_DATA_DIR = path.join(os.homedir(), '.local', 'share', 'opencode');
+const MAGE_CONFIG_DIR = path.join(os.homedir(), '.config', 'mage');
+const MAGE_DATA_DIR = path.join(os.homedir(), '.local', 'share', 'mage');
 
 export const ANTIGRAVITY_ACCOUNTS_PATHS = [
   path.join(MAGE_CONFIG_DIR, 'antigravity-accounts.json'),

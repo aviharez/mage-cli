@@ -3,7 +3,7 @@ import { deleteQuotaCredential, readQuotaCredential, writeQuotaCredential } from
 const clean = (value) => typeof value === 'string' && !/[\r\n]/.test(value) ? value.trim() : '';
 
 export const normalizers = {
-  'opencode-go': (value) => {
+  'mage-go': (value) => {
     const workspaceId = clean(value?.workspaceId);
     let authCookie = clean(value?.authCookie);
     if (authCookie.startsWith('auth=')) authCookie = authCookie.slice(5).trim();
@@ -35,7 +35,7 @@ export const writeManagedCredential = (providerId, value) => {
 export const getManagedCredentialStatus = (providerId) => {
   const credential = readManagedCredential(providerId);
   if (!credential) return { configured: false };
-  if (providerId === 'opencode-go') return { configured: true, workspaceId: credential.workspaceId, secretMasked: '••••••••' };
+  if (providerId === 'mage-go') return { configured: true, workspaceId: credential.workspaceId, secretMasked: '••••••••' };
   if (providerId === 'cursor') return { configured: true, hasRefreshToken: Boolean(credential.refreshToken), secretMasked: '••••••••' };
   return { configured: true, secretMasked: '••••••••' };
 };

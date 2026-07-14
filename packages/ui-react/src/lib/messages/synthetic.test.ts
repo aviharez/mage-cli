@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import type { Part } from "@opencode-ai/sdk/v2"
+import type { Part } from "@mybcabisnis/mage-sdk/v2"
 import { isSyntheticPart, isFullySyntheticMessage, filterSyntheticParts } from "./synthetic"
 
 function createTextPart(id: string, text: string, synthetic?: boolean): Part {

@@ -46,7 +46,7 @@ Use this doc when you ask an agent to change tool/header/description behavior.
 ## Current important behavior
 
 - `read` and `skill` are **static navigation tools** and render via `StaticToolRow`.
-- Every other tool, including search/fetch, OpenCode built-ins, custom tools, plugins, and MCP tools, is **expandable** and renders through `ToolPart`.
+- Every other tool, including search/fetch, Mage built-ins, custom tools, plugins, and MCP tools, is **expandable** and renders through `ToolPart`.
 - `ToolPart` defers expanded content after a user toggle, preventing large tool input/output payloads from mounting during the initial chat render.
 - Thinking/Justification duration is hidden in `sorted` mode (handled in `ReasoningPart.tsx` + `JustificationBlock.tsx`).
 

@@ -8,7 +8,7 @@ import { useAssistantStatus } from '@/hooks/useAssistantStatus';
 import { createWorktreeSession } from '@/lib/worktreeSessionCreator';
 import { useConfigStore } from '@/stores/useConfigStore';
 import { canUseElectronDesktopIPC, invokeDesktop, isVSCodeRuntime } from '@/lib/desktop';
-import { showOpenCodeStatus } from '@/lib/openCodeStatus';
+import { showMageStatus } from '@/lib/mageStatus';
 import { eventMatchesShortcut, getEffectiveShortcutCombo, normalizeCombo } from '@/lib/shortcuts';
 import { readEmbeddedThemeSearchParams } from '@/contexts/theme-embedded-bootstrap';
 import { useDirectoryStore } from '@/stores/useDirectoryStore';
@@ -143,7 +143,7 @@ export const useKeyboardShortcuts = () => {
 
       if (eventMatchesShortcut(e, combo('open_status'))) {
         e.preventDefault();
-        void showOpenCodeStatus();
+        void showMageStatus();
         return;
       }
 
@@ -185,7 +185,7 @@ export const useKeyboardShortcuts = () => {
       if (eventMatchesShortcut(e, combo('cycle_theme'))) {
         e.preventDefault();
         if (readEmbeddedThemeSearchParams() !== null && window.parent && window.parent !== window) {
-          window.parent.postMessage({ type: 'openchamber:cycle-theme-request' }, window.location.origin);
+          window.parent.postMessage({ type: 'mage:cycle-theme-request' }, window.location.origin);
           return;
         }
         const modes: Array<'light' | 'dark' | 'system'> = ['light', 'dark', 'system'];
@@ -364,7 +364,7 @@ export const useKeyboardShortcuts = () => {
         e.preventDefault();
         // Dictation state lives inside the composer's isolated component;
         // toggle it via an event instead of subscribing this hot hook to it.
-        window.dispatchEvent(new CustomEvent('openchamber:dictation-toggle'));
+        window.dispatchEvent(new CustomEvent('mage:dictation-toggle'));
         return;
       }
 

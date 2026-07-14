@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { fetchOpenCodeGoUsage } from './opencodeGoQuota';
+import { fetchMageGoUsage } from './mageGoQuota';
 import { readCredential } from './quotaCredentials';
 
 type AuthEntry = Record<string, unknown> | string;
@@ -122,8 +122,8 @@ export type ProviderResult = {
   error?: string;
 };
 
-const MAGE_CONFIG_DIR = path.join(os.homedir(), '.config', 'opencode');
-const MAGE_DATA_DIR = path.join(os.homedir(), '.local', 'share', 'opencode');
+const MAGE_CONFIG_DIR = path.join(os.homedir(), '.config', 'mage');
+const MAGE_DATA_DIR = path.join(os.homedir(), '.local', 'share', 'mage');
 const AUTH_FILE = path.join(MAGE_DATA_DIR, 'auth.json');
 
 
@@ -199,7 +199,7 @@ const readAuthFile = (): AuthFile => {
     return JSON.parse(trimmed) as AuthFile;
   } catch (error) {
     console.error('Failed to read auth file:', error);
-    throw new Error('Failed to read OpenCode auth configuration');
+    throw new Error('Failed to read Mage auth configuration');
   }
 };
 
@@ -376,7 +376,7 @@ const durationToSeconds = (duration?: number, unit?: string) => {
 export const listConfiguredQuotaProviders = () => {
   const auth = readAuthFile();
   const configured = new Set<string>();
-  if (readCredential('opencode-go')) configured.add('opencode-go');
+  if (readCredential('mage-go')) configured.add('mage-go');
   if (readCredential('ollama-cloud')) configured.add('ollama-cloud');
   if (readCredential('cursor')) configured.add('cursor');
 
@@ -1893,13 +1893,13 @@ export const fetchQuotaForProvider = async (providerId: string): Promise<Provide
       return fetchZhipuaiCodingPlanQuota();
     case 'wafer':
       return fetchWaferQuota();
-    case 'opencode-go': {
-      const credential = readCredential('opencode-go') as { workspaceId: string; authCookie: string } | null;
-      if (!credential) return buildResult({ providerId, providerName: 'OpenCode Go', ok: false, configured: false, error: 'Not configured' });
+    case 'mage-go': {
+      const credential = readCredential('mage-go') as { workspaceId: string; authCookie: string } | null;
+      if (!credential) return buildResult({ providerId, providerName: 'Mage Go', ok: false, configured: false, error: 'Not configured' });
       try {
-        return buildResult({ providerId, providerName: 'OpenCode Go', ok: true, configured: true, usage: { windows: await fetchOpenCodeGoUsage(credential) } });
+        return buildResult({ providerId, providerName: 'Mage Go', ok: true, configured: true, usage: { windows: await fetchMageGoUsage(credential) } });
       } catch (error) {
-        return buildResult({ providerId, providerName: 'OpenCode Go', ok: false, configured: true, error: error instanceof Error ? error.message : 'Request failed' });
+        return buildResult({ providerId, providerName: 'Mage Go', ok: false, configured: true, error: error instanceof Error ? error.message : 'Request failed' });
       }
     }
     case 'cursor':

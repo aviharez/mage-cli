@@ -1,24 +1,24 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { readAuthFile } from '../opencode/auth.js';
-import { readConfigLayers } from '../opencode/shared.js';
+import { readAuthFile } from '../mage/auth.js';
+import { readConfigLayers } from '../mage/shared.js';
 import { getModelCatalog } from './catalog.js';
 import { resolveSmallModel, parseModelRef, isUsableAuthEntry, getAuthEntryForProvider } from './resolve.js';
 import { callSmallModel } from './call.js';
 
-const OPENCHAMBER_SETTINGS_FILE = path.join(
-  process.env.OPENCHAMBER_DATA_DIR
-    ? path.resolve(process.env.OPENCHAMBER_DATA_DIR)
-    : path.join(os.homedir(), '.config', 'openchamber'),
+const MAGE_SETTINGS_FILE = path.join(
+  process.env.MAGE_DATA_DIR
+    ? path.resolve(process.env.MAGE_DATA_DIR)
+    : path.join(os.homedir(), '.config', 'mage'),
   'settings.json',
 );
 
-// OpenChamber's own settings: when the user unchecks "use default small model"
+// Mage's own settings: when the user unchecks "use default small model"
 // their explicit override outranks every other resolution step.
 const readSmallModelSettingsOverride = () => {
   try {
-    const raw = fs.readFileSync(OPENCHAMBER_SETTINGS_FILE, 'utf8');
+    const raw = fs.readFileSync(MAGE_SETTINGS_FILE, 'utf8');
     const settings = JSON.parse(raw);
     if (!settings || typeof settings !== 'object') return null;
     if (settings.smallModelUseDefault !== false) return null;
@@ -59,7 +59,7 @@ const readConfiguredSmallModel = (workingDirectory) => {
 
 /**
  * Generates text with the user's small model, resolved and authenticated
- * entirely server-side from the OpenCode config and auth store.
+ * entirely server-side from the Mage config and auth store.
  */
 export async function generateSmallModelText({ prompt, system, maxOutputTokens, model, directory, preferredProviderID, preferredModelID, restrictToPreferredProvider = false }) {
   if (typeof prompt !== 'string' || !prompt.trim()) {
@@ -89,7 +89,7 @@ export async function generateSmallModelText({ prompt, system, maxOutputTokens, 
   }
 
   // Callers with a session context can forbid silently switching providers:
-  // an explicit user choice (settings override, opencode config, request
+  // an explicit user choice (settings override, mage config, request
   // model) is always allowed, anything else must stay on the session's
   // provider.
   if (restrictToPreferredProvider
@@ -128,9 +128,9 @@ export async function generateSmallModelText({ prompt, system, maxOutputTokens, 
 }
 
 /**
- * Provider ids with a usable OpenCode login — the set the small model can
+ * Provider ids with a usable Mage login — the set the small model can
  * actually call. Used by the settings override picker to hide providers that
- * would only ever fail (e.g. opencode free models without a token).
+ * would only ever fail (e.g. mage free models without a token).
  */
 export function listAuthenticatedProviders() {
   try {

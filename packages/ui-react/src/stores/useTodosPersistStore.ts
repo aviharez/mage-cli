@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
-import type { Todo } from '@opencode-ai/sdk/v2/client';
+import type { Todo } from '@mybcabisnis/mage-sdk/v2/client';
 import { createDeferredSafeJSONStorage } from './utils/safeStorage';
 
 const MAX_SESSIONS = 50;
@@ -53,7 +53,7 @@ export const useTodosPersistStore = create<TodosPersistState>()(
                 },
             }),
             {
-                name: 'openchamber-session-todos',
+                name: 'mage-session-todos',
                 version: 1,
                 storage: createDeferredSafeJSONStorage(),
                 partialize: (state) => ({ sessions: state.sessions }),

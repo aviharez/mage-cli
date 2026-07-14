@@ -1,6 +1,6 @@
 import { getCatalogProvider } from './catalog.js';
 
-// Mirrors OpenCode's getSmallModel fallback chain:
+// Mirrors Mage's getSmallModel fallback chain:
 // 1. `small_model` from the merged config layers ("provider/model").
 // 2. GitHub Copilot's hidden utility models when Copilot is logged in.
 // 3. Family-priority scan of the authenticated providers' catalog models.
@@ -76,8 +76,8 @@ const pickWithinProvider = (providerID, auth, catalog, family) => {
 };
 
 export function resolveSmallModel({ auth, catalog, settingsSmallModel, configSmallModel, preferredProviderID, preferredModelID }) {
-  // OpenChamber's own setting (Settings → Sessions → Small Model override)
-  // outranks everything, including the OpenCode config.
+  // Mage's own setting (Settings → Sessions → Small Model override)
+  // outranks everything, including the Mage config.
   const fromSettings = parseModelRef(settingsSmallModel);
   if (fromSettings) {
     return { ...fromSettings, source: 'settings' };
@@ -88,7 +88,7 @@ export function resolveSmallModel({ auth, catalog, settingsSmallModel, configSma
     return { ...explicit, source: 'config' };
   }
 
-  // Like OpenCode: when the caller has a session context, the utility call
+  // Like Mage: when the caller has a session context, the utility call
   // stays on the session's provider. Scan its families for a small model,
   // otherwise run on the session's own model — never silently switch to a
   // different provider's subscription.

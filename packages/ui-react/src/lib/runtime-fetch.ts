@@ -130,13 +130,13 @@ export const sanitizeHeadersForBrowser = (init?: HeadersInit): [string, string][
     if (shouldEncodeHeaderValue(key, value)) {
       entries.push([key, encodeURIComponent(value)]);
       dirty = true;
-      if (key.toLowerCase() === 'x-opencode-directory') encodedDirectoryHint = true;
+      if (key.toLowerCase() === 'x-mage-directory') encodedDirectoryHint = true;
     } else {
       entries.push([key, value]);
     }
   }
   if (encodedDirectoryHint) {
-    entries.push(['x-opencode-directory-encoding', 'uri']);
+    entries.push(['x-mage-directory-encoding', 'uri']);
   }
   return dirty ? entries : undefined;
 };
@@ -221,9 +221,9 @@ const resolveRuntimeFetchInput = (input: string | URL | Request, query?: Runtime
 // On cold start two independent data layers (the sync bootstrap and the config
 // store) fire the SAME idempotent reads — providers, config, path, agents,
 // project — concurrently, with no shared dedup. That saturates the single
-// OpenCode process and delays everything queued behind it (e.g. createSession).
+// Mage process and delays everything queued behind it (e.g. createSession).
 // Coalesce genuinely-concurrent identical GETs to those read endpoints so
-// OpenCode does the work once; every caller gets an independent `clone()`.
+// Mage does the work once; every caller gets an independent `clone()`.
 //
 // Scope is deliberately tight: GET only, an allowlist of read paths, never an
 // event stream, and never a request carrying an AbortSignal (so one caller

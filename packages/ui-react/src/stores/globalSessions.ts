@@ -1,4 +1,4 @@
-import type { OpencodeClient, Session } from "@opencode-ai/sdk/v2";
+import type { MageClient, Session } from "@mybcabisnis/mage-sdk/v2";
 import { retry } from "@/sync/retry";
 import { stripSessionListDetails } from "@/sync/sanitize";
 
@@ -74,7 +74,7 @@ const unwrapSessionList = (
 };
 
 export async function listGlobalSessionPages(
-    apiClient: OpencodeClient,
+    apiClient: MageClient,
     options: {
         directory?: string;
         archived: boolean;

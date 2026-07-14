@@ -3,8 +3,8 @@ import type {
   FileSearchQuery,
   FileSearchResult,
   FilesAPI,
-} from '@openchamber/ui/lib/api/types';
-import { runtimeFetch } from '@openchamber/ui/lib/runtime-fetch';
+} from '@mage/ui/lib/api/types';
+import { runtimeFetch } from '@mage/ui/lib/runtime-fetch';
 
 const normalizePath = (path: string): string => path.replace(/\\/g, '/');
 
@@ -47,7 +47,7 @@ const toDirectoryListResult = (fallbackDirectory: string, payload: WebDirectoryL
 
 const directoryHeaders = (getDirectory?: () => string | undefined, override?: string): Record<string, string> | undefined => {
   const directory = override || getDirectory?.();
-  return directory ? { 'x-opencode-directory': directory } : undefined;
+  return directory ? { 'x-mage-directory': directory } : undefined;
 };
 
 export const createWebFilesAPI = ({ getDirectory }: WebFilesAPIOptions): FilesAPI => ({

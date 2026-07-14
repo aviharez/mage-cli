@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This module owns the authoritative permission auto-accept policy for web, desktop, and mobile runtimes. Policy is persisted in OpenChamber settings so permission handling survives UI disconnects and server restarts.
+This module owns the authoritative permission auto-accept policy for web, desktop, and mobile runtimes. Policy is persisted in Mage settings so permission handling survives UI disconnects and server restarts.
 
 ## Policy
 
@@ -12,7 +12,7 @@ Policy inheritance uses the nearest explicit session value. A child `false` ther
 
 ## Runtime
 
-`createPermissionAutoAcceptRuntime` loads and serializes policy writes, subscribes to the global OpenCode event hub, caches session lineage, retries transient replies, and reconciles pending permissions after startup, reconnect, and policy enablement. Enabling Auto-Accept for a session immediately accepts matching pending requests and keeps handling future requests without requiring a connected UI.
+`createPermissionAutoAcceptRuntime` loads and serializes policy writes, subscribes to the global Mage event hub, caches session lineage, retries transient replies, and reconciles pending permissions after startup, reconnect, and policy enablement. Enabling Auto-Accept for a session immediately accepts matching pending requests and keeps handling future requests without requiring a connected UI.
 
 Unknown lineage and failed policy loads fail closed. A failed pending-permission fetch is distinct from an empty successful response and never clears policy state.
 
@@ -21,7 +21,7 @@ Unknown lineage and failed policy loads fail closed. A failed pending-permission
 - `GET /api/permission-auto-accept`
 - `PUT /api/permission-auto-accept/sessions/:sessionId`
 
-These are normal authenticated OpenChamber runtime routes. They must not be added to browser URL-token allowlists.
+These are normal authenticated Mage runtime routes. They must not be added to browser URL-token allowlists.
 
 ## UI ownership
 

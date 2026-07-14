@@ -35,13 +35,13 @@ function resourceAttributes() {
 
 export function resource(): { serviceName: string; serviceVersion: string; attributes: Record<string, string> } {
   return {
-    serviceName: "opencode",
+    serviceName: "mage",
     serviceVersion: InstallationVersion,
     attributes: {
       ...resourceAttributes(),
       "deployment.environment.name": InstallationChannel,
-      "opencode.client": Flag.MAGE_CLIENT,
-      "opencode.run": runID,
+      "mage.client": Flag.MAGE_CLIENT,
+      "mage.run": runID,
       "service.instance.id": runID,
     },
   }

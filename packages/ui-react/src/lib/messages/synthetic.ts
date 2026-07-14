@@ -1,4 +1,4 @@
-import type { Part } from "@opencode-ai/sdk/v2";
+import type { Part } from "@mybcabisnis/mage-sdk/v2";
 
 const GITHUB_ISSUE_CONTEXT_PREFIX = 'GitHub issue context (JSON)';
 const GITHUB_PR_CONTEXT_PREFIX = 'GitHub pull request context (JSON)';

@@ -3,7 +3,7 @@ import {
   Dialog,
   DialogContent,
 } from '@/components/ui/dialog';
-import { OpenChamberLogo } from '@/components/ui/OpenChamberLogo';
+import { MageLogo } from '@/components/ui/MageLogo';
 import { debugUtils } from '@/lib/debug';
 import { cn } from '@/lib/utils';
 import { toast } from '@/components/ui';
@@ -24,7 +24,7 @@ export const AboutDialog: React.FC<AboutDialogProps> = ({
   const { t } = useI18n();
   const showDiagnostics = import.meta.env.DEV;
   const [version, setVersion] = React.useState<string | null>(null);
-  const [openCodeVersion, setOpenCodeVersion] = React.useState<string | null>(null);
+  const [mageVersion, setMageVersion] = React.useState<string | null>(null);
   const [isCopyingDiagnostics, setIsCopyingDiagnostics] = React.useState(false);
   const [copiedDiagnostics, setCopiedDiagnostics] = React.useState(false);
   const [diagnosticsReport, setDiagnosticsReport] = React.useState<string | null>(null);
@@ -68,8 +68,8 @@ export const AboutDialog: React.FC<AboutDialogProps> = ({
         const response = await runtimeFetch('/api/system/info');
         if (response.ok) {
           const data = await response.json();
-          if (typeof data.openchamberVersion === 'string' && data.openchamberVersion.trim()) {
-            setVersion(data.openchamberVersion);
+          if (typeof data.mageVersion === 'string' && data.mageVersion.trim()) {
+            setVersion(data.mageVersion);
             return;
           }
         }
@@ -87,23 +87,23 @@ export const AboutDialog: React.FC<AboutDialogProps> = ({
     if (!open) return;
 
     let cancelled = false;
-    const fetchOpenCodeVersion = async () => {
+    const fetchMageVersion = async () => {
       try {
-        const response = await runtimeFetch('/api/opencode/upgrade-status', {
+        const response = await runtimeFetch('/api/mage/upgrade-status', {
           headers: { Accept: 'application/json' },
         });
         if (!response.ok) return;
         const data = await response.json().catch(() => null) as null | { currentVersion?: unknown };
         const currentVersion = typeof data?.currentVersion === 'string' ? data.currentVersion.trim() : '';
         if (!cancelled && currentVersion) {
-          setOpenCodeVersion(currentVersion);
+          setMageVersion(currentVersion);
         }
       } catch {
-        // OpenCode version is best-effort in About.
+        // Mage version is best-effort in About.
       }
     };
 
-    void fetchOpenCodeVersion();
+    void fetchMageVersion();
     return () => {
       cancelled = true;
     };
@@ -144,16 +144,16 @@ export const AboutDialog: React.FC<AboutDialogProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xs p-6">
         <div className="flex flex-col items-center text-center space-y-4">
-          <OpenChamberLogo width={64} height={64} />
+          <MageLogo width={64} height={64} />
 
           <div className="space-y-1">
             <h2 className="text-lg font-semibold">Mage</h2>
             <div className="space-y-0.5 typography-meta text-muted-foreground">
               {displayVersion && (
-                <p>{t('aboutDialog.openChamberVersionLabel', { version: displayVersion })}</p>
+                <p>{t('aboutDialog.mageVersionLabel', { version: displayVersion })}</p>
               )}
-              {openCodeVersion && (
-                <p>{t('aboutDialog.openCodeVersionLabel', { version: openCodeVersion })}</p>
+              {mageVersion && (
+                <p>{t('aboutDialog.mageVersionLabel', { version: mageVersion })}</p>
               )}
             </div>
           </div>
@@ -184,7 +184,7 @@ export const AboutDialog: React.FC<AboutDialogProps> = ({
           <div className="flex flex-col items-center gap-2 pt-2">
             <div className="flex items-center justify-center gap-4">
               <a
-                href="https://github.com/btriapitsyn/openchamber"
+                href="https://github.com/btriapitsyn/mage"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-1.5 typography-meta text-muted-foreground hover:text-foreground transition-colors"
@@ -203,13 +203,13 @@ export const AboutDialog: React.FC<AboutDialogProps> = ({
               </a>
             </div>
             <a
-              href="https://x.com/openchamber_dev"
+              href="https://x.com/mage_dev"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1.5 typography-meta text-muted-foreground hover:text-foreground transition-colors"
             >
               <Icon name="twitter-xfill" className="h-4 w-4" />
-              <span>@openchamber_dev</span>
+              <span>@mage_dev</span>
             </a>
           </div>
 

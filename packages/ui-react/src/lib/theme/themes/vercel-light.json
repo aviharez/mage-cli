@@ -2,13 +2,13 @@
   "metadata": {
     "id": "vercel-light",
     "name": "Vercel",
-    "description": "Ported from OpenCode Vercel theme (light variant)",
-    "author": "OpenCode",
+    "description": "Ported from Mage Vercel theme (light variant)",
+    "author": "Mage",
     "version": "1.0.0",
     "variant": "light",
     "tags": [
       "light",
-      "opencode",
+      "mage",
       "ported",
       "vercel"
     ]

@@ -61,7 +61,7 @@ export const registerNotificationRoutes = (app, dependencies) => {
     try {
       await ensureGlobalWatcherStarted();
     } catch (error) {
-      console.warn('[OpenCodeWatcher] lazy start failed:', error?.message ?? error);
+      console.warn('[MageWatcher] lazy start failed:', error?.message ?? error);
     }
   };
 
@@ -269,7 +269,7 @@ export const registerNotificationRoutes = (app, dependencies) => {
 
     try {
       writeSseEvent(res, {
-        type: 'openchamber:notification-stream-ready',
+        type: 'mage:notification-stream-ready',
         properties: { uiToken },
       });
       flushSse();

@@ -28,7 +28,7 @@ import { getSessionMaterializationStatus } from '@/sync/materialization';
 import { useUIStore } from '@/stores/useUIStore';
 import { isPrimaryMode, type MobileControlsPanel } from './mobileControlsUtils';
 import { useI18n } from '@/lib/i18n';
-import { useOpenCodeReadiness } from '@/hooks/useOpenCodeReadiness';
+import { useMageReadiness } from '@/hooks/useMageReadiness';
 import { eventMatchesShortcut, getEffectiveShortcutCombo, normalizeCombo } from '@/lib/shortcuts';
 import { markStartupTrace } from '@/lib/startupTrace';
 
@@ -109,7 +109,7 @@ export const ModelControls: React.FC<ModelControlsProps> = ({
     onMobilePanelChange,
 }) => {
     const { t } = useI18n();
-    const { isReady, isUnavailable } = useOpenCodeReadiness();
+    const { isReady, isUnavailable } = useMageReadiness();
     const readinessLabel = isUnavailable ? t('common.unavailable') : t('common.loading');
     const currentAgentName = useConfigStore((state) => state.currentAgentName);
     const settingsDefaultAgent = useConfigStore((state) => state.settingsDefaultAgent);
@@ -278,7 +278,7 @@ export const ModelControls: React.FC<ModelControlsProps> = ({
             const agent = typeof message.agent === 'string' && message.agent.trim().length > 0
                 ? message.agent
                 : (typeof message.mode === 'string' && message.mode.trim().length > 0 ? message.mode : undefined);
-            // OpenCode 1.4.0 moved variant from top-level to model.variant.
+            // Mage 1.4.0 moved variant from top-level to model.variant.
             // Prefer the new location, fall back to the legacy one for older servers.
             const variantCandidate = message.model?.variant ?? message.variant;
             const variant = typeof variantCandidate === 'string' && variantCandidate.trim().length > 0

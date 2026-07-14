@@ -1,9 +1,9 @@
 # Small Model
 
-Server-side direct LLM calls that reuse the user's existing OpenCode provider
-logins (`~/.local/share/opencode/auth.json`). OpenCode uses a "small model"
+Server-side direct LLM calls that reuse the user's existing Mage provider
+logins (`~/.local/share/mage/auth.json`). Mage uses a "small model"
 internally (titles, summaries) but does not expose it through the SDK or
-plugins — this module replicates that mechanism as an OpenChamber runtime API.
+plugins — this module replicates that mechanism as an Mage runtime API.
 
 ## Security boundary
 
@@ -15,16 +15,16 @@ other runtime API.
 ## Files
 
 - `index.js` — orchestration: `generateSmallModelText()` / `describeSmallModel()`.
-- `resolve.js` — model selection, mirroring OpenCode's `getSmallModel` chain:
-  0. OpenChamber's own settings override (Settings → Sessions → Small Model):
+- `resolve.js` — model selection, mirroring Mage's `getSmallModel` chain:
+  0. Mage's own settings override (Settings → Sessions → Small Model):
      when `smallModelUseDefault` is `false`, `smallModelOverride`
      (`provider/model`) outranks everything below. Sanitized in
      `settings-helpers.js` (server), `persistence.ts` (client), and
      `bridge-settings-runtime.ts` (VS Code).
-  1. `small_model` from the merged OpenCode config layers (`provider/model`).
+  1. `small_model` from the merged Mage config layers (`provider/model`).
   2. Family-priority scan (`gemini-flash` → `gpt-nano` → `claude-haiku`)
      **within the session's provider first** (`preferredProviderID`, like
-     OpenCode resolves within the current provider), then over the other
+     Mage resolves within the current provider), then over the other
      providers with a usable auth entry, newest `release_date` first.
   3. GitHub Copilot hidden utility models (`gpt-*-nano/mini`) — these never
      appear in the catalog, so they participate as the `gpt-nano` family entry
@@ -35,7 +35,7 @@ other runtime API.
   `limit.context` (minus an output reserve, ~4 chars/token estimate;
   conservative default when the model is not in the catalog). Truncation is
   reported as `inputTruncated: true` in the response.
-- `call.js` — wire formats and per-provider auth, replicating OpenCode's
+- `call.js` — wire formats and per-provider auth, replicating Mage's
   plugin auth loaders:
   - **GitHub Copilot**: OpenAI-compatible `/chat/completions` on
     `https://api.githubcopilot.com` (or `copilot-api.<enterprise>`) with the
@@ -49,8 +49,8 @@ other runtime API.
   - Everything else: OpenAI-compatible `/chat/completions` against the
     provider's models.dev base URL with `Authorization: Bearer <key>`.
 - `catalog.js` — models.dev catalog via the shared in-process cache
-  (`../opencode/models-metadata.js`, also serving
-  `/api/openchamber/models-metadata`).
+  (`../mage/models-metadata.js`, also serving
+  `/api/mage/models-metadata`).
 - `routes.js` — `GET /api/small-model` (resolution preview) and
   `POST /api/small-model/generate` (`{ prompt, system?, maxOutputTokens?,
   model?, directory? }` → `{ text, providerID, modelID, source }`).
@@ -62,14 +62,14 @@ module is imported on first request, not at server startup.
 
 ## Known limitations
 
-- OpenCode's free models (`opencode/big-pickle`, `*-free`) work without a
-  token only through OpenCode's own server — direct calls are rejected, and
+- Mage's free models (`mage/big-pickle`, `*-free`) work without a
+  token only through Mage's own server — direct calls are rejected, and
   piggybacking on their subsidized infra is out of bounds by design. Every
   resolution step therefore requires a usable auth entry for the provider:
-  a session on an unauthenticated `opencode` provider falls through to the
+  a session on an unauthenticated `mage` provider falls through to the
   global scan (or a clean 404 on a vanilla setup with no logins).
 
-- Anthropic OAuth (Claude Pro/Max) entries are not supported — OpenCode itself
+- Anthropic OAuth (Claude Pro/Max) entries are not supported — Mage itself
   keeps those outside `auth.json` in this generation; only `type: api` keys
   work for Anthropic.
 - Amazon Bedrock, GitLab, Azure and other credential-chain providers are out

@@ -129,7 +129,7 @@ function buildTunnelStartReplayCommand({
   tokenViaStdin,
   tokenFileProvided,
 }) {
-  const parts = ['openchamber', 'tunnel', 'start'];
+  const parts = ['mage', 'tunnel', 'start'];
   if (Number.isFinite(port) && port > 0) {
     parts.push('--port', String(port));
   }
@@ -174,7 +174,7 @@ function buildTunnelStartReplayCommand({
 
 function buildTunnelProfileAddCommand({ provider, hostname }) {
   const parts = [
-    'openchamber',
+    'mage',
     'tunnel',
     'profile',
     'add',

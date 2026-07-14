@@ -1,7 +1,7 @@
 // Session assist: after a session goes idle and stays quiet, generate a short
 // recap of the agent's last reply plus one suggested user follow-up with the
 // small model, and store both on the session's metadata
-// (metadata.openchamber.assist). Clients decide visibility from
+// (metadata.mage.assist). Clients decide visibility from
 // assist.forMessageID — a new message makes the payload stale everywhere
 // without any extra writes.
 //
@@ -12,10 +12,10 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 
-const OPENCHAMBER_SETTINGS_FILE = path.join(
-  process.env.OPENCHAMBER_DATA_DIR
-    ? path.resolve(process.env.OPENCHAMBER_DATA_DIR)
-    : path.join(os.homedir(), '.config', 'openchamber'),
+const MAGE_SETTINGS_FILE = path.join(
+  process.env.MAGE_DATA_DIR
+    ? path.resolve(process.env.MAGE_DATA_DIR)
+    : path.join(os.homedir(), '.config', 'mage'),
   'settings.json',
 );
 
@@ -24,7 +24,7 @@ const OPENCHAMBER_SETTINGS_FILE = path.join(
 // payloads stay untouched — clients keep showing them and dismissal still works.
 const getSessionAssistTargets = () => {
   try {
-    const raw = fs.readFileSync(OPENCHAMBER_SETTINGS_FILE, 'utf8');
+    const raw = fs.readFileSync(MAGE_SETTINGS_FILE, 'utf8');
     const settings = JSON.parse(raw);
     return {
       recap: settings?.sessionRecapEnabled !== false,
@@ -146,8 +146,8 @@ const messagePartsToText = (message) => {
 };
 
 export const createSessionAssistRuntime = ({
-  buildOpenCodeUrl,
-  getOpenCodeAuthHeaders,
+  buildMageUrl,
+  getMageAuthHeaders,
   getSmallModelService,
   quietMs = IDLE_QUIET_MS,
 }) => {
@@ -163,32 +163,32 @@ export const createSessionAssistRuntime = ({
     }
   };
 
-  const openCodeFetch = async (path, { directory, method = 'GET', body } = {}) => {
-    const base = buildOpenCodeUrl(path, '');
+  const mageFetch = async (path, { directory, method = 'GET', body } = {}) => {
+    const base = buildMageUrl(path, '');
     const url = directory ? `${base}?directory=${encodeURIComponent(directory)}` : base;
     const response = await fetch(url, {
       method,
       headers: {
         Accept: 'application/json',
         ...(body ? { 'Content-Type': 'application/json' } : {}),
-        ...getOpenCodeAuthHeaders(),
+        ...getMageAuthHeaders(),
       },
       ...(body ? { body: JSON.stringify(body) } : {}),
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
     if (!response.ok) {
-      throw new Error(`OpenCode ${method} ${path} failed with ${response.status}`);
+      throw new Error(`Mage ${method} ${path} failed with ${response.status}`);
     }
     return response.json().catch(() => null);
   };
 
   const fetchRecentMessages = async (sessionId, directory) => {
-    const base = buildOpenCodeUrl(`/session/${encodeURIComponent(sessionId)}/message`, '');
+    const base = buildMageUrl(`/session/${encodeURIComponent(sessionId)}/message`, '');
     const params = new URLSearchParams({ limit: String(TRANSCRIPT_MESSAGE_LIMIT) });
     if (directory) params.set('directory', directory);
     const response = await fetch(`${base}?${params.toString()}`, {
       method: 'GET',
-      headers: { Accept: 'application/json', ...getOpenCodeAuthHeaders() },
+      headers: { Accept: 'application/json', ...getMageAuthHeaders() },
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
     if (!response.ok) return null;
@@ -199,7 +199,7 @@ export const createSessionAssistRuntime = ({
   const generateAssist = async (sessionId, directory) => {
     const targets = getSessionAssistTargets();
     if (!targets.recap && !targets.suggestion) return;
-    const session = await openCodeFetch(`/session/${encodeURIComponent(sessionId)}`, { directory })
+    const session = await mageFetch(`/session/${encodeURIComponent(sessionId)}`, { directory })
       .catch((error) => {
         console.warn(`[session-assist] session fetch failed: ${error?.message || error}`);
         return null;
@@ -252,7 +252,7 @@ export const createSessionAssistRuntime = ({
       generated = await generateSmallModelText({
         // Background feature: conversation content must never leave the
         // session's own provider unless the user explicitly picked a small
-        // model (settings override / opencode config).
+        // model (settings override / mage config).
         restrictToPreferredProvider: true,
         prompt: `The latest exchange in the conversation:\n\n${transcript}\n\nWrite ${requestedFields} in the SAME language as this sample from the conversation: "${languageSample}"`,
         system: buildAssistSystemPrompt(targets),
@@ -311,23 +311,23 @@ export const createSessionAssistRuntime = ({
     // Merge from a FRESH read: generation takes tens of seconds, and merging
     // from the session snapshot fetched before it would clobber any metadata
     // written meanwhile (suggestion dismissals, review links, …).
-    const freshSession = await openCodeFetch(`/session/${encodeURIComponent(sessionId)}`, { directory })
+    const freshSession = await mageFetch(`/session/${encodeURIComponent(sessionId)}`, { directory })
       .catch(() => null);
     const currentMetadata = freshSession?.metadata && typeof freshSession.metadata === 'object'
       ? freshSession.metadata
       : (session.metadata && typeof session.metadata === 'object' ? session.metadata : {});
-    const currentNamespace = currentMetadata.openchamber && typeof currentMetadata.openchamber === 'object'
-      ? currentMetadata.openchamber
+    const currentNamespace = currentMetadata.mage && typeof currentMetadata.mage === 'object'
+      ? currentMetadata.mage
       : {};
 
     console.log(`[session-assist] generated for ${sessionId} via ${generated.providerID}/${generated.modelID}`);
-    await openCodeFetch(`/session/${encodeURIComponent(sessionId)}`, {
+    await mageFetch(`/session/${encodeURIComponent(sessionId)}`, {
       directory,
       method: 'PATCH',
       body: {
         metadata: {
           ...currentMetadata,
-          openchamber: {
+          mage: {
             ...currentNamespace,
             assist: {
               recap,
@@ -372,7 +372,7 @@ export const createSessionAssistRuntime = ({
     }
     const userMessage = extractUserMessage(payload);
     if (userMessage) {
-      // OpenCode re-emits message.updated for OLD user messages after the
+      // Mage re-emits message.updated for OLD user messages after the
       // session settles (post-completion metadata patches). Only a message
       // created after the timer was armed means the user actually moved on.
       const armed = timers.get(userMessage.sessionId);

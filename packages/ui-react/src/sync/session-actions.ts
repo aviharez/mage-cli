@@ -3,13 +3,13 @@
  * Replaces the action methods from the old useSessionStore.
  */
 
-import type { OpencodeClient, Session, Message, Part } from "@opencode-ai/sdk/v2/client"
+import type { MageClient, Session, Message, Part } from "@mybcabisnis/mage-sdk/v2/client"
 import { Binary } from "./binary"
 import { useSessionUIStore } from "./session-ui-store"
 import { useInputStore } from "./input-store"
 import type { ChildStoreManager } from "./child-store"
 import { computeSubtreeIds } from "./scoped-blocking-requests"
-import { opencodeClient } from "@/lib/opencode/client"
+import { mageClient } from "@/lib/mage/client"
 import { mergeSessionDirectoryMetadata, useGlobalSessionsStore } from "@/stores/useGlobalSessionsStore"
 import { useConfigStore } from "@/stores/useConfigStore"
 import { registerSessionDirectory } from "./sync-refs"
@@ -37,7 +37,7 @@ const UNREVERT_REFETCH_ATTEMPTS = 3
 const UNREVERT_REFETCH_RETRY_MS = 150
 
 // Reference set by SyncProvider — allows actions to access SDK and stores
-let _sdk: OpencodeClient | null = null
+let _sdk: MageClient | null = null
 let _childStores: ChildStoreManager | null = null
 let _getDirectory: () => string = () => ""
 type OptimisticAddInput = { sessionID: string; directory?: string | null; message: Message; parts: Part[] }
@@ -93,7 +93,7 @@ function assertSdkData<T>(result: SdkResult<T>, operation: string): T {
 }
 
 export function setActionRefs(
-  sdk: OpencodeClient,
+  sdk: MageClient,
   childStores: ChildStoreManager,
   getDirectory: () => string,
 ) {
@@ -299,12 +299,12 @@ function findSessionDirectoryInChildStores(sessionId: string): string | null {
   return null
 }
 
-function getSessionReplyClient(sessionId?: string): OpencodeClient {
+function getSessionReplyClient(sessionId?: string): MageClient {
   const directory = sessionId
     ? useSessionUIStore.getState().getDirectoryForSession(sessionId)
     : null
   if (directory) {
-    return opencodeClient.getScopedSdkClient(directory)
+    return mageClient.getScopedSdkClient(directory)
   }
   return sdk()
 }
@@ -416,10 +416,10 @@ function getRequestReplyClient(
   type: "permission" | "question",
   sessionId: string,
   requestId: string,
-): OpencodeClient {
+): MageClient {
   const requestDirectory = resolveDirectoryForBlockingRequest(type, sessionId, requestId)
   if (requestDirectory) {
-    return opencodeClient.getScopedSdkClient(requestDirectory)
+    return mageClient.getScopedSdkClient(requestDirectory)
   }
   return getSessionReplyClient(sessionId)
 }
@@ -435,7 +435,7 @@ export async function createSession(
   metadata?: Record<string, unknown>,
 ): Promise<Session | null> {
   try {
-    const session = await opencodeClient.createSession({
+    const session = await mageClient.createSession({
       title,
       parentID: parentID ?? undefined,
       metadata,
@@ -448,7 +448,7 @@ export async function createSession(
       registerSessionDirectory(session.id, sessionDirectory)
     }
     useSessionUIStore.getState().setCurrentSession(session.id, sessionDirectory)
-    useSessionUIStore.getState().markSessionAsOpenChamberCreated(session.id)
+    useSessionUIStore.getState().markSessionAsMageCreated(session.id)
     useGlobalSessionsStore.getState().upsertSession(session)
     return session
   } catch (error) {
@@ -463,9 +463,9 @@ export async function patchSessionMetadata(
   updater: (metadata: SessionMetadataRecord) => SessionMetadataRecord,
 ): Promise<Session> {
   const targetDirectory = directory ?? getSessionDirectory(sessionId)
-  const current = await opencodeClient.getSession(sessionId, targetDirectory)
+  const current = await mageClient.getSession(sessionId, targetDirectory)
   const nextMetadata = updater(getSessionMetadata(current))
-  const updated = await opencodeClient.updateSession(sessionId, { metadata: nextMetadata }, targetDirectory)
+  const updated = await mageClient.updateSession(sessionId, { metadata: nextMetadata }, targetDirectory)
   useGlobalSessionsStore.getState().upsertSession(updated)
   const sessionDirectory = (updated as { directory?: string | null }).directory ?? targetDirectory
   if (sessionDirectory) registerSessionDirectory(updated.id, sessionDirectory)
@@ -475,7 +475,7 @@ export async function patchSessionMetadata(
 async function cleanupReviewMetadataBeforeDelete(sessionId: string, directory?: string | null): Promise<void> {
   let session: Session
   try {
-    session = await opencodeClient.getSession(sessionId, directory ?? getSessionDirectory(sessionId))
+    session = await mageClient.getSession(sessionId, directory ?? getSessionDirectory(sessionId))
   } catch {
     return
   }
@@ -552,7 +552,7 @@ export async function deleteSession(sessionId: string, _options?: Record<string,
   }
   try {
     await cleanupReviewMetadataBeforeDelete(sessionId, sessionDirectory)
-    const deleted = await opencodeClient.deleteSession(sessionId, sessionDirectory)
+    const deleted = await mageClient.deleteSession(sessionId, sessionDirectory)
     if (deleted !== true) {
       throw new Error("session.delete failed: server did not confirm deletion")
     }
@@ -584,7 +584,7 @@ export async function deleteSessionInDirectory(sessionId: string, directory: str
   if (ui.currentSessionId === sessionId) ui.setCurrentSession(null)
   try {
     await cleanupReviewMetadataBeforeDelete(sessionId, directory)
-    const deleted = await opencodeClient.deleteSession(sessionId, directory)
+    const deleted = await mageClient.deleteSession(sessionId, directory)
     if (deleted !== true) {
       throw new Error("session.delete failed: server did not confirm deletion")
     }
@@ -615,7 +615,7 @@ export async function archiveSession(sessionId: string): Promise<boolean> {
   }
   try {
     await cleanupReviewMetadataBeforeDelete(sessionId, sessionDirectory)
-    const archived = await opencodeClient.updateSession(sessionId, { time: { archived: archivedAt } }, sessionDirectory)
+    const archived = await mageClient.updateSession(sessionId, { time: { archived: archivedAt } }, sessionDirectory)
     if (!archived) {
       throw new Error("session.update failed: server did not return the archived session")
     }
@@ -631,7 +631,7 @@ export async function archiveSession(sessionId: string): Promise<boolean> {
 
 export async function updateSessionTitle(sessionId: string, title: string): Promise<void> {
   const sessionDirectory = getSessionDirectory(sessionId)
-  const session = await opencodeClient.updateSession(sessionId, { title }, sessionDirectory)
+  const session = await mageClient.updateSession(sessionId, { title }, sessionDirectory)
   useGlobalSessionsStore.getState().upsertSession(session)
   mirrorSessionIntoLiveStores(session, sessionDirectory)
 }
@@ -658,7 +658,7 @@ export async function unshareSession(sessionId: string): Promise<Session | null>
 // Optimistic message send — insert user message before API call, rollback on error
 // ---------------------------------------------------------------------------
 
-// ID generator matching OpenCode's Identifier.ascending format.
+// ID generator matching Mage's Identifier.ascending format.
 // Uses BigInt(timestamp) * 0x1000 + counter, encoded as 6 hex bytes + random base62.
 // This ensures client-generated IDs sort correctly with server-generated ones.
 let lastIdTimestamp = 0
@@ -860,7 +860,7 @@ function materializeConfirmedSendRecords(
 
 export async function abortCurrentOperation(sessionId: string): Promise<void> {
   // The abort must carry the SESSION'S directory, not the active UI directory:
-  // OpenCode routes the request to the per-directory instance, and an abort
+  // Mage routes the request to the per-directory instance, and an abort
   // sent to the wrong instance cancels nothing while still returning 200 true
   // (the "stop button does nothing" report — sessions in another project/
   // worktree than the UI's current directory could never be aborted).
@@ -991,7 +991,7 @@ export async function rejectQuestion(
  *
  * NOTE: rejecting unblocks the agent's tool but does NOT end its turn. Callers
  * that need to send the next message right away (the chat send path) must also
- * abort the session so the OpenCode runner reaches `idle` — otherwise the new
+ * abort the session so the Mage runner reaches `idle` — otherwise the new
  * prompt arrives while the run is still active and is discarded by the runner's
  * `ensureRunning`.
  */
@@ -1125,7 +1125,7 @@ export async function revertToMessage(sessionId: string, messageId: string): Pro
 
   // Call SDK and merge authoritative result into store
   try {
-    const revertedSession = await opencodeClient.revertSession(sessionId, messageId, undefined, directory)
+    const revertedSession = await mageClient.revertSession(sessionId, messageId, undefined, directory)
     const current = store.getState()
     const updated = [...current.session]
     const idx = updated.findIndex((s) => s.id === sessionId)
@@ -1239,7 +1239,7 @@ export async function forkFromMessage(sessionId: string, messageId: string): Pro
     .trim()
   const fileParts = parts.filter((p) => p.type === "file" && !isSyntheticPart(p)) as Array<Record<string, unknown>>
 
-  const forkedSession = await opencodeClient.forkSession(sessionId, messageId, directory)
+  const forkedSession = await mageClient.forkSession(sessionId, messageId, directory)
 
   // Insert new session into child store so sidebar updates immediately
   const current = store.getState()

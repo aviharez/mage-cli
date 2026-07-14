@@ -1,9 +1,9 @@
-const SKILL_LINK_PREFIX = '#openchamber-skill:';
-const AGENT_LINK_PREFIX = '#openchamber-agent:';
+const SKILL_LINK_PREFIX = '#mage-skill:';
+const AGENT_LINK_PREFIX = '#mage-agent:';
 
 export const buildAgentMentionUrl = (name: string): string => {
     const encoded = encodeURIComponent(name);
-    return `https://opencode.ai/docs/agents/#${encoded}`;
+    return `https://mage.ai/docs/agents/#${encoded}`;
 };
 
 export const buildSkillHref = (name: string): string => `${SKILL_LINK_PREFIX}${encodeURIComponent(name)}`;

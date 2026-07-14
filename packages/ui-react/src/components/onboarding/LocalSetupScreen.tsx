@@ -9,8 +9,8 @@ import { restartDesktopApp } from '@/lib/desktop';
 import { useI18n } from '@/lib/i18n';
 import { runtimeFetch } from '@/lib/runtime-fetch';
 
-const INSTALL_COMMAND = 'curl -fsSL https://opencode.ai/install | bash';
-const DOCS_URL = 'https://opencode.ai/docs';
+const INSTALL_COMMAND = 'curl -fsSL https://mage.ai/install | bash';
+const DOCS_URL = 'https://mage.ai/docs';
 
 type OnboardingPlatform = 'macos' | 'linux' | 'windows' | 'unknown';
 
@@ -31,7 +31,7 @@ function BashCommand({ onCopy, copyTitle }: { onCopy: () => void; copyTitle: str
       <code>
         <span style={{ color: 'var(--syntax-keyword)' }}>curl</span>
         <span className="text-muted-foreground"> -fsSL </span>
-        <span style={{ color: 'var(--syntax-string)' }}>https://opencode.ai/install</span>
+        <span style={{ color: 'var(--syntax-string)' }}>https://mage.ai/install</span>
         <span className="text-muted-foreground"> | </span>
         <span style={{ color: 'var(--syntax-keyword)' }}>bash</span>
       </code>
@@ -61,7 +61,7 @@ export function LocalSetupScreen({
   const [isRetrying, setIsRetrying] = React.useState(false);
   const [isChecking, setIsChecking] = React.useState(false);
   const [checkError, setCheckError] = React.useState<string | null>(null);
-  const [opencodeBinary, setOpencodeBinary] = React.useState('');
+  const [mageBinary, setMageBinary] = React.useState('');
   const [platform, setPlatform] = React.useState<OnboardingPlatform>('unknown');
 
   React.useEffect(() => {
@@ -101,11 +101,11 @@ export function LocalSetupScreen({
       try {
         const response = await runtimeFetch('/api/config/settings', { method: 'GET', headers: { Accept: 'application/json' } });
         if (!response.ok) return;
-        const data = (await response.json().catch(() => null)) as null | { opencodeBinary?: unknown };
+        const data = (await response.json().catch(() => null)) as null | { mageBinary?: unknown };
         if (!data || cancelled) return;
-        const value = typeof data.opencodeBinary === 'string' ? data.opencodeBinary.trim() : '';
+        const value = typeof data.mageBinary === 'string' ? data.mageBinary.trim() : '';
         if (value) {
-          setOpencodeBinary(value);
+          setMageBinary(value);
         }
       } catch {
         // ignore
@@ -131,7 +131,7 @@ export function LocalSetupScreen({
       const response = await runtimeFetch('/health');
       if (!response.ok) return false;
       const data = await response.json();
-      return data.openCodeRunning === true || data.isOpenCodeReady === true;
+      return data.mageRunning === true || data.isMageReady === true;
     } catch {
       return false;
     }
@@ -148,7 +148,7 @@ export function LocalSetupScreen({
     try {
       const selected = await requestFileAccess();
       if (selected.success && selected.path && selected.path.trim().length > 0) {
-        setOpencodeBinary(selected.path.trim());
+        setMageBinary(selected.path.trim());
       }
     } catch {
       // ignore
@@ -158,7 +158,7 @@ export function LocalSetupScreen({
   const handleApplyPath = React.useCallback(async () => {
     setIsRetrying(true);
     try {
-      await updateDesktopSettings({ opencodeBinary: opencodeBinary.trim() });
+      await updateDesktopSettings({ mageBinary: mageBinary.trim() });
 
       // In desktop boot flow, restart the app so the native host can
       // re-evaluate the boot outcome with the updated binary path.
@@ -171,7 +171,7 @@ export function LocalSetupScreen({
     } finally {
       setTimeout(() => setIsRetrying(false), 1000);
     }
-  }, [isDesktopApp, opencodeBinary]);
+  }, [isDesktopApp, mageBinary]);
 
   const handleCopy = React.useCallback(async () => {
     const result = await copyTextToClipboard(INSTALL_COMMAND);
@@ -204,10 +204,10 @@ export function LocalSetupScreen({
   const docsUrl = DOCS_URL;
   const binaryPlaceholder =
     platform === 'windows'
-      ? 'C:\\Users\\you\\AppData\\Roaming\\npm\\opencode.cmd'
+      ? 'C:\\Users\\you\\AppData\\Roaming\\npm\\mage.cmd'
       : platform === 'linux'
-        ? '/home/you/.bun/bin/opencode'
-        : '/Users/you/.bun/bin/opencode';
+        ? '/home/you/.bun/bin/mage'
+        : '/Users/you/.bun/bin/mage';
 
   return (
     <div
@@ -294,8 +294,8 @@ export function LocalSetupScreen({
             <div className="text-sm text-muted-foreground">{t('onboarding.localSetup.field.alreadyInstalled')}</div>
             <div className="flex gap-2">
               <Input
-                value={opencodeBinary}
-                onChange={(e) => setOpencodeBinary(e.target.value)}
+                value={mageBinary}
+                onChange={(e) => setMageBinary(e.target.value)}
                 placeholder={binaryPlaceholder}
                 disabled={isRetrying}
                 className="flex-1 font-mono text-xs"

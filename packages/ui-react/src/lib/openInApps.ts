@@ -34,7 +34,7 @@ export const DEFAULT_OPEN_IN_APP_ID = 'finder';
 export const OPEN_IN_ALWAYS_AVAILABLE_APP_IDS = new Set(['finder', 'terminal']);
 
 export const getPlatformOpenInApp = (app: OpenInApp): OpenInApp => {
-  if (typeof window !== 'undefined' && window.__OPENCHAMBER_PLATFORM__ === 'win32') {
+  if (typeof window !== 'undefined' && window.__MAGE_PLATFORM__ === 'win32') {
     if (app.id === 'finder') {
       return { ...app, label: 'Explorer', appName: 'File Explorer' };
     }

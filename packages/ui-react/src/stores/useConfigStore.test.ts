@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, mock, test } from 'bun:test';
-import type { Agent } from '@opencode-ai/sdk/v2';
+import type { Agent } from '@mybcabisnis/mage-sdk/v2';
 
 const DIRECTORY = '/workspace/project';
 const OTHER_DIRECTORY = '/workspace/other';
@@ -160,8 +160,8 @@ mock.module('@/stores/useProjectsStore', () => ({
   },
 }));
 
-mock.module('@/lib/opencode/client', () => ({
-  opencodeClient: {
+mock.module('@/lib/mage/client', () => ({
+  mageClient: {
     setDirectory: mock(() => undefined),
     getDirectory: mock(() => DIRECTORY),
     checkHealth: mock(async () => true),
@@ -272,8 +272,8 @@ describe('useConfigStore provider persistence', () => {
       currentAgentName: undefined,
       agents: [],
       agentModelSelections: {},
-      opencodeDefaultAgent: undefined,
-      opencodeDefaultModel: undefined,
+      mageDefaultAgent: undefined,
+      mageDefaultModel: undefined,
       selectionSource: 'auto',
       isConnected: true,
       isInitialized: false,
@@ -522,7 +522,7 @@ describe('useConfigStore provider persistence', () => {
     expect(state.currentVariant).toBe('high');
   });
 
-  test('loadAgents does not fetch OpenCode config directly', async () => {
+  test('loadAgents does not fetch Mage config directly', async () => {
     useConfigStore.setState({
       activeDirectoryKey: DIRECTORY,
       providers: [provider('openai', 'gpt-5.5')],
@@ -639,7 +639,7 @@ describe('useConfigStore provider persistence', () => {
     emitSyncConfigChanged(worktree, { default_agent: 'review', model: 'openai/gpt-5.5' });
 
     const state = useConfigStore.getState();
-    expect(state.directoryScoped[DIRECTORY]?.opencodeDefaultAgent).toBe('review');
+    expect(state.directoryScoped[DIRECTORY]?.mageDefaultAgent).toBe('review');
     expect(state.directoryScoped[worktree]).toBe(undefined);
     expect(state.currentAgentName).toBe('review');
   });
@@ -694,8 +694,8 @@ describe('useConfigStore provider persistence', () => {
       currentModelId: 'gpt-5.5',
       currentAgentName: 'review',
       selectedProviderId: 'openai',
-      opencodeDefaultAgent: 'review',
-      opencodeDefaultModel: 'openai/gpt-5.5',
+      mageDefaultAgent: 'review',
+      mageDefaultModel: 'openai/gpt-5.5',
       selectionSource: 'auto',
       directoryScoped: {
         [DIRECTORY]: {
@@ -707,8 +707,8 @@ describe('useConfigStore provider persistence', () => {
           selectedProviderId: 'openai',
           agentModelSelections: {},
           defaultProviders: {},
-          opencodeDefaultAgent: 'review',
-          opencodeDefaultModel: 'openai/gpt-5.5',
+          mageDefaultAgent: 'review',
+          mageDefaultModel: 'openai/gpt-5.5',
           selectionSource: 'auto',
         },
       },
@@ -756,10 +756,10 @@ describe('useConfigStore provider persistence', () => {
     await useConfigStore.getState().loadAgents({ directory: DIRECTORY, source: 'test:preserveWorktreeDefaults' });
 
     const state = useConfigStore.getState();
-    expect(state.directoryScoped[DIRECTORY]?.opencodeDefaultAgent).toBe('review');
-    expect(state.directoryScoped[DIRECTORY]?.opencodeDefaultModel).toBe('openai/gpt-5.5');
-    expect(state.opencodeDefaultAgent).toBe('review');
-    expect(state.opencodeDefaultModel).toBe('openai/gpt-5.5');
+    expect(state.directoryScoped[DIRECTORY]?.mageDefaultAgent).toBe('review');
+    expect(state.directoryScoped[DIRECTORY]?.mageDefaultModel).toBe('openai/gpt-5.5');
+    expect(state.mageDefaultAgent).toBe('review');
+    expect(state.mageDefaultModel).toBe('openai/gpt-5.5');
   });
 
   test('in-flight loadAgents does not restore defaults cleared by a sync config event', async () => {
@@ -774,8 +774,8 @@ describe('useConfigStore provider persistence', () => {
       currentAgentName: 'review',
       selectedProviderId: 'openai',
       selectionSource: 'auto',
-      opencodeDefaultAgent: 'review',
-      opencodeDefaultModel: 'openai/gpt-5.5',
+      mageDefaultAgent: 'review',
+      mageDefaultModel: 'openai/gpt-5.5',
       directoryScoped: {
         [DIRECTORY]: {
           providers: [provider('openai', 'gpt-5.5')],
@@ -786,8 +786,8 @@ describe('useConfigStore provider persistence', () => {
           selectedProviderId: 'openai',
           agentModelSelections: {},
           defaultProviders: {},
-          opencodeDefaultAgent: 'review',
-          opencodeDefaultModel: 'openai/gpt-5.5',
+          mageDefaultAgent: 'review',
+          mageDefaultModel: 'openai/gpt-5.5',
           selectionSource: 'auto',
         },
       },
@@ -799,10 +799,10 @@ describe('useConfigStore provider persistence', () => {
     await load;
 
     const state = useConfigStore.getState();
-    expect(state.opencodeDefaultAgent).toBe(undefined);
-    expect(state.opencodeDefaultModel).toBe(undefined);
-    expect(state.directoryScoped[DIRECTORY]?.opencodeDefaultAgent).toBe(undefined);
-    expect(state.directoryScoped[DIRECTORY]?.opencodeDefaultModel).toBe(undefined);
+    expect(state.mageDefaultAgent).toBe(undefined);
+    expect(state.mageDefaultModel).toBe(undefined);
+    expect(state.directoryScoped[DIRECTORY]?.mageDefaultAgent).toBe(undefined);
+    expect(state.directoryScoped[DIRECTORY]?.mageDefaultModel).toBe(undefined);
   });
 
   test('in-flight loadAgents does not restore pre-await sync config defaults after a clearing event', async () => {
@@ -828,8 +828,8 @@ describe('useConfigStore provider persistence', () => {
       currentAgentName: 'review',
       selectedProviderId: 'openai',
       selectionSource: 'auto',
-      opencodeDefaultAgent: 'review',
-      opencodeDefaultModel: 'openai/gpt-5.5',
+      mageDefaultAgent: 'review',
+      mageDefaultModel: 'openai/gpt-5.5',
       directoryScoped: {
         [DIRECTORY]: {
           providers: [provider('openai', 'gpt-5.5')],
@@ -840,8 +840,8 @@ describe('useConfigStore provider persistence', () => {
           selectedProviderId: 'openai',
           agentModelSelections: {},
           defaultProviders: {},
-          opencodeDefaultAgent: 'review',
-          opencodeDefaultModel: 'openai/gpt-5.5',
+          mageDefaultAgent: 'review',
+          mageDefaultModel: 'openai/gpt-5.5',
           selectionSource: 'auto',
         },
       },
@@ -854,18 +854,18 @@ describe('useConfigStore provider persistence', () => {
     await load;
 
     const state = useConfigStore.getState();
-    expect(state.opencodeDefaultAgent).toBe(undefined);
-    expect(state.opencodeDefaultModel).toBe(undefined);
-    expect(state.directoryScoped[DIRECTORY]?.opencodeDefaultAgent).toBe(undefined);
-    expect(state.directoryScoped[DIRECTORY]?.opencodeDefaultModel).toBe(undefined);
+    expect(state.mageDefaultAgent).toBe(undefined);
+    expect(state.mageDefaultModel).toBe(undefined);
+    expect(state.directoryScoped[DIRECTORY]?.mageDefaultAgent).toBe(undefined);
+    expect(state.directoryScoped[DIRECTORY]?.mageDefaultModel).toBe(undefined);
   });
 
-  test('directory activation isolates selection source and OpenCode defaults', async () => {
+  test('directory activation isolates selection source and Mage defaults', async () => {
     useConfigStore.setState({
       activeDirectoryKey: DIRECTORY,
       selectionSource: 'manual',
-      opencodeDefaultAgent: 'active-default',
-      opencodeDefaultModel: 'active/model',
+      mageDefaultAgent: 'active-default',
+      mageDefaultModel: 'active/model',
       directoryScoped: {
         [DIRECTORY]: {
           providers: [provider('active')],
@@ -876,8 +876,8 @@ describe('useConfigStore provider persistence', () => {
           selectedProviderId: 'active',
           agentModelSelections: {},
           defaultProviders: {},
-          opencodeDefaultAgent: 'active-default',
-          opencodeDefaultModel: 'active/model',
+          mageDefaultAgent: 'active-default',
+          mageDefaultModel: 'active/model',
           selectionSource: 'manual',
         },
         [OTHER_DIRECTORY]: {
@@ -889,8 +889,8 @@ describe('useConfigStore provider persistence', () => {
           selectedProviderId: 'other',
           agentModelSelections: {},
           defaultProviders: {},
-          opencodeDefaultAgent: 'other-default',
-          opencodeDefaultModel: 'other/model',
+          mageDefaultAgent: 'other-default',
+          mageDefaultModel: 'other/model',
           selectionSource: 'auto',
         },
       },
@@ -902,11 +902,11 @@ describe('useConfigStore provider persistence', () => {
     const state = useConfigStore.getState();
     expect(state.activeDirectoryKey).toBe(OTHER_DIRECTORY);
     expect(state.selectionSource).toBe('auto');
-    expect(state.opencodeDefaultAgent).toBe('other-default');
-    expect(state.opencodeDefaultModel).toBe('other/model');
+    expect(state.mageDefaultAgent).toBe('other-default');
+    expect(state.mageDefaultModel).toBe('other/model');
   });
 
-  test('sync config without defaults clears stored OpenCode defaults without changing manual selection', () => {
+  test('sync config without defaults clears stored Mage defaults without changing manual selection', () => {
     useConfigStore.setState({
       activeDirectoryKey: DIRECTORY,
       providers: [provider('manual')],
@@ -916,8 +916,8 @@ describe('useConfigStore provider persistence', () => {
       currentAgentName: 'manual-agent',
       selectedProviderId: 'manual',
       selectionSource: 'manual',
-      opencodeDefaultAgent: 'old-agent',
-      opencodeDefaultModel: 'old/model',
+      mageDefaultAgent: 'old-agent',
+      mageDefaultModel: 'old/model',
       directoryScoped: {
         [DIRECTORY]: {
           providers: [provider('manual')],
@@ -928,8 +928,8 @@ describe('useConfigStore provider persistence', () => {
           selectedProviderId: 'manual',
           agentModelSelections: {},
           defaultProviders: {},
-          opencodeDefaultAgent: 'old-agent',
-          opencodeDefaultModel: 'old/model',
+          mageDefaultAgent: 'old-agent',
+          mageDefaultModel: 'old/model',
           selectionSource: 'manual',
         },
       },
@@ -938,10 +938,10 @@ describe('useConfigStore provider persistence', () => {
     emitSyncConfigChanged(DIRECTORY, {});
 
     const state = useConfigStore.getState();
-    expect(state.opencodeDefaultAgent).toBe(undefined);
-    expect(state.opencodeDefaultModel).toBe(undefined);
-    expect(state.directoryScoped[DIRECTORY]?.opencodeDefaultAgent).toBe(undefined);
-    expect(state.directoryScoped[DIRECTORY]?.opencodeDefaultModel).toBe(undefined);
+    expect(state.mageDefaultAgent).toBe(undefined);
+    expect(state.mageDefaultModel).toBe(undefined);
+    expect(state.directoryScoped[DIRECTORY]?.mageDefaultAgent).toBe(undefined);
+    expect(state.directoryScoped[DIRECTORY]?.mageDefaultModel).toBe(undefined);
     expect(state.currentAgentName).toBe('manual-agent');
     expect(state.currentProviderId).toBe('manual');
     expect(state.selectionSource).toBe('manual');

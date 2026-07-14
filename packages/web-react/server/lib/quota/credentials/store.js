@@ -2,12 +2,12 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-const MANAGED_QUOTA_PROVIDERS = new Set(['opencode-go', 'ollama-cloud', 'cursor']);
+const MANAGED_QUOTA_PROVIDERS = new Set(['mage-go', 'ollama-cloud', 'cursor']);
 
 const credentialsDirectory = () => path.join(
-  process.env.OPENCHAMBER_DATA_DIR
-    ? path.resolve(process.env.OPENCHAMBER_DATA_DIR)
-    : path.join(os.homedir(), '.config', 'openchamber'),
+  process.env.MAGE_DATA_DIR
+    ? path.resolve(process.env.MAGE_DATA_DIR)
+    : path.join(os.homedir(), '.config', 'mage'),
   'quota',
 );
 

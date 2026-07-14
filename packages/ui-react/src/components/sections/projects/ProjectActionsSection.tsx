@@ -28,9 +28,9 @@ import { isDesktopShell } from '@/lib/desktop';
 import {
   getProjectActionsState,
   saveProjectActionsState,
-  type OpenChamberProjectAction,
+  type MageProjectAction,
   type ProjectRef,
-} from '@/lib/openchamberConfig';
+} from '@/lib/mageConfig';
 import {
   buildProjectActionDesktopForwardOptions,
   PROJECT_ACTION_ICON_MAP,
@@ -44,7 +44,7 @@ import {
 import { useI18n } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
-type EditableProjectAction = OpenChamberProjectAction;
+type EditableProjectAction = MageProjectAction;
 
 const AUTO_SAVE_DELAY_MS = 450;
 

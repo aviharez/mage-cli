@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as os from 'os';
 import { getThemeKindName } from './theme';
-import type { ConnectionStatus } from './opencode';
+import type { ConnectionStatus } from './mage';
 import type { WorkspaceFolderCandidate } from './workspaceResolver';
 
 type PanelType = 'chat' | 'agentManager';
@@ -75,7 +75,7 @@ export function getWebviewHtml(options: WebviewHtmlOptions): string {
   // Use VS Code CSS variables for proper theme integration
   // These variables are automatically provided by VS Code to webviews
   // 
-  // Logo geometry matches OpenChamberLogo.tsx:
+  // Logo geometry matches MageLogo.tsx:
   // edge=48, cos30=0.866, sin30=0.5, centerY=50
   // top=(50, 2), left=(8.432, 26), right=(91.568, 26), center=(50, 50)
   // bottomLeft=(8.432, 74), bottomRight=(91.568, 74), bottom=(50, 98)
@@ -112,7 +112,7 @@ export function getWebviewHtml(options: WebviewHtmlOptions): string {
       opacity: 0;
       pointer-events: none;
     }
-    /* Glow pulse on the OpenCode mark on the cube's top face — signals loading without text. */
+    /* Glow pulse on the Mage mark on the cube's top face — signals loading without text. */
     @keyframes oc-logo-glow {
       0%, 100% { filter: drop-shadow(0 0 0 transparent); }
       50% { filter: drop-shadow(0 0 4px var(--vscode-foreground)); }
@@ -150,10 +150,10 @@ export function getWebviewHtml(options: WebviewHtmlOptions): string {
       max-width: 280px;
     }
   </style>
-  <title>OpenChamber</title>
+  <title>Mage</title>
 </head>
 <body>
-  <!-- Initial loading screen with simplified OpenChamber logo -->
+  <!-- Initial loading screen with simplified Mage logo -->
   <div id="initial-loading">
     <svg class="logo" width="70" height="70" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
       <!-- Left face -->
@@ -163,7 +163,7 @@ export function getWebviewHtml(options: WebviewHtmlOptions): string {
       <!-- Top face (no fill, stroke only) -->
       <path class="logo-stroke" d="M50 2 L8.432 26 L50 50 L91.568 26 Z" fill="none" stroke-width="2" stroke-linejoin="round"/>
       
-      <!-- OpenCode logo on top face -->
+      <!-- Mage logo on top face -->
       <g class="logo-inner" transform="matrix(0.866, 0.5, -0.866, 0.5, 50, 26) scale(0.75)">
         <path class="logo-fill-solid" fill-rule="evenodd" clip-rule="evenodd" d="M-16 -20 L16 -20 L16 20 L-16 20 Z M-8 -12 L-8 12 L8 12 L8 -12 Z"/>
         <path class="logo-fill-dim" d="M-8 -4 L8 -4 L8 12 L-8 12 Z"/>
@@ -171,7 +171,7 @@ export function getWebviewHtml(options: WebviewHtmlOptions): string {
     </svg>
     <!-- Status text stays empty while things are fine; populated only on error. -->
     <div class="status-text" id="loading-status"></div>
-    ${!cliAvailable ? `<div class="error-text" id="cli-missing-text">OpenCode CLI not found. Please install it first.</div>` : ''}
+    ${!cliAvailable ? `<div class="error-text" id="cli-missing-text">Mage CLI not found. Please install it first.</div>` : ''}
   </div>
   
   <div id="root"></div>
@@ -192,12 +192,12 @@ export function getWebviewHtml(options: WebviewHtmlOptions): string {
       viewMode: "${viewMode}",
       initialSessionId: ${initialSessionId ? `"${initialSessionId.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"` : 'null'},
     };
-    window.__OPENCHAMBER_HOME__ = "${workspaceFolder.replace(/\\/g, '\\\\')}";
+    window.__MAGE_HOME__ = "${workspaceFolder.replace(/\\/g, '\\\\')}";
     
     function getBootstrapMessages() {
       var locale = 'en';
       try {
-        var rawLocale = window.localStorage.getItem('openchamber.i18n.v1');
+        var rawLocale = window.localStorage.getItem('mage.i18n.v1');
         if (rawLocale) {
           var parsedLocale = JSON.parse(rawLocale);
           if (parsedLocale && typeof parsedLocale.locale === 'string' && parsedLocale.locale.toLowerCase().indexOf('fr') === 0) {
@@ -208,22 +208,22 @@ export function getWebviewHtml(options: WebviewHtmlOptions): string {
 
       return locale === 'fr'
         ? {
-            startingApi: 'Démarrage de l’API OpenCode…',
+            startingApi: 'Démarrage de l’API Mage…',
             initializing: 'Initialisation…',
             connecting: 'Connexion…',
             connected: 'Connecté !',
             connectionError: 'Erreur de connexion',
             reconnecting: 'Reconnexion…',
-            cliNotFound: 'L’interface en ligne de commande OpenCode est introuvable. Veuillez l’installer d’abord.',
+            cliNotFound: 'L’interface en ligne de commande Mage est introuvable. Veuillez l’installer d’abord.',
           }
         : {
-            startingApi: 'Starting OpenCode API…',
+            startingApi: 'Starting Mage API…',
             initializing: 'Initializing…',
             connecting: 'Connecting…',
             connected: 'Connected!',
             connectionError: 'Connection error',
             reconnecting: 'Reconnecting…',
-            cliNotFound: 'OpenCode CLI not found. Please install it first.',
+            cliNotFound: 'Mage CLI not found. Please install it first.',
           };
     }
 
@@ -278,7 +278,7 @@ export function getWebviewHtml(options: WebviewHtmlOptions): string {
       const statusEl = document.getElementById('loading-status');
       const getDevMessages = () => {
         try {
-          const rawLocale = window.localStorage.getItem('openchamber.i18n.v1');
+          const rawLocale = window.localStorage.getItem('mage.i18n.v1');
           if (rawLocale) {
             const parsedLocale = JSON.parse(rawLocale);
             if (parsedLocale && typeof parsedLocale.locale === 'string' && parsedLocale.locale.toLowerCase().indexOf('fr') === 0) {
@@ -366,7 +366,7 @@ export function getWebviewHtml(options: WebviewHtmlOptions): string {
           })
           .catch((error) => {
             attempt += 1;
-            console.warn('[OpenChamber] VS Code webview dev bundle unavailable, retrying...', error);
+            console.warn('[Mage] VS Code webview dev bundle unavailable, retrying...', error);
             setStatus(devMessages.waitingDevServer(hostLabel, attempt));
             window.setTimeout(() => {
               tryLoadDevBundle();

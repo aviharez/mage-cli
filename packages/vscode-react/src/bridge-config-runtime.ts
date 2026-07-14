@@ -49,7 +49,7 @@ import {
   deleteMcpConfig,
   expandSnippets,
   type SnippetScope,
-} from './opencodeConfig';
+} from './mageConfig';
 import {
   getSkillsCatalog,
   scanSkillsRepository as scanSkillsRepositoryFromGit,
@@ -71,11 +71,11 @@ type ConfigRuntimeDeps = {
   saveMagicPromptOverride: (id: string, text: string) => Promise<{ version: number; overrides: Record<string, string> }>;
   resetMagicPromptOverride: (id: string) => Promise<{ version: number; overrides: Record<string, string> }>;
   resetAllMagicPromptOverrides: () => Promise<{ version: number; overrides: Record<string, string> }>;
-  fetchOpenCodeSkillsFromApi: (ctx: BridgeContext | undefined, workingDirectory?: string) => Promise<DiscoveredSkill[] | null>;
+  fetchMageSkillsFromApi: (ctx: BridgeContext | undefined, workingDirectory?: string) => Promise<DiscoveredSkill[] | null>;
   clientReloadDelayMs: number;
 };
 
-const AGENTS_MD_PATH = path.join(os.homedir(), '.config', 'opencode', 'AGENTS.md');
+const AGENTS_MD_PATH = path.join(os.homedir(), '.config', 'mage', 'AGENTS.md');
 const MAX_BEHAVIOR_PROMPT_SIZE = 1024 * 1024;
 
 const resolveWorkingDirectory = (ctx: BridgeContext | undefined, directory?: string): string | undefined => (
@@ -102,7 +102,7 @@ const pluginMutationPayload = async (
     return {
       success: true,
       requiresReload: false,
-      message: `${label}, but OpenCode reload failed.`,
+      message: `${label}, but Mage reload failed.`,
       reloadDelayMs: deps.clientReloadDelayMs,
       reloadFailed: true,
       warning: error instanceof Error ? error.message : String(error),
@@ -142,7 +142,7 @@ const resolveDiscoveredSkills = async (
   ctx: BridgeContext | undefined,
   workingDirectory?: string,
 ): Promise<DiscoveredSkill[]> => mergeDiscoveredSkills(
-  (await deps.fetchOpenCodeSkillsFromApi(ctx, workingDirectory)) || [],
+  (await deps.fetchMageSkillsFromApi(ctx, workingDirectory)) || [],
   discoverSkills(workingDirectory),
 );
 
@@ -154,9 +154,9 @@ export async function handleConfigBridgeMessage(
   const { id, type, payload } = message;
 
   switch (type) {
-    case 'api:config/opencode-resolution:get': {
+    case 'api:config/mage-resolution:get': {
       const debugInfo = ctx?.manager?.getDebugInfo();
-      const configuredFromWorkspace = vscode.workspace.getConfiguration('openchamber').get<string>('opencodeBinary');
+      const configuredFromWorkspace = vscode.workspace.getConfiguration('mage').get<string>('mageBinary');
       const configured = typeof configuredFromWorkspace === 'string' && configuredFromWorkspace.trim().length > 0
         ? configuredFromWorkspace.trim()
         : null;
@@ -676,7 +676,7 @@ export async function handleConfigBridgeMessage(
         const scopeValue = body?.scope as string | undefined;
         const sourceValue = body?.source as string | undefined;
         const scope: SkillScope | undefined = scopeValue === 'project' ? SKILL_SCOPE.PROJECT : scopeValue === 'user' ? SKILL_SCOPE.USER : undefined;
-        const normalizedSource = sourceValue === 'agents' ? 'agents' : 'opencode';
+        const normalizedSource = sourceValue === 'agents' ? 'agents' : 'mage';
         createSkill(skillName, { ...(body || {}), source: normalizedSource } as Record<string, unknown>, workingDirectory, scope);
         await ctx?.manager?.restart();
         return {
@@ -751,7 +751,7 @@ export async function handleConfigBridgeMessage(
         source?: string;
         subpath?: string;
         scope?: 'user' | 'project';
-        targetSource?: 'opencode' | 'agents';
+        targetSource?: 'mage' | 'agents';
         selections?: Array<{ skillDir: string }>;
         conflictPolicy?: 'prompt' | 'skipAll' | 'overwriteAll';
         conflictDecisions?: Record<string, 'skip' | 'overwrite'>;
@@ -763,7 +763,7 @@ export async function handleConfigBridgeMessage(
         source: String(body.source || ''),
         subpath: body.subpath,
         scope: body.scope === 'project' ? 'project' : 'user',
-        targetSource: body.targetSource === 'agents' ? 'agents' : 'opencode',
+        targetSource: body.targetSource === 'agents' ? 'agents' : 'mage',
         workingDirectory: body.scope === 'project' ? workingDirectory : undefined,
         selections: Array.isArray(body.selections) ? body.selections : [],
         conflictPolicy: body.conflictPolicy,

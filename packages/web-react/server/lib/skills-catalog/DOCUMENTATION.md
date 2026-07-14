@@ -1,7 +1,7 @@
 # Skills Catalog Module Documentation
 
 ## Purpose
-This module provides skill discovery, scanning, and installation capabilities for OpenCode. It supports multiple skill sources including git repositories and the ClawdHub registry, with caching and conflict resolution for skill installation.
+This module provides skill discovery, scanning, and installation capabilities for Mage. It supports multiple skill sources including git repositories and the ClawdHub registry, with caching and conflict resolution for skill installation.
 
 ## Entrypoints and structure
 - `packages/web/server/lib/skills-catalog/`: Skills catalog module directory containing all skill-related functionality.
@@ -38,7 +38,7 @@ The following functions are exported and used by the web server:
 - `scanSkillsRepository({ source, subpath, defaultSubpath, identity })`: Scan git repository for skills by cloning and analyzing SKILL.md files. Returns array of skill items with metadata.
 
 ### Git Repository Installation (`install.js`)
-- `installSkillsFromRepository({ source, subpath, defaultSubpath, identity, scope, targetSource, workingDirectory, userSkillDir, selections, conflictPolicy, conflictDecisions })`: Install skills from git repository. Supports user/project scopes, opencode/agents targets, conflict resolution (prompt/skipAll/overwriteAll), and sparse checkout for efficiency.
+- `installSkillsFromRepository({ source, subpath, defaultSubpath, identity, scope, targetSource, workingDirectory, userSkillDir, selections, conflictPolicy, conflictDecisions })`: Install skills from git repository. Supports user/project scopes, mage/agents targets, conflict resolution (prompt/skipAll/overwriteAll), and sparse checkout for efficiency.
 
 ### ClawdHub Integration (`clawdhub/index.js`)
 - `isClawdHubSource(source)`: Check if source string refers to ClawdHub.
@@ -70,7 +70,7 @@ The following functions are internal helpers used by exported functions:
 - `safeRm(dir)`: Safely remove directory recursively (ignores errors).
 - `ensureDir(dirPath)`: Ensure directory exists with recursive creation.
 - `copyDirectoryNoSymlinks(srcDir, dstDir)`: Copy directory contents without symlinks, with path traversal protection.
-- `normalizeUserSkillDir(userSkillDir)`: Normalize user skill directory path (handles legacy `~/.config/opencode/skill` → `~/.config/opencode/skills` migration).
+- `normalizeUserSkillDir(userSkillDir)`: Normalize user skill directory path (handles legacy `~/.config/mage/skill` → `~/.config/mage/skills` migration).
 
 ### Git Clone Helpers (`install.js`, `scan.js`)
 - `cloneRepo({ cloneUrl, identity, tempDir })`: Clone git repository with preferred partial clone (`--filter=blob:none`) and fallback. Uses non-interactive mode.
@@ -80,7 +80,7 @@ The following functions are internal helpers used by exported functions:
 
 ### Path Helpers (`install.js`)
 - `toFsPath(repoDir, repoRelPosixPath)`: Convert POSIX path to filesystem path.
-- `getTargetSkillDir({ scope, targetSource, workingDirectory, userSkillDir, skillName })`: Determine target installation directory based on scope (user/project), targetSource (opencode/agents), and skill name.
+- `getTargetSkillDir({ scope, targetSource, workingDirectory, userSkillDir, skillName })`: Determine target installation directory based on scope (user/project), targetSource (mage/agents), and skill name.
 
 ### ClawdHub API Helpers (`clawdhub/api.js`)
 - `rateLimitedFetch(url, options)`: Fetch with rate limiting (120 req/min limit, 100ms delay between requests, exponential backoff on 429/500 errors).

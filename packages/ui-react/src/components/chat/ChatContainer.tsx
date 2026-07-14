@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Message, Part, Session } from '@opencode-ai/sdk/v2';
+import type { Message, Part, Session } from '@mybcabisnis/mage-sdk/v2';
 import type { PermissionRequest } from '@/types/permission';
 import type { QuestionRequest } from '@/types/question';
 
@@ -52,7 +52,7 @@ import { isVSCodeRuntime } from '@/lib/desktop';
 
 const EMPTY_MESSAGES: Array<{ info: Message; parts: Part[] }> = [];
 const IDLE_SESSION_STATUS = { type: 'idle' as const };
-const CHAT_FORCE_SCROLL_BOTTOM_EVENT = 'openchamber:chat-force-scroll-bottom';
+const CHAT_FORCE_SCROLL_BOTTOM_EVENT = 'mage:chat-force-scroll-bottom';
 const DEFAULT_RETRY_MESSAGE = 'Quota limit reached. Retrying automatically.';
 const CHAT_SCROLL_STYLE = {
     overflowAnchor: 'none',

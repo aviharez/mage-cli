@@ -1,7 +1,7 @@
 // Long-lived relay host client: maintains the signed `host-control` socket to
 // the relay, and per connected client a signed `host-data` socket that runs the
 // responder E2EE handshake and feeds decrypted frames into a tunnel-host
-// dispatcher. Spec: .opencode/plans/private-relay/01-protocol-spec.md (Layer 1).
+// dispatcher. Spec: .mage/plans/private-relay/01-protocol-spec.md (Layer 1).
 
 import { WebSocket } from 'ws';
 
@@ -33,7 +33,7 @@ const DEFAULT_BATCH_WINDOW_MS = 150;
 // the 150 ms default. Only applies on directions where batching was negotiated.
 const resolveBatchWindowMs = (option) => {
   if (Number.isFinite(option) && option >= 0) return option;
-  const envValue = Number.parseInt(process.env.OPENCHAMBER_RELAY_BATCH_WINDOW_MS ?? '', 10);
+  const envValue = Number.parseInt(process.env.MAGE_RELAY_BATCH_WINDOW_MS ?? '', 10);
   if (Number.isFinite(envValue) && envValue >= 0) return envValue;
   return DEFAULT_BATCH_WINDOW_MS;
 };

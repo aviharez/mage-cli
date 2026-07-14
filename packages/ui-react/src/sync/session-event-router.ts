@@ -1,4 +1,4 @@
-import type { Event, Session } from "@opencode-ai/sdk/v2/client"
+import type { Event, Session } from "@mybcabisnis/mage-sdk/v2/client"
 import { useGlobalSessionsStore } from "@/stores/useGlobalSessionsStore"
 import { stripSessionDiffSnapshots } from "./sanitize"
 import { shouldSkipStaleSessionEvent } from "./session-event-freshness"

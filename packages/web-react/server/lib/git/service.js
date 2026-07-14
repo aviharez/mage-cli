@@ -157,7 +157,7 @@ const resolveGitBinary = () => {
     return resolvedGitBinary;
   }
 
-  const explicit = [process.env.GIT_BINARY, process.env.OPENCHAMBER_GIT_BINARY]
+  const explicit = [process.env.GIT_BINARY, process.env.MAGE_GIT_BINARY]
     .map((value) => (typeof value === 'string' ? value.trim() : ''))
     .filter(Boolean);
   for (const candidate of explicit) {
@@ -551,14 +551,14 @@ const MAGE_NOUNS = [
 
 const MAGE_WORKTREE_ATTEMPTS = 26;
 
-const getOpenCodeDataPath = () => {
+const getMageDataPath = () => {
   const xdgDataHome = process.env.XDG_DATA_HOME || path.join(os.homedir(), '.local', 'share');
-  return path.join(xdgDataHome, 'opencode');
+  return path.join(xdgDataHome, 'mage');
 };
 
 const pickRandom = (values) => values[Math.floor(Math.random() * values.length)];
 
-const generateOpenCodeRandomName = () => `${pickRandom(MAGE_ADJECTIVES)}-${pickRandom(MAGE_NOUNS)}`;
+const generateMageRandomName = () => `${pickRandom(MAGE_ADJECTIVES)}-${pickRandom(MAGE_NOUNS)}`;
 
 const slugWorktreeName = (value) => {
   return String(value || '')
@@ -1070,7 +1070,7 @@ export async function computeIntegratePlan(input = {}) {
 }
 
 const createIntegrateTempWorktree = async (repoRoot, targetBranch) => {
-  const tmpParent = path.join(os.homedir(), '.config', 'openchamber', 'tmp');
+  const tmpParent = path.join(os.homedir(), '.config', 'mage', 'tmp');
   await fsp.mkdir(tmpParent, { recursive: true });
   const tmpDir = await fsp.mkdtemp(path.join(tmpParent, 'oc-integrate-'));
   try {
@@ -1286,9 +1286,9 @@ export async function continueIntegrate(stateInput = {}) {
   return { kind: 'success', moved: state.remainingCommits.length };
 }
 
-const ensureOpenCodeProjectId = async (primaryWorktree) => {
+const ensureMageProjectId = async (primaryWorktree) => {
   const gitDir = path.join(primaryWorktree, '.git');
-  const idFile = path.join(gitDir, 'opencode');
+  const idFile = path.join(gitDir, 'mage');
   const existing = await fsp.readFile(idFile, 'utf8').then((value) => value.trim()).catch(() => '');
   if (existing) {
     return existing;
@@ -1308,7 +1308,7 @@ const ensureOpenCodeProjectId = async (primaryWorktree) => {
 
   const projectId = roots[0] || '';
   if (!projectId) {
-    throw new Error('Failed to derive OpenCode project ID');
+    throw new Error('Failed to derive Mage project ID');
   }
 
   await fsp.mkdir(gitDir, { recursive: true }).catch(() => undefined);
@@ -1337,8 +1337,8 @@ const resolveWorktreeProjectContext = async (directory) => {
   );
   const commonDir = path.resolve(sandbox, commonResult.stdout.trim());
   const primaryWorktree = path.dirname(commonDir);
-  const projectID = await ensureOpenCodeProjectId(primaryWorktree);
-  const worktreeRoot = path.join(getOpenCodeDataPath(), 'worktree', projectID);
+  const projectID = await ensureMageProjectId(primaryWorktree);
+  const worktreeRoot = path.join(getMageDataPath(), 'worktree', projectID);
 
   return {
     projectID,
@@ -1360,13 +1360,13 @@ const listWorktreeEntries = async (directory) => {
 const resolveWorktreeNameCandidates = (baseName) => {
   const normalizedBase = slugWorktreeName(baseName || '');
   if (!normalizedBase) {
-    return Array.from({ length: MAGE_WORKTREE_ATTEMPTS }, () => generateOpenCodeRandomName());
+    return Array.from({ length: MAGE_WORKTREE_ATTEMPTS }, () => generateMageRandomName());
   }
   return Array.from({ length: MAGE_WORKTREE_ATTEMPTS }, (_, index) => {
     if (index === 0) {
       return normalizedBase;
     }
-    return `${normalizedBase}-${generateOpenCodeRandomName()}`;
+    return `${normalizedBase}-${generateMageRandomName()}`;
   });
 };
 
@@ -1383,7 +1383,7 @@ const resolveCandidateDirectory = async (worktreeRoot, preferredName, explicitBr
       return { name, directory, branch: explicitBranchName };
     }
 
-    const branch = `openchamber/${name}`;
+    const branch = `mage/${name}`;
     const branchRef = `refs/heads/${branch}`;
     const branchExists = await runGitCommand(primaryWorktree, ['show-ref', '--verify', '--quiet', branchRef]);
     if (branchExists.success) {
@@ -1490,7 +1490,7 @@ const runWorktreeStartCommand = async (directory, command) => {
 };
 
 const loadProjectStartCommand = async (projectID) => {
-  const storagePath = path.join(getOpenCodeDataPath(), 'storage', 'project', `${projectID}.json`);
+  const storagePath = path.join(getMageDataPath(), 'storage', 'project', `${projectID}.json`);
   try {
     const raw = await fsp.readFile(storagePath, 'utf8');
     const parsed = JSON.parse(raw);
@@ -1502,13 +1502,13 @@ const loadProjectStartCommand = async (projectID) => {
 };
 
 const getProjectStoragePath = (projectID) => {
-  return path.join(getOpenCodeDataPath(), 'storage', 'project', `${projectID}.json`);
+  return path.join(getMageDataPath(), 'storage', 'project', `${projectID}.json`);
 };
 
-const syncSandboxesToOpenCodeDb = (projectID, sandboxes) => {
+const syncSandboxesToMageDb = (projectID, sandboxes) => {
   try {
     const Database = require('better-sqlite3');
-    const dbPath = path.join(getOpenCodeDataPath(), 'opencode.db');
+    const dbPath = path.join(getMageDataPath(), 'mage.db');
     if (!fs.existsSync(dbPath)) return;
     const db = new Database(dbPath);
     try {
@@ -1520,7 +1520,7 @@ const syncSandboxesToOpenCodeDb = (projectID, sandboxes) => {
       db.close();
     }
   } catch (error) {
-    console.warn('Failed to sync sandboxes to OpenCode DB:', error instanceof Error ? error.message : String(error));
+    console.warn('Failed to sync sandboxes to Mage DB:', error instanceof Error ? error.message : String(error));
   }
 };
 
@@ -1564,8 +1564,8 @@ const updateProjectSandboxes = async (projectID, primaryWorktree, updater) => {
 
   await fsp.writeFile(storagePath, `${JSON.stringify(current, null, 2)}\n`, 'utf8');
 
-  // Sync to OpenCode's SQLite database so project.sandboxes is visible via the SDK
-  syncSandboxesToOpenCodeDb(projectID, current.sandboxes);
+  // Sync to Mage's SQLite database so project.sandboxes is visible via the SDK
+  syncSandboxesToMageDb(projectID, current.sandboxes);
 };
 
 const syncProjectSandboxAdd = async (projectID, primaryWorktree, sandboxPath) => {
@@ -1609,7 +1609,7 @@ const cleanupFailedFastWorktreeCreate = async (context, candidate) => {
     try {
       await syncProjectSandboxRemove(context.projectID, context.primaryWorktree, candidateDirectory);
     } catch (error) {
-      console.warn('Failed to clean up OpenCode sandbox metadata after worktree failure:', error instanceof Error ? error.message : String(error));
+      console.warn('Failed to clean up Mage sandbox metadata after worktree failure:', error instanceof Error ? error.message : String(error));
     }
   }
 
@@ -2628,7 +2628,7 @@ const extractPatchTargetPath = (patch) => {
 
 const writeTempPatchFile = async (patch) => {
   const tmpDir = os.tmpdir();
-  const tmpPath = path.join(tmpDir, `openchamber-hunk-${Date.now()}-${Math.random().toString(36).slice(2)}.patch`);
+  const tmpPath = path.join(tmpDir, `mage-hunk-${Date.now()}-${Math.random().toString(36).slice(2)}.patch`);
   await fsp.writeFile(tmpPath, patch, 'utf8');
   return tmpPath;
 };
@@ -2774,7 +2774,7 @@ export async function stashPush(directory, options = {}) {
   const { git } = await createRepositoryGitContext(directory);
   const message = typeof options.message === 'string' && options.message.trim()
     ? options.message.trim()
-    : `OpenChamber stash ${new Date().toISOString()}`;
+    : `Mage stash ${new Date().toISOString()}`;
   const output = await git.raw(['stash', 'push', '--include-untracked', '-m', message]);
   return {
     success: true,
@@ -3681,7 +3681,7 @@ async function attachGitWorktreeToCandidate(context, candidate, input = {}) {
   try {
     await syncProjectSandboxAdd(context.projectID, context.primaryWorktree, candidate.directory);
   } catch (error) {
-    console.warn('Failed to sync OpenCode sandbox metadata (add):', error instanceof Error ? error.message : String(error));
+    console.warn('Failed to sync Mage sandbox metadata (add):', error instanceof Error ? error.message : String(error));
   }
 
   const shouldSetUpstream = Boolean(input?.setUpstream);
@@ -3747,7 +3747,7 @@ export async function createWorktree(directory, input = {}) {
     try {
       await syncProjectSandboxAdd(context.projectID, context.primaryWorktree, candidate.directory);
     } catch (error) {
-      console.warn('Failed to sync OpenCode sandbox metadata (add):', error instanceof Error ? error.message : String(error));
+      console.warn('Failed to sync Mage sandbox metadata (add):', error instanceof Error ? error.message : String(error));
     }
 
     setWorktreeBootstrapState(candidate.directory, WORKTREE_BOOTSTRAP_PENDING);
@@ -3843,7 +3843,7 @@ export async function removeWorktree(directory, input = {}) {
     try {
       await syncProjectSandboxRemove(context.projectID, context.primaryWorktree, targetDirectory);
     } catch (error) {
-      console.warn('Failed to sync OpenCode sandbox metadata (remove):', error instanceof Error ? error.message : String(error));
+      console.warn('Failed to sync Mage sandbox metadata (remove):', error instanceof Error ? error.message : String(error));
     }
 
     clearWorktreeBootstrapState(targetDirectory);
@@ -3871,7 +3871,7 @@ export async function removeWorktree(directory, input = {}) {
   try {
     await syncProjectSandboxRemove(context.projectID, context.primaryWorktree, matchedEntry.worktree);
   } catch (error) {
-    console.warn('Failed to sync OpenCode sandbox metadata (remove):', error instanceof Error ? error.message : String(error));
+    console.warn('Failed to sync Mage sandbox metadata (remove):', error instanceof Error ? error.message : String(error));
   }
 
   clearWorktreeBootstrapState(matchedEntry.worktree);

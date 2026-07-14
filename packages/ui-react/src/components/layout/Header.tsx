@@ -74,7 +74,7 @@ import { useI18n } from '@/lib/i18n';
 import { runtimeFetch } from '@/lib/runtime-fetch';
 import { getRuntimeBearerTokenSync } from '@/lib/runtime-auth';
 import { getRuntimeApiBaseUrl } from '@/lib/runtime-switch';
-import type { Session } from '@opencode-ai/sdk/v2/client';
+import type { Session } from '@mybcabisnis/mage-sdk/v2/client';
 import type { IconName } from "@/components/icon/icons";
 
 const DESKTOP_HEADER_ICON_BUTTON_CLASS = 'app-region-no-drag inline-flex h-8 w-8 items-center justify-center gap-2 rounded-md typography-ui-label font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50 hover:bg-interactive-hover transition-colors';
@@ -793,7 +793,7 @@ export const Header: React.FC<HeaderProps> = ({
     if (typeof window === 'undefined') {
       return false;
     }
-    return Boolean(window.__OPENCHAMBER_ELECTRON__) && window.__OPENCHAMBER_PLATFORM__ === 'win32';
+    return Boolean(window.__MAGE_ELECTRON__) && window.__MAGE_PLATFORM__ === 'win32';
   }, []);
 
   const macosMajorVersion = React.useMemo(() => {
@@ -801,7 +801,7 @@ export const Header: React.FC<HeaderProps> = ({
       return null;
     }
 
-    const injected = (window as unknown as { __OPENCHAMBER_MACOS_MAJOR__?: unknown }).__OPENCHAMBER_MACOS_MAJOR__;
+    const injected = (window as unknown as { __MAGE_MACOS_MAJOR__?: unknown }).__MAGE_MACOS_MAJOR__;
     if (typeof injected === 'number' && Number.isFinite(injected) && injected > 0) {
       return injected;
     }
@@ -900,7 +900,7 @@ export const Header: React.FC<HeaderProps> = ({
       setCurrentInstanceIsLocal(false);
 
       const cfg = await desktopHostsGet();
-      const localOrigin = window.__OPENCHAMBER_LOCAL_ORIGIN__ || window.location.origin;
+      const localOrigin = window.__MAGE_LOCAL_ORIGIN__ || window.location.origin;
       const runtimeApiBaseUrl = getRuntimeApiBaseUrl();
 
       if (runtimeApiBaseUrl && locationMatchesHost(runtimeApiBaseUrl, localOrigin)) {
@@ -940,7 +940,7 @@ export const Header: React.FC<HeaderProps> = ({
     setRemoteUpdateError(null);
     try {
       const params = new URLSearchParams({ appType: 'web', instanceMode: 'remote' });
-      const response = await runtimeFetch(`/api/openchamber/update-check?${params.toString()}`, {
+      const response = await runtimeFetch(`/api/mage/update-check?${params.toString()}`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
       });
@@ -1284,7 +1284,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   const currentSessionTitle = React.useMemo(() => {
     if (!currentSessionId) {
-      return activeProjectLabel ?? 'OpenChamber';
+      return activeProjectLabel ?? 'Mage';
     }
     const trimmedTitle = currentSession?.title?.trim();
     return trimmedTitle && trimmedTitle.length > 0 ? trimmedTitle : 'Untitled Session';
@@ -1649,11 +1649,11 @@ export const Header: React.FC<HeaderProps> = ({
     };
 
     void syncFullscreenState();
-    window.addEventListener('openchamber:window-resized', onResize);
+    window.addEventListener('mage:window-resized', onResize);
 
     return () => {
       disposed = true;
-      window.removeEventListener('openchamber:window-resized', onResize);
+      window.removeEventListener('mage:window-resized', onResize);
     };
   }, [isDesktopApp, isMacPlatform]);
 

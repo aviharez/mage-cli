@@ -2,7 +2,7 @@
 
 /**
  * gen-skills.ts
- * Reads packages/opencode/defaults/skills/*\/SKILL.md and extracts the name +
+ * Reads packages/mage/defaults/skills/*\/SKILL.md and extracts the name +
  * description from each file's YAML frontmatter, then writes the result to
  * packages/web/src/data/builtin-skills.json so the hub page can list all
  * built-in skills at build time.
@@ -17,7 +17,7 @@ import path from "path"
 import { fileURLToPath } from "url"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const skillsDir = path.resolve(__dirname, "../../opencode/defaults/skills")
+const skillsDir = path.resolve(__dirname, "../../mage/defaults/skills")
 const outFile = path.resolve(__dirname, "../src/data/builtin-skills.json")
 
 if (!fs.existsSync(skillsDir)) {

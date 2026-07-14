@@ -4,12 +4,12 @@ import { Icon } from '@/components/icon/Icon';
 import type { IconName } from '@/components/icon/icons';
 import { McpIcon } from '@/components/icons/McpIcon';
 import { McpDropdownContent } from '@/components/mcp/McpDropdown';
-import { AboutSettings } from '@/components/sections/openchamber/AboutSettings';
-import { OpenCodeUpdateToast } from '@/components/update/OpenCodeUpdateToast';
+import { AboutSettings } from '@/components/sections/mage/AboutSettings';
+import { MageUpdateToast } from '@/components/update/MageUpdateToast';
 import { MobileAppUpdateToast } from '@/components/update/MobileAppUpdateToast';
 import { ConfigUpdateOverlay } from '@/components/ui/ConfigUpdateOverlay';
 import { Button } from '@/components/ui/button';
-import { OpenChamberLogo } from '@/components/ui/OpenChamberLogo';
+import { MageLogo } from '@/components/ui/MageLogo';
 import { ProviderLogo } from '@/components/ui/ProviderLogo';
 import { ChatView } from '@/components/views/ChatView';
 import { SettingsView } from '@/components/views/SettingsView';
@@ -25,7 +25,7 @@ import { useRuntimeAPIs } from '@/hooks/useRuntimeAPIs';
 import { useRouter } from '@/hooks/useRouter';
 import { useUpdatePolling } from '@/hooks/useUpdatePolling';
 import { useWindowTitle } from '@/hooks/useWindowTitle';
-import { opencodeClient } from '@/lib/opencode/client';
+import { mageClient } from '@/lib/mage/client';
 import type { ProjectEntry, RuntimeAPIs } from '@/lib/api/types';
 import { useOrientation } from '@/lib/device';
 import { useI18n } from '@/lib/i18n';
@@ -697,10 +697,10 @@ const MobileConnectionWelcome: React.FC<{ onConnected: () => void }> = ({ onConn
     void conn.connect({ url: serverUrl, clientToken, label: connectionName });
   }, [clientToken, conn, connectionName, serverUrl]);
 
-  // Accept a pasted pairing link (openchamber://connect?...) in the URL field and
+  // Accept a pasted pairing link (mage://connect?...) in the URL field and
   // split it back into the server URL + token.
   const handleUrlChange = React.useCallback((value: string) => {
-    if (/^openchamber:\/\//i.test(value.trim())) {
+    if (/^mage:\/\//i.test(value.trim())) {
       const payload = parseConnectionPayload(value);
       if (payload) {
         if ('pairing' in payload) {
@@ -767,7 +767,7 @@ const MobileConnectionWelcome: React.FC<{ onConnected: () => void }> = ({ onConn
     <main className="oc-keyboard-fill-screen flex min-h-dvh flex-col overflow-y-auto bg-background px-6 pb-[calc(var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px))+28px)] pt-[calc(var(--safe-area-inset-top,env(safe-area-inset-top,0px))+28px)] text-foreground">
       <div className="m-auto flex w-full max-w-[360px] shrink-0 flex-col items-center gap-9 py-8">
         <div className="flex flex-col items-center gap-5 text-center">
-          <OpenChamberLogo width={72} height={72} className="size-[72px]" />
+          <MageLogo width={72} height={72} className="size-[72px]" />
           <h1 className="typography-h2 text-foreground">{t('mobile.connect.welcome.title')}</h1>
         </div>
 
@@ -2148,8 +2148,8 @@ const MobileShell: React.FC<{ onActiveConnectionDeleted: () => void }> = ({ onAc
   }, [ipadRightPanel, isIPad]);
   const renderedIpadRightPanel = ipadRightPanel ?? lastIpadRightPanelRef.current;
 
-  const leftResize = useIpadSidebarResize('left', 'openchamber.ipad.leftSidebarWidth', IPAD_LEFT_SIDEBAR_WIDTH);
-  const rightResize = useIpadSidebarResize('right', 'openchamber.ipad.rightSidebarWidth', IPAD_RIGHT_SIDEBAR_WIDTH);
+  const leftResize = useIpadSidebarResize('left', 'mage.ipad.leftSidebarWidth', IPAD_LEFT_SIDEBAR_WIDTH);
+  const rightResize = useIpadSidebarResize('right', 'mage.ipad.rightSidebarWidth', IPAD_RIGHT_SIDEBAR_WIDTH);
 
   const mobileActions = React.useMemo<MobileAppActions>(
     () => ({
@@ -2170,7 +2170,7 @@ const MobileShell: React.FC<{ onActiveConnectionDeleted: () => void }> = ({ onAc
     setPendingChangesDiff(null);
   }, []);
 
-  // Expose the shell's panel-opening actions to the deep-link layer so openchamber:// URLs
+  // Expose the shell's panel-opening actions to the deep-link layer so mage:// URLs
   // (and notification taps / widgets) can navigate to these surfaces. Session and
   // new-session intents resolve directly against the store, so they aren't wired here.
   const deepLinkHandlers = React.useMemo(
@@ -2761,7 +2761,7 @@ export function MobileApp({ apis }: MobileAppProps) {
     const now = Date.now();
     if (now - lastNativeResumeSyncEventAtRef.current >= NATIVE_RESUME_SYNC_EVENT_THROTTLE_MS) {
       lastNativeResumeSyncEventAtRef.current = now;
-      window.dispatchEvent(new Event('openchamber:system-resume'));
+      window.dispatchEvent(new Event('mage:system-resume'));
     }
   }, [agentsCount, apis.github, initializeApp, loadAgents, loadProviders, providersCount, refreshGitHubAuthStatus]);
 
@@ -2872,7 +2872,7 @@ export function MobileApp({ apis }: MobileAppProps) {
 
   React.useEffect(() => {
     if (!isConnected) return;
-    opencodeClient.setDirectory(currentDirectory);
+    mageClient.setDirectory(currentDirectory);
   }, [currentDirectory, isConnected]);
 
   // Gated on isConnected (and re-run on reconnect/instance switch): probing the
@@ -2987,7 +2987,7 @@ export function MobileApp({ apis }: MobileAppProps) {
   // (document.hasFocus() is unreliable) and leaked while the app was open; the in-app SSE
   // notification dispatch is no-op'd for native in renderMobileApp.
   useNativePushRegistration({ enabled: isNativeMobileApp && isConnected });
-  // Single native deep-link entry point: notification taps AND the openchamber:// URL
+  // Single native deep-link entry point: notification taps AND the mage:// URL
   // scheme (widgets, Live Activities, external links). Registered unconditionally so a
   // cold-launch tap/open isn't lost on the connect/splash screen; intents stash until
   // the app is ready (connected + initialized) and shell handlers are registered.
@@ -3006,7 +3006,7 @@ export function MobileApp({ apis }: MobileAppProps) {
   if (!fontsReady) {
     return (
       <main className="flex min-h-dvh items-center justify-center bg-background text-foreground">
-        <OpenChamberLogo width={120} height={120} isAnimated />
+        <MageLogo width={120} height={120} isAnimated />
       </main>
     );
   }
@@ -3024,7 +3024,7 @@ export function MobileApp({ apis }: MobileAppProps) {
       return (
         <main className="flex min-h-dvh items-center justify-center bg-background px-6 text-center text-foreground">
           <div className="flex max-w-sm flex-col items-center gap-4">
-            <OpenChamberLogo width={120} height={120} isAnimated={!showConnectionRecovery} />
+            <MageLogo width={120} height={120} isAnimated={!showConnectionRecovery} />
             {showConnectionRecovery ? (
               <>
                 <div className="space-y-2">
@@ -3053,7 +3053,7 @@ export function MobileApp({ apis }: MobileAppProps) {
     if (autoConnectPhase !== 'done') {
       return (
         <main className="flex min-h-dvh items-center justify-center bg-background text-foreground">
-          <OpenChamberLogo width={120} height={120} isAnimated />
+          <MageLogo width={120} height={120} isAnimated />
         </main>
       );
     }
@@ -3067,7 +3067,7 @@ export function MobileApp({ apis }: MobileAppProps) {
     if (!showConnectionRecovery) {
       return (
         <main className="flex min-h-dvh items-center justify-center bg-background text-foreground">
-          <OpenChamberLogo width={120} height={120} isAnimated />
+          <MageLogo width={120} height={120} isAnimated />
         </main>
       );
     }
@@ -3083,12 +3083,12 @@ export function MobileApp({ apis }: MobileAppProps) {
 
   return (
     <ErrorBoundary>
-      <SyncProvider key={runtimeEndpointEpoch} sdk={opencodeClient.getSdkClient()} directory={currentDirectory || ''}>
+      <SyncProvider key={runtimeEndpointEpoch} sdk={mageClient.getSdkClient()} directory={currentDirectory || ''}>
         <RuntimeAPIProvider apis={apis}>
           <TooltipProvider delayDuration={300} skipDelayDuration={150}>
             <div className="h-full bg-background text-foreground">
               <SyncAppEffects embeddedBackgroundWorkEnabled={isInitialized} />
-              <OpenCodeUpdateToast />
+              <MageUpdateToast />
               <MobileAppUpdateToast />
               <MobileShell onActiveConnectionDeleted={() => {
                 switchRuntimeEndpoint({ apiBaseUrl: '', clientToken: null, runtimeKey: 'mobile-disconnected' });

@@ -1,6 +1,6 @@
-import { getModelsMetadata } from '../opencode/models-metadata.js';
+import { getModelsMetadata } from '../mage/models-metadata.js';
 
-// The models.dev catalog is shared with the /api/openchamber/models-metadata
+// The models.dev catalog is shared with the /api/mage/models-metadata
 // route through one in-process cache — no extra fetches, no cache files.
 export async function getModelCatalog() {
   const { metadata } = await getModelsMetadata();

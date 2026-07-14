@@ -4,12 +4,12 @@
 // plain JS and cannot import from packages/ui, so the logic is copied verbatim
 // (converted to JSDoc'd JS) and MUST stay byte-compatible with those modules.
 // WebCrypto only: `globalThis.crypto.subtle` (Node >= 22).
-// Spec: .opencode/plans/private-relay/01-protocol-spec.md (Layer 2).
+// Spec: .mage/plans/private-relay/01-protocol-spec.md (Layer 2).
 
 const subtle = globalThis.crypto.subtle;
 
 export const RELAY_PROTOCOL_VERSION = 1;
-export const RELAY_HKDF_INFO = 'openchamber-relay-v1';
+export const RELAY_HKDF_INFO = 'mage-relay-v1';
 
 // Encrypted frame layout: [1 byte version][12 byte IV][ciphertext + 16 byte GCM tag].
 export const ENCRYPTED_FRAME_VERSION = 1;

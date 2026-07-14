@@ -12,8 +12,8 @@ import { desktopHostsGet, desktopHostsSet } from '@/lib/desktopHosts';
 import { useI18n } from '@/lib/i18n';
 import { runtimeFetch } from '@/lib/runtime-fetch';
 
-const INSTALL_COMMAND = 'curl -fsSL https://opencode.ai/install | bash';
-const DOCS_URL = 'https://opencode.ai/docs';
+const INSTALL_COMMAND = 'curl -fsSL https://mage.ai/install | bash';
+const DOCS_URL = 'https://mage.ai/docs';
 const POLL_INTERVAL_MS = 2500;
 
 type OnboardingPlatform = 'macos' | 'linux' | 'windows' | 'unknown';
@@ -29,7 +29,7 @@ function BashCommand({ onCopy, copyTitle }: { onCopy: () => void; copyTitle: str
       <code className="flex-1 text-left overflow-x-auto whitespace-nowrap">
         <span style={{ color: 'var(--syntax-keyword)' }}>curl</span>
         <span className="text-muted-foreground"> -fsSL </span>
-        <span style={{ color: 'var(--syntax-string)' }}>https://opencode.ai/install</span>
+        <span style={{ color: 'var(--syntax-string)' }}>https://mage.ai/install</span>
         <span className="text-muted-foreground"> | </span>
         <span style={{ color: 'var(--syntax-keyword)' }}>bash</span>
       </code>
@@ -51,7 +51,7 @@ export function ChooserScreen({ onCliAvailable }: ChooserScreenProps) {
   const [isDesktopApp, setIsDesktopApp] = React.useState(false);
   const [isApplyingPath, setIsApplyingPath] = React.useState(false);
   const [isManualChecking, setIsManualChecking] = React.useState(false);
-  const [opencodeBinary, setOpencodeBinary] = React.useState('');
+  const [mageBinary, setMageBinary] = React.useState('');
   const [platform, setPlatform] = React.useState<OnboardingPlatform>('unknown');
   const [activeTab, setActiveTab] = React.useState<'local' | 'remote'>('local');
   const [advancedOpen, setAdvancedOpen] = React.useState(false);
@@ -80,10 +80,10 @@ export function ChooserScreen({ onCliAvailable }: ChooserScreenProps) {
       try {
         const response = await runtimeFetch('/api/config/settings', { method: 'GET', headers: { Accept: 'application/json' } });
         if (!response.ok) return;
-        const data = (await response.json().catch(() => null)) as null | { opencodeBinary?: unknown };
+        const data = (await response.json().catch(() => null)) as null | { mageBinary?: unknown };
         if (!data || cancelled) return;
-        const value = typeof data.opencodeBinary === 'string' ? data.opencodeBinary.trim() : '';
-        if (value) setOpencodeBinary(value);
+        const value = typeof data.mageBinary === 'string' ? data.mageBinary.trim() : '';
+        if (value) setMageBinary(value);
       } catch {
         // ignore
       }
@@ -108,7 +108,7 @@ export function ChooserScreen({ onCliAvailable }: ChooserScreenProps) {
       const response = await runtimeFetch('/health');
       if (!response.ok) return false;
       const data = await response.json();
-      return data.openCodeRunning === true || data.isOpenCodeReady === true;
+      return data.mageRunning === true || data.isMageReady === true;
     } catch {
       return false;
     }
@@ -133,7 +133,7 @@ export function ChooserScreen({ onCliAvailable }: ChooserScreenProps) {
   }, [isDesktopApp, onCliAvailable, persistFirstChoice]);
 
   // Background polling: while the local tab is visible, periodically check
-  // whether the OpenCode CLI is reachable. As soon as it is, transition
+  // whether the Mage CLI is reachable. As soon as it is, transition
   // automatically — the user doesn't have to click anything.
   React.useEffect(() => {
     if (activeTab !== 'local') return;
@@ -183,7 +183,7 @@ export function ChooserScreen({ onCliAvailable }: ChooserScreenProps) {
     try {
       const selected = await requestFileAccess();
       if (selected.success && selected.path && selected.path.trim().length > 0) {
-        setOpencodeBinary(selected.path.trim());
+        setMageBinary(selected.path.trim());
       }
     } catch {
       // ignore
@@ -193,7 +193,7 @@ export function ChooserScreen({ onCliAvailable }: ChooserScreenProps) {
   const handleApplyPath = React.useCallback(async () => {
     setIsApplyingPath(true);
     try {
-      await updateDesktopSettings({ opencodeBinary: opencodeBinary.trim() });
+      await updateDesktopSettings({ mageBinary: mageBinary.trim() });
       if (isDesktopApp) {
         await persistFirstChoice('local');
         await restartDesktopApp();
@@ -203,7 +203,7 @@ export function ChooserScreen({ onCliAvailable }: ChooserScreenProps) {
     } finally {
       setTimeout(() => setIsApplyingPath(false), 1000);
     }
-  }, [isDesktopApp, opencodeBinary, persistFirstChoice]);
+  }, [isDesktopApp, mageBinary, persistFirstChoice]);
 
   const handleCopy = React.useCallback(async () => {
     const result = await copyTextToClipboard(INSTALL_COMMAND);
@@ -218,10 +218,10 @@ export function ChooserScreen({ onCliAvailable }: ChooserScreenProps) {
   const docsUrl = DOCS_URL;
   const binaryPlaceholder =
     platform === 'windows'
-      ? 'C:\\Users\\you\\AppData\\Roaming\\npm\\opencode.cmd'
+      ? 'C:\\Users\\you\\AppData\\Roaming\\npm\\mage.cmd'
       : platform === 'linux'
-        ? '/home/you/.bun/bin/opencode'
-        : '/Users/you/.bun/bin/opencode';
+        ? '/home/you/.bun/bin/mage'
+        : '/Users/you/.bun/bin/mage';
 
   const showLocal = !isDesktopApp || activeTab === 'local';
 
@@ -374,8 +374,8 @@ export function ChooserScreen({ onCliAvailable }: ChooserScreenProps) {
               <div className="pb-4 space-y-2">
                 <div className="flex gap-2">
                   <Input
-                    value={opencodeBinary}
-                    onChange={(e) => setOpencodeBinary(e.target.value)}
+                    value={mageBinary}
+                    onChange={(e) => setMageBinary(e.target.value)}
                     placeholder={binaryPlaceholder}
                     disabled={isApplyingPath}
                     className="flex-1 font-mono text-xs"
@@ -393,7 +393,7 @@ export function ChooserScreen({ onCliAvailable }: ChooserScreenProps) {
                     type="button"
                     size="sm"
                     onClick={handleApplyPath}
-                    disabled={isApplyingPath || !opencodeBinary.trim()}
+                    disabled={isApplyingPath || !mageBinary.trim()}
                   >
                     {t('onboarding.localSetup.actions.apply')}
                   </Button>

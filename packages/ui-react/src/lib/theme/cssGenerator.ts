@@ -170,7 +170,7 @@ const sidebarBaseRgb = hexToRgb(theme.colors.surface.muted);
   apply(theme: Theme): void {
     const cssVars = this.generate(theme);
     const style = document.createElement('style');
-    style.id = 'opencode-theme-variables';
+    style.id = 'mage-theme-variables';
 
     let styleContent = '';
     if (theme.metadata.variant === 'dark') {
@@ -187,7 +187,7 @@ const sidebarBaseRgb = hexToRgb(theme.colors.surface.muted);
 
     style.textContent = styleContent;
 
-    const existing = document.getElementById('opencode-theme-variables');
+    const existing = document.getElementById('mage-theme-variables');
     if (existing) {
       existing.remove();
     }
@@ -197,8 +197,8 @@ const sidebarBaseRgb = hexToRgb(theme.colors.surface.muted);
     document.documentElement.setAttribute('data-theme', theme.metadata.variant);
 
     const hasMacVibrancy = typeof window !== 'undefined'
-      && window.__OPENCHAMBER_ELECTRON__?.runtime === 'electron'
-      && window.__OPENCHAMBER_ELECTRON__?.macVibrancy === true;
+      && window.__MAGE_ELECTRON__?.runtime === 'electron'
+      && window.__MAGE_ELECTRON__?.macVibrancy === true;
     document.documentElement.toggleAttribute('data-oc-vibrancy', hasMacVibrancy);
     // Default the "ready" flag here (DOM is guaranteed to exist) rather than
     // relying on the preload, which sets it at document-start when

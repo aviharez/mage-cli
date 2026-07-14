@@ -8,7 +8,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const PACKAGE_NAME = '@openchamber/web';
+const PACKAGE_NAME = '@mybcabisnis/mage-web-react';
 const PACKAGE_PATH_SEGMENTS = PACKAGE_NAME.split('/');
 const NPM_REGISTRY_URL = `https://registry.npmjs.org/${PACKAGE_NAME}`;
 const CHANGELOG_URL = 'https://raw.githubusercontent.com/btriapitsyn/openchamber/main/CHANGELOG.md';
@@ -18,15 +18,15 @@ let cachedDetectedPm = null;
 function getSpawnSyncBaseOptions() {
   return process.platform === 'win32' ? { windowsHide: true } : {};
 }
-const UPDATE_CHECK_URL = process.env.OPENCHAMBER_UPDATE_API_URL || 'https://api.openchamber.dev/v1/update/check';
+const UPDATE_CHECK_URL = process.env.MAGE_UPDATE_API_URL || 'https://api.mage.dev/v1/update/check';
 
-function getOpenChamberConfigDir() {
+function getMageConfigDir() {
   if (process.platform === 'win32') {
     const appData = process.env.APPDATA;
-    if (appData) return path.join(appData, 'openchamber');
+    if (appData) return path.join(appData, 'mage');
   }
 
-  return path.join(os.homedir(), '.config', 'openchamber');
+  return path.join(os.homedir(), '.config', 'mage');
 }
 
 function sanitizeInstallScope(scope) {
@@ -35,7 +35,7 @@ function sanitizeInstallScope(scope) {
 }
 
 function getOrCreateInstallId(scope = 'web') {
-  const configDir = getOpenChamberConfigDir();
+  const configDir = getMageConfigDir();
   const normalizedScope = sanitizeInstallScope(scope);
   const idPath = path.join(configDir, `install-id-${normalizedScope}`);
 
@@ -304,7 +304,7 @@ function getGlobalNodeModulesRoots(pm) {
 function getOwnedPackagePathsFromGlobalBins(pm) {
   const packagePaths = [];
   for (const binDir of getGlobalBinDirs(pm)) {
-    const binaryName = process.platform === 'win32' ? 'openchamber.cmd' : 'openchamber';
+    const binaryName = process.platform === 'win32' ? 'mage.cmd' : 'mage';
     const binaryPath = path.join(binDir, binaryName);
     if (!fs.existsSync(binaryPath)) continue;
 
@@ -346,7 +346,7 @@ export function detectPackageManagerDetails() {
   // dozen spawnSync(pm, ['bin', '-g']) calls with 10s timeouts each; under
   // the in-process server every one blocks the Electron main event loop and
   // manifests as a multi-second UI freeze. Short-circuit here.
-  if (process.env.OPENCHAMBER_RUNTIME === 'desktop') {
+  if (process.env.MAGE_RUNTIME === 'desktop') {
     return {
       packageManager: 'electron',
       reason: 'desktop-runtime',
@@ -366,7 +366,7 @@ export function detectPackageManagerDetails() {
       };
   }
 
-  const forcedPm = process.env.OPENCHAMBER_PACKAGE_MANAGER?.trim();
+  const forcedPm = process.env.MAGE_PACKAGE_MANAGER?.trim();
   if (forcedPm && ['npm', 'pnpm', 'yarn', 'bun'].includes(forcedPm)) {
     const forcedPmCommand = resolvePackageManagerCommand(forcedPm);
     if (isCommandAvailable(forcedPmCommand)) {
@@ -605,7 +605,7 @@ function isPackageInstalledWith(pm) {
     });
 
     if (result.status !== 0) return false;
-    return result.stdout.includes(PACKAGE_NAME) || result.stdout.includes('openchamber');
+    return result.stdout.includes(PACKAGE_NAME) || result.stdout.includes('mage-web-react');
   } catch {
     return false;
   }
@@ -745,7 +745,7 @@ export async function checkForUpdates(options = {}) {
       return {
         ...remote,
         packageManager: pm,
-        updateCommand: 'openchamber update',
+        updateCommand: 'mage update',
       };
     }
   }
@@ -775,7 +775,7 @@ export async function checkForUpdates(options = {}) {
     downloadUrl: appType === 'mobile-capacitor' && platform === 'android' ? `${GITHUB_RELEASES_URL}/tag/v${latestVersion}` : undefined,
     packageManager: pm,
     // Show our CLI command, not raw package manager command
-    updateCommand: 'openchamber update',
+    updateCommand: 'mage update',
   };
 }
 

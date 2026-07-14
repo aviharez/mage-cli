@@ -15,14 +15,14 @@ import { toast } from '@/components/ui';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Icon } from "@/components/icon/Icon";
 import type { IconName } from "@/components/icon/icons";
-import { reloadOpenCodeConfiguration } from '@/stores/useAgentsStore';
+import { reloadMageConfiguration } from '@/stores/useAgentsStore';
 import { cn } from '@/lib/utils';
 import { copyTextToClipboard } from '@/lib/clipboard';
 import { openExternalUrl } from '@/lib/url';
 import type { ModelMetadata } from '@/types';
 import { getCurrentIntlLocale, useI18n } from '@/lib/i18n';
 import { runtimeFetch } from '@/lib/runtime-fetch';
-import { opencodeClient } from '@/lib/opencode/client';
+import { mageClient } from '@/lib/mage/client';
 import { shouldLoadAvailableProviders } from './providerAvailability';
 import { QuotaCredentials } from './QuotaCredentials';
 
@@ -189,7 +189,7 @@ export const ProvidersPage: React.FC = () => {
     const loadAuthMethods = async () => {
       setAuthLoading(true);
       try {
-        const result = await opencodeClient.getSdkClient().provider.auth();
+        const result = await mageClient.getSdkClient().provider.auth();
         if (result.error) {
           throw new Error(`provider.auth failed: ${String(result.error)}`);
         }
@@ -224,7 +224,7 @@ export const ProvidersPage: React.FC = () => {
       setAvailableLoading(true);
       setAvailableError(null);
       try {
-        const result = await opencodeClient.getSdkClient().provider.list();
+        const result = await mageClient.getSdkClient().provider.list();
         if (result.error) {
           throw new Error(`provider.list failed: ${String(result.error)}`);
         }
@@ -293,7 +293,7 @@ export const ProvidersPage: React.FC = () => {
 
     const loadSources = async () => {
       try {
-        // OpenChamber-only metadata endpoint: the SDK exposes provider data but
+        // Mage-only metadata endpoint: the SDK exposes provider data but
         // not local auth/source-file provenance used by this settings UI.
         const response = await runtimeFetch(`/api/provider/${encodeURIComponent(selectedProviderId)}/source`, {
           method: 'GET',
@@ -340,7 +340,7 @@ export const ProvidersPage: React.FC = () => {
     setAuthBusyKey(busyKey);
 
     try {
-      const result = await opencodeClient.getSdkClient().auth.set({
+      const result = await mageClient.getSdkClient().auth.set({
         providerID: providerId,
         auth: { type: 'api', key: apiKey },
       });
@@ -350,7 +350,7 @@ export const ProvidersPage: React.FC = () => {
 
       toast.success(t('settings.providers.page.toast.apiKeySaved'));
       setApiKeyInputs((prev) => ({ ...prev, [providerId]: '' }));
-      await reloadOpenCodeConfiguration({ scopes: ["providers"], mode: "active" });
+      await reloadMageConfiguration({ scopes: ["providers"], mode: "active" });
       setSelectedProvider(providerId);
     } catch (error) {
       console.error('Failed to save API key:', error);
@@ -365,7 +365,7 @@ export const ProvidersPage: React.FC = () => {
     setAuthBusyKey(busyKey);
 
     try {
-      const result = await opencodeClient.getSdkClient().provider.oauth.authorize({
+      const result = await mageClient.getSdkClient().provider.oauth.authorize({
         providerID: providerId,
         method: methodIndex,
       });
@@ -431,7 +431,7 @@ export const ProvidersPage: React.FC = () => {
         requestBody.code = code;
       }
 
-      const result = await opencodeClient.getSdkClient().provider.oauth.callback({
+      const result = await mageClient.getSdkClient().provider.oauth.callback({
         providerID: providerId,
         method: requestBody.method,
         code: requestBody.code,
@@ -443,7 +443,7 @@ export const ProvidersPage: React.FC = () => {
       toast.success(t('settings.providers.page.toast.oauthCompleted'));
       setOauthCodes((prev) => ({ ...prev, [codeKey]: '' }));
       setPendingOAuth(null);
-      await reloadOpenCodeConfiguration({ scopes: ["providers"], mode: "active" });
+      await reloadMageConfiguration({ scopes: ["providers"], mode: "active" });
       setSelectedProvider(providerId);
     } catch (error) {
       console.error('Failed to complete OAuth flow:', error);
@@ -489,7 +489,7 @@ export const ProvidersPage: React.FC = () => {
       }
 
       toast.success(t('settings.providers.page.toast.providerDisconnected'));
-      await reloadOpenCodeConfiguration({ scopes: ["providers"], mode: "active" });
+      await reloadMageConfiguration({ scopes: ["providers"], mode: "active" });
     } catch (error) {
       console.error('Failed to disconnect provider:', error);
       toast.error(t('settings.providers.page.toast.providerDisconnectFailed'));
@@ -504,7 +504,7 @@ export const ProvidersPage: React.FC = () => {
         <div className="text-center text-muted-foreground">
           <Icon name="stack" className="mx-auto mb-3 h-12 w-12 opacity-50" />
           <p className="typography-body">{t('settings.providers.page.empty.noProvidersDetected')}</p>
-          <p className="typography-meta mt-1 opacity-75">{t('settings.providers.page.empty.checkOpenCodeConfiguration')}</p>
+          <p className="typography-meta mt-1 opacity-75">{t('settings.providers.page.empty.checkMageConfiguration')}</p>
         </div>
       </div>
     );
@@ -947,7 +947,7 @@ export const ProvidersPage: React.FC = () => {
           </section>
         </div>
 
-        {(selectedProvider.id === 'opencode' || selectedProvider.id === 'opencode-go') && <QuotaCredentials providerId="opencode-go" providerName="OpenCode Go" />}
+        {(selectedProvider.id === 'opencode' || selectedProvider.id === 'opencode-go') && <QuotaCredentials providerId="mage-go" providerName="Mage Go" />}
         {(selectedProvider.id === 'ollama' || selectedProvider.id === 'ollama-cloud') && <QuotaCredentials providerId="ollama-cloud" providerName="Ollama Cloud" />}
         {selectedProvider.id === 'cursor' && <QuotaCredentials providerId="cursor" providerName="Cursor" />}
 

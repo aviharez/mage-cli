@@ -57,7 +57,7 @@ describe('isUsableAuthEntry', () => {
 });
 
 describe('resolveSmallModel', () => {
-  it('gives the OpenChamber settings override top priority', () => {
+  it('gives the Mage settings override top priority', () => {
     const result = resolveSmallModel({
       auth: { anthropic: { type: 'api', key: 'sk-x' } },
       catalog,
@@ -138,15 +138,15 @@ describe('resolveSmallModel', () => {
     expect(result).toEqual({ providerID: 'google', modelID: 'gemini-2.5-flash', source: 'family-scan' });
   });
 
-  it('never uses a session provider without a login (opencode free models)', () => {
-    // Vanilla setups default the picker to opencode/big-pickle with no
-    // opencode token — those free models only work through OpenCode itself
+  it('never uses a session provider without a login (mage free models)', () => {
+    // Vanilla setups default the picker to mage/big-pickle with no
+    // mage token — those free models only work through Mage itself
     // and must never be called directly, so the session context is ignored.
     const result = resolveSmallModel({
       auth: { openai: { type: 'oauth', access: 'a', refresh: 'r', expires: Date.now() + 60_000 } },
       catalog,
       configSmallModel: null,
-      preferredProviderID: 'opencode',
+      preferredProviderID: 'mage',
       preferredModelID: 'big-pickle',
     });
     expect(result).toEqual({ providerID: 'openai', modelID: 'gpt-5.4-mini', source: 'codex-small' });
@@ -157,7 +157,7 @@ describe('resolveSmallModel', () => {
       auth: {},
       catalog,
       configSmallModel: null,
-      preferredProviderID: 'opencode',
+      preferredProviderID: 'mage',
       preferredModelID: 'big-pickle',
     });
     expect(result).toBeNull();
@@ -166,22 +166,22 @@ describe('resolveSmallModel', () => {
   it('falls back to the session model instead of scanning other providers', () => {
     const result = resolveSmallModel({
       auth: {
-        'opencode-go': { type: 'api', key: 'oc-key' },
+        'mage-go': { type: 'api', key: 'oc-key' },
         openai: { type: 'oauth', access: 'a', refresh: 'r', expires: Date.now() + 60_000 },
       },
       catalog: {
-        'opencode-go': {
-          id: 'opencode-go',
+        'mage-go': {
+          id: 'mage-go',
           models: {
             'deepseek-v4-flash': { id: 'deepseek-v4-flash', family: 'deepseek-flash', release_date: '2026-01-01' },
           },
         },
       },
       configSmallModel: null,
-      preferredProviderID: 'opencode-go',
+      preferredProviderID: 'mage-go',
       preferredModelID: 'deepseek-v4-flash',
     });
-    expect(result).toEqual({ providerID: 'opencode-go', modelID: 'deepseek-v4-flash', source: 'session-model' });
+    expect(result).toEqual({ providerID: 'mage-go', modelID: 'deepseek-v4-flash', source: 'session-model' });
   });
 
   it('falls back to the session model itself when nothing resolves', () => {

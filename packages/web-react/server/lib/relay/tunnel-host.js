@@ -4,7 +4,7 @@
 // WS streams -> `ws` client to the loopback WebSocket endpoints.
 // The dispatcher NEVER injects credentials: tunneled requests authenticate
 // exactly like any remote client (bearer oc_client_* header, oc_url_token query).
-// Spec: .opencode/plans/private-relay/01-protocol-spec.md (Layer 3).
+// Spec: .mage/plans/private-relay/01-protocol-spec.md (Layer 3).
 
 import { WebSocket } from 'ws';
 
@@ -150,7 +150,7 @@ export const createTunnelHost = ({ connectionId, getLocalPort, sendFrame, getBuf
       if (/[\r\n]/.test(name) || /[\r\n]/.test(value)) continue;
       headers[lower] = value;
     }
-    headers['x-openchamber-relay-connection'] = connectionId;
+    headers['x-mage-relay-connection'] = connectionId;
     return headers;
   };
 
@@ -311,7 +311,7 @@ export const createTunnelHost = ({ connectionId, getLocalPort, sendFrame, getBuf
     // otherwise — a no-origin upgrade is rejected 403. The request itself is still
     // authenticated by the tunneled oc_url_token, not by this origin.
     const dialHeaders = {
-      'x-openchamber-relay-connection': connectionId,
+      'x-mage-relay-connection': connectionId,
       origin: `http://127.0.0.1:${getLocalPort()}`,
     };
     let socket;

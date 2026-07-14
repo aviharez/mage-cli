@@ -1,0 +1,113 @@
+import { describe, expect, it } from 'vitest';
+import fsPromises from 'fs/promises';
+import os from 'os';
+import path from 'path';
+import { getSkillSources, mergeDiscoveredSkills } from './skills.js';
+
+describe('skills', () => {
+  it('merges locally discovered skills missing from Mage live discovery', () => {
+    const merged = mergeDiscoveredSkills(
+      [
+        { name: 'existing-mage-skill', path: '/home/jkker/.config/mage/skills/existing-mage-skill/SKILL.md', source: 'mage' },
+        { name: 'existing-agent-skill', path: '/home/jkker/.agents/skills/existing-agent-skill/SKILL.md', source: 'agents' },
+      ],
+      [
+        { name: 'existing-agent-skill', path: '/home/jkker/.agents/skills/existing-agent-skill/SKILL.md', source: 'agents' },
+        { name: 'new-agent-skill', path: '/home/jkker/.agents/skills/new-agent-skill/SKILL.md', source: 'agents' },
+      ],
+    );
+
+    expect(merged.map((skill) => skill.name)).toEqual([
+      'existing-mage-skill',
+      'existing-agent-skill',
+      'new-agent-skill',
+    ]);
+  });
+
+  it('resolves built-in Mage skill content without parsing virtual locations as files', () => {
+    const sources = getSkillSources(
+      'customize-mage',
+      '/tmp/mage-skills-test-missing-project',
+      {
+        name: 'customize-mage',
+        path: '<built-in>',
+        scope: 'user',
+        source: 'mage',
+        description: 'Customize mage',
+        content: '# Customizing mage\n\nUse this skill when updating config.',
+      },
+    );
+
+    expect(sources.md.exists).toBe(true);
+    expect(sources.md.path).toBe(null);
+    expect(sources.md.dir).toBe(null);
+    expect(sources.md.scope).toBe('user');
+    expect(sources.md.source).toBe('mage');
+    expect(sources.md.description).toBe('Customize mage');
+    expect(sources.md.instructions).toBe('# Customizing mage\n\nUse this skill when updating config.');
+    expect(sources.md.fields).toEqual(['description', 'instructions']);
+  });
+
+  it('clears file metadata when a discovered skill path is unreadable', () => {
+    const missingPath = path.join(os.tmpdir(), 'mage-skills-test-missing-file', 'SKILL.md');
+    const sources = getSkillSources(
+      'missing-agent-skill',
+      '/tmp/mage-skills-test-missing-project',
+      {
+        name: 'missing-agent-skill',
+        path: missingPath,
+        scope: 'user',
+        source: 'agents',
+        description: 'Missing skill',
+      },
+    );
+
+    expect(sources.md.exists).toBe(false);
+    expect(sources.md.path).toBe(null);
+    expect(sources.md.dir).toBe(null);
+    expect(sources.md.scope).toBe(null);
+    expect(sources.md.source).toBe(null);
+    expect(sources.md.description).toBe('Missing skill');
+    expect(sources.md.instructions).toBe('');
+  });
+
+  it('enriches discovered skills when their location is a real markdown file', async () => {
+    const tempRoot = await fsPromises.mkdtemp(path.join(os.tmpdir(), 'oc-skills-'));
+    const skillDir = path.join(tempRoot, 'example-skill');
+    const skillPath = path.join(skillDir, 'SKILL.md');
+
+    try {
+      await fsPromises.mkdir(skillDir, { recursive: true });
+      await fsPromises.writeFile(
+        skillPath,
+        [
+          '---',
+          'name: example-skill',
+          'description: Example from agents',
+          '---',
+          '',
+          'Use this skill for examples.',
+          '',
+        ].join('\n'),
+        'utf8',
+      );
+
+      const sources = getSkillSources('example-skill', tempRoot, {
+        name: 'example-skill',
+        path: skillPath,
+        scope: 'user',
+        source: 'agents',
+        description: 'Fallback description',
+      });
+
+      expect(sources.md.exists).toBe(true);
+      expect(sources.md.path).toBe(skillPath);
+      expect(sources.md.scope).toBe('user');
+      expect(sources.md.source).toBe('agents');
+      expect(sources.md.description).toBe('Example from agents');
+      expect(sources.md.instructions).toBe('Use this skill for examples.');
+    } finally {
+      await fsPromises.rm(tempRoot, { recursive: true, force: true });
+    }
+  });
+});

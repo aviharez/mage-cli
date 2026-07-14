@@ -19,13 +19,13 @@ const sdkClient = {
   },
 };
 
-const createOpencodeClient = mock(() => sdkClient);
+const createMageClient = mock(() => sdkClient);
 const rawFetch = mock(async () => {
   throw new Error('raw fetch should not be used');
 });
 
 mock.module('./gitService', () => gitService);
-mock.module('@opencode-ai/sdk/v2', () => ({ createOpencodeClient }));
+mock.module('@mybcabisnis/mage-sdk/v2', () => ({ createMageClient }));
 
 const { handleSpecialGitBridgeMessage } = await import('./bridge-git-special-runtime');
 
@@ -38,11 +38,11 @@ describe('bridge git special runtime', () => {
     sdkClient.session.promptAsync.mockReset();
     sdkClient.session.messages.mockReset();
     sdkClient.session.delete.mockReset();
-    createOpencodeClient.mockReset();
+    createMageClient.mockReset();
     rawFetch.mockClear();
 
     globalThis.fetch = rawFetch;
-    createOpencodeClient.mockImplementation(() => sdkClient);
+    createMageClient.mockImplementation(() => sdkClient);
     gitService.getGitRangeFiles.mockImplementation(async () => ['src/a.ts']);
     gitService.getGitRangeDiff.mockImplementation(async () => ({ diff: 'diff --git a/src/a.ts b/src/a.ts\n+new line' }));
     sdkClient.v2.model.list.mockImplementation(async () => ({
@@ -64,7 +64,7 @@ describe('bridge git special runtime', () => {
     sdkClient.session.delete.mockImplementation(async () => ({ data: true, error: undefined }));
   });
 
-  it('generates PR descriptions through the OpenCode SDK session flow', async () => {
+  it('generates PR descriptions through the Mage SDK session flow', async () => {
     const response = await handleSpecialGitBridgeMessage({
       id: '1',
       type: 'api:git/pr-description',
@@ -77,8 +77,8 @@ describe('bridge git special runtime', () => {
       },
     }, {
       manager: {
-        getApiUrl: () => 'http://opencode.test',
-        getOpenCodeAuthHeaders: () => ({ Authorization: 'Bearer test' }),
+        getApiUrl: () => 'http://mage.test',
+        getMageAuthHeaders: () => ({ Authorization: 'Bearer test' }),
       },
     }, {
       readSettings: () => ({}),
@@ -92,8 +92,8 @@ describe('bridge git special runtime', () => {
       data: { title: 'PR title', body: 'PR body' },
     });
     expect(rawFetch).not.toHaveBeenCalled();
-    expect(createOpencodeClient).toHaveBeenCalledWith({
-      baseUrl: 'http://opencode.test',
+    expect(createMageClient).toHaveBeenCalledWith({
+      baseUrl: 'http://mage.test',
       headers: { Authorization: 'Bearer test' },
     });
     expect(sdkClient.v2.model.list).toHaveBeenCalled();

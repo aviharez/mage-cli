@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Session } from '@opencode-ai/sdk/v2';
+import type { Session } from '@mybcabisnis/mage-sdk/v2';
 import { ContextMenu } from '@base-ui/react/context-menu';
 import {
   DropdownMenu,
@@ -729,7 +729,7 @@ function SessionNodeItemComponent(props: Props): React.ReactNode {
   const handleOpenInEditorClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
-    void runtimeApis?.vscode?.executeCommand('openchamber.openSessionInEditor', session.id, sessionTitle);
+    void runtimeApis?.vscode?.executeCommand('mage.openSessionInEditor', session.id, sessionTitle);
   };
 
   const handleRowSelect = (event?: React.MouseEvent<HTMLButtonElement>) => {

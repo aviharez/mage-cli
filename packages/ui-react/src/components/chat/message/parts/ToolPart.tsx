@@ -5,7 +5,7 @@ import { PatchDiff } from '@pierre/diffs/react';
 import { cn } from '@/lib/utils';
 import { SimpleMarkdownRenderer } from '../../MarkdownRenderer';
 import { getToolMetadata } from '@/lib/toolHelpers';
-import type { ToolPart as ToolPartType, ToolState as ToolStateUnion } from '@opencode-ai/sdk/v2';
+import type { ToolPart as ToolPartType, ToolState as ToolStateUnion } from '@mybcabisnis/mage-sdk/v2';
 import { toolDisplayStyles } from '@/lib/typography';
 import { WorkerHighlightedCode } from '@/components/code/WorkerHighlightedCode';
 import { useOptionalThemeSystem } from '@/contexts/useThemeSystem';
@@ -1011,7 +1011,7 @@ const readTaskSessionIdFromOutput = (output: string | undefined): string | undef
         return normalizeSessionIdCandidate(candidate);
     }
 
-    // OpenCode tool output may wrap child session id in <task id="ses_xxx">
+    // Mage tool output may wrap child session id in <task id="ses_xxx">
     const taskTagSessionId = readTaskTagSessionIdFromOutput(output);
     if (taskTagSessionId) {
         return normalizeSessionIdCandidate(taskTagSessionId);

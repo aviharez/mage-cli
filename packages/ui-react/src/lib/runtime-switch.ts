@@ -16,16 +16,16 @@ export type RuntimeEndpointChangedDetail = {
   previousRuntimeKey: string;
 };
 
-const RUNTIME_ENDPOINT_CHANGED_EVENT = 'openchamber:runtime-endpoint-changed';
+const RUNTIME_ENDPOINT_CHANGED_EVENT = 'mage:runtime-endpoint-changed';
 
 let activeApiBaseUrl = '';
 let activeRuntimeKey = '';
 
-const setWindowRuntimeValue = <K extends '__OPENCHAMBER_API_BASE_URL__' | '__OPENCHAMBER_CLIENT_TOKEN__' | '__OPENCHAMBER_RUNTIME_HEADERS__'>(
+const setWindowRuntimeValue = <K extends '__MAGE_API_BASE_URL__' | '__MAGE_CLIENT_TOKEN__' | '__MAGE_RUNTIME_HEADERS__'>(
   runtimeWindow: typeof window & {
-    __OPENCHAMBER_API_BASE_URL__?: string;
-    __OPENCHAMBER_CLIENT_TOKEN__?: string;
-    __OPENCHAMBER_RUNTIME_HEADERS__?: Record<string, string>;
+    __MAGE_API_BASE_URL__?: string;
+    __MAGE_CLIENT_TOKEN__?: string;
+    __MAGE_RUNTIME_HEADERS__?: Record<string, string>;
   },
   key: K,
   value: (typeof runtimeWindow)[K],
@@ -52,13 +52,13 @@ const normalizeRuntimeUrlKey = (value: string): string => {
 
 const readInjectedApiBaseUrl = (): string => {
   if (typeof window === 'undefined') return '';
-  const injected = (window as typeof window & { __OPENCHAMBER_API_BASE_URL__?: string }).__OPENCHAMBER_API_BASE_URL__;
+  const injected = (window as typeof window & { __MAGE_API_BASE_URL__?: string }).__MAGE_API_BASE_URL__;
   return typeof injected === 'string' ? injected.trim() : '';
 };
 
 const readInjectedLocalOrigin = (): string => {
   if (typeof window === 'undefined') return '';
-  const injected = (window as typeof window & { __OPENCHAMBER_LOCAL_ORIGIN__?: string }).__OPENCHAMBER_LOCAL_ORIGIN__;
+  const injected = (window as typeof window & { __MAGE_LOCAL_ORIGIN__?: string }).__MAGE_LOCAL_ORIGIN__;
   return typeof injected === 'string' ? injected.trim() : '';
 };
 
@@ -102,13 +102,13 @@ export const switchRuntimeEndpoint = (options: { apiBaseUrl: string; clientToken
   activeRuntimeKey = runtimeKey;
   if (typeof window !== 'undefined') {
     const runtimeWindow = window as typeof window & {
-      __OPENCHAMBER_API_BASE_URL__?: string;
-      __OPENCHAMBER_CLIENT_TOKEN__?: string;
-      __OPENCHAMBER_RUNTIME_HEADERS__?: Record<string, string>;
+      __MAGE_API_BASE_URL__?: string;
+      __MAGE_CLIENT_TOKEN__?: string;
+      __MAGE_RUNTIME_HEADERS__?: Record<string, string>;
     };
-    setWindowRuntimeValue(runtimeWindow, '__OPENCHAMBER_API_BASE_URL__', apiBaseUrl);
-    setWindowRuntimeValue(runtimeWindow, '__OPENCHAMBER_CLIENT_TOKEN__', options.clientToken || undefined);
-    setWindowRuntimeValue(runtimeWindow, '__OPENCHAMBER_RUNTIME_HEADERS__', options.requestHeaders || undefined);
+    setWindowRuntimeValue(runtimeWindow, '__MAGE_API_BASE_URL__', apiBaseUrl);
+    setWindowRuntimeValue(runtimeWindow, '__MAGE_CLIENT_TOKEN__', options.clientToken || undefined);
+    setWindowRuntimeValue(runtimeWindow, '__MAGE_RUNTIME_HEADERS__', options.requestHeaders || undefined);
   }
   configureRuntimeUrlResolver({ apiBaseUrl, realtimeBaseUrl: apiBaseUrl });
   setRuntimeExtraHeaders(options.requestHeaders || null);

@@ -555,8 +555,8 @@ interface UIStore {
   isCommandPaletteOpen: boolean;
   isHelpDialogOpen: boolean;
   isAboutDialogOpen: boolean;
-  isOpenCodeStatusDialogOpen: boolean;
-  openCodeStatusText: string;
+  isMageStatusDialogOpen: boolean;
+  mageStatusText: string;
   isSessionCreateDialogOpen: boolean;
   isScheduledTasksDialogOpen: boolean;
   isSettingsDialogOpen: boolean;
@@ -639,7 +639,7 @@ interface UIStore {
 
   showTerminalQuickKeysOnDesktop: boolean;
   persistChatDraft: boolean;
-  showOpenCodeUpdateNotifications: boolean;
+  showMageUpdateNotifications: boolean;
   inputSpellcheckEnabled: boolean;
   wideChatLayoutEnabled: boolean;
   codeBlockLineWrap: boolean;
@@ -712,8 +712,8 @@ interface UIStore {
   toggleHelpDialog: () => void;
   setHelpDialogOpen: (open: boolean) => void;
   setAboutDialogOpen: (open: boolean) => void;
-  setOpenCodeStatusDialogOpen: (open: boolean) => void;
-  setOpenCodeStatusText: (text: string) => void;
+  setMageStatusDialogOpen: (open: boolean) => void;
+  setMageStatusText: (text: string) => void;
   setSessionCreateDialogOpen: (open: boolean) => void;
   setScheduledTasksDialogOpen: (open: boolean) => void;
   setSettingsDialogOpen: (open: boolean) => void;
@@ -792,7 +792,7 @@ interface UIStore {
   setSummaryLength: (value: number) => void;
   setMaxLastMessageLength: (value: number) => void;
   setPersistChatDraft: (value: boolean) => void;
-  setShowOpenCodeUpdateNotifications: (value: boolean) => void;
+  setShowMageUpdateNotifications: (value: boolean) => void;
   setInputSpellcheckEnabled: (value: boolean) => void;
   setWideChatLayoutEnabled: (value: boolean) => void;
   setCodeBlockLineWrap: (value: boolean) => void;
@@ -862,8 +862,8 @@ export const useUIStore = create<UIStore>()(
         isCommandPaletteOpen: false,
         isHelpDialogOpen: false,
         isAboutDialogOpen: false,
-        isOpenCodeStatusDialogOpen: false,
-        openCodeStatusText: '',
+        isMageStatusDialogOpen: false,
+        mageStatusText: '',
         isSessionCreateDialogOpen: false,
         isScheduledTasksDialogOpen: false,
         isSettingsDialogOpen: false,
@@ -938,7 +938,7 @@ export const useUIStore = create<UIStore>()(
 
         showTerminalQuickKeysOnDesktop: false,
         persistChatDraft: true,
-        showOpenCodeUpdateNotifications: true,
+        showMageUpdateNotifications: true,
         inputSpellcheckEnabled: false,
         wideChatLayoutEnabled: false,
         codeBlockLineWrap: true,
@@ -1519,12 +1519,12 @@ export const useUIStore = create<UIStore>()(
           set({ isAboutDialogOpen: open });
         },
 
-        setOpenCodeStatusDialogOpen: (open) => {
-          set({ isOpenCodeStatusDialogOpen: open });
+        setMageStatusDialogOpen: (open) => {
+          set({ isMageStatusDialogOpen: open });
         },
 
-        setOpenCodeStatusText: (text) => {
-          set({ openCodeStatusText: text });
+        setMageStatusText: (text) => {
+          set({ mageStatusText: text });
         },
 
         setSessionCreateDialogOpen: (open) => {
@@ -2065,8 +2065,8 @@ export const useUIStore = create<UIStore>()(
         setPersistChatDraft: (value) => {
           set({ persistChatDraft: value });
         },
-        setShowOpenCodeUpdateNotifications: (value) => {
-          set({ showOpenCodeUpdateNotifications: value });
+        setShowMageUpdateNotifications: (value) => {
+          set({ showMageUpdateNotifications: value });
         },
         setInputSpellcheckEnabled: (value) => {
           set({ inputSpellcheckEnabled: value });
@@ -2341,7 +2341,7 @@ export const useUIStore = create<UIStore>()(
           summaryLength: state.summaryLength,
           maxLastMessageLength: state.maxLastMessageLength,
           persistChatDraft: state.persistChatDraft,
-          showOpenCodeUpdateNotifications: state.showOpenCodeUpdateNotifications,
+          showMageUpdateNotifications: state.showMageUpdateNotifications,
           inputSpellcheckEnabled: state.inputSpellcheckEnabled,
           wideChatLayoutEnabled: state.wideChatLayoutEnabled,
           codeBlockLineWrap: state.codeBlockLineWrap,

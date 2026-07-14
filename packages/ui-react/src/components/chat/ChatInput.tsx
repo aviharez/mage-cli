@@ -62,7 +62,7 @@ import { GitHubPrPickerDialog } from '@/components/session/GitHubPrPickerDialog'
 import { Icon } from "@/components/icon/Icon";
 import { DraftPresetChips } from './DraftPresetChips';
 import { useChatSearchDirectory } from '@/hooks/useChatSearchDirectory';
-import { opencodeClient } from '@/lib/opencode/client';
+import { mageClient } from '@/lib/mage/client';
 import { useProjectsStore } from '@/stores/useProjectsStore';
 import { PROJECT_COLOR_MAP, PROJECT_ICON_MAP, ProjectIconImage } from '@/lib/projectMeta';
 import { useGitBranches, useGitStore, useIsGitRepo } from '@/stores/useGitStore';
@@ -101,7 +101,7 @@ import { getFileMentionAutocompleteQuery, type FileMentionAutocompleteInputSourc
 import { SessionSuggestionChip } from '@/components/chat/SessionSuggestionChip';
 import { SessionGoalRow } from '@/components/chat/SessionGoalRow';
 import { SessionGoalButton, SessionGoalObjectiveCounter } from '@/components/chat/SessionGoalButton';
-import type { Part } from '@opencode-ai/sdk/v2/client';
+import type { Part } from '@mybcabisnis/mage-sdk/v2/client';
 
 const MAX_VISIBLE_TEXTAREA_LINES = 8;
 const EMPTY_QUEUE: QueuedMessage[] = [];
@@ -918,7 +918,7 @@ type AutocompleteOverlayPosition = {
 
 // Per-session draft key — preserves in-progress messages across project switches
 const getDraftKey = (sessionId: string | null): string =>
-    `openchamber_chat_input_draft_${sessionId ?? 'new'}`;
+    `mage_chat_input_draft_${sessionId ?? 'new'}`;
 
 // Helper to safely read from localStorage for a given session
 const getStoredDraft = (sessionId: string | null): string => {
@@ -944,7 +944,7 @@ const saveStoredDraft = (sessionId: string | null, draft: string): void => {
 
 // Per-session confirmed mentions key — tracks which @mentions are confirmed (blue) vs plain text
 const getConfirmedMentionsKey = (sessionId: string | null): string =>
-    `openchamber_chat_confirmed_mentions_${sessionId ?? 'new'}`;
+    `mage_chat_confirmed_mentions_${sessionId ?? 'new'}`;
 
 const saveConfirmedMentions = (sessionId: string | null, mentions: Set<string>): void => {
     try {
@@ -1386,7 +1386,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({ onOpenSettings, scrollTo
             return { sanitizedText: rawText, attachments: [] };
         }
 
-        const clientDirectory = opencodeClient.getDirectory() || '';
+        const clientDirectory = mageClient.getDirectory() || '';
         const root = (chatSearchDirectory || clientDirectory).replace(/\\/g, '/').replace(/\/+$/, '');
         const seenPaths = new Set<string>();
         const attachments: AttachedFile[] = [];
@@ -1866,7 +1866,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({ onOpenSettings, scrollTo
         // the card instantly (optimistic) and formally rejects the question.
         // Rejecting unblocks the agent's tool but does NOT end its turn, so a
         // direct send would race with the still-active run and be silently
-        // discarded by the OpenCode runner. Instead we queue the message; the
+        // discarded by the Mage runner. Instead we queue the message; the
         // queued-message auto-send hook delivers it as the next turn once the
         // rejected turn winds down and the session returns to idle. This avoids
         // aborting the turn (which would surface an "aborted" notice).
@@ -2065,7 +2065,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({ onOpenSettings, scrollTo
                 try {
                     await sessionActions.waitForConnectionOrThrow();
                     const compactDirectory = useSessionUIStore.getState().getDirectoryForSession(currentSessionId) || currentDirectory || undefined;
-                    await opencodeClient.summarizeSession(currentSessionId, currentProviderId, currentModelId, compactDirectory);
+                    await mageClient.summarizeSession(currentSessionId, currentProviderId, currentModelId, compactDirectory);
                 } catch (error) {
                     toast.error(error instanceof Error ? error.message : t('chat.chatInput.toast.compactFailed'));
                 }
@@ -3454,7 +3454,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({ onOpenSettings, scrollTo
             if (lowerTypes.includes('files')) return true;
             if (lowerTypes.includes('text/uri-list')) return true;
             if (lowerTypes.includes('codefiles')) return true;
-            if (lowerTypes.includes('application/x-openchamber-file-path')) return true;
+            if (lowerTypes.includes('application/x-mage-file-path')) return true;
             if (lowerTypes.some((type) => type.includes('vnd.code.tree'))) return true;
         }
 
@@ -3581,7 +3581,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({ onOpenSettings, scrollTo
         e.preventDefault();
         e.stopPropagation();
         dragEnterCountRef.current++;
-        const isInternal = e.dataTransfer.types?.includes('application/x-openchamber-file-path') ?? false;
+        const isInternal = e.dataTransfer.types?.includes('application/x-mage-file-path') ?? false;
         if (isInternal !== isInternalDrag) {
             setIsInternalDrag(isInternal);
         }
@@ -3635,7 +3635,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({ onOpenSettings, scrollTo
         if (!currentSessionId && !newSessionDraftOpen) return;
 
         // Internal drag: file tree → chat input (relative path as @mention)
-        const internalPath = e.dataTransfer.getData('application/x-openchamber-file-path');
+        const internalPath = e.dataTransfer.getData('application/x-mage-file-path');
         if (internalPath && internalPath !== '.') {
             confirmedMentionsRef.current.add(internalPath);
             const mention = `@${internalPath}`;
@@ -4975,7 +4975,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({ onOpenSettings, scrollTo
                                     // Start recording in place; the composer morphs
                                     // into the voice variant once dictation is live
                                     // (handleMobileDictationActiveChange).
-                                    window.dispatchEvent(new CustomEvent('openchamber:dictation-toggle'));
+                                    window.dispatchEvent(new CustomEvent('mage:dictation-toggle'));
                                 }}
                                 title={t('chat.dictation.start')}
                                 aria-label={t('chat.dictation.start')}
@@ -5363,7 +5363,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({ onOpenSettings, scrollTo
                                                     }
                                                 }}
                                                 onClick={() => {
-                                                    window.dispatchEvent(new CustomEvent('openchamber:dictation-toggle'));
+                                                    window.dispatchEvent(new CustomEvent('mage:dictation-toggle'));
                                                 }}
                                                 disabled={mobileDictationActive}
                                                 title={t('chat.dictation.start')}

@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Session } from '@opencode-ai/sdk/v2';
+import type { Session } from '@mybcabisnis/mage-sdk/v2';
 import { updateDesktopSettings } from '@/lib/persistence';
 import { useProjectsStore } from '@/stores/useProjectsStore';
 import { prunePinnedSessionIds } from './pinnedSessionCleanup';

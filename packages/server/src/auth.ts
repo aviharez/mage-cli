@@ -17,7 +17,7 @@ export type Info = {
   readonly username: string
 }
 
-export class Config extends Context.Service<Config, Info>()("@opencode/ServerAuthConfig") {
+export class Config extends Context.Service<Config, Info>()("@mage/ServerAuthConfig") {
   static configLayer(input: Info) {
     return Layer.succeed(this, this.of(input))
   }
@@ -29,7 +29,7 @@ export class Config extends Context.Service<Config, Info>()("@opencode/ServerAut
         return Config.of(
           yield* EffectConfig.all({
             password: EffectConfig.string("MAGE_SERVER_PASSWORD").pipe(EffectConfig.option),
-            username: EffectConfig.string("MAGE_SERVER_USERNAME").pipe(EffectConfig.withDefault("opencode")),
+            username: EffectConfig.string("MAGE_SERVER_USERNAME").pipe(EffectConfig.withDefault("mage")),
           }),
         )
       }),
@@ -53,7 +53,7 @@ export function header(credentials?: Credentials) {
   const password = credentials?.password ?? process.env.MAGE_SERVER_PASSWORD
   if (!password) return undefined
 
-  return `Basic ${Buffer.from(`${credentials?.username ?? process.env.MAGE_SERVER_USERNAME ?? "opencode"}:${password}`).toString("base64")}`
+  return `Basic ${Buffer.from(`${credentials?.username ?? process.env.MAGE_SERVER_USERNAME ?? "mage"}:${password}`).toString("base64")}`
 }
 
 export function headers(credentials?: Credentials) {

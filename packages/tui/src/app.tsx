@@ -1,5 +1,5 @@
 import { render, TimeToFirstDraw, useRenderer, useTerminalDimensions } from "@opentui/solid"
-import { registerOpencodeSpinner } from "./component/register-spinner"
+import { registerMageSpinner } from "./component/register-spinner"
 import { createDefaultOpenTuiKeymap } from "@opentui/keymap/opentui"
 import { Deferred, Effect } from "effect"
 import { Global } from "@mybcabisnis/mage-core/global"
@@ -69,10 +69,10 @@ import { CommandPaletteDialog } from "./component/command-palette"
 import {
   COMMAND_PALETTE_COMMAND,
   MAGE_BASE_MODE,
-  OpencodeKeymapProvider,
-  registerOpencodeKeymap,
+  MageKeymapProvider,
+  registerMageKeymap,
   useBindings,
-  useOpencodeKeymap,
+  useMageKeymap,
 } from "./keymap"
 
 import type { EventSource } from "./context/sdk"
@@ -82,7 +82,7 @@ import { win32DisableProcessedInput, win32FlushInputBuffer } from "./terminal-wi
 import { destroyRenderer } from "./util/renderer"
 import { cliErrorMessage, errorFormat } from "./util/error"
 
-registerOpencodeSpinner()
+registerMageSpinner()
 
 const appGlobalBindingCommands = [
   "session.list",
@@ -105,8 +105,8 @@ const appBindingCommands = [
   "agent.cycle",
   "agent.cycle.reverse",
   "variant.cycle",
-  "opencode.status",
-  "opencode.debug",
+  "mage.status",
+  "mage.debug",
   "theme.switch",
   "theme.switch_mode",
   "theme.mode.lock",
@@ -201,7 +201,7 @@ export const run = Effect.fn("Tui.run")(function* (input: TuiInput) {
       win32DisableProcessedInput()
       const keymap = createDefaultOpenTuiKeymap(renderer)
       yield* Effect.acquireRelease(
-        Effect.sync(() => registerOpencodeKeymap(keymap, renderer, input.config)),
+        Effect.sync(() => registerMageKeymap(keymap, renderer, input.config)),
         (unregister) => Effect.sync(unregister),
       )
       yield* Effect.addFinalizer(() =>
@@ -266,7 +266,7 @@ export const run = Effect.fn("Tui.run")(function* (input: TuiInput) {
                         }}
                       >
                         <ClipboardProvider>
-                          <OpencodeKeymapProvider keymap={keymap}>
+                          <MageKeymapProvider keymap={keymap}>
                             <ArgsProvider {...input.args}>
                               <KVProvider>
                                 <ToastProvider>
@@ -326,7 +326,7 @@ export const run = Effect.fn("Tui.run")(function* (input: TuiInput) {
                                 </ToastProvider>
                               </KVProvider>
                             </ArgsProvider>
-                          </OpencodeKeymapProvider>
+                          </MageKeymapProvider>
                         </ClipboardProvider>
                       </TuiStartupProvider>
                     </TuiTerminalEnvironmentProvider>
@@ -358,7 +358,7 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
   const dialog = useDialog()
   const local = useLocal()
   const kv = useKV()
-  const keymap = useOpencodeKeymap()
+  const keymap = useMageKeymap()
   const event = useEvent()
   const sdk = useSDK()
   const toast = useToast()
@@ -441,14 +441,14 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
     if (!terminalTitleEnabled() || Flag.MAGE_DISABLE_TERMINAL_TITLE) return
 
     if (route.data.type === "home") {
-      renderer.setTerminalTitle("OpenCode")
+      renderer.setTerminalTitle("Mage")
       return
     }
 
     if (route.data.type === "session") {
       const session = sync.session.get(route.data.sessionID)
       if (!session || isDefaultTitle(session.title)) {
-        renderer.setTerminalTitle("OpenCode")
+        renderer.setTerminalTitle("Mage")
         return
       }
 
@@ -643,7 +643,7 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
         },
       },
       {
-        name: "opencode.status",
+        name: "mage.status",
         title: "View status",
         slashName: "status",
         run: () => {
@@ -652,7 +652,7 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
         category: "System",
       },
       {
-        name: "opencode.debug",
+        name: "mage.debug",
         title: "View debug info",
         slashName: "debug",
         run: () => {
@@ -963,7 +963,7 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
     await DialogAlert.show(
       dialog,
       "Update Complete",
-      `Successfully updated to OpenCode v${result.data.version}. Please restart the application.`,
+      `Successfully updated to Mage v${result.data.version}. Please restart the application.`,
     )
 
     void exit()

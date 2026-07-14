@@ -4,10 +4,10 @@ export const registerSessionFoldersRoutes = (app, dependencies) => {
   const {
     fsPromises,
     path,
-    openchamberDataDir,
+    mageDataDir,
   } = dependencies;
 
-  const filePath = path.join(openchamberDataDir, 'sessions-directories.json');
+  const filePath = path.join(mageDataDir, 'sessions-directories.json');
 
   const ensureDir = async () => {
     await fsPromises.mkdir(path.dirname(filePath), { recursive: true });

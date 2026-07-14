@@ -1,6 +1,6 @@
 
 import * as gitHttp from './gitApiHttp';
-import { opencodeClient } from './opencode/client';
+import { mageClient } from './mage/client';
 import { renderMagicPrompt } from './magicPrompts';
 import { runtimeFetch } from './runtime-fetch';
 import { materializeOpenDraftSession, useSessionUIStore } from '@/sync/session-ui-store';
@@ -45,7 +45,7 @@ const getRuntimeGit = () => {
 
 const requestChatForceScrollBottom = (sessionId: string) => {
   if (typeof window === 'undefined') return;
-  window.dispatchEvent(new CustomEvent('openchamber:chat-force-scroll-bottom', {
+  window.dispatchEvent(new CustomEvent('mage:chat-force-scroll-bottom', {
     detail: { sessionId },
   }));
 };
@@ -258,7 +258,7 @@ const parseCommitStructured = (structured: Record<string, unknown> | null): { su
 
 // Legacy transport: run the structured generation inside the active chat
 // session. Kept as the fallback for setups with no direct provider login
-// (vanilla installs on OpenCode's free models), where the small-model
+// (vanilla installs on Mage's free models), where the small-model
 // endpoint has nothing to call but the session itself still works.
 async function generateCommitMessageViaSession(
   directory: string,
@@ -628,8 +628,8 @@ const runStructuredGenerationInActiveSession = async ({
 
   requestChatForceScrollBottom(generationSession.sessionId);
 
-  const response = await opencodeClient.withDirectory(directory, async () => {
-    return opencodeClient.getApiClient().session.prompt({
+  const response = await mageClient.withDirectory(directory, async () => {
+    return mageClient.getApiClient().session.prompt({
       sessionID: generationSession.sessionId,
       ...(trimmedDirectory.length > 0 ? { directory: trimmedDirectory } : {}),
       model: {

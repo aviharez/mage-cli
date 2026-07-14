@@ -15,12 +15,12 @@ export const applyPersistedHomeDirectoryToWindow = (homeDirectory: string): void
   if (typeof window === 'undefined') {
     return;
   }
-  if (typeof window.__OPENCHAMBER_HOME__ === 'string' && window.__OPENCHAMBER_HOME__.length > 0) {
+  if (typeof window.__MAGE_HOME__ === 'string' && window.__MAGE_HOME__.length > 0) {
     return;
   }
 
   try {
-    window.__OPENCHAMBER_HOME__ = homeDirectory;
+    window.__MAGE_HOME__ = homeDirectory;
   } catch {
     /* read-only contextBridge property — leave preload-seeded value */
   }
@@ -97,20 +97,20 @@ const persistToLocalStorage = (settings: DesktopSettings) => {
   if (typeof settings.pwaAppName === 'string') {
     const normalized = settings.pwaAppName.trim().replace(/\s+/g, ' ').slice(0, 64);
     if (normalized.length > 0) {
-      localStorage.setItem('openchamber.pwaName', normalized);
+      localStorage.setItem('mage.pwaName', normalized);
     } else {
-      localStorage.removeItem('openchamber.pwaName');
+      localStorage.removeItem('mage.pwaName');
     }
   }
   if (typeof settings.mobileKeyboardMode === 'string') {
     setStoredMobileKeyboardMode(settings.mobileKeyboardMode);
   }
-  if (typeof settings.openCodeUpdateToastDismissedVersion === 'string') {
-    const version = settings.openCodeUpdateToastDismissedVersion.trim();
+  if (typeof settings.mageUpdateToastDismissedVersion === 'string') {
+    const version = settings.mageUpdateToastDismissedVersion.trim();
     if (version) {
-      localStorage.setItem('opencode-update-toast-dismissed-version', version);
+      localStorage.setItem('mage-update-toast-dismissed-version', version);
     } else {
-      localStorage.removeItem('opencode-update-toast-dismissed-version');
+      localStorage.removeItem('mage-update-toast-dismissed-version');
     }
   }
   if (typeof settings.dictationEnabled === 'boolean') {
@@ -137,7 +137,7 @@ const dispatchSettingsSynced = (settings: DesktopSettings): void => {
   if (typeof window === 'undefined') {
     return;
   }
-  window.dispatchEvent(new CustomEvent<DesktopSettings>('openchamber:settings-synced', { detail: settings }));
+  window.dispatchEvent(new CustomEvent<DesktopSettings>('mage:settings-synced', { detail: settings }));
 };
 
 type PersistApi = {
@@ -508,10 +508,10 @@ const applyDesktopUiPreferences = (settings: DesktopSettings) => {
     store.setInputSpellcheckEnabled(settings.inputSpellcheckEnabled);
   }
   if (
-    typeof settings.showOpenCodeUpdateNotifications === 'boolean'
-    && settings.showOpenCodeUpdateNotifications !== store.showOpenCodeUpdateNotifications
+    typeof settings.showMageUpdateNotifications === 'boolean'
+    && settings.showMageUpdateNotifications !== store.showMageUpdateNotifications
   ) {
-    store.setShowOpenCodeUpdateNotifications(settings.showOpenCodeUpdateNotifications);
+    store.setShowMageUpdateNotifications(settings.showMageUpdateNotifications);
   }
   if (typeof settings.showToolFileIcons === 'boolean' && settings.showToolFileIcons !== store.showToolFileIcons) {
     store.setShowToolFileIcons(settings.showToolFileIcons);
@@ -769,9 +769,9 @@ const sanitizeWebSettings = (payload: unknown): DesktopSettings | null => {
     result.homeDirectory = candidate.homeDirectory;
   }
 
-  if (typeof candidate.opencodeBinary === 'string') {
-    const trimmed = candidate.opencodeBinary.trim();
-    result.opencodeBinary = trimmed.length > 0 ? trimmed : undefined;
+  if (typeof candidate.mageBinary === 'string') {
+    const trimmed = candidate.mageBinary.trim();
+    result.mageBinary = trimmed.length > 0 ? trimmed : undefined;
   }
   if (typeof candidate.desktopLanAccessEnabled === 'boolean') {
     result.desktopLanAccessEnabled = candidate.desktopLanAccessEnabled;
@@ -1085,11 +1085,11 @@ const sanitizeWebSettings = (payload: unknown): DesktopSettings | null => {
   if (typeof candidate.inputSpellcheckEnabled === 'boolean') {
     result.inputSpellcheckEnabled = candidate.inputSpellcheckEnabled;
   }
-  if (typeof candidate.showOpenCodeUpdateNotifications === 'boolean') {
-    result.showOpenCodeUpdateNotifications = candidate.showOpenCodeUpdateNotifications;
+  if (typeof candidate.showMageUpdateNotifications === 'boolean') {
+    result.showMageUpdateNotifications = candidate.showMageUpdateNotifications;
   }
-  if (typeof candidate.openCodeUpdateToastDismissedVersion === 'string') {
-    result.openCodeUpdateToastDismissedVersion = candidate.openCodeUpdateToastDismissedVersion.trim().slice(0, 128);
+  if (typeof candidate.mageUpdateToastDismissedVersion === 'string') {
+    result.mageUpdateToastDismissedVersion = candidate.mageUpdateToastDismissedVersion.trim().slice(0, 128);
   }
   if (typeof candidate.showToolFileIcons === 'boolean') {
     result.showToolFileIcons = candidate.showToolFileIcons;

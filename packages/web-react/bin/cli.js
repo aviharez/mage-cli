@@ -41,7 +41,7 @@ import { createTunnelCommand, isValidTunnelDoctorResponse, shouldDisplayTunnelQr
 import {
   resolveDoctorPortStatuses,
   discoverRunningInstances,
-  discoverOpenChamberInstanceOnPort,
+  discoverMageInstanceOnPort,
   discoverLifecycleInstances,
   discoverUnconfirmedRegistryInstanceOnPort,
   resolveTunnelProviders,
@@ -54,9 +54,9 @@ import {
   getPidFilePath,
   getInstanceFilePath,
   isProcessRunning,
-  isOpenchamberCmdline,
-  isOpenchamberProcessRunning,
-  getOpenchamberProcessState,
+  isMageCmdline,
+  isMageProcessRunning,
+  getMageProcessState,
 } from './lib/cli-process.js';
 import {
   intro as clackIntro, outro as clackOutro, cancel as clackCancel,
@@ -138,7 +138,7 @@ function getPreferredServerRuntime() {
   return isBunInstalled() ? 'bun' : 'node';
 }
 
-async function checkOpenCodeCLI(onNotice) {
+async function checkMageCLI(onNotice) {
   if (process.env.MAGE_BINARY) {
     const override = resolveExplicitBinary(process.env.MAGE_BINARY);
     if (override) {
@@ -153,14 +153,14 @@ async function checkOpenCodeCLI(onNotice) {
     }
   }
 
-  const resolvedFromPath = searchPathFor('opencode');
+  const resolvedFromPath = searchPathFor('mage');
   if (resolvedFromPath) {
     process.env.MAGE_BINARY = resolvedFromPath;
     return resolvedFromPath;
   }
 
   throw new Error(
-    `Unable to locate the opencode CLI on PATH (${process.env.PATH || '<empty>'}). ` +
+    `Unable to locate the mage CLI on PATH (${process.env.PATH || '<empty>'}). ` +
     'Ensure the CLI is installed and reachable, or set MAGE_BINARY to its full path.'
   );
 }
@@ -187,7 +187,7 @@ const commands = {
 commands.serve = createServeCommand({
   serverPath: path.join(__dirname, '..', 'server', 'index.js'),
   bunBin: BUN_BIN,
-  checkOpenCodeCLI,
+  checkMageCLI,
   getPreferredServerRuntime,
   setForegroundServerActive(value) { foregroundServerActive = value; },
   setForegroundShutdown(handler) { foregroundShutdown = handler; },
@@ -293,7 +293,7 @@ async function main() {
   await commands[command](options);
 }
 
-const isCliExecution = isModuleCliExecution(process.argv[1], import.meta.url, fs.realpathSync, 'openchamber');
+const isCliExecution = isModuleCliExecution(process.argv[1], import.meta.url, fs.realpathSync, 'mage');
 
 if (isCliExecution) {
   let isHandlingSigint = false;
@@ -383,14 +383,14 @@ export {
   getPidFilePath,
   getInstanceFilePath,
   isProcessRunning,
-  isOpenchamberProcessRunning,
-  isOpenchamberCmdline,
-  getOpenchamberProcessState,
+  isMageProcessRunning,
+  isMageCmdline,
+  getMageProcessState,
   resolveTunnelProviders,
   fetchTunnelProvidersFromPort,
   fetchSystemInfoFromPort,
   discoverRunningInstances,
-  discoverOpenChamberInstanceOnPort,
+  discoverMageInstanceOnPort,
   discoverLifecycleInstances,
   discoverUnconfirmedRegistryInstanceOnPort,
   ensureTunnelProfilesMigrated,

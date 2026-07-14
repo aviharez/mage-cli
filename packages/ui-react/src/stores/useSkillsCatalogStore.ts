@@ -13,8 +13,8 @@ import type {
   SkillsCatalogSourceResponse,
 } from '@/lib/api/types';
 
-import { invalidateSkillsLoadCache, refreshSkillsAfterOpenCodeRestart, useSkillsStore } from '@/stores/useSkillsStore';
-import { opencodeClient } from '@/lib/opencode/client';
+import { invalidateSkillsLoadCache, refreshSkillsAfterMageRestart, useSkillsStore } from '@/stores/useSkillsStore';
+import { mageClient } from '@/lib/mage/client';
 import { startConfigUpdate, finishConfigUpdate, updateConfigUpdateMessage } from '@/lib/configUpdate';
 import { runtimeFetch } from '@/lib/runtime-fetch';
 
@@ -46,9 +46,9 @@ const getSkillsCatalogCacheKey = (directory: string | null): string => {
 };
 
 const getCurrentDirectory = (): string | null => {
-  const opencodeDirectory = opencodeClient.getDirectory();
-  if (typeof opencodeDirectory === 'string' && opencodeDirectory.trim().length > 0) {
-    return opencodeDirectory;
+  const mageDirectory = mageClient.getDirectory();
+  if (typeof mageDirectory === 'string' && mageDirectory.trim().length > 0) {
+    return mageDirectory;
   }
 
   try {
@@ -417,7 +417,7 @@ export const useSkillsCatalogStore = create<SkillsCatalogState>()(
 
           if (payload.requiresReload) {
             requiresReload = true;
-            await refreshSkillsAfterOpenCodeRestart({
+            await refreshSkillsAfterMageRestart({
               message: payload.message,
               delayMs: payload.reloadDelayMs,
             });

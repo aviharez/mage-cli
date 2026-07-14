@@ -1,17 +1,17 @@
-import { readAuthFile, writeAuthFile } from '../opencode/auth.js';
+import { readAuthFile, writeAuthFile } from '../mage/auth.js';
 import { getCatalogProvider } from './catalog.js';
 import { getAuthEntryForProvider } from './resolve.js';
 
 // Direct, non-streaming text generation against the provider APIs, replicating
-// how OpenCode authenticates each of them (see the plugin auth loaders in the
-// opencode repo). auth.json credentials never leave this process.
+// how Mage authenticates each of them (see the plugin auth loaders in the
+// mage repo). auth.json credentials never leave this process.
 
 const REQUEST_TIMEOUT_MS = 60_000;
 // Generous default: thinking models that can't be switched off (DeepSeek,
 // Qwen, …) spend part of this budget on reasoning before the actual answer.
 const DEFAULT_MAX_OUTPUT_TOKENS = 4_000;
 
-const USER_AGENT = 'opencode/1.0 openchamber';
+const USER_AGENT = 'mage/1.0 mage';
 
 const CODEX_TOKEN_URL = 'https://auth.openai.com/oauth/token';
 const CODEX_CLIENT_ID = 'app_EMoamEEZ73f0CkXaXp7hrann';
@@ -25,7 +25,7 @@ const httpError = async (response, provider) => {
 
 // ---------------------------------------------------------------------------
 // OpenAI OAuth (ChatGPT plan / codex) token refresh — single-flight, with the
-// refreshed token written back to auth.json exactly like OpenCode does.
+// refreshed token written back to auth.json exactly like Mage does.
 // ---------------------------------------------------------------------------
 
 let openaiRefreshPromise = null;
@@ -224,7 +224,7 @@ const callCodexResponses = async ({ accessToken, accountId, modelID, prompt, sys
       Accept: 'text/event-stream',
       Authorization: `Bearer ${accessToken}`,
       ...(accountId ? { 'ChatGPT-Account-Id': accountId } : {}),
-      originator: 'opencode',
+      originator: 'mage',
       'User-Agent': USER_AGENT,
     },
     body: JSON.stringify({
@@ -237,7 +237,7 @@ const callCodexResponses = async ({ accessToken, accountId, modelID, prompt, sys
           content: [{ type: 'input_text', text: prompt }],
         },
       ],
-      // The codex backend rejects max_output_tokens (OpenCode forces it to
+      // The codex backend rejects max_output_tokens (Mage forces it to
       // undefined for this provider too).
       stream: true,
       store: false,
@@ -287,11 +287,11 @@ export async function callSmallModel({ auth, catalog, providerID, modelID, promp
   const tokens = Number(maxOutputTokens) > 0 ? Number(maxOutputTokens) : DEFAULT_MAX_OUTPUT_TOKENS;
   const entry = getAuthEntryForProvider(auth, providerID);
   if (!entry) {
-    throw new Error(`No OpenCode login found for provider "${providerID}"`);
+    throw new Error(`No Mage login found for provider "${providerID}"`);
   }
 
   if (providerID === 'github-copilot') {
-    // OpenCode uses the stored device-OAuth token directly as the bearer —
+    // Mage uses the stored device-OAuth token directly as the bearer —
     // access === refresh, no exchange, no expiry.
     const token = entry.refresh || entry.access || entry.key;
     if (!token) {
@@ -332,7 +332,7 @@ export async function callSmallModel({ auth, catalog, providerID, modelID, promp
     : entry.type === 'wellknown' ? entry.token
       : entry.access;
   if (!apiKey) {
-    throw new Error(`OpenCode login for "${providerID}" has no usable credential`);
+    throw new Error(`Mage login for "${providerID}" has no usable credential`);
   }
 
   if (providerID === 'anthropic') {
@@ -356,7 +356,7 @@ export async function callSmallModel({ auth, catalog, providerID, modelID, promp
 
   // Thinking models burn the output budget on reasoning and leave content
   // empty — disable thinking where a wire-format switch exists (mirrors
-  // OpenCode's smallOptions/variants special cases). There is NO universal
+  // Mage's smallOptions/variants special cases). There is NO universal
   // parameter: unknown body fields 400 on some providers, so this stays an
   // explicit allowlist. Models without a switch (DeepSeek, Qwen, Kimi, …)
   // just get the generous output budget.

@@ -1,4 +1,4 @@
-import type { SettingsAPI, SettingsLoadResult, SettingsPayload } from '@openchamber/ui/lib/api/types';
+import type { SettingsAPI, SettingsLoadResult, SettingsPayload } from '@mage/ui/lib/api/types';
 import { sendBridgeMessage } from './bridge';
 
 const sanitizePayload = (data: unknown): SettingsPayload => {
@@ -36,7 +36,7 @@ export const createVSCodeSettingsAPI = (): SettingsAPI => ({
     return sanitizePayload(await sendBridgeMessage('api:config/settings:save', changes));
   },
 
-  async restartOpenCode(): Promise<{ restarted: boolean }> {
+  async restartMage(): Promise<{ restarted: boolean }> {
     await sendBridgeMessage('api:config/reload');
     return { restarted: true };
   },

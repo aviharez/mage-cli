@@ -84,18 +84,18 @@ describe('event stream broadcaster', () => {
       },
     });
 
-    broadcast({ type: 'openchamber:session-status' }, { eventId: 'evt-1', directory: '/tmp/project' });
+    broadcast({ type: 'mage:session-status' }, { eventId: 'evt-1', directory: '/tmp/project' });
 
     expect(sseEvents).toEqual([
       {
         res: sseClient,
-        payload: { type: 'openchamber:session-status' },
+        payload: { type: 'mage:session-status' },
       },
     ]);
     expect(wsPayloads).toEqual([
       {
         type: 'event',
-        payload: { type: 'openchamber:session-status' },
+        payload: { type: 'mage:session-status' },
         eventId: 'evt-1',
         directory: '/tmp/project',
       },
@@ -120,7 +120,7 @@ describe('event stream broadcaster', () => {
       },
     });
 
-    broadcast({ type: 'openchamber:notification' });
+    broadcast({ type: 'mage:notification' });
 
     expect(wsClients.size).toBe(0);
   });
@@ -139,8 +139,8 @@ describe('message stream websocket runtime', () => {
       rejectWebSocketUpgrade() {
         throw new Error('upgrade should not be used in this test');
       },
-      buildOpenCodeUrl: (path) => `http://127.0.0.1:4096${path}`,
-      getOpenCodeAuthHeaders: () => ({}),
+      buildMageUrl: (path) => `http://127.0.0.1:4096${path}`,
+      getMageAuthHeaders: () => ({}),
       processForwardedEventPayload() {},
       wsClients,
       upstreamReconnectDelayMs: 0,
@@ -196,8 +196,8 @@ describe('message stream websocket runtime', () => {
       rejectWebSocketUpgrade() {
         throw new Error('upgrade should not be used in this test');
       },
-      buildOpenCodeUrl: (path) => `http://127.0.0.1:4096${path}`,
-      getOpenCodeAuthHeaders: () => ({}),
+      buildMageUrl: (path) => `http://127.0.0.1:4096${path}`,
+      getMageAuthHeaders: () => ({}),
       processForwardedEventPayload() {},
       wsClients,
       upstreamReconnectDelayMs: 0,
@@ -257,8 +257,8 @@ describe('message stream websocket runtime', () => {
       rejectWebSocketUpgrade() {
         throw new Error('upgrade should not be used in this test');
       },
-      buildOpenCodeUrl: (path) => `http://127.0.0.1:4096${path}`,
-      getOpenCodeAuthHeaders: () => ({}),
+      buildMageUrl: (path) => `http://127.0.0.1:4096${path}`,
+      getMageAuthHeaders: () => ({}),
       processForwardedEventPayload() {},
       wsClients,
       upstreamReconnectDelayMs: 0,
@@ -304,8 +304,8 @@ describe('message stream websocket runtime', () => {
       rejectWebSocketUpgrade() {
         throw new Error('upgrade should not be used in this test');
       },
-      buildOpenCodeUrl: (path) => `http://127.0.0.1:4096${path}`,
-      getOpenCodeAuthHeaders: () => ({}),
+      buildMageUrl: (path) => `http://127.0.0.1:4096${path}`,
+      getMageAuthHeaders: () => ({}),
       processForwardedEventPayload() {},
       wsClients,
       triggerHealthCheck: () => {
@@ -327,13 +327,13 @@ describe('message stream websocket runtime', () => {
     expect(socket.sent).toEqual([
       {
         type: 'error',
-        message: 'OpenCode event stream unavailable (503)',
+        message: 'Mage event stream unavailable (503)',
       },
     ]);
     expect(socket.closeCalls).toEqual([
       {
         code: 1011,
-        reason: 'OpenCode event stream unavailable',
+        reason: 'Mage event stream unavailable',
       },
     ]);
     expect(triggerHealthCheckCalls).toBe(1);
@@ -342,7 +342,7 @@ describe('message stream websocket runtime', () => {
     await runtime.close();
   });
 
-  it('closes the websocket without health check when OpenCode URL cannot be built', async () => {
+  it('closes the websocket without health check when Mage URL cannot be built', async () => {
     const server = new EventEmitter();
     const wsClients = new Set();
     let triggerHealthCheckCalls = 0;
@@ -355,10 +355,10 @@ describe('message stream websocket runtime', () => {
       rejectWebSocketUpgrade() {
         throw new Error('upgrade should not be used in this test');
       },
-      buildOpenCodeUrl() {
-        throw new Error('missing OpenCode port');
+      buildMageUrl() {
+        throw new Error('missing Mage port');
       },
-      getOpenCodeAuthHeaders: () => ({}),
+      getMageAuthHeaders: () => ({}),
       processForwardedEventPayload() {},
       wsClients,
       triggerHealthCheck: () => {
@@ -379,13 +379,13 @@ describe('message stream websocket runtime', () => {
     expect(socket.sent).toEqual([
       {
         type: 'error',
-        message: 'OpenCode service unavailable',
+        message: 'Mage service unavailable',
       },
     ]);
     expect(socket.closeCalls).toEqual([
       {
         code: 1011,
-        reason: 'OpenCode service unavailable',
+        reason: 'Mage service unavailable',
       },
     ]);
     expect(fetchCalls).toBe(0);
@@ -408,8 +408,8 @@ describe('message stream websocket runtime', () => {
       rejectWebSocketUpgrade() {
         throw new Error('upgrade should not be used in this test');
       },
-      buildOpenCodeUrl: (path) => `http://127.0.0.1:4096${path}`,
-      getOpenCodeAuthHeaders: () => ({}),
+      buildMageUrl: (path) => `http://127.0.0.1:4096${path}`,
+      getMageAuthHeaders: () => ({}),
       processForwardedEventPayload() {},
       wsClients,
       triggerHealthCheck: () => {
@@ -471,11 +471,11 @@ describe('message stream websocket runtime', () => {
       rejectWebSocketUpgrade() {
         throw new Error('upgrade should not be used in this test');
       },
-      buildOpenCodeUrl: (path) => `http://127.0.0.1:4096${path}`,
-      getOpenCodeAuthHeaders: () => ({}),
+      buildMageUrl: (path) => `http://127.0.0.1:4096${path}`,
+      getMageAuthHeaders: () => ({}),
       processForwardedEventPayload(payload, emitSynthetic) {
         if (payload.type === 'session.updated') {
-          emitSynthetic({ type: 'openchamber:session-status', sessionID: 'ses_1' });
+          emitSynthetic({ type: 'mage:session-status', sessionID: 'ses_1' });
         }
       },
       wsClients,
@@ -502,7 +502,7 @@ describe('message stream websocket runtime', () => {
     });
     expect(socket.sent).toContainEqual({
       type: 'event',
-      payload: { type: 'openchamber:session-status', sessionID: 'ses_1' },
+      payload: { type: 'mage:session-status', sessionID: 'ses_1' },
       directory: 'global',
     });
 

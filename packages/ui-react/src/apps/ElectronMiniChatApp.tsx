@@ -7,7 +7,7 @@ import { Toaster } from '@/components/ui/sonner';
 import { MiniChatLayout } from '@/components/mini-chat/MiniChatLayout';
 import { usePushVisibilityBeacon } from '@/hooks/usePushVisibilityBeacon';
 import { useWindowTitle } from '@/hooks/useWindowTitle';
-import { opencodeClient } from '@/lib/opencode/client';
+import { mageClient } from '@/lib/mage/client';
 import type { RuntimeAPIs } from '@/lib/api/types';
 import { useDirectoryStore } from '@/stores/useDirectoryStore';
 import { useConfigStore } from '@/stores/useConfigStore';
@@ -22,7 +22,7 @@ import { useMiniChatKeyboardShortcuts } from '@/hooks/useMiniChatKeyboardShortcu
 import { listProjectWorktrees, worktreeMapsEqual } from '@/lib/worktrees/worktreeManager';
 import type { WorktreeMetadata } from '@/types/worktree';
 
-const MINI_CHAT_PRESENCE_CHANNEL = 'openchamber:mini-chat-presence';
+const MINI_CHAT_PRESENCE_CHANNEL = 'mage:mini-chat-presence';
 
 type MiniChatMode = 'session' | 'draft';
 
@@ -156,8 +156,8 @@ const MiniChatBootstrap: React.FC<{ config: MiniChatConfig }> = ({ config }) => 
       setCurrentSession(sessionId, directory);
       sessionBootstrappedRef.current = true;
     };
-    window.addEventListener('openchamber:open-session', onOpenSession);
-    return () => window.removeEventListener('openchamber:open-session', onOpenSession);
+    window.addEventListener('mage:open-session', onOpenSession);
+    return () => window.removeEventListener('mage:open-session', onOpenSession);
   }, [sessions, setCurrentSession, sync]);
 
   React.useEffect(() => {
@@ -297,7 +297,7 @@ export function ElectronMiniChatApp({ apis }: ElectronMiniChatAppProps) {
   const currentDirectory = useDirectoryStore((state) => state.currentDirectory);
 
   React.useEffect(() => {
-    opencodeClient.setDirectory(currentDirectory || config.directory || undefined);
+    mageClient.setDirectory(currentDirectory || config.directory || undefined);
   }, [config.directory, currentDirectory]);
 
   React.useEffect(() => {
@@ -312,7 +312,7 @@ export function ElectronMiniChatApp({ apis }: ElectronMiniChatAppProps) {
 
   return (
     <ErrorBoundary>
-      <SyncProvider sdk={opencodeClient.getSdkClient()} directory={currentDirectory || config.directory || ''}>
+      <SyncProvider sdk={mageClient.getSdkClient()} directory={currentDirectory || config.directory || ''}>
         <RuntimeAPIProvider apis={apis}>
           <TooltipProvider delayDuration={300} skipDelayDuration={150}>
             <div className="h-full text-foreground bg-background">

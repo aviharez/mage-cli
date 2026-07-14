@@ -34,16 +34,16 @@ import { MagicPromptsPage } from '@/components/sections/magic-prompts/MagicPromp
 import { SnippetsSidebar } from '@/components/sections/snippets/SnippetsSidebar';
 import { SnippetsPage } from '@/components/sections/snippets/SnippetsPage';
 import { GitPage } from '@/components/sections/git-identities/GitPage';
-import type { OpenChamberSection } from '@/components/sections/openchamber/types';
-import { OpenChamberPage } from '@/components/sections/openchamber/OpenChamberPage';
-import { AboutSettings } from '@/components/sections/openchamber/AboutSettings';
+import type { MageSection } from '@/components/sections/mage/types';
+import { MagePage } from '@/components/sections/mage/MagePage';
+import { AboutSettings } from '@/components/sections/mage/AboutSettings';
 import { useDeviceInfo } from '@/lib/device';
 import { isDesktopLocalOriginActive, isDesktopShell, isVSCodeRuntime, isWebRuntime } from '@/lib/desktop';
 import { useI18n } from '@/lib/i18n';
 import { Icon } from "@/components/icon/Icon";
 import type { IconName } from "@/components/icon/icons";
 import { McpIcon } from '@/components/icons/McpIcon';
-import { reloadOpenCodeConfiguration } from '@/stores/useAgentsStore';
+import { reloadMageConfiguration } from '@/stores/useAgentsStore';
 import {
   SETTINGS_PAGE_METADATA,
   getSettingsPageMeta,
@@ -58,7 +58,7 @@ import { buildSettingsSearchResults, type SettingsSearchResult } from '@/lib/set
 const SETTINGS_NAV_MIN_WIDTH = 176;
 const SETTINGS_NAV_MAX_WIDTH = 280;
 const SETTINGS_NAV_RESIZE_STEP = 8;
-const SETTINGS_DETAIL_HISTORY_KEY = '__openchamberSettingsDetail';
+const SETTINGS_DETAIL_HISTORY_KEY = '__mageSettingsDetail';
 
 function clampSettingsNavWidth(width: number): number {
   return Math.min(SETTINGS_NAV_MAX_WIDTH, Math.max(SETTINGS_NAV_MIN_WIDTH, width));
@@ -331,11 +331,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile
   }, []);
   const isMac = React.useMemo(() => {
     return isDesktopShell() && typeof window !== 'undefined'
-      && (window as unknown as { __OPENCHAMBER_PLATFORM__?: string }).__OPENCHAMBER_PLATFORM__ === 'darwin';
+      && (window as unknown as { __MAGE_PLATFORM__?: string }).__MAGE_PLATFORM__ === 'darwin';
   }, []);
   const isWindows = React.useMemo(() => {
     return isDesktopShell() && typeof window !== 'undefined'
-      && (window as unknown as { __OPENCHAMBER_PLATFORM__?: string }).__OPENCHAMBER_PLATFORM__ === 'win32';
+      && (window as unknown as { __MAGE_PLATFORM__?: string }).__MAGE_PLATFORM__ === 'win32';
   }, []);
 
   // keep platform check available for future window chrome tweaks
@@ -474,7 +474,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile
 
   // Nav is always open (collapsed state removed)
 
-  const openChamberSectionBySlug: Partial<Record<SettingsPageSlug, OpenChamberSection>> = React.useMemo(() => ({
+  const mageSectionBySlug: Partial<Record<SettingsPageSlug, MageSection>> = React.useMemo(() => ({
     appearance: 'visual',
     chat: 'chat',
     shortcuts: 'shortcuts',
@@ -597,7 +597,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile
     if (result.id.startsWith('skills.')) {
       const store = useSkillsStore.getState();
       const name = nextUniqueName('new-skill', store.skills.map((skill) => skill.name));
-      store.setSkillDraft({ name, scope: 'user', source: 'opencode', description: '', instructions: '' });
+      store.setSkillDraft({ name, scope: 'user', source: 'mage', description: '', instructions: '' });
       store.setSelectedSkill(name);
       return result.id === 'skills.create' ? 'skills.basic-information' : result.id;
     }
@@ -658,7 +658,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile
     }
     if (result.id === 'plugins.create' && typeof window !== 'undefined') {
       window.setTimeout(() => {
-        window.dispatchEvent(new CustomEvent('openchamber:settings-open-plugin-add'));
+        window.dispatchEvent(new CustomEvent('mage:settings-open-plugin-add'));
       }, 50);
     }
   }, [isMobile, openPage, prepareSettingsSearchTarget]);
@@ -818,13 +818,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile
       case 'notifications':
       case 'voice':
       case 'tunnel': {
-        const section = openChamberSectionBySlug[slug] ?? 'visual';
-        return <OpenChamberPage section={section} />;
+        const section = mageSectionBySlug[slug] ?? 'visual';
+        return <MagePage section={section} />;
       }
       default:
         return <SettingsHome onOpen={openPage} />;
     }
-  }, [openChamberSectionBySlug, openPage, renderUnavailable, runtimeCtx]);
+  }, [mageSectionBySlug, openPage, renderUnavailable, runtimeCtx]);
 
   // Mobile: if opened via deep-link / palette to a non-home page, jump into it once.
   React.useEffect(() => {
@@ -1060,14 +1060,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile
                       'text-sm font-semibold text-sidebar-foreground/90',
                       'hover:text-sidebar-foreground hover:bg-interactive-hover',
                     )}
-                    onClick={() => void reloadOpenCodeConfiguration({ message: 'Restarting OpenCode…', mode: 'projects', scopes: ['all'] }).catch(() => undefined)}
+                    onClick={() => void reloadMageConfiguration({ message: 'Restarting Mage…', mode: 'projects', scopes: ['all'] }).catch(() => undefined)}
                   >
                     <Icon name="restart" className="h-4 w-4 shrink-0" />
-                    <span>{t('settings.view.actions.reloadOpenCode')}</span>
+                    <span>{t('settings.view.actions.reloadMage')}</span>
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  {t('settings.view.actions.reloadOpenCodeTooltip')}
+                  {t('settings.view.actions.reloadMageTooltip')}
                 </TooltipContent>
               </Tooltip>
             )}

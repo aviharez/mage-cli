@@ -1,5 +1,5 @@
-import type { SettingsAPI, SettingsLoadResult, SettingsPayload } from '@openchamber/ui/lib/api/types';
-import { runtimeFetch } from '@openchamber/ui/lib/runtime-fetch';
+import type { SettingsAPI, SettingsLoadResult, SettingsPayload } from '@mage/ui/lib/api/types';
+import { runtimeFetch } from '@mage/ui/lib/runtime-fetch';
 
 const SETTINGS_ENDPOINT = '/api/config/settings';
 const RELOAD_ENDPOINT = '/api/config/reload';
@@ -48,11 +48,11 @@ export const createWebSettingsAPI = (): SettingsAPI => ({
     return payload;
   },
 
-  async restartOpenCode(): Promise<{ restarted: boolean }> {
+  async restartMage(): Promise<{ restarted: boolean }> {
     const response = await runtimeFetch(RELOAD_ENDPOINT, { method: 'POST' });
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: response.statusText }));
-      throw new Error(error.error || 'Failed to restart OpenCode');
+      throw new Error(error.error || 'Failed to restart Mage');
     }
     return { restarted: true };
   },

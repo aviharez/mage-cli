@@ -1,4 +1,4 @@
-import type { Message } from '@opencode-ai/sdk/v2';
+import type { Message } from '@mybcabisnis/mage-sdk/v2';
 
 import type { ChatMessageEntry } from './types';
 

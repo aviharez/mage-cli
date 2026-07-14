@@ -104,7 +104,7 @@ export interface Interface {
   readonly refresh: (force?: boolean) => Effect.Effect<void>
 }
 
-export class Service extends Context.Service<Service, Interface>()("@opencode/ModelsDev") {}
+export class Service extends Context.Service<Service, Interface>()("@mage/ModelsDev") {}
 
 // Mage is locked to the Merlin/GAIA provider only — the models.dev catalog is
 // never fetched. Merlin is injected directly in Provider.Service, and every

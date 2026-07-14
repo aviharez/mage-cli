@@ -17,8 +17,8 @@ export function acceptDirectoryMessageStreamWsConnection({
   socket,
   requestedLastEventId,
   requestedDirectory,
-  buildOpenCodeUrl,
-  getOpenCodeAuthHeaders,
+  buildMageUrl,
+  getMageAuthHeaders,
   processForwardedEventPayload,
   wsClients,
   triggerHealthCheck,
@@ -56,7 +56,7 @@ export function acceptDirectoryMessageStreamWsConnection({
       return;
     }
 
-    sendMessageStreamWsEvent(socket, { type: 'openchamber:heartbeat', timestamp: Date.now() }, { directory: 'global' });
+    sendMessageStreamWsEvent(socket, { type: 'mage:heartbeat', timestamp: Date.now() }, { directory: 'global' });
   }, heartbeatIntervalMs);
 
   socket.on('close', () => {
@@ -106,10 +106,10 @@ export function acceptDirectoryMessageStreamWsConnection({
           buildUrlFailed = false;
           let targetUrl;
           try {
-            targetUrl = new URL(buildOpenCodeUrl('/event', ''));
+            targetUrl = new URL(buildMageUrl('/event', ''));
           } catch {
             buildUrlFailed = true;
-            throw new Error('OpenCode service unavailable');
+            throw new Error('Mage service unavailable');
           }
 
           if (requestedDirectory) {
@@ -118,7 +118,7 @@ export function acceptDirectoryMessageStreamWsConnection({
 
           return targetUrl;
         },
-        getHeaders: getOpenCodeAuthHeaders,
+        getHeaders: getMageAuthHeaders,
         onConnect() {
           if (!streamReady) {
             sendMessageStreamWsFrame(socket, {
@@ -142,16 +142,16 @@ export function acceptDirectoryMessageStreamWsConnection({
           if (!streamReady) {
             if (error?.type === 'upstream_unavailable') {
               closeWithInitialError({
-                message: `OpenCode event stream unavailable (${error.status})`,
-                closeReason: 'OpenCode event stream unavailable',
+                message: `Mage event stream unavailable (${error.status})`,
+                closeReason: 'Mage event stream unavailable',
                 triggerHealthCheckFor: error.response,
               });
               return;
             }
 
             closeWithInitialError({
-              message: buildUrlFailed ? 'OpenCode service unavailable' : 'Failed to connect to OpenCode event stream',
-              closeReason: buildUrlFailed ? 'OpenCode service unavailable' : 'Failed to connect to OpenCode event stream',
+              message: buildUrlFailed ? 'Mage service unavailable' : 'Failed to connect to Mage event stream',
+              closeReason: buildUrlFailed ? 'Mage service unavailable' : 'Failed to connect to Mage event stream',
               triggerHealthCheckFor: !buildUrlFailed,
             });
             return;

@@ -6,7 +6,7 @@ import {
   shouldForwardProxyResponseHeader,
 } from './proxy-headers.js';
 
-describe('OpenCode proxy header handling', () => {
+describe('Mage proxy header handling', () => {
   it('drops accept-encoding from forwarded request headers', () => {
     const headers = collectForwardProxyHeaders({
       accept: 'application/json',
@@ -18,13 +18,13 @@ describe('OpenCode proxy header handling', () => {
     expect(headers['accept-encoding']).toBeUndefined();
   });
 
-  it('replaces client authorization with managed OpenCode auth', () => {
+  it('replaces client authorization with managed Mage auth', () => {
     const headers = collectForwardProxyHeaders(
       { authorization: 'Bearer oc_client_stale-ui-token' },
-      { Authorization: 'Bearer managed-opencode-token' },
+      { Authorization: 'Bearer managed-mage-token' },
     );
 
-    expect(headers.Authorization).toBe('Bearer managed-opencode-token');
+    expect(headers.Authorization).toBe('Bearer managed-mage-token');
     expect(headers['authorization']).toBeUndefined();
   });
 

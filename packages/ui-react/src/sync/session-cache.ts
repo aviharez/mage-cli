@@ -5,7 +5,7 @@ import type {
   QuestionRequest,
   SessionStatus,
   Todo,
-} from "@opencode-ai/sdk/v2/client"
+} from "@mybcabisnis/mage-sdk/v2/client"
 import type { FileDiff } from "./types"
 
 type SessionCache = {

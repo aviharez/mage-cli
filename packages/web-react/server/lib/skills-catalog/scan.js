@@ -80,7 +80,7 @@ export async function scanSkillsRepository({
   const effectiveSubpath = parsed.effectiveSubpath || (typeof defaultSubpath === 'string' && defaultSubpath.trim() ? defaultSubpath.trim() : null);
   const cloneUrl = identity?.sshKey ? parsed.cloneUrlSsh : parsed.cloneUrlHttps;
 
-  const tempBase = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'openchamber-skills-scan-'));
+  const tempBase = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'mage-skills-scan-'));
 
   try {
     const cloned = await cloneRepo({ cloneUrl, identity, tempDir: tempBase });
@@ -145,7 +145,7 @@ export async function scanSkillsRepository({
         .filter((p) => p.endsWith('/SKILL.md') || p === 'SKILL.md');
     }
 
-    // Root-level SKILL.md doesn't map cleanly to OpenCode's "skill name == folder name" convention.
+    // Root-level SKILL.md doesn't map cleanly to Mage's "skill name == folder name" convention.
     const uniqueSkillDirs = Array.from(
       new Set(
         skillMdPaths
@@ -188,7 +188,7 @@ export async function scanSkillsRepository({
 
         const installable = validateSkillName(skillName);
         if (!installable) {
-          warnings.push('Skill directory name is not a valid OpenCode skill name');
+          warnings.push('Skill directory name is not a valid Mage skill name');
         }
 
         items.push({

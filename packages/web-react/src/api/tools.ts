@@ -1,5 +1,5 @@
-import type { ToolsAPI } from '@openchamber/ui/lib/api/types';
-import { runtimeFetch } from '@openchamber/ui/lib/runtime-fetch';
+import type { ToolsAPI } from '@mage/ui/lib/api/types';
+import { runtimeFetch } from '@mage/ui/lib/runtime-fetch';
 
 export const createWebToolsAPI = (): ToolsAPI => ({
   async getAvailableTools(): Promise<string[]> {

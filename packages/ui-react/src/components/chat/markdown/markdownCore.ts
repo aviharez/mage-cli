@@ -10,7 +10,7 @@ const escapeAttr = (value: string): string =>
   value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 // ---------------------------------------------------------------------------
-// Streaming block segmentation (port of OpenCode's markdown-stream)
+// Streaming block segmentation (port of Mage's markdown-stream)
 // ---------------------------------------------------------------------------
 
 type MarkdownBlock = {
@@ -170,7 +170,7 @@ const parser = marked.use({
       const target = href ?? '';
       const agentName = parseAgentHref(target);
       if (agentName) {
-        return `<a href="${escapeAttr(buildAgentMentionUrl(agentName))}" data-openchamber-agent-mention="true" class="text-primary hover:underline" target="_blank" rel="noopener noreferrer">${text}</a>`;
+        return `<a href="${escapeAttr(buildAgentMentionUrl(agentName))}" data-mage-agent-mention="true" class="text-primary hover:underline" target="_blank" rel="noopener noreferrer">${text}</a>`;
       }
       const skillName = parseSkillHref(target);
       if (skillName) {
@@ -308,7 +308,7 @@ const sanitize = (html: string): string => {
 
 
 // ---------------------------------------------------------------------------
-// Per-block HTML cache (LRU, mirrors OpenCode's checksum cache)
+// Per-block HTML cache (LRU, mirrors Mage's checksum cache)
 // ---------------------------------------------------------------------------
 
 const CACHE_MAX = 240;

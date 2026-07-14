@@ -121,7 +121,7 @@ The following functions are internal helpers used by exported functions:
 - `path`: Absolute path to worktree directory.
 - `directoryCreated`: Present when create returned after the target directory exists while background Git/bootstrap work continues.
 - `bootstrapStatus`: Background setup status, with `pending`, `ready`, or `failed`.
-- Fast-create background failures remove OpenCode sandbox metadata for directories that never became Git worktrees, and remove the pre-created directory only if it is still empty. User-created files are never recursively deleted by this cleanup.
+- Fast-create background failures remove Mage sandbox metadata for directories that never became Git worktrees, and remove the pre-created directory only if it is still empty. User-created files are never recursively deleted by this cleanup.
 
 ### Log Response
 - `all`: Array of commit objects with hash, date, message, author info, stats.
@@ -146,8 +146,8 @@ The following functions are internal helpers used by exported functions:
 
 ### Worktree Naming
 - Worktree names are slugified via `slugWorktreeName`.
-- Random names use adjectives/nouns from `OPENCODE_ADJECTIVES` and `OPENCODE_NOUNS` lists.
-- Branches created for new worktrees use `openchamber/<worktree-name>` pattern.
+- Random names use adjectives/nouns from `MAGE_ADJECTIVES` and `MAGE_NOUNS` lists.
+- Branches created for new worktrees use `mage/<worktree-name>` pattern.
 
 ### Cross-Platform Considerations
 - Use `normalizeDirectoryPath` for all directory inputs to handle `~` and path separators.

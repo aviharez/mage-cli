@@ -33,7 +33,7 @@ import { useSessionUIStore } from '@/sync/session-ui-store';
 import { markSessionViewed } from '@/sync/notification-store';
 import { useDirectoryStore } from '@/stores/useDirectoryStore';
 import { useProjectsStore } from '@/stores/useProjectsStore';
-import { opencodeClient } from '@/lib/opencode/client';
+import { mageClient } from '@/lib/mage/client';
 import { runtimeFetch } from '@/lib/runtime-fetch';
 import { getRuntimeKey, subscribeRuntimeEndpointChanged } from '@/lib/runtime-switch';
 import { useAutoReviewStore } from '@/stores/useAutoReviewStore';
@@ -57,7 +57,7 @@ import { applyMobileKeyboardMode } from '@/lib/mobileKeyboardMode';
 import { SyncAppEffects } from '@/apps/AppEffects';
 import { resetAppForRuntimeEndpointChange } from '@/apps/runtimeEndpointReset';
 import { useAppFontEffects } from '@/apps/useAppFontEffects';
-import { OpenCodeUpdateToast } from '@/components/update/OpenCodeUpdateToast';
+import { MageUpdateToast } from '@/components/update/MageUpdateToast';
 import { markStartupTrace, startupTraceEnabled } from '@/lib/startupTrace';
 
 // Lazy-loaded heavy views — loaded on demand to reduce initial bundle size.
@@ -196,7 +196,7 @@ const EmbeddedSessionChatContent: React.FC<{
   return (
     <>
       <SyncAppEffects embeddedBackgroundWorkEnabled={embeddedBackgroundWorkEnabled} />
-      <OpenCodeUpdateToast />
+      <MageUpdateToast />
       <ChatView readOnly={embeddedSessionChat.readOnly} />
       <Toaster />
     </>
@@ -207,7 +207,7 @@ function App({ apis }: AppProps) {
   React.useEffect(() => {
     markStartupTrace('App:mounted');
     if (startupTraceEnabled()) {
-      console.info('[startup-trace] enabled. Run console.table(window.__OPENCHAMBER_STARTUP_TRACE__) after startup.');
+      console.info('[startup-trace] enabled. Run console.table(window.__MAGE_STARTUP_TRACE__) after startup.');
     }
   }, []);
 
@@ -402,7 +402,7 @@ function App({ apis }: AppProps) {
   }, [setPlanModeEnabled]);
 
   React.useEffect(() => {
-    // VS Code runtime bootstraps config + sessions after the managed OpenCode instance reports "connected".
+    // VS Code runtime bootstraps config + sessions after the managed Mage instance reports "connected".
     // Doing the default initialization here can race with startup and lead to one-shot failures.
     if (isVSCodeRuntime) {
       return;
@@ -514,7 +514,7 @@ function App({ apis }: AppProps) {
     if (!isConnected) {
       return;
     }
-    opencodeClient.setDirectory(currentDirectory);
+    mageClient.setDirectory(currentDirectory);
 
     // Session loading is handled by the sync system's bootstrap — no manual loadSessions needed.
   }, [currentDirectory, isSwitchingDirectory, isConnected, isVSCodeRuntime]);
@@ -535,7 +535,7 @@ function App({ apis }: AppProps) {
       }
 
       const data = event.data as { type?: unknown; payload?: EmbeddedVisibilityPayload };
-      if (data?.type !== 'openchamber:embedded-visibility') {
+      if (data?.type !== 'mage:embedded-visibility') {
         return;
       }
 
@@ -543,16 +543,16 @@ function App({ apis }: AppProps) {
     };
 
     const scopedWindow = window as unknown as {
-      __openchamberSetEmbeddedVisibility?: (payload?: EmbeddedVisibilityPayload) => void;
+      __mageSetEmbeddedVisibility?: (payload?: EmbeddedVisibilityPayload) => void;
     };
 
-    scopedWindow.__openchamberSetEmbeddedVisibility = applyVisibility;
+    scopedWindow.__mageSetEmbeddedVisibility = applyVisibility;
     window.addEventListener('message', handleMessage);
 
     return () => {
       window.removeEventListener('message', handleMessage);
-      if (scopedWindow.__openchamberSetEmbeddedVisibility === applyVisibility) {
-        delete scopedWindow.__openchamberSetEmbeddedVisibility;
+      if (scopedWindow.__mageSetEmbeddedVisibility === applyVisibility) {
+        delete scopedWindow.__mageSetEmbeddedVisibility;
       }
     };
   }, [embeddedSessionChat]);
@@ -606,8 +606,8 @@ function App({ apis }: AppProps) {
       void useSessionUIStore.getState().setCurrentSession(sessionId, directory);
     };
 
-    window.addEventListener('openchamber:open-session', handler as EventListener);
-    return () => window.removeEventListener('openchamber:open-session', handler as EventListener);
+    window.addEventListener('mage:open-session', handler as EventListener);
+    return () => window.removeEventListener('mage:open-session', handler as EventListener);
   }, []);
 
   // Open a draft Mini Chat window from the native File menu / tray. Uses a
@@ -624,8 +624,8 @@ function App({ apis }: AppProps) {
         projectId: activeProject?.id ?? null,
       });
     };
-    window.addEventListener('openchamber:open-mini-chat', onOpenMiniChat);
-    return () => window.removeEventListener('openchamber:open-mini-chat', onOpenMiniChat);
+    window.addEventListener('mage:open-mini-chat', onOpenMiniChat);
+    return () => window.removeEventListener('mage:open-mini-chat', onOpenMiniChat);
   }, []);
 
   // When the window regains focus, mark the currently-selected session as seen.
@@ -662,8 +662,8 @@ function App({ apis }: AppProps) {
       });
     };
 
-    window.addEventListener('openchamber:open-draft-session', handler as EventListener);
-    return () => window.removeEventListener('openchamber:open-draft-session', handler as EventListener);
+    window.addEventListener('mage:open-draft-session', handler as EventListener);
+    return () => window.removeEventListener('mage:open-draft-session', handler as EventListener);
   }, []);
 
   React.useEffect(() => {
@@ -682,8 +682,8 @@ function App({ apis }: AppProps) {
       }
     };
 
-    window.addEventListener('openchamber:open-project', handler as EventListener);
-    return () => window.removeEventListener('openchamber:open-project', handler as EventListener);
+    window.addEventListener('mage:open-project', handler as EventListener);
+    return () => window.removeEventListener('mage:open-project', handler as EventListener);
   }, []);
 
   React.useEffect(() => {
@@ -691,8 +691,8 @@ function App({ apis }: AppProps) {
     if (!isInitialized || isSwitchingDirectory) return;
     if (appReadyDispatchedRef.current) return;
     appReadyDispatchedRef.current = true;
-    (window as unknown as { __openchamberAppReady?: boolean }).__openchamberAppReady = true;
-    window.dispatchEvent(new Event('openchamber:app-ready'));
+    (window as unknown as { __mageAppReady?: boolean }).__mageAppReady = true;
+    window.dispatchEvent(new Event('mage:app-ready'));
   }, [isInitialized, isSwitchingDirectory]);
 
   // useEventStream replaced by SyncProvider + SyncBridge
@@ -750,7 +750,7 @@ function App({ apis }: AppProps) {
   }, [clearError, embeddedSessionChat, error]);
 
   // Poll for the injected boot outcome until it becomes available (desktop only).
-  // The Rust backend sets window.__OPENCHAMBER_DESKTOP_BOOT_OUTCOME__ once the
+  // The Rust backend sets window.__MAGE_DESKTOP_BOOT_OUTCOME__ once the
   // sidecar reaches a stable state. We poll with exponential backoff to handle
   // potential race conditions during startup and config writes.
   React.useEffect(() => {
@@ -890,7 +890,7 @@ function App({ apis }: AppProps) {
   if (embeddedSessionChat) {
     return (
       <ErrorBoundary>
-        <SyncProvider key={runtimeEndpointEpoch} sdk={opencodeClient.getSdkClient()} directory={currentDirectory || ''}>
+        <SyncProvider key={runtimeEndpointEpoch} sdk={mageClient.getSdkClient()} directory={currentDirectory || ''}>
           <RuntimeAPIProvider apis={apis}>
             <TooltipProvider delayDuration={300} skipDelayDuration={150}>
               <div className="h-full text-foreground bg-background">
@@ -933,13 +933,13 @@ function App({ apis }: AppProps) {
 
   return (
     <ErrorBoundary>
-      <SyncProvider key={runtimeEndpointEpoch} sdk={opencodeClient.getSdkClient()} directory={currentDirectory || ''}>
+      <SyncProvider key={runtimeEndpointEpoch} sdk={mageClient.getSdkClient()} directory={currentDirectory || ''}>
         <RuntimeAPIProvider apis={apis}>
           <FireworksProvider>
               <TooltipProvider delayDuration={300} skipDelayDuration={150}>
                 <div className={isDesktopRuntime ? 'h-full text-foreground bg-transparent' : 'h-full text-foreground bg-background'}>
                   <SyncAppEffects embeddedBackgroundWorkEnabled={embeddedBackgroundWorkEnabled} />
-                  <OpenCodeUpdateToast />
+                  <MageUpdateToast />
                   <MainLayout />
                   <Toaster />
                   {!isBootShell && (

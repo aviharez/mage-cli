@@ -3,7 +3,7 @@
 Server-side watcher that generates a short recap of the agent's last reply
 and one suggested user follow-up with the small model
 (`lib/small-model`), storing both on the session's metadata under
-`metadata.openchamber.assist`.
+`metadata.mage.assist`.
 
 ## Flow
 
@@ -23,7 +23,7 @@ and one suggested user follow-up with the small model
    `restrictToPreferredProvider` forbids the resolver's global fallback:
    conversation content never goes to a provider the user didn't pick for
    the session, unless the small model was chosen explicitly (settings
-   override or opencode config). A resolver 404 is silently skipped.
+   override or mage config). A resolver 404 is silently skipped.
 4. The requested JSON fields (`recap`, `suggestion`, or both) are clamped and
    PATCHed onto the session metadata together with `forMessageID` (the last
    assistant message id) and `generatedAt`. Before writing, the session tail is
@@ -33,7 +33,7 @@ and one suggested user follow-up with the small model
 
 ## Settings gate
 
-`sessionRecapEnabled` and `sessionSuggestionEnabled` in OpenChamber settings
+`sessionRecapEnabled` and `sessionSuggestionEnabled` in Mage settings
 (Settings → Chat, default on) are hard generation switches checked at fire
 time. When both are off, no small-model calls run and nothing is written. When
 one is on, the runtime still makes at most one small-model call and asks only
@@ -61,6 +61,6 @@ everywhere instantly and offline; the next idle cycle overwrites it.
 
 - The watcher lives in the web server, so VS Code (extension-only, no web
   server) does not generate assists; it still renders payloads produced by a
-  web/desktop instance of the same OpenCode server via `session.updated`.
+  web/desktop instance of the same Mage server via `session.updated`.
 - Metadata payloads ride every `session.updated` event — keep the clamps
   (`RECAP_CHAR_LIMIT`, `SUGGESTION_CHAR_LIMIT`) small.

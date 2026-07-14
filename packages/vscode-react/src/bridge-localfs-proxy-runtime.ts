@@ -18,7 +18,7 @@ export const collectHeaders = (headers: Headers): Record<string, string> => {
 };
 
 export const buildUnavailableApiResponse = (): ApiProxyResponsePayload => {
-  const body = JSON.stringify({ error: 'OpenCode API unavailable' });
+  const body = JSON.stringify({ error: 'Mage API unavailable' });
   return {
     status: 503,
     headers: { 'content-type': 'application/json' },
@@ -50,7 +50,7 @@ const normalizeFsProxyPath = (pathname: string): '/api/fs/stat' | '/api/fs/read'
 export const tryHandleLocalFsProxy = async (method: string, requestPath: string): Promise<ApiProxyResponsePayload | null> => {
   let parsed: URL;
   try {
-    parsed = new URL(requestPath, 'https://openchamber.local');
+    parsed = new URL(requestPath, 'https://mage.local');
   } catch {
     return buildProxyJsonError(400, 'Invalid request path');
   }

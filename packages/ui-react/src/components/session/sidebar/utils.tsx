@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Session } from '@opencode-ai/sdk/v2';
+import type { Session } from '@mybcabisnis/mage-sdk/v2';
 import { getCurrentIntlLocale } from '@/lib/i18n';
 import { formatMessage, useI18nStore } from '@/lib/i18n/store';
 
@@ -152,7 +152,7 @@ const findBestProjectDirectoryMatch = (
 export const normalizeForBranchComparison = (value: string): string => {
   return value
     .toLowerCase()
-    .replace(/^opencode[/-]?/i, '')
+    .replace(/^mage[/-]?/i, '')
     .replace(/[-_]/g, '')
     .trim();
 };

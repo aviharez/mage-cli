@@ -25,8 +25,8 @@
  * @property {number} [nextResetTime]
  * @property {Array<{modelCode: string, usage: number}>} [usageDetails]
  */
-import { readAuthFile } from '../../opencode/auth.js';
-import { readConfigLayers } from '../../opencode/shared.js';
+import { readAuthFile } from '../../mage/auth.js';
+import { readConfigLayers } from '../../mage/shared.js';
 import {
   getAuthEntry,
   normalizeAuthEntry,

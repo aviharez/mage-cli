@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import type { Session } from '@opencode-ai/sdk/v2'
+import type { Session } from '@mybcabisnis/mage-sdk/v2'
 
 import { stripSessionDiffSnapshots, stripSessionListDetails } from './sanitize'
 
@@ -64,7 +64,7 @@ describe('stripSessionListDetails', () => {
       title: 'Session',
       time: { created: 1, updated: 2 },
       metadata: {
-        openchamber: {
+        mage: {
           kind: 'review',
           originalSessionID: 'ses_original',
         },
@@ -93,7 +93,7 @@ describe('stripSessionListDetails', () => {
 
     expect(next).not.toBe(session)
     expect(next.metadata).toEqual({
-      openchamber: {
+      mage: {
         kind: 'review',
         originalSessionID: 'ses_original',
       },

@@ -7,7 +7,7 @@ import { useProjectsStore } from '@/stores/useProjectsStore';
 import { cn } from '@/lib/utils';
 import { SettingsProjectSelector } from '@/components/sections/shared/SettingsProjectSelector';
 import { Icon } from "@/components/icon/Icon";
-import { opencodeClient } from '@/lib/opencode/client';
+import { mageClient } from '@/lib/mage/client';
 import { useI18n } from '@/lib/i18n';
 import { runtimeFetch } from '@/lib/runtime-fetch';
 
@@ -26,7 +26,7 @@ interface ProviderSources {
 }
 
 const getCurrentDirectory = (): string | null => {
-  const dir = opencodeClient.getDirectory();
+  const dir = mageClient.getDirectory();
   if (typeof dir === 'string' && dir.trim().length > 0) {
     return dir.trim();
   }
@@ -62,7 +62,7 @@ export const ProvidersSidebar: React.FC<ProvidersSidebarProps> = ({ onItemSelect
       const tasks = providers.map(async (provider) => {
         try {
           const query = directory ? `?directory=${encodeURIComponent(directory)}` : '';
-          // OpenChamber-only metadata endpoint: the SDK exposes provider data but
+          // Mage-only metadata endpoint: the SDK exposes provider data but
           // not local auth/source-file provenance used by this settings sidebar.
           const response = await runtimeFetch(`/api/provider/${encodeURIComponent(provider.id)}/source${query}`, {
             method: 'GET',

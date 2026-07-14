@@ -71,7 +71,7 @@ export const McpOAuthCallbackPage: React.FC = () => {
         }
 
         if (!pendingContext?.name) {
-          throw new Error('Authorization session details were not available. Start authorization again from MCP Settings or paste the returned code into OpenChamber manually.');
+          throw new Error('Authorization session details were not available. Start authorization again from MCP Settings or paste the returned code into Mage manually.');
         }
 
         await completeAuth(pendingContext.name, code, pendingContext.directory);
@@ -79,7 +79,7 @@ export const McpOAuthCallbackPage: React.FC = () => {
           await runtimeFetch(`/api/mcp/auth/pending?state=${encodeURIComponent(callbackStateKey)}`, { method: 'DELETE' }).catch(() => undefined);
         }
         setStatus('success');
-        setMessage('Authorization completed. You can close this tab and return to OpenChamber.');
+        setMessage('Authorization completed. You can close this tab and return to Mage.');
       } catch (authError) {
         if (callbackStateKey) {
           await runtimeFetch(`/api/mcp/auth/pending?state=${encodeURIComponent(callbackStateKey)}`, { method: 'DELETE' }).catch(() => undefined);
@@ -115,7 +115,7 @@ export const McpOAuthCallbackPage: React.FC = () => {
                 window.location.replace('/');
               }}
             >
-              Return to OpenChamber
+              Return to Mage
             </Button>
           </div>
         )}

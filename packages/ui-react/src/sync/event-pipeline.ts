@@ -12,8 +12,8 @@
  * Abort controller created once at init, cleaned up via returned cleanup fn.
  */
 
-import type { Event, OpencodeClient, SessionStatus } from "@opencode-ai/sdk/v2/client"
-import { opencodeClient } from "@/lib/opencode/client"
+import type { Event, MageClient, SessionStatus } from "@mybcabisnis/mage-sdk/v2/client"
+import { mageClient } from "@/lib/mage/client"
 import { getRuntimeUrlResolver } from "@/lib/runtime-url"
 import { clearRuntimeUrlAuthToken, refreshRuntimeUrlAuthToken } from "@/lib/runtime-auth"
 import { type RelayTunnelWebSocket } from "@/lib/relay/tunnel-client"
@@ -39,7 +39,7 @@ const RETRY_BACKOFF_CAP_VISIBLE_MS = 5_000
 const RETRY_BACKOFF_CAP_HIDDEN_OR_OFFLINE_MS = 60_000
 const RETRY_BACKOFF_MAX_EXPONENT = 8
 export type EventPipelineInput = {
-  sdk: OpencodeClient
+  sdk: MageClient
   onEvent: (directory: string, payload: Event) => void
   routeDirectory?: (directory: string, payload: Event) => string
   /** Called after stream reconnects (visibility restore or heartbeat timeout). */
@@ -68,7 +68,7 @@ type MessageStreamWsFrame = {
   scope?: "global" | "directory"
 }
 
-const normalizeOpenChamberSessionStatus = (payload: Event): Event | null => {
+const normalizeMageSessionStatus = (payload: Event): Event | null => {
   const record = payload as unknown as {
     id?: unknown
     type?: unknown
@@ -84,7 +84,7 @@ const normalizeOpenChamberSessionStatus = (payload: Event): Event | null => {
     }
   }
 
-  if (record.type !== "openchamber:session-status") return null
+  if (record.type !== "mage:session-status") return null
 
   const sessionID = typeof record.properties?.sessionID === "string" && record.properties.sessionID.length > 0
     ? record.properties.sessionID
@@ -117,7 +117,7 @@ const normalizeOpenChamberSessionStatus = (payload: Event): Event | null => {
   return {
     id: typeof record.id === "string" && record.id.length > 0
       ? record.id
-      : `openchamber-status-${sessionID}-${Date.now()}`,
+      : `mage-status-${sessionID}-${Date.now()}`,
     type: "session.status",
     properties: {
       sessionID,
@@ -127,9 +127,9 @@ const normalizeOpenChamberSessionStatus = (payload: Event): Event | null => {
 }
 
 const normalizeEventType = (payload: Event): Event => {
-  const normalizedOpenChamberStatus = normalizeOpenChamberSessionStatus(payload)
-  if (normalizedOpenChamberStatus) {
-    return normalizedOpenChamberStatus
+  const normalizedMageStatus = normalizeMageSessionStatus(payload)
+  if (normalizedMageStatus) {
+    return normalizedMageStatus
   }
 
   const type = (payload as { type?: unknown }).type
@@ -200,7 +200,7 @@ function resolveEventPayload(payload: unknown): Event | null {
 function buildGlobalEventWsUrl(lastEventId?: string): string {
   let baseUrl = "/api"
   try {
-    const client = opencodeClient as { getBaseUrl?: () => string }
+    const client = mageClient as { getBaseUrl?: () => string }
     if (typeof client.getBaseUrl === "function") {
       baseUrl = client.getBaseUrl()
     }
@@ -896,7 +896,7 @@ export function createEventPipeline(input: EventPipelineInput): EventPipeline {
   // Use globalThis (not window) for the system-resume listener so that
   // test environments can replace globalThis.window with a stub.
   if (typeof globalThis.window !== "undefined") {
-    globalThis.window.addEventListener("openchamber:system-resume", onSystemResume)
+    globalThis.window.addEventListener("mage:system-resume", onSystemResume)
     globalThis.window.addEventListener("online", onOnline)
     globalThis.window.addEventListener("offline", onOffline)
   }
@@ -907,7 +907,7 @@ export function createEventPipeline(input: EventPipelineInput): EventPipeline {
       window.removeEventListener("pageshow", onPageShow)
     }
     if (typeof globalThis.window !== "undefined") {
-      globalThis.window.removeEventListener("openchamber:system-resume", onSystemResume)
+      globalThis.window.removeEventListener("mage:system-resume", onSystemResume)
       globalThis.window.removeEventListener("online", onOnline)
       globalThis.window.removeEventListener("offline", onOffline)
     }

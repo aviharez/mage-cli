@@ -12,8 +12,8 @@ export const createNotificationTriggerRuntime = (deps) => {
     sendPushToAllUiSessions,
     sendApnsToAllUiSessions,
     isAnyInteractiveClientVisible,
-    buildOpenCodeUrl,
-    getOpenCodeAuthHeaders,
+    buildMageUrl,
+    getMageAuthHeaders,
   } = deps;
   let getIsSessionAutoAccepting = deps.getIsSessionAutoAccepting;
   const setGetIsSessionAutoAccepting = (resolver) => {
@@ -177,13 +177,13 @@ export const createNotificationTriggerRuntime = (deps) => {
     if (cached !== undefined) return cached;
 
     try {
-      const base = buildOpenCodeUrl(`/session/${encodeURIComponent(sessionId)}`, '');
+      const base = buildMageUrl(`/session/${encodeURIComponent(sessionId)}`, '');
       const url = directory ? `${base}?directory=${encodeURIComponent(directory)}` : base;
       const response = await fetch(url, {
         method: 'GET',
         headers: {
           Accept: 'application/json',
-          ...getOpenCodeAuthHeaders(),
+          ...getMageAuthHeaders(),
         },
         signal: AbortSignal.timeout(2000),
       });
@@ -284,16 +284,16 @@ export const createNotificationTriggerRuntime = (deps) => {
   const hasActiveSessionGoal = async (sessionId, directory) => {
     if (!sessionId) return false;
     try {
-      const base = buildOpenCodeUrl(`/session/${encodeURIComponent(sessionId)}`, '');
+      const base = buildMageUrl(`/session/${encodeURIComponent(sessionId)}`, '');
       const url = directory ? `${base}?directory=${encodeURIComponent(directory)}` : base;
       const response = await fetch(url, {
         method: 'GET',
-        headers: { Accept: 'application/json', ...getOpenCodeAuthHeaders() },
+        headers: { Accept: 'application/json', ...getMageAuthHeaders() },
         signal: AbortSignal.timeout(2000),
       });
       if (!response.ok) return false;
       const session = await response.json().catch(() => null);
-      const goal = session?.metadata?.openchamber?.goal;
+      const goal = session?.metadata?.mage?.goal;
       return Boolean(goal && typeof goal === 'object' && goal.status === 'active');
     } catch {
       return false;
@@ -713,11 +713,11 @@ export const createNotificationTriggerRuntime = (deps) => {
   const sendGoalSettlePush = async ({ sessionId, directory, status, title, body }) => {
     let sessionName = '';
     try {
-      const base = buildOpenCodeUrl(`/session/${encodeURIComponent(sessionId)}`, '');
+      const base = buildMageUrl(`/session/${encodeURIComponent(sessionId)}`, '');
       const url = directory ? `${base}?directory=${encodeURIComponent(directory)}` : base;
       const response = await fetch(url, {
         method: 'GET',
-        headers: { Accept: 'application/json', ...getOpenCodeAuthHeaders() },
+        headers: { Accept: 'application/json', ...getMageAuthHeaders() },
         signal: AbortSignal.timeout(2000),
       });
       if (response.ok) {

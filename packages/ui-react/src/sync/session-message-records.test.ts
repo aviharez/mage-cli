@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import type { Message, Part } from '@opencode-ai/sdk/v2/client';
+import type { Message, Part } from '@mybcabisnis/mage-sdk/v2/client';
 
 import { buildSessionMessageRecordsSnapshot } from './sync-context';
 import { INITIAL_STATE, type State } from './types';

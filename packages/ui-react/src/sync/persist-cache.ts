@@ -7,7 +7,7 @@
  * from the server via SSE bootstrap.
  */
 
-import type { Session, VcsInfo } from "@opencode-ai/sdk/v2/client"
+import type { Session, VcsInfo } from "@mybcabisnis/mage-sdk/v2/client"
 import type { ProjectMeta } from "./types"
 
 /** Cap persisted session lists so localStorage stays bounded per directory. */

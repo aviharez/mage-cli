@@ -115,7 +115,7 @@ const registerExec = ({ spawn }) => {
     resolveProjectDirectory: async () => ({ directory: '/repo' }),
     buildAugmentedPath: () => '/usr/bin',
     resolveGitBinaryForSpawn: () => 'git',
-    openchamberUserConfigRoot: '/home/user/.config',
+    mageUserConfigRoot: '/home/user/.config',
   });
   return getRoute('POST', '/api/fs/exec');
 };
@@ -135,7 +135,7 @@ const registerWrite = (fsPromises) => {
     resolveProjectDirectory: async () => ({ directory: '/repo' }),
     buildAugmentedPath: () => '/usr/bin',
     resolveGitBinaryForSpawn: () => 'git',
-    openchamberUserConfigRoot: '/home/user/.config',
+    mageUserConfigRoot: '/home/user/.config',
   });
   return getRoute('POST', '/api/fs/write');
 };
@@ -155,7 +155,7 @@ const registerRead = (fsPromises) => {
     resolveProjectDirectory: async () => ({ directory: '/repo' }),
     buildAugmentedPath: () => '/usr/bin',
     resolveGitBinaryForSpawn: () => 'git',
-    openchamberUserConfigRoot: '/home/user/.config',
+    mageUserConfigRoot: '/home/user/.config',
   });
   return getRoute('GET', '/api/fs/read');
 };
@@ -175,7 +175,7 @@ const registerRaw = (fsPromises) => {
     resolveProjectDirectory: async () => ({ directory: '/repo' }),
     buildAugmentedPath: () => '/usr/bin',
     resolveGitBinaryForSpawn: () => 'git',
-    openchamberUserConfigRoot: '/home/user/.config',
+    mageUserConfigRoot: '/home/user/.config',
   });
   return getRoute('GET', '/api/fs/raw');
 };
@@ -195,7 +195,7 @@ const registerMkdir = (fsPromises) => {
     resolveProjectDirectory: async () => ({ directory: '/repo' }),
     buildAugmentedPath: () => '/usr/bin',
     resolveGitBinaryForSpawn: () => 'git',
-    openchamberUserConfigRoot: '/home/user/.config',
+    mageUserConfigRoot: '/home/user/.config',
   });
   return getRoute('POST', '/api/fs/mkdir');
 };
@@ -433,11 +433,11 @@ describe('fs read', () => {
 
 describe('fs exec git-read cache', () => {
   beforeEach(() => {
-    delete process.env.OPENCHAMBER_GIT_READ_CACHE_TTL_MS;
+    delete process.env.MAGE_GIT_READ_CACHE_TTL_MS;
   });
 
   afterEach(() => {
-    delete process.env.OPENCHAMBER_GIT_READ_CACHE_TTL_MS;
+    delete process.env.MAGE_GIT_READ_CACHE_TTL_MS;
   });
 
   it('rejects background command execution', async () => {
@@ -546,7 +546,7 @@ describe('fs exec git-read cache', () => {
   });
 
   it('disables caching when TTL is 0', async () => {
-    process.env.OPENCHAMBER_GIT_READ_CACHE_TTL_MS = '0';
+    process.env.MAGE_GIT_READ_CACHE_TTL_MS = '0';
     const command = 'git rev-parse --absolute-git-dir';
     const { spawn, calls } = createSpawn({ stdoutByCommand: { [command]: '/repo/.git\n' } });
     const handler = registerExec({ spawn });

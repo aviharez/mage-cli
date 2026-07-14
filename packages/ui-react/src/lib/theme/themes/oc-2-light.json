@@ -2,13 +2,13 @@
   "metadata": {
     "id": "oc-2-light",
     "name": "OC-2",
-    "description": "Ported from OpenCode OC-2 theme (light variant)",
-    "author": "OpenCode",
+    "description": "Ported from Mage OC-2 theme (light variant)",
+    "author": "Mage",
     "version": "1.0.0",
     "variant": "light",
     "tags": [
       "light",
-      "opencode",
+      "mage",
       "ported",
       "oc-2"
     ]

@@ -8,7 +8,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // rather than hoisted to the workspace root, so the alias must point here
 // rather than at ../../node_modules. This config loads as CJS (no "type":
 // "module" in package.json), so import.meta.resolve isn't available.
-const opencodeSdkV2ClientPath = path.resolve(__dirname, 'node_modules/@opencode-ai/sdk/dist/v2/client.js');
+const mageSdkV2ClientPath = path.resolve(__dirname, 'node_modules/@mybcabisnis/mage-sdk/dist/v2/client.js');
 
 export default defineConfig(({ mode }) => ({
   root: path.resolve(__dirname, 'webview'),
@@ -22,8 +22,8 @@ export default defineConfig(({ mode }) => ({
   ],
   resolve: {
     alias: [
-      { find: '@opencode-ai/sdk/v2', replacement: opencodeSdkV2ClientPath },
-      { find: '@openchamber/ui', replacement: path.resolve(__dirname, '../ui-react/src') },
+      { find: '@mybcabisnis/mage-sdk/v2', replacement: mageSdkV2ClientPath },
+      { find: '@mage/ui', replacement: path.resolve(__dirname, '../ui-react/src') },
       { find: '@vscode', replacement: path.resolve(__dirname, './webview') },
       { find: '@', replacement: path.resolve(__dirname, '../ui-react/src') },
     ],
@@ -34,7 +34,7 @@ export default defineConfig(({ mode }) => ({
   define: {
     'process.env.NODE_ENV': JSON.stringify(mode === 'production' ? 'production' : 'development'),
     'global': 'globalThis',
-    '__OPENCHAMBER_WEBVIEW_BUILD_TIME__': JSON.stringify(new Date().toISOString()),
+    '__MAGE_WEBVIEW_BUILD_TIME__': JSON.stringify(new Date().toISOString()),
   },
   envPrefix: ['VITE_'],
   server: {
@@ -52,7 +52,7 @@ export default defineConfig(({ mode }) => ({
     },
   },
   optimizeDeps: {
-    include: ['@opencode-ai/sdk/v2'],
+    include: ['@mybcabisnis/mage-sdk/v2'],
   },
   build: {
     outDir: path.resolve(__dirname, 'dist/webview'),

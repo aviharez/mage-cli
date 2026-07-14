@@ -5,9 +5,9 @@ import {
   startConfigUpdate,
   finishConfigUpdate,
 } from '@/lib/configUpdate';
-import { refreshAfterOpenCodeRestart } from '@/stores/useAgentsStore';
+import { refreshAfterMageRestart } from '@/stores/useAgentsStore';
 import { useProjectsStore } from '@/stores/useProjectsStore';
-import { opencodeClient } from '@/lib/opencode/client';
+import { mageClient } from '@/lib/mage/client';
 import { runtimeFetch } from '@/lib/runtime-fetch';
 
 export type McpScope = 'user' | 'project';
@@ -27,7 +27,7 @@ const getConfigDirectory = (): string | null => {
       return activeProject.path.trim();
     }
 
-    const clientDir = opencodeClient.getDirectory();
+    const clientDir = mageClient.getDirectory();
     if (clientDir?.trim()) {
       return clientDir.trim();
     }
@@ -167,7 +167,7 @@ export const useMcpConfigStore = create<McpConfigStore>()(
             try {
               const queryParams = configDirectory ? `?directory=${encodeURIComponent(configDirectory)}` : '';
               const response = await runtimeFetch(`/api/config/mcp${queryParams}`, {
-                headers: configDirectory ? { 'x-opencode-directory': configDirectory } : undefined,
+                headers: configDirectory ? { 'x-mage-directory': configDirectory } : undefined,
               });
               if (!response.ok) {
                 throw new Error('Failed to load MCP configs');
@@ -202,7 +202,7 @@ export const useMcpConfigStore = create<McpConfigStore>()(
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                ...(configDirectory ? { 'x-opencode-directory': configDirectory } : {}),
+                ...(configDirectory ? { 'x-mage-directory': configDirectory } : {}),
               },
               body: JSON.stringify(body),
             });
@@ -216,7 +216,7 @@ export const useMcpConfigStore = create<McpConfigStore>()(
 
             if (payload?.requiresReload) {
               requiresReload = true;
-              await refreshAfterOpenCodeRestart({
+              await refreshAfterMageRestart({
                 message: payload.message,
                 delayMs: payload.reloadDelayMs ?? CLIENT_RELOAD_DELAY_MS,
                 scopes: ['all'],
@@ -256,7 +256,7 @@ export const useMcpConfigStore = create<McpConfigStore>()(
               method: 'PATCH',
               headers: {
                 'Content-Type': 'application/json',
-                ...(configDirectory ? { 'x-opencode-directory': configDirectory } : {}),
+                ...(configDirectory ? { 'x-mage-directory': configDirectory } : {}),
               },
               body: JSON.stringify(body),
             });
@@ -270,7 +270,7 @@ export const useMcpConfigStore = create<McpConfigStore>()(
 
             if (payload?.requiresReload) {
               requiresReload = true;
-              await refreshAfterOpenCodeRestart({
+              await refreshAfterMageRestart({
                 message: payload.message,
                 delayMs: payload.reloadDelayMs ?? CLIENT_RELOAD_DELAY_MS,
                 scopes: ['all'],
@@ -307,7 +307,7 @@ export const useMcpConfigStore = create<McpConfigStore>()(
             const queryParams = configDirectory ? `?directory=${encodeURIComponent(configDirectory)}` : '';
             const response = await runtimeFetch(`/api/config/mcp/${encodeURIComponent(name)}${queryParams}`, {
               method: 'DELETE',
-              headers: configDirectory ? { 'x-opencode-directory': configDirectory } : undefined,
+              headers: configDirectory ? { 'x-mage-directory': configDirectory } : undefined,
             });
 
             const payload = await response.json().catch(() => null);
@@ -319,7 +319,7 @@ export const useMcpConfigStore = create<McpConfigStore>()(
 
             if (payload?.requiresReload) {
               requiresReload = true;
-              await refreshAfterOpenCodeRestart({
+              await refreshAfterMageRestart({
                 message: payload.message,
                 delayMs: payload.reloadDelayMs ?? CLIENT_RELOAD_DELAY_MS,
                 scopes: ['all'],

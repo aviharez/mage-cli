@@ -1,5 +1,5 @@
-import type { SessionStatus, Message, Part } from "@opencode-ai/sdk/v2/client"
-import type { Session } from "@opencode-ai/sdk/v2"
+import type { SessionStatus, Message, Part } from "@mybcabisnis/mage-sdk/v2/client"
+import type { Session } from "@mybcabisnis/mage-sdk/v2"
 import { getSessionMaterializationStatus } from "./materialization"
 
 type ReconnectMaterializationState = {

@@ -1,4 +1,4 @@
-import { opencodeClient } from '@/lib/opencode/client';
+import { mageClient } from '@/lib/mage/client';
 import type { RuntimeEndpointChangedDetail } from '@/lib/runtime-switch';
 import { disposeTerminalInputTransport } from '@/lib/terminalApi';
 import { useConfigStore } from '@/stores/useConfigStore';
@@ -20,7 +20,7 @@ import { resetStreamingState } from '@/sync/streaming';
 // no bounce back to the draft.
 export const reconnectAppForTransportSwitch = (): void => {
   disposeTerminalInputTransport();
-  opencodeClient.reconnectToRuntimeBaseUrl();
+  mageClient.reconnectToRuntimeBaseUrl();
   resetStreamingState();
 };
 
@@ -31,7 +31,7 @@ export const resetAppForRuntimeEndpointChange = (detail: RuntimeEndpointChangedD
     useAutoReviewStore.getState().stopRunningRunsForRuntime(detail.previousRuntimeKey);
   }
   disposeTerminalInputTransport();
-  opencodeClient.reconnectToRuntimeBaseUrl();
+  mageClient.reconnectToRuntimeBaseUrl();
   useConfigStore.setState({
     providers: [],
     agents: [],

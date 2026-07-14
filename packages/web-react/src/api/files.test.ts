@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { RuntimeUrlQuery, RuntimeUrlResolver } from '@openchamber/ui/lib/runtime-url';
+import type { RuntimeUrlQuery, RuntimeUrlResolver } from '@mage/ui/lib/runtime-url';
 
 const runtimeFetchMock = vi.fn();
 
-vi.mock('@openchamber/ui/lib/runtime-fetch', () => ({
+vi.mock('@mage/ui/lib/runtime-fetch', () => ({
   runtimeFetch: runtimeFetchMock,
 }));
 
@@ -34,7 +34,7 @@ describe('createWebFilesAPI', () => {
 
     expect(runtimeFetchMock).toHaveBeenLastCalledWith('/api/fs/stat', {
       query: new URLSearchParams({ path: '/worktree-b/file.txt' }),
-      headers: { 'x-opencode-directory': '/worktree-a' },
+      headers: { 'x-mage-directory': '/worktree-a' },
     });
 
     runtimeFetchMock.mockResolvedValueOnce(new Response('content'));
@@ -43,7 +43,7 @@ describe('createWebFilesAPI', () => {
     expect(runtimeFetchMock).toHaveBeenLastCalledWith('/api/fs/read', {
       query: new URLSearchParams({ path: '/worktree-b/file.txt' }),
       cache: 'default',
-      headers: { 'x-opencode-directory': '/worktree-a' },
+      headers: { 'x-mage-directory': '/worktree-a' },
     });
   });
 
@@ -56,7 +56,7 @@ describe('createWebFilesAPI', () => {
 
     expect(runtimeFetchMock).toHaveBeenLastCalledWith('/api/fs/raw', {
       query: { path: '/current-workspace/file.txt', download: true },
-      headers: { 'x-opencode-directory': '/current-workspace' },
+      headers: { 'x-mage-directory': '/current-workspace' },
     });
   });
 });

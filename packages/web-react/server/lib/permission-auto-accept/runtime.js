@@ -19,8 +19,8 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export function createPermissionAutoAcceptRuntime({
   globalEventHub,
-  buildOpenCodeUrl,
-  getOpenCodeAuthHeaders,
+  buildMageUrl,
+  getMageAuthHeaders,
   readSettingsFromDiskMigrated,
   persistSettings,
   broadcastGlobalUiEvent,
@@ -61,7 +61,7 @@ export function createPermissionAutoAcceptRuntime({
       policy = next;
       loaded = true;
       broadcastGlobalUiEvent?.({
-        type: 'openchamber:permission-auto-accept.updated',
+        type: 'mage:permission-auto-accept.updated',
         properties: snapshot(),
       });
       return snapshot();
@@ -93,20 +93,20 @@ export function createPermissionAutoAcceptRuntime({
   };
 
   const request = async (path, { directory, method = 'GET', body } = {}) => {
-    const url = new URL(buildOpenCodeUrl(path, ''));
+    const url = new URL(buildMageUrl(path, ''));
     if (directory) url.searchParams.set('directory', directory);
     const response = await fetchImpl(url, {
       method,
       headers: {
         Accept: 'application/json',
         ...(body ? { 'Content-Type': 'application/json' } : {}),
-        ...getOpenCodeAuthHeaders(),
+        ...getMageAuthHeaders(),
       },
       ...(body ? { body: JSON.stringify(body) } : {}),
       signal: AbortSignal.timeout(requestTimeoutMs),
     });
     if (!response.ok) {
-      const error = new Error(`OpenCode request failed (${response.status})`);
+      const error = new Error(`Mage request failed (${response.status})`);
       error.status = response.status;
       throw error;
     }

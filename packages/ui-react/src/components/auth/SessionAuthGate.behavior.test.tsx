@@ -183,8 +183,8 @@ mock.module('@/components/ui', () => ({
   },
 }));
 
-mock.module('@/components/ui/OpenChamberLogo', () => ({
-  OpenChamberLogo: () => 'logo',
+mock.module('@/components/ui/MageLogo', () => ({
+  MageLogo: () => 'logo',
 }));
 
 mock.module('@/components/icon/Icon', () => ({

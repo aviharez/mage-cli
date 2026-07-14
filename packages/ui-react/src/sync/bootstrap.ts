@@ -1,4 +1,4 @@
-import type { OpencodeClient, PermissionRequest, Project, QuestionRequest } from "@opencode-ai/sdk/v2/client"
+import type { MageClient, PermissionRequest, Project, QuestionRequest } from "@mybcabisnis/mage-sdk/v2/client"
 import { retry } from "./retry"
 import type { GlobalState, State } from "./types"
 import { runtimeFetch } from "../lib/runtime-fetch"
@@ -65,7 +65,7 @@ function projectID(directory: string, projects: Project[]) {
 // ---------------------------------------------------------------------------
 
 export async function bootstrapGlobal(
-  sdk: OpencodeClient,
+  sdk: MageClient,
   set: (patch: Partial<GlobalState>) => void,
 ) {
   const results = await Promise.allSettled([
@@ -76,7 +76,7 @@ export async function bootstrapGlobal(
         const data = unwrap(x, "project.list")
         const projects = data
           .filter((p): p is Project => !!p?.id)
-          .filter((p) => !!p.worktree && !p.worktree.includes("opencode-test"))
+          .filter((p) => !!p.worktree && !p.worktree.includes("mage-test"))
           .sort((a, b) => cmp(a.id, b.id))
         set({ projects })
       }),
@@ -90,7 +90,7 @@ export async function bootstrapGlobal(
     console.error("[bootstrap] global bootstrap failed", errors[0])
   }
 
-  // If ALL requests failed, OpenCode is likely down — fetch the OpenChamber
+  // If ALL requests failed, Mage is likely down — fetch the Mage
   // health endpoint (outside the readiness gate) to get the actual error reason.
   if (errors.length === results.length) {
     let message = errors[0] instanceof Error ? errors[0].message : String(errors[0])
@@ -98,10 +98,10 @@ export async function bootstrapGlobal(
       const healthRes = await runtimeFetch('/health', { signal: AbortSignal.timeout(4000) })
       if (healthRes.ok) {
         const health = await healthRes.json()
-        if (health.lastOpenCodeError) {
-          message = health.lastOpenCodeError
-        } else if (!health.openCodeRunning) {
-          message = "OpenCode process is not running"
+        if (health.lastMageError) {
+          message = health.lastMageError
+        } else if (!health.mageRunning) {
+          message = "Mage process is not running"
         }
       }
     } catch {
@@ -119,7 +119,7 @@ export async function bootstrapGlobal(
 
 export async function bootstrapDirectory(input: {
   directory: string
-  sdk: OpencodeClient
+  sdk: MageClient
   getState: () => State
   set: (patch: Partial<State>) => void
   global: {
@@ -170,7 +170,7 @@ export async function bootstrapDirectory(input: {
     .filter((r): r is PromiseRejectedResult => r.status === "rejected")
     .map((r) => r.reason)
 
-  // De-block the UI: only a total failure (OpenCode genuinely unreachable)
+  // De-block the UI: only a total failure (Mage genuinely unreachable)
   // should abort the directory. Don't let one transient initial fetch strand
   // the directory in "loading" forever and skip phase 2/3 (sessions).
   //   - session.status is LIVE data the event pipeline keeps current — a failed

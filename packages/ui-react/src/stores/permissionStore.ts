@@ -1,13 +1,13 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { Session } from "@opencode-ai/sdk/v2/client";
+import type { Session } from "@mybcabisnis/mage-sdk/v2/client";
 import { autoRespondsPermission, type PermissionAutoAcceptMap } from "./utils/permissionAutoAccept";
 import { getAllSyncSessions } from "@/sync/sync-refs";
 import { runtimeFetch } from "@/lib/runtime-fetch";
 import { isVSCodeRuntime } from "@/lib/desktop";
 import { createDeferredSafeJSONStorage } from "./utils/safeStorage";
 import { useSessionUIStore } from "@/sync/session-ui-store";
-import { opencodeClient } from "@/lib/opencode/client";
+import { mageClient } from "@/lib/mage/client";
 
 type PermissionPolicySnapshot = {
     sessions: PermissionAutoAcceptMap;
@@ -97,7 +97,7 @@ export const usePermissionStore = create<PermissionStore>()(persist((set, get) =
         set({ saving: true });
         try {
             const directory = useSessionUIStore.getState().getDirectoryForSession(sessionId)
-                ?? opencodeClient.getDirectory()
+                ?? mageClient.getDirectory()
                 ?? undefined;
             const snapshot = await requestSnapshot(
                 `/api/permission-auto-accept/sessions/${encodeURIComponent(sessionId)}`,

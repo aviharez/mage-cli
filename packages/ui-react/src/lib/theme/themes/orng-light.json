@@ -2,13 +2,13 @@
   "metadata": {
     "id": "orng-light",
     "name": "Orng",
-    "description": "Ported from OpenCode Orng theme (light variant)",
-    "author": "OpenCode",
+    "description": "Ported from Mage Orng theme (light variant)",
+    "author": "Mage",
     "version": "1.0.0",
     "variant": "light",
     "tags": [
       "light",
-      "opencode",
+      "mage",
       "ported",
       "orng"
     ]

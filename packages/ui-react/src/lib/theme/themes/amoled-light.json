@@ -2,13 +2,13 @@
   "metadata": {
     "id": "amoled-light",
     "name": "AMOLED",
-    "description": "Ported from OpenCode AMOLED theme (light variant)",
-    "author": "OpenCode",
+    "description": "Ported from Mage AMOLED theme (light variant)",
+    "author": "Mage",
     "version": "1.0.0",
     "variant": "light",
     "tags": [
       "light",
-      "opencode",
+      "mage",
       "ported",
       "amoled"
     ]
