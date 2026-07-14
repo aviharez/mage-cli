@@ -22,11 +22,9 @@ import {
   onCleanup,
   batch,
   Show,
-  on,
 } from "solid-js"
 import { TuiPathsProvider, TuiStartupProvider, TuiTerminalEnvironmentProvider, useTuiStartup } from "./context/runtime"
 import { DialogProvider, useDialog } from "./ui/dialog"
-import { DialogProvider as DialogProviderList } from "./component/dialog-provider"
 import { ErrorComponent } from "./component/error-component"
 import { PluginRouteMissing } from "./component/plugin-route-missing"
 import { ProjectProvider, useProject } from "./context/project"
@@ -39,8 +37,6 @@ import { DataProvider } from "./context/data"
 import { LocationProvider } from "./context/location"
 import { LocalProvider, useLocal } from "./context/local"
 import { PermissionProvider } from "./context/permission"
-import { DialogModel } from "./component/dialog-model"
-import { useConnected } from "./component/use-connected"
 import { DialogMcp } from "./component/dialog-mcp"
 import { DialogStatus } from "./component/dialog-status"
 import { DialogDebug } from "./component/dialog-debug"
@@ -48,8 +44,8 @@ import { DialogThemeList } from "./component/dialog-theme-list"
 import { DialogHelp } from "./ui/dialog-help"
 import { DialogAgent } from "./component/dialog-agent"
 import { DialogSessionList } from "./component/dialog-session-list"
+import { DialogNewSession } from "./component/dialog-new-session"
 import { DialogWorkspaceList } from "./component/dialog-workspace-list"
-import { DialogConsoleOrg } from "./component/dialog-console-org"
 import { ThemeProvider, useTheme } from "./context/theme"
 import { Home } from "./routes/home"
 import { Session } from "./routes/session"
@@ -72,7 +68,7 @@ import { createPluginRuntime, PluginRuntimeProvider, usePluginRuntime, type TuiP
 import { CommandPaletteDialog } from "./component/command-palette"
 import {
   COMMAND_PALETTE_COMMAND,
-  OPENCODE_BASE_MODE,
+  MAGE_BASE_MODE,
   OpencodeKeymapProvider,
   registerOpencodeKeymap,
   useBindings,
@@ -80,7 +76,6 @@ import {
 } from "./keymap"
 
 import type { EventSource } from "./context/sdk"
-import { DialogVariant } from "./component/dialog-variant"
 import { createTuiAttention } from "./attention"
 import * as TuiAudio from "./audio"
 import { win32DisableProcessedInput, win32FlushInputBuffer } from "./terminal-win32"
@@ -105,19 +100,11 @@ const appGlobalBindingCommands = [
 
 const appBindingCommands = [
   "command.palette.show",
-  "model.list",
-  "model.cycle_recent",
-  "model.cycle_recent_reverse",
-  "model.cycle_favorite",
-  "model.cycle_favorite_reverse",
   "agent.list",
   "mcp.list",
   "agent.cycle",
   "agent.cycle.reverse",
   "variant.cycle",
-  "variant.list",
-  "provider.connect",
-  "console.org.switch",
   "opencode.status",
   "opencode.debug",
   "theme.switch",
@@ -199,7 +186,7 @@ export const run = Effect.fn("Tui.run")(function* (input: TuiInput) {
               useKittyKeyboard: {},
               autoFocus: false,
               openConsoleOnError: false,
-              useMouse: !Flag.OPENCODE_DISABLE_MOUSE && input.config.mouse,
+              useMouse: !Flag.MAGE_DISABLE_MOUSE && input.config.mouse,
               consoleOptions: {
                 keyBindings: [{ name: "y", ctrl: true, action: "copy-selection" }],
               },
@@ -274,8 +261,8 @@ export const run = Effect.fn("Tui.run")(function* (input: TuiInput) {
                     >
                       <TuiStartupProvider
                         value={{
-                          initialRoute: process.env.OPENCODE_ROUTE ? JSON.parse(process.env.OPENCODE_ROUTE) : undefined,
-                          skipInitialLoading: Boolean(process.env.OPENCODE_FAST_BOOT),
+                          initialRoute: process.env.MAGE_ROUTE ? JSON.parse(process.env.MAGE_ROUTE) : undefined,
+                          skipInitialLoading: Boolean(process.env.MAGE_FAST_BOOT),
                         }}
                       >
                         <ClipboardProvider>
@@ -423,7 +410,7 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
   const offSelectionKeys = keymap.intercept(
     "key",
     ({ event }) => {
-      if (!Flag.OPENCODE_EXPERIMENTAL_DISABLE_COPY_ON_SELECT) return
+      if (!Flag.MAGE_EXPERIMENTAL_DISABLE_COPY_ON_SELECT) return
       Selection.handleSelectionKey(renderer, toast, event, clipboard)
     },
     { priority: 1 },
@@ -451,7 +438,7 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
 
   // Update terminal window title based on current route and session
   createEffect(() => {
-    if (!terminalTitleEnabled() || Flag.OPENCODE_DISABLE_TERMINAL_TITLE) return
+    if (!terminalTitleEnabled() || Flag.MAGE_DISABLE_TERMINAL_TITLE) return
 
     if (route.data.type === "home") {
       renderer.setTerminalTitle("OpenCode")
@@ -537,18 +524,6 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
     })
   })
 
-  createEffect(
-    on(
-      () => sync.status === "complete" && sync.data.provider.length === 0,
-      (isEmpty, wasEmpty) => {
-        // only trigger when we transition into an empty-provider state
-        if (!isEmpty || wasEmpty) return
-        dialog.replace(() => <DialogProviderList />)
-      },
-    ),
-  )
-
-  const connected = useConnected()
   const currentWorktreeWorkspace = createMemo(() => {
     const workspaceID = project.workspace.current()
     if (!workspaceID) return
@@ -586,10 +561,7 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
         slashName: "new",
         slashAliases: ["clear"],
         run: () => {
-          route.navigate({
-            type: "home",
-          })
-          dialog.clear()
+          dialog.replace(() => <DialogNewSession />)
         },
       },
       {
@@ -611,7 +583,7 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
         name: "workspace.list",
         title: "Manage workspaces",
         category: "Workspace",
-        hidden: !Flag.OPENCODE_EXPERIMENTAL_WORKSPACES,
+        hidden: !Flag.MAGE_EXPERIMENTAL_WORKSPACES,
         slashName: "workspaces",
         run: () => {
           dialog.replace(() => <DialogWorkspaceList />)
@@ -626,54 +598,6 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
           local.session.quickSwitch(i + 1)
         },
       })),
-      {
-        name: "model.list",
-        title: "Switch model",
-        suggested: true,
-        category: "Agent",
-        slashName: "models",
-        // Bias /mo toward /models over /move without changing global fuzzy scoring.
-        slashAliases: ["mo"],
-        run: () => {
-          dialog.replace(() => <DialogModel />)
-        },
-      },
-      {
-        name: "model.cycle_recent",
-        title: "Model cycle",
-        category: "Agent",
-        hidden: true,
-        run: () => {
-          local.model.cycle(1)
-        },
-      },
-      {
-        name: "model.cycle_recent_reverse",
-        title: "Model cycle reverse",
-        category: "Agent",
-        hidden: true,
-        run: () => {
-          local.model.cycle(-1)
-        },
-      },
-      {
-        name: "model.cycle_favorite",
-        title: "Favorite cycle",
-        category: "Agent",
-        hidden: true,
-        run: () => {
-          local.model.cycleFavorite(1)
-        },
-      },
-      {
-        name: "model.cycle_favorite_reverse",
-        title: "Favorite cycle reverse",
-        category: "Agent",
-        hidden: true,
-        run: () => {
-          local.model.cycleFavorite(-1)
-        },
-      },
       {
         name: "agent.list",
         title: "Switch agent",
@@ -710,23 +634,6 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
         },
       },
       {
-        name: "variant.list",
-        title: "Switch model variant",
-        category: "Agent",
-        hidden: local.model.variant.list().length === 0,
-        slashName: "variants",
-        run: () => {
-          if (local.model.variant.list().length === 0) {
-            return toast.show({
-              title: "No variants available",
-              message: "The current model does not support any variants.",
-              variant: "info",
-            })
-          }
-          dialog.replace(() => <DialogVariant />)
-        },
-      },
-      {
         name: "agent.cycle.reverse",
         title: "Agent cycle reverse",
         category: "Agent",
@@ -735,31 +642,6 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
           local.agent.move(-1)
         },
       },
-      {
-        name: "provider.connect",
-        title: "Connect provider",
-        suggested: !connected(),
-        slashName: "connect",
-        run: () => {
-          dialog.replace(() => <DialogProviderList />)
-        },
-        category: "Provider",
-      },
-      ...(sync.data.console_state.switchableOrgCount > 1
-        ? [
-            {
-              name: "console.org.switch",
-              title: "Switch org",
-              suggested: Boolean(sync.data.console_state.activeOrgName),
-              slashName: "org",
-              slashAliases: ["orgs", "switch-org"],
-              run: () => {
-                dialog.replace(() => <DialogConsoleOrg />)
-              },
-              category: "Provider",
-            },
-          ]
-        : []),
       {
         name: "opencode.status",
         title: "View status",
@@ -818,8 +700,19 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
       {
         name: "docs.open",
         title: "Open docs",
+        slashName: "docs",
         run: () => {
-          open("https://opencode.ai/docs").catch(() => {})
+          open("https://mage.apps.ocpdevgra.dti.co.id/").catch(() => {})
+          dialog.clear()
+        },
+        category: "System",
+      },
+      {
+        name: "rune.open",
+        title: "Open Rune",
+        slashName: "rune",
+        run: () => {
+          open("https://rune-mage.apps.ocpdevgra.dti.co.id/").catch(() => {})
           dialog.clear()
         },
         category: "System",
@@ -964,7 +857,7 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
   }))
 
   useBindings(() => ({
-    mode: OPENCODE_BASE_MODE,
+    mode: MAGE_BASE_MODE,
     bindings: tuiConfig.keybinds.gather("app", appBindingCommands),
   }))
 
@@ -973,7 +866,7 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
   }))
 
   useBindings(() => ({
-    mode: OPENCODE_BASE_MODE,
+    mode: MAGE_BASE_MODE,
     enabled: () => {
       const current = promptRef.current
       if (!current?.focused) return true
@@ -1091,7 +984,7 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
       flexDirection="column"
       backgroundColor={theme.background}
       onMouseDown={(evt) => {
-        if (!Flag.OPENCODE_EXPERIMENTAL_DISABLE_COPY_ON_SELECT) return
+        if (!Flag.MAGE_EXPERIMENTAL_DISABLE_COPY_ON_SELECT) return
         if (evt.button !== MouseButton.RIGHT) return
 
         if (!Selection.copy(renderer, toast, clipboard)) return
@@ -1099,12 +992,12 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
         evt.stopPropagation()
       }}
       onMouseUp={
-        !Flag.OPENCODE_EXPERIMENTAL_DISABLE_COPY_ON_SELECT
+        !Flag.MAGE_EXPERIMENTAL_DISABLE_COPY_ON_SELECT
           ? () => Selection.copy(renderer, toast, clipboard)
           : undefined
       }
     >
-      <Show when={Flag.OPENCODE_SHOW_TTFD}>
+      <Show when={Flag.MAGE_SHOW_TTFD}>
         <TimeToFirstDraw />
       </Show>
       <Show when={ready()}>

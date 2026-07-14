@@ -37,10 +37,10 @@ import {
 } from "./provider-tracker";
 
 // Use relative path by default (works with both dev and nginx proxy server)
-// Can be overridden with VITE_OPENCODE_URL for absolute URLs in special deployments
-const DEFAULT_BASE_URL = import.meta.env.VITE_OPENCODE_URL || "/api";
+// Can be overridden with VITE_MAGE_URL for absolute URLs in special deployments
+const DEFAULT_BASE_URL = import.meta.env.VITE_MAGE_URL || "/api";
 const CONFIG_CACHE_TTL_MS = 10_000;
-const OPENCODE_HEALTH_TIMEOUT_MS = 4_000;
+const MAGE_HEALTH_TIMEOUT_MS = 4_000;
 
 /**
  * Render an SDK error payload into a short string for Error messages.
@@ -1656,7 +1656,7 @@ class OpencodeService {
         ? '/api/opencode/health'
         : `${normalizedBase}/opencode/health`;
       markStartupTrace('opencodeClient.checkHealth:url', { baseUrl: this.baseUrl, healthUrl });
-      const timeout = createTimeoutSignal(OPENCODE_HEALTH_TIMEOUT_MS);
+      const timeout = createTimeoutSignal(MAGE_HEALTH_TIMEOUT_MS);
       const response = await runtimeFetch(healthUrl, { signal: timeout.signal }).finally(timeout.cleanup);
       markStartupTrace('opencodeClient.checkHealth:response', { status: response.status });
       if (!response.ok) {

@@ -3,7 +3,7 @@ import path from 'path';
 import os from 'os';
 import {
   SKILL_DIR,
-  OPENCODE_CONFIG_DIR,
+  MAGE_CONFIG_DIR,
   SKILL_SCOPE,
   ensureDirs,
   parseMdFile,
@@ -51,14 +51,14 @@ function getProjectSkillPath(workingDirectory, skillName) {
 
 function getUserSkillDir(skillName) {
   const pluralPath = path.join(SKILL_DIR, skillName);
-  const legacyPath = path.join(OPENCODE_CONFIG_DIR, 'skill', skillName);
+  const legacyPath = path.join(MAGE_CONFIG_DIR, 'skill', skillName);
   if (fs.existsSync(legacyPath) && !fs.existsSync(pluralPath)) return legacyPath;
   return pluralPath;
 }
 
 function getUserSkillPath(skillName) {
   const pluralPath = path.join(SKILL_DIR, skillName, 'SKILL.md');
-  const legacyPath = path.join(OPENCODE_CONFIG_DIR, 'skill', skillName, 'SKILL.md');
+  const legacyPath = path.join(MAGE_CONFIG_DIR, 'skill', skillName, 'SKILL.md');
   if (fs.existsSync(legacyPath) && !fs.existsSync(pluralPath)) return legacyPath;
   return pluralPath;
 }
@@ -180,14 +180,14 @@ function discoverSkills(workingDirectory) {
 
   const configDirectories = resolveSkillSearchDirectories(workingDirectory);
   const homeOpencodeDir = path.resolve(path.join(os.homedir(), '.opencode'));
-  const customConfigDir = process.env.OPENCODE_CONFIG_DIR
-    ? path.resolve(process.env.OPENCODE_CONFIG_DIR)
+  const customConfigDir = process.env.MAGE_CONFIG_DIR
+    ? path.resolve(process.env.MAGE_CONFIG_DIR)
     : null;
   for (const dir of configDirectories) {
     for (const subDir of ['skill', 'skills']) {
       const root = path.join(dir, subDir);
       for (const skillMdPath of walkSkillMdFiles(root)) {
-        const isUserConfigDir = dir === OPENCODE_CONFIG_DIR
+        const isUserConfigDir = dir === MAGE_CONFIG_DIR
           || dir === homeOpencodeDir
           || (customConfigDir && dir === customConfigDir);
         const scope = isUserConfigDir ? SKILL_SCOPE.USER : SKILL_SCOPE.PROJECT;

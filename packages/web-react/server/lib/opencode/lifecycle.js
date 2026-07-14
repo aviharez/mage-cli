@@ -7,14 +7,14 @@ const parsePositiveInt = (value, fallback) => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 };
 
-const HEALTH_CHECK_TIMEOUT_MS = parsePositiveInt(process.env.OPENCHAMBER_OPENCODE_HEALTH_TIMEOUT_MS, 5000);
+const HEALTH_CHECK_TIMEOUT_MS = parsePositiveInt(process.env.OPENCHAMBER_MAGE_HEALTH_TIMEOUT_MS, 5000);
 const HEALTH_CHECK_MAX_CONSECUTIVE_FAILURES = parsePositiveInt(
-  process.env.OPENCHAMBER_OPENCODE_HEALTH_CONSECUTIVE_FAILURES,
+  process.env.OPENCHAMBER_MAGE_HEALTH_CONSECUTIVE_FAILURES,
   20
 );
-const HEALTH_CHECK_INTERVAL_OVERRIDE_MS = parsePositiveInt(process.env.OPENCHAMBER_OPENCODE_HEALTH_INTERVAL_MS, 0);
-const HEALTH_CHECK_RESULT_CACHE_MS = parsePositiveInt(process.env.OPENCHAMBER_OPENCODE_HEALTH_CACHE_MS, 750);
-const OPENCODE_HEALTH_PATH = '/global/health';
+const HEALTH_CHECK_INTERVAL_OVERRIDE_MS = parsePositiveInt(process.env.OPENCHAMBER_MAGE_HEALTH_INTERVAL_MS, 0);
+const HEALTH_CHECK_RESULT_CACHE_MS = parsePositiveInt(process.env.OPENCHAMBER_MAGE_HEALTH_CACHE_MS, 750);
+const MAGE_HEALTH_PATH = '/global/health';
 
 export const createOpenCodeLifecycleRuntime = (deps) => {
   const {
@@ -98,7 +98,7 @@ export const createOpenCodeLifecycleRuntime = (deps) => {
     child.once('error', onError);
   });
 
-  const waitForPortRelease = (port, timeoutMs, hostname = env.ENV_CONFIGURED_OPENCODE_HOSTNAME) => {
+  const waitForPortRelease = (port, timeoutMs, hostname = env.ENV_CONFIGURED_MAGE_HOSTNAME) => {
     if (!port) {
       return Promise.resolve(true);
     }
@@ -238,7 +238,7 @@ export const createOpenCodeLifecycleRuntime = (deps) => {
   };
 
   const createManagedOpenCodeServerProcess = async ({ hostname, port, timeout, cwd, env: processEnv, shellEnvKeysCount = 0 }) => {
-    let binary = (process.env.OPENCODE_BINARY || 'opencode').trim() || 'opencode';
+    let binary = (process.env.MAGE_BINARY || 'opencode').trim() || 'opencode';
     let args = ['serve', '--hostname', hostname, '--port', String(port)];
     let launchWrapperType = null;
 
@@ -400,7 +400,7 @@ export const createOpenCodeLifecycleRuntime = (deps) => {
     }
 
     try {
-      const response = await fetch(buildOpenCodeUrl(OPENCODE_HEALTH_PATH, ''), {
+      const response = await fetch(buildOpenCodeUrl(MAGE_HEALTH_PATH, ''), {
         method: 'GET',
         headers: {
           Accept: 'application/json',
@@ -425,7 +425,7 @@ export const createOpenCodeLifecycleRuntime = (deps) => {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 3000);
       const base = origin ?? `http://127.0.0.1:${port}`;
-      const response = await fetch(`${base}${OPENCODE_HEALTH_PATH}`, {
+      const response = await fetch(`${base}${MAGE_HEALTH_PATH}`, {
         method: 'GET',
         headers: {
           Accept: 'application/json',
@@ -463,8 +463,8 @@ export const createOpenCodeLifecycleRuntime = (deps) => {
   const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
   const startOpenCodeOnce = async () => {
-    const desiredPort = env.ENV_CONFIGURED_OPENCODE_PORT ?? 0;
-    const spawnPort = await resolveManagedOpenCodePort(desiredPort, env.ENV_CONFIGURED_OPENCODE_HOSTNAME);
+    const desiredPort = env.ENV_CONFIGURED_MAGE_PORT ?? 0;
+    const spawnPort = await resolveManagedOpenCodePort(desiredPort, env.ENV_CONFIGURED_MAGE_HOSTNAME);
     console.log(
       desiredPort > 0
         ? `Starting OpenCode on requested port ${desiredPort}...`
@@ -485,7 +485,7 @@ export const createOpenCodeLifecycleRuntime = (deps) => {
 
     try {
       const serverInstance = await createManagedOpenCodeServerProcess({
-        hostname: env.ENV_CONFIGURED_OPENCODE_HOSTNAME,
+        hostname: env.ENV_CONFIGURED_MAGE_HOSTNAME,
         port: spawnPort,
         timeout: 30000,
         cwd: state.openCodeWorkingDirectory,
@@ -494,7 +494,7 @@ export const createOpenCodeLifecycleRuntime = (deps) => {
           ...shellEnv,
           ...process.env,
           PATH: envPath,
-          OPENCODE_SERVER_PASSWORD: openCodePassword,
+          MAGE_SERVER_PASSWORD: openCodePassword,
         },
       });
 
@@ -539,7 +539,7 @@ export const createOpenCodeLifecycleRuntime = (deps) => {
         return await startOpenCodeOnce();
       } catch (error) {
         lastError = error;
-        if (error?.code === 'OPENCODE_BINARY_INVALID') {
+        if (error?.code === 'MAGE_BINARY_INVALID') {
           break;
         }
         if (attempt >= START_OPEN_CODE_MAX_ATTEMPTS) {
@@ -574,8 +574,8 @@ export const createOpenCodeLifecycleRuntime = (deps) => {
 
       if (state.isExternalOpenCode) {
         console.log('Re-probing external OpenCode server...');
-        const probePort = state.openCodePort || env.ENV_CONFIGURED_OPENCODE_PORT || 4096;
-        const probeOrigin = state.openCodeBaseUrl ?? env.ENV_CONFIGURED_OPENCODE_HOST?.origin;
+        const probePort = state.openCodePort || env.ENV_CONFIGURED_MAGE_PORT || 4096;
+        const probeOrigin = state.openCodeBaseUrl ?? env.ENV_CONFIGURED_MAGE_HOST?.origin;
         const healthy = await probeExternalOpenCode(probePort, probeOrigin);
         if (healthy) {
           console.log(`External OpenCode server on port ${probePort} is healthy`);
@@ -615,9 +615,9 @@ export const createOpenCodeLifecycleRuntime = (deps) => {
         console.warn(`Timed out waiting for OpenCode port ${portToKill} to be released`);
       }
 
-      if (env.ENV_CONFIGURED_OPENCODE_PORT) {
-        console.log(`Using OpenCode port from environment: ${env.ENV_CONFIGURED_OPENCODE_PORT}`);
-        setOpenCodePort(env.ENV_CONFIGURED_OPENCODE_PORT);
+      if (env.ENV_CONFIGURED_MAGE_PORT) {
+        console.log(`Using OpenCode port from environment: ${env.ENV_CONFIGURED_MAGE_PORT}`);
+        setOpenCodePort(env.ENV_CONFIGURED_MAGE_PORT);
       } else {
         state.openCodePort = null;
         syncToHmrState();
@@ -645,7 +645,7 @@ export const createOpenCodeLifecycleRuntime = (deps) => {
     } catch (error) {
       console.error(`Failed to restart OpenCode: ${error.message}`);
       state.lastOpenCodeError = error.message;
-      if (!env.ENV_CONFIGURED_OPENCODE_PORT) {
+      if (!env.ENV_CONFIGURED_MAGE_PORT) {
         state.openCodePort = null;
         syncToHmrState();
       }
@@ -671,7 +671,7 @@ export const createOpenCodeLifecycleRuntime = (deps) => {
       try {
         const controller = new AbortController();
         timeout = setTimeout(() => controller.abort(), HEALTH_CHECK_TIMEOUT_MS);
-        const response = await fetch(buildOpenCodeUrl(OPENCODE_HEALTH_PATH, ''), {
+        const response = await fetch(buildOpenCodeUrl(MAGE_HEALTH_PATH, ''), {
           method: 'GET',
           headers: { Accept: 'application/json', ...getOpenCodeAuthHeaders() },
           signal: controller.signal,
@@ -799,20 +799,20 @@ export const createOpenCodeLifecycleRuntime = (deps) => {
       syncFromHmrState();
       if (await isOpenCodeProcessHealthy()) {
         console.log(`[HMR] Reusing existing OpenCode process on port ${state.openCodePort}`);
-      } else if (env.ENV_SKIP_OPENCODE_START && env.ENV_EFFECTIVE_PORT) {
-        const label = env.ENV_CONFIGURED_OPENCODE_HOST ? env.ENV_CONFIGURED_OPENCODE_HOST.origin : `http://localhost:${env.ENV_EFFECTIVE_PORT}`;
+      } else if (env.ENV_SKIP_MAGE_START && env.ENV_EFFECTIVE_PORT) {
+        const label = env.ENV_CONFIGURED_MAGE_HOST ? env.ENV_CONFIGURED_MAGE_HOST.origin : `http://localhost:${env.ENV_EFFECTIVE_PORT}`;
         console.log(`Using external OpenCode server at ${label} (skip-start mode)`);
-        state.openCodeBaseUrl = env.ENV_CONFIGURED_OPENCODE_HOST?.origin ?? null;
+        state.openCodeBaseUrl = env.ENV_CONFIGURED_MAGE_HOST?.origin ?? null;
         setOpenCodePort(env.ENV_EFFECTIVE_PORT);
         state.isOpenCodeReady = true;
         state.isExternalOpenCode = true;
         state.lastOpenCodeError = null;
         state.openCodeNotReadySince = 0;
         syncToHmrState();
-      } else if (env.ENV_EFFECTIVE_PORT && await probeExternalOpenCode(env.ENV_EFFECTIVE_PORT, env.ENV_CONFIGURED_OPENCODE_HOST?.origin)) {
-        const label = env.ENV_CONFIGURED_OPENCODE_HOST ? env.ENV_CONFIGURED_OPENCODE_HOST.origin : `http://localhost:${env.ENV_EFFECTIVE_PORT}`;
+      } else if (env.ENV_EFFECTIVE_PORT && await probeExternalOpenCode(env.ENV_EFFECTIVE_PORT, env.ENV_CONFIGURED_MAGE_HOST?.origin)) {
+        const label = env.ENV_CONFIGURED_MAGE_HOST ? env.ENV_CONFIGURED_MAGE_HOST.origin : `http://localhost:${env.ENV_EFFECTIVE_PORT}`;
         console.log(`Auto-detected existing OpenCode server at ${label}`);
-        state.openCodeBaseUrl = env.ENV_CONFIGURED_OPENCODE_HOST?.origin ?? null;
+        state.openCodeBaseUrl = env.ENV_CONFIGURED_MAGE_HOST?.origin ?? null;
         setOpenCodePort(env.ENV_EFFECTIVE_PORT);
         state.isOpenCodeReady = true;
         state.isExternalOpenCode = true;
@@ -822,7 +822,7 @@ export const createOpenCodeLifecycleRuntime = (deps) => {
       } else {
         // We never auto-attach to an arbitrary pre-existing OpenCode instance.
         // Attaching to an external server requires explicit opt-in via env
-        // (OPENCODE_HOST / OPENCODE_PORT / OPENCODE_SKIP_START), handled by the
+        // (MAGE_HOST / MAGE_PORT / MAGE_SKIP_START), handled by the
         // branches above. Without that opt-in we always start our OWN managed
         // instance on a freshly-allocated port. A blind probe of the default
         // port 4096 used to hijack a user's separately-running OpenCode (e.g.

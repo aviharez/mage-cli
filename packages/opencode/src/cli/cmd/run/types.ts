@@ -182,7 +182,6 @@ export type FooterPromptRoute =
   | { type: "subagent"; sessionID: string }
   | { type: "command" }
   | { type: "skill" }
-  | { type: "model" }
   | { type: "variant" }
 
 export type FooterSubagentTab = {

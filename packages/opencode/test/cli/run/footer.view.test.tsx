@@ -10,7 +10,6 @@ import {
   RUN_COMMAND_PANEL_ROWS,
   RUN_SUBAGENT_PANEL_ROWS,
   RunCommandMenuBody,
-  RunModelSelectBody,
   RunQueuedPromptSelectBody,
   RunSkillSelectBody,
   RunSubagentSelectBody,
@@ -209,7 +208,6 @@ async function renderFooter(
           onEditorOpen={async () => undefined}
           onInputClear={() => {}}
           onExit={() => {}}
-          onModelSelect={() => {}}
           onVariantSelect={() => {}}
           onRows={() => {}}
           onLayout={() => {}}
@@ -376,7 +374,6 @@ test("direct command panel renders grouped command palette", async () => {
           variants={variants}
           variantCycle="ctrl+t"
           onClose={() => {}}
-          onModel={() => {}}
           onEditor={() => {}}
           onSkill={() => {}}
           onSubagent={() => {}}
@@ -517,7 +514,6 @@ test("direct command panel shows subagent entry when available", async () => {
           variants={variants}
           variantCycle="ctrl+t"
           onClose={() => {}}
-          onModel={() => {}}
           onEditor={() => {}}
           onSkill={() => {}}
           onSubagent={() => {}}
@@ -565,7 +561,6 @@ test("direct command panel keeps completed subagents available", async () => {
           variants={variants}
           variantCycle="ctrl+t"
           onClose={() => {}}
-          onModel={() => {}}
           onEditor={() => {}}
           onSkill={() => {}}
           onSubagent={() => {}}
@@ -962,7 +957,6 @@ test("direct footer shows editable prompts and additional queued work while runn
           onEditorOpen={async () => undefined}
           onInputClear={() => {}}
           onExit={() => {}}
-          onModelSelect={() => {}}
           onVariantSelect={() => {}}
           onRows={() => {}}
           onLayout={() => {}}
@@ -1287,49 +1281,6 @@ test("direct permission rejection submits through keymap return binding", async 
     app.renderer.currentFocusedRenderable?.blur()
     app.renderer.currentFocusedEditor?.blur()
     off?.()
-    app.renderer.destroy()
-  }
-})
-
-test("direct model panel renders current model selector", async () => {
-  const [providers] = createSignal<RunProvider[] | undefined>([provider()])
-  const [current] = createSignal<RunInput["model"]>({ providerID: "opencode", modelID: "gpt-5" })
-
-  const app = await testRender(
-    () => (
-      <box width={100} height={RUN_COMMAND_PANEL_ROWS}>
-        <RunModelSelectBody
-          theme={() => RUN_THEME_FALLBACK.footer}
-          providers={providers}
-          current={current}
-          onClose={() => {}}
-          onSelect={() => {}}
-        />
-      </box>
-    ),
-    {
-      width: 100,
-      height: RUN_COMMAND_PANEL_ROWS,
-    },
-  )
-
-  try {
-    await app.renderOnce()
-    const frame = app.captureCharFrame()
-    const list = panelMenu(app.renderer.root)
-
-    expect(frame).toContain("Select model")
-    expect(frame).toContain("Search")
-    expect(frame).toContain("opencode")
-    expect(frame).toContain("GPT-5")
-    expect(frame).toContain("current")
-    expect(frame).toContain("GPT Free")
-    expect(frame).toContain("Free")
-    expect(frame).not.toContain("┌")
-    expect(frame).not.toContain("┃")
-    expect(frame).not.toContain("Old Model")
-    expectPaletteList(list, 2)
-  } finally {
     app.renderer.destroy()
   }
 })

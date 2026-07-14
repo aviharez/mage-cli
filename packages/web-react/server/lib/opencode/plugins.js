@@ -66,7 +66,7 @@ function parsedKindForSpec(spec) {
 }
 
 function getActiveOpencodeConfigDir() {
-  const customConfigPath = process.env.OPENCODE_CONFIG;
+  const customConfigPath = process.env.MAGE_CONFIG;
   if (customConfigPath) {
     return path.dirname(path.resolve(customConfigPath));
   }
@@ -83,7 +83,7 @@ function getActiveUserConfigPaths() {
 }
 
 function getActiveCustomConfigPath() {
-  return process.env.OPENCODE_CONFIG ? path.resolve(process.env.OPENCODE_CONFIG) : null;
+  return process.env.MAGE_CONFIG ? path.resolve(process.env.MAGE_CONFIG) : null;
 }
 
 function getPrimaryUserConfigPath() {

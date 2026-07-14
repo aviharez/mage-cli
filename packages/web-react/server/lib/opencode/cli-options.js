@@ -8,7 +8,7 @@ export const parseServeCliOptions = ({
   const args = Array.isArray(argv) ? [...argv] : [];
   const envPassword =
     env.OPENCHAMBER_UI_PASSWORD ||
-    env.OPENCODE_UI_PASSWORD ||
+    env.MAGE_UI_PASSWORD ||
     null;
   const envCfTunnel = env.OPENCHAMBER_TRY_CF_TUNNEL === 'true';
   const envTunnelProvider = env.OPENCHAMBER_TUNNEL_PROVIDER || undefined;

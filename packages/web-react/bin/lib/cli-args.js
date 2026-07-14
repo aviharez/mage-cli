@@ -400,10 +400,10 @@ ENVIRONMENT:
   OPENCHAMBER_UI_PASSWORD      Alternative to --ui-password flag
   OPENCHAMBER_API_ONLY         Set to true/1 to start API routes only
   OPENCHAMBER_DATA_DIR         Override OpenChamber data directory
-  OPENCODE_HOST               External OpenCode server base URL, e.g. http://hostname:4096
-  OPENCODE_PORT               Port of external OpenCode server to connect to
-  OPENCODE_SKIP_START          Skip starting OpenCode, use external server
-  OPENCHAMBER_OPENCODE_HOSTNAME  Bind hostname for managed OpenCode server (default: 127.0.0.1)
+  MAGE_HOST               External OpenCode server base URL, e.g. http://hostname:4096
+  MAGE_PORT               Port of external OpenCode server to connect to
+  MAGE_SKIP_START          Skip starting OpenCode, use external server
+  OPENCHAMBER_MAGE_HOSTNAME  Bind hostname for managed OpenCode server (default: 127.0.0.1)
 
 EXAMPLES:
   openchamber                    # Start in daemon mode on default port 3000 (or free port)

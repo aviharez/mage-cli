@@ -4,14 +4,12 @@ import { CrossSpawnSpawner } from "@mybcabisnis/mage-core/cross-spawn-spawner"
 import { Npm } from "@mybcabisnis/mage-core/npm"
 import path from "path"
 import { pathToFileURL } from "url"
-import { Account } from "../../src/account/account"
 import { Auth } from "../../src/auth"
 import { RuntimeFlags } from "../../src/effect/runtime-flags"
 import { Plugin } from "../../src/plugin/index"
 
 import { TestInstance } from "../fixture/fixture"
 import { testEffect } from "../lib/effect"
-import { AccountTest } from "../fake/account"
 import { AuthTest } from "../fake/auth"
 import { NpmTest } from "../fake/npm"
 import { ProviderV2 } from "@mybcabisnis/mage-core/provider"
@@ -22,7 +20,6 @@ import { LayerNode } from "@mybcabisnis/mage-core/effect/layer-node"
 const it = testEffect(
   AppNodeBuilder.build(LayerNode.group([Plugin.node, CrossSpawnSpawner.node]), [
     [Auth.node, AuthTest.empty],
-    [Account.node, AccountTest.empty],
     [Npm.node, NpmTest.noop],
     [RuntimeFlags.node, RuntimeFlags.layer({ disableDefaultPlugins: true })],
   ]),
@@ -38,10 +35,10 @@ function withProject<A, E, R>(source: string, self: Effect.Effect<A, E, R>) {
         Effect.promise(() => Bun.write(file, source)),
         Effect.promise(() =>
           Bun.write(
-            path.join(test.directory, "opencode.json"),
+            path.join(test.directory, "mage.json"),
             JSON.stringify(
               {
-                $schema: "https://opencode.ai/config.json",
+                $schema: "https://mage.ai/config.json",
                 plugin: [pathToFileURL(file).href],
               },
               null,

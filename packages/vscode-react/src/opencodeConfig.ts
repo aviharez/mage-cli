@@ -4,14 +4,14 @@ import os from 'node:os';
 import yaml from 'yaml';
 import { parse as parseJsonc } from 'jsonc-parser';
 
-const OPENCODE_CONFIG_DIR = path.join(os.homedir(), '.config', 'opencode');
-const AGENT_DIR = path.join(OPENCODE_CONFIG_DIR, 'agents');
-const COMMAND_DIR = path.join(OPENCODE_CONFIG_DIR, 'commands');
-const GLOBAL_SNIPPET_DIR = path.join(OPENCODE_CONFIG_DIR, 'snippet');
-const GLOBAL_SNIPPET_DIR_ALT = path.join(OPENCODE_CONFIG_DIR, 'snippets');
-const CONFIG_FILE = path.join(OPENCODE_CONFIG_DIR, 'config.json');
-const CUSTOM_CONFIG_FILE = process.env.OPENCODE_CONFIG
-  ? path.resolve(process.env.OPENCODE_CONFIG)
+const MAGE_CONFIG_DIR = path.join(os.homedir(), '.config', 'opencode');
+const AGENT_DIR = path.join(MAGE_CONFIG_DIR, 'agents');
+const COMMAND_DIR = path.join(MAGE_CONFIG_DIR, 'commands');
+const GLOBAL_SNIPPET_DIR = path.join(MAGE_CONFIG_DIR, 'snippet');
+const GLOBAL_SNIPPET_DIR_ALT = path.join(MAGE_CONFIG_DIR, 'snippets');
+const CONFIG_FILE = path.join(MAGE_CONFIG_DIR, 'config.json');
+const CUSTOM_CONFIG_FILE = process.env.MAGE_CONFIG
+  ? path.resolve(process.env.MAGE_CONFIG)
   : null;
 const PROMPT_FILE_PATTERN = /^\{file:(.+)\}$/i;
 const SNIPPET_EXTENSION = '.md';
@@ -81,7 +81,7 @@ export type ConfigSources = {
 };
 
 const ensureDirs = () => {
-  if (!fs.existsSync(OPENCODE_CONFIG_DIR)) fs.mkdirSync(OPENCODE_CONFIG_DIR, { recursive: true });
+  if (!fs.existsSync(MAGE_CONFIG_DIR)) fs.mkdirSync(MAGE_CONFIG_DIR, { recursive: true });
   if (!fs.existsSync(AGENT_DIR)) fs.mkdirSync(AGENT_DIR, { recursive: true });
   if (!fs.existsSync(COMMAND_DIR)) fs.mkdirSync(COMMAND_DIR, { recursive: true });
 };
@@ -191,7 +191,7 @@ const getUserAgentPath = (agentName: string, lookupCache: AgentLookupCache = glo
 
   if (fs.existsSync(pluralPath)) return pluralPath;
 
-  const legacyPath = path.join(OPENCODE_CONFIG_DIR, 'agent', `${agentName}.md`);
+  const legacyPath = path.join(MAGE_CONFIG_DIR, 'agent', `${agentName}.md`);
   if (fs.existsSync(legacyPath)) return legacyPath;
 
   const found = getIndexedUserAgentPath(agentName, lookupCache);
@@ -268,7 +268,7 @@ const getProjectCommandPath = (workingDirectory: string, commandName: string): s
 
 const getUserCommandPath = (commandName: string): string => {
   const pluralPath = path.join(COMMAND_DIR, `${commandName}.md`);
-  const legacyPath = path.join(OPENCODE_CONFIG_DIR, 'command', `${commandName}.md`);
+  const legacyPath = path.join(MAGE_CONFIG_DIR, 'command', `${commandName}.md`);
   if (fs.existsSync(legacyPath) && !fs.existsSync(pluralPath)) return legacyPath;
   return pluralPath;
 };
@@ -488,9 +488,9 @@ const resolvePromptFilePath = (reference: string): string | null => {
   if (!target) return null;
 
   if (target.startsWith('./')) {
-    target = path.join(OPENCODE_CONFIG_DIR, target.slice(2));
+    target = path.join(MAGE_CONFIG_DIR, target.slice(2));
   } else if (!path.isAbsolute(target)) {
-    target = path.join(OPENCODE_CONFIG_DIR, target);
+    target = path.join(MAGE_CONFIG_DIR, target);
   }
 
   return target;
@@ -536,9 +536,9 @@ const getProjectConfigPath = (workingDirectory?: string): string | null => {
 
 const getConfigPaths = (workingDirectory?: string) => ({
   userPaths: [
-    path.join(OPENCODE_CONFIG_DIR, 'config.json'),
-    path.join(OPENCODE_CONFIG_DIR, 'opencode.json'),
-    path.join(OPENCODE_CONFIG_DIR, 'opencode.jsonc'),
+    path.join(MAGE_CONFIG_DIR, 'config.json'),
+    path.join(MAGE_CONFIG_DIR, 'opencode.json'),
+    path.join(MAGE_CONFIG_DIR, 'opencode.jsonc'),
   ],
   projectPath: getProjectConfigPath(workingDirectory),
   customPath: CUSTOM_CONFIG_FILE
@@ -671,7 +671,7 @@ const resolveSkillSearchDirectories = (workingDirectory?: string): string[] => {
     }
   };
 
-  pushDir(OPENCODE_CONFIG_DIR);
+  pushDir(MAGE_CONFIG_DIR);
 
   if (workingDirectory) {
     const worktreeRoot = findWorktreeRoot(workingDirectory) || path.resolve(workingDirectory);
@@ -681,7 +681,7 @@ const resolveSkillSearchDirectories = (workingDirectory?: string): string[] => {
   }
 
   pushDir(path.join(os.homedir(), '.opencode'));
-  pushDir(process.env.OPENCODE_CONFIG_DIR ? path.resolve(process.env.OPENCODE_CONFIG_DIR) : null);
+  pushDir(process.env.MAGE_CONFIG_DIR ? path.resolve(process.env.MAGE_CONFIG_DIR) : null);
 
   return directories;
 };
@@ -825,11 +825,11 @@ const parsePluginNpmSpec = (spec: string): { name: string; version: string | nul
 const isExactPluginSemver = (version: string): boolean => /^\d+\.\d+\.\d+([-+][\w.-]+)?$/.test(version);
 
 const getActiveCustomConfigPath = (): string | null =>
-  process.env.OPENCODE_CONFIG ? path.resolve(process.env.OPENCODE_CONFIG) : null;
+  process.env.MAGE_CONFIG ? path.resolve(process.env.MAGE_CONFIG) : null;
 
 const getActiveOpencodeConfigDir = (): string => {
   const customConfigPath = getActiveCustomConfigPath();
-  return customConfigPath ? path.dirname(customConfigPath) : OPENCODE_CONFIG_DIR;
+  return customConfigPath ? path.dirname(customConfigPath) : MAGE_CONFIG_DIR;
 };
 
 const getActiveUserConfigPaths = (): string[] => {
@@ -2248,7 +2248,7 @@ export const expandSnippets = (text: string, workingDirectory?: string): string 
 
 // ============== SKILL SCOPE HELPERS ==============
 
-const SKILL_DIR = path.join(OPENCODE_CONFIG_DIR, 'skills');
+const SKILL_DIR = path.join(MAGE_CONFIG_DIR, 'skills');
 
 export const SKILL_SCOPE = {
   USER: 'user',
@@ -2357,14 +2357,14 @@ const ensureSkillDirs = () => {
 
 const getUserSkillDir = (skillName: string): string => {
   const pluralPath = path.join(SKILL_DIR, skillName);
-  const legacyPath = path.join(OPENCODE_CONFIG_DIR, 'skill', skillName);
+  const legacyPath = path.join(MAGE_CONFIG_DIR, 'skill', skillName);
   if (fs.existsSync(legacyPath) && !fs.existsSync(pluralPath)) return legacyPath;
   return pluralPath;
 };
 
 const getUserSkillPath = (skillName: string): string => {
   const pluralPath = path.join(SKILL_DIR, skillName, 'SKILL.md');
-  const legacyPath = path.join(OPENCODE_CONFIG_DIR, 'skill', skillName, 'SKILL.md');
+  const legacyPath = path.join(MAGE_CONFIG_DIR, 'skill', skillName, 'SKILL.md');
   if (fs.existsSync(legacyPath) && !fs.existsSync(pluralPath)) return legacyPath;
   return pluralPath;
 };
@@ -2488,14 +2488,14 @@ export const discoverSkills = (workingDirectory?: string): DiscoveredSkill[] => 
   // 3) Config directories: {skill,skills}/**/SKILL.md
   const configDirectories = resolveSkillSearchDirectories(workingDirectory);
   const homeOpencodeDir = path.resolve(path.join(os.homedir(), '.opencode'));
-  const customConfigDir = process.env.OPENCODE_CONFIG_DIR
-    ? path.resolve(process.env.OPENCODE_CONFIG_DIR)
+  const customConfigDir = process.env.MAGE_CONFIG_DIR
+    ? path.resolve(process.env.MAGE_CONFIG_DIR)
     : null;
   for (const dir of configDirectories) {
     for (const subDir of ['skill', 'skills']) {
       const root = path.join(dir, subDir);
       for (const skillMdPath of walkSkillMdFiles(root)) {
-        const isUserConfigDir = dir === OPENCODE_CONFIG_DIR
+        const isUserConfigDir = dir === MAGE_CONFIG_DIR
           || dir === homeOpencodeDir
           || (customConfigDir && dir === customConfigDir);
         const scope = isUserConfigDir ? SKILL_SCOPE.USER : SKILL_SCOPE.PROJECT;

@@ -82,9 +82,9 @@ function collectStartupEnv(options = {}) {
   );
 
   if (options.envSnapshot !== false) {
-    const opencodeBinary = process.env.OPENCODE_BINARY || searchPathFor('opencode');
+    const opencodeBinary = process.env.MAGE_BINARY || searchPathFor('opencode');
     if (typeof opencodeBinary === 'string' && opencodeBinary.trim().length > 0) {
-      env.OPENCODE_BINARY = opencodeBinary.trim();
+      env.MAGE_BINARY = opencodeBinary.trim();
     }
   }
   const uiPassword = hasUiPasswordConfigured(options.uiPassword) ? options.uiPassword : undefined;

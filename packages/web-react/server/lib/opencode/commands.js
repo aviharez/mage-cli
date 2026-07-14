@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import {
   CONFIG_FILE,
-  OPENCODE_CONFIG_DIR,
+  MAGE_CONFIG_DIR,
   COMMAND_DIR,
   COMMAND_SCOPE,
   ensureDirs,
@@ -49,7 +49,7 @@ function getProjectCommandPath(workingDirectory, commandName) {
  */
 function getUserCommandPath(commandName) {
   const pluralPath = path.join(COMMAND_DIR, `${commandName}.md`);
-  const legacyPath = path.join(OPENCODE_CONFIG_DIR, 'command', `${commandName}.md`);
+  const legacyPath = path.join(MAGE_CONFIG_DIR, 'command', `${commandName}.md`);
   if (fs.existsSync(legacyPath) && !fs.existsSync(pluralPath)) return legacyPath;
   return pluralPath;
 }

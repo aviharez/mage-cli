@@ -9,17 +9,8 @@ import type {
 import { Config } from "@/config/config"
 import { createOpencodeClient } from "@mybcabisnis/mage-sdk"
 import { ServerAuth } from "@/server/auth"
-import { CodexAuthPlugin } from "./openai/codex"
 import { Session } from "@/session/session"
 import { NamedError } from "@mybcabisnis/mage-core/util/error"
-import { CopilotAuthPlugin } from "./github-copilot/copilot"
-import { gitlabAuthPlugin as GitlabAuthPlugin } from "opencode-gitlab-auth"
-import { PoeAuthPlugin } from "opencode-poe-auth"
-import { CloudflareAIGatewayAuthPlugin, CloudflareWorkersAuthPlugin } from "./cloudflare"
-import { AzureAuthPlugin } from "./azure"
-import { DigitalOceanAuthPlugin } from "./digitalocean"
-import { XaiAuthPlugin } from "./xai"
-import { SnowflakeCortexAuthPlugin } from "./snowflake-cortex"
 import { Effect, Layer, Context } from "effect"
 import { EffectBridge } from "@/effect/bridge"
 import { InstanceState } from "@/effect/instance-state"
@@ -30,7 +21,6 @@ import { registerAdapter } from "@/control-plane/adapters"
 import type { WorkspaceAdapter } from "@/control-plane/types"
 import { RuntimeFlags } from "@/effect/runtime-flags"
 import { EventV2Bridge } from "@/event-v2-bridge"
-import { InstallationChannel } from "@mybcabisnis/mage-core/installation/version"
 
 type State = {
   hooks: Hooks[]
@@ -57,31 +47,11 @@ export interface Interface {
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/Plugin") {}
 
-export function experimentalWebSocketsEnabled(input: { enabled: boolean; channel?: string }) {
-  return input.enabled || ["local", "dev", "beta"].includes(input.channel ?? InstallationChannel)
-}
-
-// Built-in plugins that are directly imported (not installed from npm)
-function internalPlugins(flags: RuntimeFlags.Info): PluginInstance[] {
-  return [
-    // Temporary rollout: pre-release builds use WebSockets by default; releases require explicit opt-in.
-    (input) =>
-      CodexAuthPlugin(input, {
-        experimentalWebSockets: experimentalWebSocketsEnabled({ enabled: flags.experimentalWebSockets }),
-      }),
-    CopilotAuthPlugin,
-    // Published against the public @opencode-ai/plugin package; its wildcard
-    // peer dep can't resolve to our renamed workspace package, so the SDK
-    // types drift from ours even though the runtime shape is compatible.
-    GitlabAuthPlugin as unknown as PluginInstance,
-    PoeAuthPlugin as unknown as PluginInstance,
-    CloudflareWorkersAuthPlugin,
-    CloudflareAIGatewayAuthPlugin,
-    AzureAuthPlugin,
-    DigitalOceanAuthPlugin,
-    SnowflakeCortexAuthPlugin,
-    XaiAuthPlugin,
-  ]
+// Built-in plugins that are directly imported (not installed from npm).
+// Mage is locked to the Merlin/GAIA provider, which is autoloaded directly by
+// the Provider service — no provider-specific auth plugins are registered here.
+function internalPlugins(_flags: RuntimeFlags.Info): PluginInstance[] {
+  return []
 }
 
 function isServerPlugin(value: unknown): value is PluginInstance {

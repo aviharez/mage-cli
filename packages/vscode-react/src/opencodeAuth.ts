@@ -2,8 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 
-const OPENCODE_DATA_DIR = path.join(os.homedir(), '.local', 'share', 'opencode');
-const AUTH_FILE = path.join(OPENCODE_DATA_DIR, 'auth.json');
+const MAGE_DATA_DIR = path.join(os.homedir(), '.local', 'share', 'opencode');
+const AUTH_FILE = path.join(MAGE_DATA_DIR, 'auth.json');
 
 type AuthEntry = Record<string, unknown>;
 type AuthFile = Record<string, AuthEntry>;
@@ -27,8 +27,8 @@ const readAuthFile = (): AuthFile => {
 
 const writeAuthFile = (auth: AuthFile): void => {
   try {
-    if (!fs.existsSync(OPENCODE_DATA_DIR)) {
-      fs.mkdirSync(OPENCODE_DATA_DIR, { recursive: true });
+    if (!fs.existsSync(MAGE_DATA_DIR)) {
+      fs.mkdirSync(MAGE_DATA_DIR, { recursive: true });
     }
 
     if (fs.existsSync(AUTH_FILE)) {

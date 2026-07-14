@@ -483,7 +483,7 @@ const cleanBranchName = (branch) => {
   return branch;
 };
 
-const OPENCODE_ADJECTIVES = [
+const MAGE_ADJECTIVES = [
   'brave',
   'calm',
   'clever',
@@ -515,7 +515,7 @@ const OPENCODE_ADJECTIVES = [
   'witty',
 ];
 
-const OPENCODE_NOUNS = [
+const MAGE_NOUNS = [
   'cabin',
   'cactus',
   'canyon',
@@ -549,7 +549,7 @@ const OPENCODE_NOUNS = [
   'wolf',
 ];
 
-const OPENCODE_WORKTREE_ATTEMPTS = 26;
+const MAGE_WORKTREE_ATTEMPTS = 26;
 
 const getOpenCodeDataPath = () => {
   const xdgDataHome = process.env.XDG_DATA_HOME || path.join(os.homedir(), '.local', 'share');
@@ -558,7 +558,7 @@ const getOpenCodeDataPath = () => {
 
 const pickRandom = (values) => values[Math.floor(Math.random() * values.length)];
 
-const generateOpenCodeRandomName = () => `${pickRandom(OPENCODE_ADJECTIVES)}-${pickRandom(OPENCODE_NOUNS)}`;
+const generateOpenCodeRandomName = () => `${pickRandom(MAGE_ADJECTIVES)}-${pickRandom(MAGE_NOUNS)}`;
 
 const slugWorktreeName = (value) => {
   return String(value || '')
@@ -1360,9 +1360,9 @@ const listWorktreeEntries = async (directory) => {
 const resolveWorktreeNameCandidates = (baseName) => {
   const normalizedBase = slugWorktreeName(baseName || '');
   if (!normalizedBase) {
-    return Array.from({ length: OPENCODE_WORKTREE_ATTEMPTS }, () => generateOpenCodeRandomName());
+    return Array.from({ length: MAGE_WORKTREE_ATTEMPTS }, () => generateOpenCodeRandomName());
   }
-  return Array.from({ length: OPENCODE_WORKTREE_ATTEMPTS }, (_, index) => {
+  return Array.from({ length: MAGE_WORKTREE_ATTEMPTS }, (_, index) => {
     if (index === 0) {
       return normalizedBase;
     }

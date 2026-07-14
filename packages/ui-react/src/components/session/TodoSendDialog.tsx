@@ -8,9 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { isVSCodeRuntime } from '@/lib/desktop';
-import { ModelSelector } from '@/components/sections/agents/ModelSelector';
 import { AgentSelector } from '@/components/sections/commands/AgentSelector';
-import { ThinkingPill } from '@/components/session/ThinkingPill';
 import { useConfigStore } from '@/stores/useConfigStore';
 import { useAgentsStore } from '@/stores/useAgentsStore';
 import { isPrimaryMode } from '@/components/chat/mobileControlsUtils';
@@ -151,27 +149,6 @@ export function TodoSendDialog(props: TodoSendDialogProps) {
         </DialogHeader>
 
         <div className="flex flex-col gap-4">
-          <div className="flex min-w-0 flex-col gap-1.5">
-            <span className="typography-meta font-medium text-muted-foreground">{t('chat.modelControls.model')}</span>
-            <ModelSelector
-              providerId={execution.providerID}
-              modelId={execution.modelID}
-              className="max-w-[320px] justify-between"
-              dropdownPortalToBody
-              onChange={(providerID, modelID) => {
-                setExecution((prev) => ({ ...prev, providerID, modelID, variant: '' }));
-              }}
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <span className="typography-meta font-medium text-muted-foreground">{t('sessions.scheduledTasks.editor.thinkingLevel.label')}</span>
-            <ThinkingPill
-              value={execution.variant}
-              options={variantOptions}
-              disabled={!hasVariantOptions}
-              onChange={(variant) => setExecution((prev) => ({ ...prev, variant }))}
-            />
-          </div>
           <div className="flex flex-col gap-1.5">
             <span className="typography-meta font-medium text-muted-foreground">{t('sessions.scheduledTasks.editor.agent.label')}</span>
             <AgentSelector

@@ -10,7 +10,6 @@ import { NumberInput } from '@/components/ui/number-input';
 import { Button } from '@/components/ui/button';
 import { MobileOverlayPanel } from '@/components/ui/MobileOverlayPanel';
 import { toast } from '@/components/ui';
-import { ModelSelector } from '@/components/sections/agents/ModelSelector';
 import { AgentSelector } from '@/components/sections/commands/AgentSelector';
 import { isPrimaryMode } from '@/components/chat/mobileControlsUtils';
 import { CommandAutocomplete, type CommandAutocompleteHandle, type CommandInfo } from '@/components/chat/CommandAutocomplete';
@@ -837,15 +836,6 @@ export function ScheduledTaskEditorDialog(props: {
     return model?.variants ? Object.keys(model.variants) : [];
   }, [providers, draft.execution.providerID, draft.execution.modelID]);
   const hasVariantOptions = variantOptions.length > 0;
-  const selectedVariantValue = React.useMemo(() => {
-    if (!hasVariantOptions) {
-      return '__default';
-    }
-    if (!draft.execution.variant) {
-      return '__default';
-    }
-    return variantOptions.includes(draft.execution.variant) ? draft.execution.variant : '__default';
-  }, [draft.execution.variant, hasVariantOptions, variantOptions]);
 
   React.useEffect(() => {
     if (hasVariantOptions || !draft.execution.variant) {
@@ -1484,58 +1474,6 @@ export function ScheduledTaskEditorDialog(props: {
               </div>
             </div>
           )}
-
-          <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
-            <div className="flex min-w-0 flex-col gap-1">
-              <FieldLabel required>{t('sessions.scheduledTasks.editor.model.label')}</FieldLabel>
-              <ModelSelector
-                providerId={draft.execution.providerID}
-                modelId={draft.execution.modelID}
-                onChange={(providerID, modelID) => {
-                  setDraft((prev) => ({
-                    ...prev,
-                    execution: {
-                      ...prev.execution,
-                      providerID,
-                      modelID,
-                      variant: '',
-                    },
-                  }));
-                }}
-              />
-            </div>
-
-            <div className="flex min-w-0 flex-col gap-1">
-              <FieldLabel>{t('sessions.scheduledTasks.editor.thinkingLevel.label')}</FieldLabel>
-              <Select
-                value={selectedVariantValue}
-                disabled={!hasVariantOptions}
-                onValueChange={(value) => {
-                  setDraft((prev) => ({
-                    ...prev,
-                    execution: {
-                      ...prev.execution,
-                      variant: value === '__default' ? '' : value,
-                    },
-                  }));
-                }}
-              >
-                <SelectTrigger className="w-fit max-w-full">
-                  <SelectValue>
-                    {(value) => value === '__default'
-                      ? t('sessions.scheduledTasks.editor.thinkingLevel.default')
-                      : value}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__default">{t('sessions.scheduledTasks.editor.thinkingLevel.default')}</SelectItem>
-                  {variantOptions.map((variant) => (
-                    <SelectItem key={variant} value={variant}>{variant}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
 
           <div className="flex min-w-0 flex-col gap-1">
             <FieldLabel>{t('sessions.scheduledTasks.editor.agent.label')}</FieldLabel>

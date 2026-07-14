@@ -6,13 +6,13 @@ import { parse as parseJsonc } from 'jsonc-parser';
 
 // ============== PATH CONSTANTS ==============
 
-const OPENCODE_CONFIG_DIR = path.join(os.homedir(), '.config', 'opencode');
-const AGENT_DIR = path.join(OPENCODE_CONFIG_DIR, 'agents');
-const COMMAND_DIR = path.join(OPENCODE_CONFIG_DIR, 'commands');
-const SKILL_DIR = path.join(OPENCODE_CONFIG_DIR, 'skills');
-const CONFIG_FILE = path.join(OPENCODE_CONFIG_DIR, 'config.json');
-const CUSTOM_CONFIG_FILE = process.env.OPENCODE_CONFIG
-  ? path.resolve(process.env.OPENCODE_CONFIG)
+const MAGE_CONFIG_DIR = path.join(os.homedir(), '.config', 'opencode');
+const AGENT_DIR = path.join(MAGE_CONFIG_DIR, 'agents');
+const COMMAND_DIR = path.join(MAGE_CONFIG_DIR, 'commands');
+const SKILL_DIR = path.join(MAGE_CONFIG_DIR, 'skills');
+const CONFIG_FILE = path.join(MAGE_CONFIG_DIR, 'config.json');
+const CUSTOM_CONFIG_FILE = process.env.MAGE_CONFIG
+  ? path.resolve(process.env.MAGE_CONFIG)
   : null;
 const PROMPT_FILE_PATTERN = /^\{file:(.+)\}$/i;
 
@@ -36,8 +36,8 @@ const SKILL_SCOPE = {
 // ============== DIRECTORY OPERATIONS ==============
 
 function ensureDirs() {
-  if (!fs.existsSync(OPENCODE_CONFIG_DIR)) {
-    fs.mkdirSync(OPENCODE_CONFIG_DIR, { recursive: true });
+  if (!fs.existsSync(MAGE_CONFIG_DIR)) {
+    fs.mkdirSync(MAGE_CONFIG_DIR, { recursive: true });
   }
   if (!fs.existsSync(AGENT_DIR)) {
     fs.mkdirSync(AGENT_DIR, { recursive: true });
@@ -116,9 +116,9 @@ function getProjectConfigPath(workingDirectory) {
 function getConfigPaths(workingDirectory) {
   return {
     userPaths: [
-      path.join(OPENCODE_CONFIG_DIR, 'config.json'),
-      path.join(OPENCODE_CONFIG_DIR, 'opencode.json'),
-      path.join(OPENCODE_CONFIG_DIR, 'opencode.jsonc'),
+      path.join(MAGE_CONFIG_DIR, 'config.json'),
+      path.join(MAGE_CONFIG_DIR, 'opencode.json'),
+      path.join(MAGE_CONFIG_DIR, 'opencode.jsonc'),
     ],
     projectPath: getProjectConfigPath(workingDirectory),
     customPath: CUSTOM_CONFIG_FILE
@@ -318,9 +318,9 @@ function resolvePromptFilePath(reference) {
 
   if (target.startsWith('./')) {
     target = target.slice(2);
-    target = path.join(OPENCODE_CONFIG_DIR, target);
+    target = path.join(MAGE_CONFIG_DIR, target);
   } else if (!path.isAbsolute(target)) {
-    target = path.join(OPENCODE_CONFIG_DIR, target);
+    target = path.join(MAGE_CONFIG_DIR, target);
   }
 
   return target;
@@ -401,7 +401,7 @@ function resolveSkillSearchDirectories(workingDirectory) {
     }
   };
 
-  pushDir(OPENCODE_CONFIG_DIR);
+  pushDir(MAGE_CONFIG_DIR);
 
   if (workingDirectory) {
     const worktreeRoot = findWorktreeRoot(workingDirectory) || path.resolve(workingDirectory);
@@ -412,8 +412,8 @@ function resolveSkillSearchDirectories(workingDirectory) {
 
   pushDir(path.join(os.homedir(), '.opencode'));
 
-  const customConfigDir = process.env.OPENCODE_CONFIG_DIR
-    ? path.resolve(process.env.OPENCODE_CONFIG_DIR)
+  const customConfigDir = process.env.MAGE_CONFIG_DIR
+    ? path.resolve(process.env.MAGE_CONFIG_DIR)
     : null;
   pushDir(customConfigDir);
 
@@ -502,7 +502,7 @@ function deleteSkillSupportingFile(skillDir, relativePath) {
 }
 
 export {
-  OPENCODE_CONFIG_DIR,
+  MAGE_CONFIG_DIR,
   AGENT_DIR,
   COMMAND_DIR,
   SKILL_DIR,

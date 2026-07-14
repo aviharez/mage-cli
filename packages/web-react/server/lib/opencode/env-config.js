@@ -4,8 +4,8 @@ export const resolveOpenCodeEnvConfig = (options = {}) => {
 
   const configuredOpenCodePort = (() => {
     const raw =
-      env.OPENCODE_PORT ||
-      env.OPENCHAMBER_OPENCODE_PORT ||
+      env.MAGE_PORT ||
+      env.OPENCHAMBER_MAGE_PORT ||
       env.OPENCHAMBER_INTERNAL_PORT;
     if (!raw) {
       return null;
@@ -15,11 +15,11 @@ export const resolveOpenCodeEnvConfig = (options = {}) => {
   })();
 
   const configuredOpenCodeHost = (() => {
-    const raw = typeof env.OPENCODE_HOST === 'string' ? env.OPENCODE_HOST.trim() : '';
+    const raw = typeof env.MAGE_HOST === 'string' ? env.MAGE_HOST.trim() : '';
     if (!raw) return null;
 
     const warnInvalidHost = (reason) => {
-      logger.warn(`[config] Ignoring OPENCODE_HOST=${JSON.stringify(raw)}: ${reason}`);
+      logger.warn(`[config] Ignoring MAGE_HOST=${JSON.stringify(raw)}: ${reason}`);
     };
 
     let url;
@@ -45,18 +45,18 @@ export const resolveOpenCodeEnvConfig = (options = {}) => {
     return { origin: url.origin, port };
   })();
 
-  // OPENCODE_HOST takes precedence over OPENCODE_PORT when both are set
+  // MAGE_HOST takes precedence over MAGE_PORT when both are set
   const effectivePort = configuredOpenCodeHost?.port ?? configuredOpenCodePort;
 
   const configuredOpenCodeHostname = (() => {
-    const raw = env.OPENCHAMBER_OPENCODE_HOSTNAME;
+    const raw = env.OPENCHAMBER_MAGE_HOSTNAME;
     if (typeof raw !== 'string') {
       return '127.0.0.1';
     }
     const trimmed = raw.trim();
     if (!trimmed) {
       logger.warn(
-        `[config] Ignoring OPENCHAMBER_OPENCODE_HOSTNAME=${JSON.stringify(raw)}: empty after trimming`,
+        `[config] Ignoring OPENCHAMBER_MAGE_HOSTNAME=${JSON.stringify(raw)}: empty after trimming`,
       );
       return '127.0.0.1';
     }

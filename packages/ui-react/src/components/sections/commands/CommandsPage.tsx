@@ -290,25 +290,6 @@ export const CommandsPage: React.FC = () => {
               </div>
             </div>
 
-            <div data-settings-item="commands.model" className="flex flex-col gap-2 py-1.5 sm:flex-row sm:items-center sm:gap-8">
-              <div className="flex min-w-0 flex-col sm:w-56 shrink-0">
-                <span className="typography-ui-label text-foreground">{t('settings.agents.page.field.overrideModel')}</span>
-              </div>
-              <div className="flex min-w-0 flex-1 items-center gap-2 sm:w-fit sm:flex-initial">
-                <ModelSelector
-                  providerId={parseModelIdentifier(model)?.providerId ?? ''}
-                  modelId={parseModelIdentifier(model)?.modelId ?? ''}
-                  onChange={(providerId: string, modelId: string) => {
-                    if (providerId && modelId) {
-                      setModel(`${providerId}/${modelId}`);
-                    } else {
-                      setModel('');
-                    }
-                  }}
-                />
-              </div>
-            </div>
-
           </section>
         </div>
 

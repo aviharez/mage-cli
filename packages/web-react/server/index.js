@@ -210,8 +210,8 @@ const shouldSkipApiCompression = () => {
 const OPENCHAMBER_VERBOSE_REQUEST_LOGS = isEnvFlagEnabled(process.env.OPENCHAMBER_VERBOSE_REQUEST_LOGS);
 
 const PLAN_MODE_EXPERIMENT_ENABLED =
-  isEnvFlagEnabled(process.env.OPENCODE_EXPERIMENTAL_PLAN_MODE)
-  || isEnvFlagEnabled(process.env.OPENCODE_EXPERIMENTAL);
+  isEnvFlagEnabled(process.env.MAGE_EXPERIMENTAL_PLAN_MODE)
+  || isEnvFlagEnabled(process.env.MAGE_EXPERIMENTAL);
 
 const fsPromises = fs.promises;
 
@@ -552,17 +552,17 @@ let signalsAttached = hmrState.signalsAttached;
 let openCodeWorkingDirectory = hmrState.openCodeWorkingDirectory;
 
 const {
-  configuredOpenCodePort: ENV_CONFIGURED_OPENCODE_PORT,
-  configuredOpenCodeHost: ENV_CONFIGURED_OPENCODE_HOST,
+  configuredOpenCodePort: ENV_CONFIGURED_MAGE_PORT,
+  configuredOpenCodeHost: ENV_CONFIGURED_MAGE_HOST,
   effectivePort: ENV_EFFECTIVE_PORT,
-  configuredOpenCodeHostname: ENV_CONFIGURED_OPENCODE_HOSTNAME,
+  configuredOpenCodeHostname: ENV_CONFIGURED_MAGE_HOSTNAME,
 } = resolveOpenCodeEnvConfig({
   env: process.env,
   logger: console,
 });
 
-const ENV_SKIP_OPENCODE_START = process.env.OPENCODE_SKIP_START === 'true' ||
-                                    process.env.OPENCHAMBER_SKIP_OPENCODE_START === 'true';
+const ENV_SKIP_MAGE_START = process.env.MAGE_SKIP_START === 'true' ||
+                                    process.env.OPENCHAMBER_SKIP_MAGE_START === 'true';
 const ENV_DESKTOP_NOTIFY = (() => {
   if (process.env.OPENCHAMBER_DESKTOP_NOTIFY === 'true') {
     return true;
@@ -607,7 +607,7 @@ Object.defineProperties(openCodeNetworkState, {
 const openCodeNetworkRuntime = createOpenCodeNetworkRuntime({
   state: openCodeNetworkState,
   getOpenCodeAuthHeaders,
-  configuredOpenCodeHostname: ENV_CONFIGURED_OPENCODE_HOSTNAME,
+  configuredOpenCodeHostname: ENV_CONFIGURED_MAGE_HOSTNAME,
 });
 
 const waitForReady = (...args) => openCodeNetworkRuntime.waitForReady(...args);
@@ -618,7 +618,7 @@ const ensureOpenCodeApiPrefix = (...args) => openCodeNetworkRuntime.ensureOpenCo
 const scheduleOpenCodeApiDetection = (...args) => openCodeNetworkRuntime.scheduleOpenCodeApiDetection(...args);
 
 const ENV_CONFIGURED_API_PREFIX = normalizeApiPrefix(
-  process.env.OPENCODE_API_PREFIX || process.env.OPENCHAMBER_API_PREFIX || ''
+  process.env.MAGE_API_PREFIX || process.env.OPENCHAMBER_API_PREFIX || ''
 );
 
   if (ENV_CONFIGURED_API_PREFIX && ENV_CONFIGURED_API_PREFIX !== '') {
@@ -1020,11 +1020,11 @@ Object.defineProperties(openCodeLifecycleState, {
 const openCodeLifecycleRuntime = createOpenCodeLifecycleRuntime({
   state: openCodeLifecycleState,
   env: {
-    ENV_CONFIGURED_OPENCODE_PORT,
-    ENV_CONFIGURED_OPENCODE_HOST,
+    ENV_CONFIGURED_MAGE_PORT,
+    ENV_CONFIGURED_MAGE_HOST,
     ENV_EFFECTIVE_PORT,
-    ENV_CONFIGURED_OPENCODE_HOSTNAME,
-    ENV_SKIP_OPENCODE_START,
+    ENV_CONFIGURED_MAGE_HOSTNAME,
+    ENV_SKIP_MAGE_START,
   },
   syncToHmrState,
   syncFromHmrState,
@@ -1138,7 +1138,7 @@ const gracefulShutdownRuntime = createGracefulShutdownRuntime({
   setMessageStreamRuntime: (value) => {
     messageStreamRuntime = value;
   },
-  shouldSkipOpenCodeStop: () => ENV_SKIP_OPENCODE_START || isExternalOpenCode,
+  shouldSkipOpenCodeStop: () => ENV_SKIP_MAGE_START || isExternalOpenCode,
   getOpenCodePort: () => openCodePort,
   getOpenCodeProcess: () => openCodeProcess,
   setOpenCodeProcess: (value) => {
@@ -1590,7 +1590,7 @@ async function main(options = {}) {
     isReady: () => isOpenCodeReady,
     restartOpenCode: () => restartOpenCode(),
     getOpenCodeProcessInfo: () => {
-      const managed = Boolean((openCodeProcess || openCodePort) && !ENV_SKIP_OPENCODE_START && !isExternalOpenCode);
+      const managed = Boolean((openCodeProcess || openCodePort) && !ENV_SKIP_MAGE_START && !isExternalOpenCode);
       // Only ever expose pid/port for a server WE manage. The Electron-side
       // killer kills by port (lsof + kill -KILL), so returning a port we don't
       // own — e.g. an external/desktop OpenCode on 4096 we attached to — would

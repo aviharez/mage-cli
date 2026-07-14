@@ -74,7 +74,7 @@ function generateSecureOpenCodePassword(): string {
 }
 
 function buildOpenCodeAuthHeader(password: string): string {
-  const username = process.env.OPENCODE_SERVER_USERNAME?.trim() || 'opencode';
+  const username = process.env.MAGE_SERVER_USERNAME?.trim() || 'opencode';
   return `Basic ${Buffer.from(`${username}:${password}`, 'utf8').toString('base64')}`;
 }
 
@@ -339,10 +339,10 @@ function resolveOpencodeCliPath(): string | null {
   }
 
   const explicit = [
-    process.env.OPENCODE_BINARY,
-    process.env.OPENCODE_PATH,
-    process.env.OPENCHAMBER_OPENCODE_PATH,
-    process.env.OPENCHAMBER_OPENCODE_BIN,
+    process.env.MAGE_BINARY,
+    process.env.MAGE_PATH,
+    process.env.OPENCHAMBER_MAGE_PATH,
+    process.env.OPENCHAMBER_MAGE_BIN,
   ]
     .map((v) => (typeof v === 'string' ? stripWrappingQuotes(v) : ''))
     .filter(Boolean);
@@ -663,7 +663,7 @@ async function spawnManagedOpenCodeServer(
   port: number,
   timeoutMs: number
 ): Promise<{ url: string; close: () => void }> {
-  const binary = stripWrappingQuotes(process.env.OPENCODE_BINARY || 'opencode') || 'opencode';
+  const binary = stripWrappingQuotes(process.env.MAGE_BINARY || 'opencode') || 'opencode';
   const launch = resolveWindowsLaunchSpec(binary, ['serve', '--hostname', '127.0.0.1', '--port', String(port)]);
   const child = spawn(launch.binary, launch.args, {
     cwd: workingDirectory,
@@ -783,7 +783,7 @@ export function createOpenCodeManager(context: vscode.ExtensionContext): OpenCod
   let managedPassword: string | null = null;
   let managedPasswordSource: 'user-env' | 'generated' | 'rotated' | null = null;
   const userProvidedEnvPassword = (() => {
-    const normalized = (process.env.OPENCODE_SERVER_PASSWORD || '').trim();
+    const normalized = (process.env.MAGE_SERVER_PASSWORD || '').trim();
     return isValidOpenCodePassword(normalized) ? normalized : null;
   })();
   let status: ConnectionStatus = 'disconnected';
@@ -853,7 +853,7 @@ export function createOpenCodeManager(context: vscode.ExtensionContext): OpenCod
   };
 
   const getOpenCodeAuthHeaders = (): Record<string, string> => {
-    const password = (managedPassword || userProvidedEnvPassword || process.env.OPENCODE_SERVER_PASSWORD || '').trim();
+    const password = (managedPassword || userProvidedEnvPassword || process.env.MAGE_SERVER_PASSWORD || '').trim();
     if (!password) {
       return {};
     }
@@ -867,7 +867,7 @@ export function createOpenCodeManager(context: vscode.ExtensionContext): OpenCod
     const normalized = password.trim();
     managedPassword = normalized;
     managedPasswordSource = source;
-    process.env.OPENCODE_SERVER_PASSWORD = normalized;
+    process.env.MAGE_SERVER_PASSWORD = normalized;
     return normalized;
   };
 
@@ -947,7 +947,7 @@ export function createOpenCodeManager(context: vscode.ExtensionContext): OpenCod
       if (configuredCli) {
         cliPath = configuredCli;
         appendToPath(path.dirname(configuredCli));
-        process.env.OPENCODE_BINARY = configuredCli;
+        process.env.MAGE_BINARY = configuredCli;
       }
 
       // Best-effort: locate CLI even when VS Code PATH is stale.
@@ -955,13 +955,13 @@ export function createOpenCodeManager(context: vscode.ExtensionContext): OpenCod
       if (resolvedCli) {
         cliPath = resolvedCli;
         appendToPath(path.dirname(resolvedCli));
-        process.env.OPENCODE_BINARY = resolvedCli;
+        process.env.MAGE_BINARY = resolvedCli;
       }
 
       const password = await ensureManagedOpenCodeServerPassword({
         rotateManaged: options.rotateManaged === true,
       });
-      process.env.OPENCODE_SERVER_PASSWORD = password;
+      process.env.MAGE_SERVER_PASSWORD = password;
 
       // Match the web runtime: keep the server process in a neutral cwd and pass
       // the selected workspace through explicit `directory` API parameters.

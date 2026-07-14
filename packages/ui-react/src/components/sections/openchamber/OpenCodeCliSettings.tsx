@@ -148,7 +148,7 @@ export const OpenCodeCliSettings: React.FC = () => {
           <div className="typography-micro text-muted-foreground/70">
             {t('settings.openchamber.opencodeCli.tipPrefix')}
             {' '}
-            <span className="font-mono">OPENCODE_BINARY</span>
+            <span className="font-mono">MAGE_BINARY</span>
             {' '}
             {t('settings.openchamber.opencodeCli.tipMiddle')}
             {' '}

@@ -3,7 +3,6 @@ import type { Session } from '@opencode-ai/sdk/v2/client';
 import { toast } from '@/components/ui';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Icon } from '@/components/icon/Icon';
 import { ProviderLogo } from '@/components/ui/ProviderLogo';
 import { useI18n } from '@/lib/i18n';
@@ -17,7 +16,6 @@ import { flattenAssistantTextParts } from '@/lib/messages/messageText';
 import { getFusionSessionTitle, parseMultiRunSessionTitle } from '@/lib/multirun/title';
 import { renderMagicPrompt } from '@/lib/magicPrompts';
 import { AgentSelector } from './AgentSelector';
-import { ModelMultiSelect, generateInstanceId, type ModelSelectionWithId } from './ModelMultiSelect';
 
 type FusionSource = {
   session: Session;
@@ -78,18 +76,12 @@ export function MultiRunFusionDialog({
   const liveSessions = useAllLiveSessions();
   const activeSessions = useGlobalSessionsStore((state) => state.activeSessions);
   const archivedSessions = useGlobalSessionsStore((state) => state.archivedSessions);
-  const providers = useConfigStore((state) => state.providers);
   const currentProviderId = useConfigStore((state) => state.currentProviderId);
   const currentModelId = useConfigStore((state) => state.currentModelId);
   const currentAgentName = useConfigStore((state) => state.currentAgentName);
-  const [providerID, setProviderID] = React.useState(currentProviderId ?? '');
-  const [modelID, setModelID] = React.useState(currentModelId ?? '');
-  const [selectedModelSelection, setSelectedModelSelection] = React.useState<ModelSelectionWithId[]>(() => (
-    currentProviderId && currentModelId
-      ? [{ providerID: currentProviderId, modelID: currentModelId, instanceId: generateInstanceId() }]
-      : []
-  ));
-  const [variant, setVariant] = React.useState<string>('');
+  const providerID = currentProviderId ?? '';
+  const modelID = currentModelId ?? '';
+  const [variant] = React.useState<string>('');
   const [agent, setAgent] = React.useState(currentAgentName ?? '');
   const [sources, setSources] = React.useState<FusionSource[]>([]);
   const [isStarting, setIsStarting] = React.useState(false);
@@ -126,19 +118,7 @@ export function MultiRunFusionDialog({
     setSources(nextSources);
   }, [allSessions, open, parsed, session.id]);
 
-  const selectedProvider = providers.find((provider) => provider.id === providerID);
-  const selectedProviderModel = selectedProvider?.models.find((model) => model.id === modelID) as { variants?: Record<string, unknown> } | undefined;
-  const variantKeys = selectedProviderModel?.variants ? Object.keys(selectedProviderModel.variants) : [];
   const canStart = Boolean(parsed && providerID && modelID && sources.length > 0 && !isStarting);
-
-  const handleModelSelect = React.useCallback((model: ModelSelectionWithId) => {
-    setSelectedModelSelection([model]);
-    setProviderID(model.providerID);
-    setModelID(model.modelID);
-    setVariant('');
-  }, []);
-
-  const selectedModelLabel = selectedModelSelection[0]?.displayName || selectedModelSelection[0]?.modelID || t('multirun.fusion.model.placeholder');
 
   const handleStart = async () => {
     if (!parsed || !providerID || !modelID) return;
@@ -197,40 +177,6 @@ export function MultiRunFusionDialog({
         </DialogHeader>
 
         <div className="flex flex-wrap items-center gap-2">
-          <div className="max-w-full">
-            <ModelMultiSelect
-              selectedModels={selectedModelSelection}
-              onAdd={handleModelSelect}
-              onUpdate={(_, model) => handleModelSelect(model)}
-              onRemove={() => {
-                setSelectedModelSelection([]);
-                setProviderID('');
-                setModelID('');
-                setVariant('');
-              }}
-              maxModels={1}
-              addButtonLabel={selectedModelLabel}
-              showChips={false}
-              addButtonClassName="h-8 w-fit max-w-[min(28rem,calc(100vw-8rem))] justify-start rounded-[9px] [corner-shape:squircle] supports-[corner-shape:squircle]:rounded-[50px] px-3 py-1.5"
-              dropdownSide="bottom"
-              dropdownClassName="w-[min(28rem,calc(100vw-8rem))]"
-              triggerIcon={providerID ? <ProviderLogo providerId={providerID} className="h-3.5 w-3.5 mr-1" /> : undefined}
-            />
-          </div>
-
-          {variantKeys.length > 0 ? (
-            <Select value={variant || '__default__'} onValueChange={(value) => setVariant(value === '__default__' ? '' : value)}>
-              <SelectTrigger size="lg" className="h-8 w-fit rounded-[9px] [corner-shape:squircle] supports-[corner-shape:squircle]:rounded-[50px] !border-border/80 !bg-[var(--surface-subtle)] hover:!bg-[var(--interactive-hover)]/70 typography-meta font-medium text-foreground px-3 py-1.5">
-                <Icon name="brain-ai-3" className="h-3.5 w-3.5 text-muted-foreground" />
-                <SelectValue>{(value) => value === '__default__' ? t('multirun.modelMultiSelect.variant.default') : value}</SelectValue>
-              </SelectTrigger>
-              <SelectContent fitContent portalToBody>
-                <SelectItem value="__default__">{t('multirun.modelMultiSelect.variant.default')}</SelectItem>
-                {variantKeys.map((key) => <SelectItem key={key} value={key}>{key}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          ) : null}
-
           <AgentSelector value={agent} onChange={setAgent} portalToBody className="h-8 rounded-[9px] [corner-shape:squircle] supports-[corner-shape:squircle]:rounded-[50px] px-3 py-1.5" />
         </div>
 

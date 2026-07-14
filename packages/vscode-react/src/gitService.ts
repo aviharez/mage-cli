@@ -823,19 +823,19 @@ export interface RemoveGitWorktreePayload {
   deleteLocalBranch?: boolean;
 }
 
-const OPENCODE_ADJECTIVES = [
+const MAGE_ADJECTIVES = [
   'brave', 'calm', 'clever', 'cosmic', 'crisp', 'curious', 'eager', 'gentle', 'glowing', 'happy',
   'hidden', 'jolly', 'kind', 'lucky', 'mighty', 'misty', 'neon', 'nimble', 'playful', 'proud',
   'quick', 'quiet', 'shiny', 'silent', 'stellar', 'sunny', 'swift', 'tidy', 'witty',
 ];
 
-const OPENCODE_NOUNS = [
+const MAGE_NOUNS = [
   'cabin', 'cactus', 'canyon', 'circuit', 'comet', 'eagle', 'engine', 'falcon', 'forest', 'garden',
   'harbor', 'island', 'knight', 'lagoon', 'meadow', 'moon', 'mountain', 'nebula', 'orchid', 'otter',
   'panda', 'pixel', 'planet', 'river', 'rocket', 'sailor', 'squid', 'star', 'tiger', 'wizard', 'wolf',
 ];
 
-const OPENCODE_WORKTREE_ATTEMPTS = 26;
+const MAGE_WORKTREE_ATTEMPTS = 26;
 
 const getOpenCodeDataPath = () => {
   const xdgDataHome = process.env.XDG_DATA_HOME || path.join(os.homedir(), '.local', 'share');
@@ -844,7 +844,7 @@ const getOpenCodeDataPath = () => {
 
 const pickRandom = (values: string[]) => values[Math.floor(Math.random() * values.length)];
 
-const generateOpenCodeRandomName = () => `${pickRandom(OPENCODE_ADJECTIVES)}-${pickRandom(OPENCODE_NOUNS)}`;
+const generateOpenCodeRandomName = () => `${pickRandom(MAGE_ADJECTIVES)}-${pickRandom(MAGE_NOUNS)}`;
 
 const slugWorktreeName = (value: string) => {
   return String(value || '')
@@ -1089,9 +1089,9 @@ const listWorktreeEntries = async (directory: string): Promise<WorktreeListEntry
 const resolveWorktreeNameCandidates = (baseName: string): string[] => {
   const normalizedBase = slugWorktreeName(baseName || '');
   if (!normalizedBase) {
-    return Array.from({ length: OPENCODE_WORKTREE_ATTEMPTS }, () => generateOpenCodeRandomName());
+    return Array.from({ length: MAGE_WORKTREE_ATTEMPTS }, () => generateOpenCodeRandomName());
   }
-  return Array.from({ length: OPENCODE_WORKTREE_ATTEMPTS }, (_, index) => {
+  return Array.from({ length: MAGE_WORKTREE_ATTEMPTS }, (_, index) => {
     if (index === 0) {
       return normalizedBase;
     }

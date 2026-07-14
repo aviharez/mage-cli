@@ -39,7 +39,7 @@ function providerAuthLayer(directory: string, plugins: string[]) {
 
 describe("plugin.auth-override", () => {
   it.instance(
-    "user plugin overrides built-in github-copilot auth",
+    "user plugin registers auth methods for a custom provider",
     () =>
       Effect.gen(function* () {
         const tmp = yield* TestInstance
@@ -47,13 +47,13 @@ describe("plugin.auth-override", () => {
         const pluginDir = path.join(tmp.directory, ".opencode", "plugin")
 
         yield* fs.writeWithDirs(
-          path.join(pluginDir, "custom-copilot-auth.ts"),
+          path.join(pluginDir, "custom-provider-auth.ts"),
           [
             "export default {",
-            '  id: "demo.custom-copilot-auth",',
+            '  id: "demo.custom-provider-auth",',
             "  server: async () => ({",
             "    auth: {",
-            '      provider: "github-copilot",',
+            '      provider: "acme-llm",',
             "      methods: [",
             '        { type: "api", label: "Test Override Auth" },',
             "      ],",
@@ -66,7 +66,7 @@ describe("plugin.auth-override", () => {
         )
 
         const plain = yield* tmpdirScoped({ git: true })
-        const plugin = pathToFileURL(path.join(pluginDir, "custom-copilot-auth.ts")).href
+        const plugin = pathToFileURL(path.join(pluginDir, "custom-provider-auth.ts")).href
         const methods = yield* ProviderAuth.use
           .methods()
           .pipe(Effect.provide(providerAuthLayer(tmp.directory, [plugin])))
@@ -74,11 +74,12 @@ describe("plugin.auth-override", () => {
           .methods()
           .pipe(Effect.provide(providerAuthLayer(plain, [])), provideInstance(plain))
 
-        const copilot = methods[ProviderV2.ID.make("github-copilot")]
-        expect(copilot).toBeDefined()
-        expect(copilot.length).toBe(1)
-        expect(copilot[0].label).toBe("Test Override Auth")
-        expect(plainMethods[ProviderV2.ID.make("github-copilot")][0].label).not.toBe("Test Override Auth")
+        const custom = methods[ProviderV2.ID.make("acme-llm")]
+        expect(custom).toBeDefined()
+        expect(custom.length).toBe(1)
+        expect(custom[0].label).toBe("Test Override Auth")
+        // With no plugin registered, this provider has no auth methods at all.
+        expect(plainMethods[ProviderV2.ID.make("acme-llm")]).toBeUndefined()
       }),
     { git: true },
     30000,

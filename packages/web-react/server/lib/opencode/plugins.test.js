@@ -30,19 +30,19 @@ describe('opencode plugins data layer', () => {
   beforeAll(async () => {
     rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-plugins-'));
     userConfigPath = path.join(rootDir, 'user-opencode.json');
-    process.env.OPENCODE_CONFIG = userConfigPath;
+    process.env.MAGE_CONFIG = userConfigPath;
     plugins = await import('./plugins.js');
   });
 
   beforeEach(() => {
-    process.env.OPENCODE_CONFIG = userConfigPath;
+    process.env.MAGE_CONFIG = userConfigPath;
     projectDir = fs.mkdtempSync(path.join(rootDir, 'project-'));
     fs.rmSync(userConfigPath, { force: true });
   });
 
   afterAll(() => {
     fs.rmSync(rootDir, { recursive: true, force: true });
-    delete process.env.OPENCODE_CONFIG;
+    delete process.env.MAGE_CONFIG;
   });
 
   test('parses raw plugin entries', () => {
@@ -90,11 +90,11 @@ describe('opencode plugins data layer', () => {
     const firstConfigPath = path.join(rootDir, 'first', 'opencode.json');
     const secondConfigPath = path.join(rootDir, 'second', 'opencode.json');
 
-    process.env.OPENCODE_CONFIG = firstConfigPath;
+    process.env.MAGE_CONFIG = firstConfigPath;
     plugins.createPluginEntry({ spec: 'first-plugin', scope: 'user' }, projectDir);
     plugins.writePluginDirFile({ fileName: 'first.js', content: 'one', scope: 'user' }, projectDir);
 
-    process.env.OPENCODE_CONFIG = secondConfigPath;
+    process.env.MAGE_CONFIG = secondConfigPath;
     plugins.createPluginEntry({ spec: 'second-plugin', scope: 'user' }, projectDir);
     plugins.writePluginDirFile({ fileName: 'second.js', content: 'two', scope: 'user' }, projectDir);
 

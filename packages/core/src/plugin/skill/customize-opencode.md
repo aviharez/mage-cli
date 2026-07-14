@@ -16,21 +16,21 @@ is wrong. The shapes below cover the common surface area, but they are a
 The authoritative list of every config option — with field types, enums,
 defaults, and descriptions — lives in the published JSON Schema:
 
-**<https://opencode.ai/config.json>**
+**<https://mage.ai/config.json>**
 
 If a field is not documented in this skill, or you need to confirm an exact
 shape before writing config, **fetch that URL and read the schema directly**
 rather than guessing. opencode hard-fails on invalid config, so the cost of a
 wrong shape is a broken startup.
 
-Independently, every `opencode.json` should declare
-`"$schema": "https://opencode.ai/config.json"` so the user's editor catches
+Independently, every `mage.json` should declare
+`"$schema": "https://mage.ai/config.json"` so the user's editor catches
 mistakes as they type.
 
 ## Applying changes
 
 Config is loaded once when opencode starts and is not hot-reloaded. After
-saving changes to `opencode.json`, an agent file, a skill, a plugin, or any
+saving changes to `mage.json`, an agent file, a skill, a plugin, or any
 other config-time file, **tell the user to quit and restart opencode** for
 the changes to take effect. The running session will keep using the
 already-loaded config until then.
@@ -39,26 +39,26 @@ already-loaded config until then.
 
 | Scope                         | Path                                                                                                                      |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| Project config                | `./opencode.json`, `./opencode.jsonc`, or `.opencode/opencode.json` (opencode walks up from the cwd to the worktree root) |
-| Global config                 | `~/.config/opencode/opencode.json` (NOT `~/.opencode/`)                                                                   |
-| Project agents                | `.opencode/agent/<name>.md` or `.opencode/agents/<name>.md`                                                               |
-| Global agents                 | `~/.config/opencode/agent(s)/<name>.md`                                                                                   |
-| Project commands              | `.opencode/command/<name>.md` or `.opencode/commands/<name>.md`                                                           |
-| Global commands               | `~/.config/opencode/command(s)/<name>.md`                                                                                 |
-| Project skills                | `.opencode/skill(s)/<name>/SKILL.md`                                                                                      |
-| Global skills                 | `~/.config/opencode/skill(s)/<name>/SKILL.md`                                                                             |
+| Project config                | `./mage.json`, `./mage.jsonc`, or `.mage/mage.json` (opencode walks up from the cwd to the worktree root)                |
+| Global config                 | `~/.config/mage/mage.json` (NOT `~/.mage/`)                                                                               |
+| Project agents                | `.mage/agent/<name>.md` or `.mage/agents/<name>.md`                                                                       |
+| Global agents                 | `~/.config/mage/agent(s)/<name>.md`                                                                                       |
+| Project commands              | `.mage/command/<name>.md` or `.mage/commands/<name>.md`                                                                   |
+| Global commands               | `~/.config/mage/command(s)/<name>.md`                                                                                     |
+| Project skills                | `.mage/skill(s)/<name>/SKILL.md`                                                                                          |
+| Global skills                 | `~/.config/mage/skill(s)/<name>/SKILL.md`                                                                                 |
 | External skills (auto-loaded) | `~/.claude/skills/<name>/SKILL.md`, `~/.agents/skills/<name>/SKILL.md`                                                    |
 
 Configs from each scope are deep-merged. Project overrides global. Unknown
-top-level keys in `opencode.json` are rejected with `ConfigInvalidError`.
+top-level keys in `mage.json` are rejected with `ConfigInvalidError`.
 
-## opencode.json
+## mage.json
 
 Every field is optional.
 
 ```json
 {
-  "$schema": "https://opencode.ai/config.json",
+  "$schema": "https://mage.ai/config.json",
   "username": "string",
   "model": "provider/model-id",
   "small_model": "provider/model-id",
@@ -71,7 +71,7 @@ Every field is optional.
   "instructions": ["AGENTS.md", "docs/style.md"],
 
   "skills": {
-    "paths": [".opencode/skills", "/abs/path/to/skills"],
+    "paths": [".mage/skills", "/abs/path/to/skills"],
     "urls": ["https://example.com/.well-known/skills/"]
   },
 
@@ -165,7 +165,7 @@ file is named `SKILL.md` exactly, and lives in its own folder named after the
 skill:
 
 ```
-.opencode/skills/my-skill/SKILL.md
+.mage/skills/my-skill/SKILL.md
 ```
 
 Frontmatter:
@@ -225,7 +225,7 @@ Local `path` values may be relative to the declaring config, absolute, or use
 
 Two ways to define an agent. Use the file form for anything non-trivial.
 
-### Inline (in `opencode.json`)
+### Inline (in `mage.json`)
 
 ```json
 {
@@ -244,7 +244,7 @@ Two ways to define an agent. Use the file form for anything non-trivial.
 ### File
 
 ```
-.opencode/agent/my-reviewer.md      OR     .opencode/agents/my-reviewer.md
+.mage/agent/my-reviewer.md      OR     .mage/agents/my-reviewer.md
 ```
 
 ```markdown
@@ -286,7 +286,7 @@ opencode's command loader scans for `**/*.md` inside command directories. The
 file is named after the command, and lives directly inside the `command` folder:
 
 ```
-.opencode/command/deploy.md
+.mage/command/deploy.md
 ```
 
 Frontmatter:
@@ -320,7 +320,7 @@ model: anthropic/claude-sonnet-4-6
 ```
 
 Auto-discovered plugins (no config entry needed): any `*.ts` or `*.js` file in
-`.opencode/plugin/` or `.opencode/plugins/`.
+`.mage/plugin/` or `.mage/plugins/`.
 
 A plugin module exports `default` (or any named export) of type
 `Plugin = (input: PluginInput, options?) => Promise<Hooks>`. The export is a
@@ -423,28 +423,28 @@ the `plan` agent's permission ruleset (`edit: deny *`).
 
 ## Escape hatches
 
-When a user's config is broken and opencode won't start, these env vars help:
+When a user's config is broken and mage won't start, these env vars help:
 
-- `OPENCODE_DISABLE_PROJECT_CONFIG=1`: skip the project's local `opencode.json`
-  and start from globals only. Run from the project directory, opencode loads,
+- `MAGE_DISABLE_PROJECT_CONFIG=1`: skip the project's local `mage.json`
+  and start from globals only. Run from the project directory, mage loads,
   the user edits the broken file, then they restart without the flag.
-- `OPENCODE_CONFIG=/path/to/file.json`: load an additional explicit config.
-- `OPENCODE_CONFIG_CONTENT='{"$schema":"https://opencode.ai/config.json"}'`:
+- `MAGE_CONFIG=/path/to/file.json`: load an additional explicit config.
+- `MAGE_CONFIG_CONTENT='{"$schema":"https://mage.ai/config.json"}'`:
   inject inline JSON as a final local-scope merge.
-- `OPENCODE_DISABLE_DEFAULT_PLUGINS=1`: skip default plugins.
-- `OPENCODE_PURE=1`: skip external plugins entirely.
-- `OPENCODE_DISABLE_EXTERNAL_SKILLS=1`,
-  `OPENCODE_DISABLE_CLAUDE_CODE_SKILLS=1`: skip the external skill scans under
+- `MAGE_DISABLE_DEFAULT_PLUGINS=1`: skip default plugins.
+- `MAGE_PURE=1`: skip external plugins entirely.
+- `MAGE_DISABLE_EXTERNAL_SKILLS=1`,
+  `MAGE_DISABLE_CLAUDE_CODE_SKILLS=1`: skip the external skill scans under
   `~/.claude/` and `~/.agents/`.
 
 ## When proposing edits
 
 - Validate against the schema before writing. If you are unsure of a field's
   exact shape, or the field is not covered in this skill, fetch
-  `https://opencode.ai/config.json` and read the schema rather than guessing.
+  `https://mage.ai/config.json` and read the schema rather than guessing.
 - Preserve `$schema` and any existing fields the user did not ask to change.
 - For agent, command, skill, and plugin definitions, prefer creating new files
-  in the correct location over inlining everything in `opencode.json`.
+  in the correct location over inlining everything in `mage.json`.
 - If the user's existing config is malformed, point them at the env-var escape
   hatches above so they can edit from inside opencode without breaking their
   session.

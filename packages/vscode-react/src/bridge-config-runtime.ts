@@ -164,7 +164,7 @@ export async function handleConfigBridgeMessage(
       const source = (() => {
         if (!resolved) return null;
         if (configured && configured === resolved) return 'settings';
-        const envBinary = typeof process.env.OPENCODE_BINARY === 'string' ? process.env.OPENCODE_BINARY.trim() : '';
+        const envBinary = typeof process.env.MAGE_BINARY === 'string' ? process.env.MAGE_BINARY.trim() : '';
         if (envBinary && envBinary === resolved) return 'env';
         return 'path';
       })();

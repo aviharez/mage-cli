@@ -37,7 +37,6 @@ import { StatusRow } from './StatusRow';
 import { PendingChangesBar } from './PendingChangesBar';
 import { useChatSurfaceMode } from './useChatSurfaceMode';
 import { MobileAgentButton } from './MobileAgentButton';
-import { MobileModelButton } from './MobileModelButton';
 import { MobileSessionStatusBar, MobileSessionPanelTrigger } from './MobileSessionStatusBar';
 import { useCurrentSessionActivity } from '@/hooks/useSessionActivity';
 import { toast } from '@/components/ui';
@@ -391,7 +390,6 @@ const getProjectIconColor = (projectColor?: string | null): string | undefined =
 const MemoModelControls = React.memo(ModelControls);
 const MemoComposerDictation = React.memo(ComposerDictation);
 const MemoMobileAgentButton = React.memo(MobileAgentButton);
-const MemoMobileModelButton = React.memo(MobileModelButton);
 const MemoStatusRow = React.memo(StatusRow);
 
 type RevertedMessageDockProps = {
@@ -1711,18 +1709,6 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({ onOpenSettings, scrollTo
         const run = state.runsByOriginalSessionID[currentSessionId];
         return run?.status === 'running' && run.runtimeKey === getRuntimeKey();
     }, [currentSessionId]));
-
-    const handleOpenMobilePanel = React.useCallback((panel: MobileControlsPanel) => {
-        if (!isMobile) {
-            return;
-        }
-        // Set the panel state BEFORE blurring: the collapse watcher and the
-        // overlay-host observer must already see the overlay as open when the
-        // keyboard-close lands, otherwise the composer folds into the pill
-        // under the sheet.
-        setMobileControlsPanel(panel);
-        textareaRef.current?.blur();
-    }, [isMobile]);
 
     // Consume pending input text (e.g., from revert action)
     React.useEffect(() => {
@@ -5161,7 +5147,6 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({ onOpenSettings, scrollTo
                         {mobileComposerHandle}
                         {isMobile ? (
                             <div className="scrollbar-none relative z-10 flex items-center gap-x-2 overflow-x-auto px-3 pb-0.5 pt-1.5">
-                                <MemoMobileModelButton onOpenModel={() => handleOpenMobilePanel('model')} className="flex-shrink-0" />
                                 <MemoMobileAgentButton
                                     onOpenAgentPanel={handleOpenAgentPanel}
                                     onCycleAgent={handleCycleAgent}

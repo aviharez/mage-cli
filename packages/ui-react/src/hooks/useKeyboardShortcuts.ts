@@ -33,7 +33,6 @@ export const useKeyboardShortcuts = () => {
   const setSessionSwitcherOpen = useUIStore((s) => s.setSessionSwitcherOpen);
   const setActiveMainTab = useUIStore((s) => s.setActiveMainTab);
   const setSettingsDialogOpen = useUIStore((s) => s.setSettingsDialogOpen);
-  const setModelSelectorOpen = useUIStore((s) => s.setModelSelectorOpen);
   const setTimelineDialogOpen = useUIStore((s) => s.setTimelineDialogOpen);
   const toggleExpandedInput = useUIStore((s) => s.toggleExpandedInput);
   const shortcutOverrides = useUIStore((s) => s.shortcutOverrides);
@@ -348,123 +347,6 @@ export const useKeyboardShortcuts = () => {
         return;
       }
 
-      // Cmd/Ctrl+Shift+M: Open model selector (same conditions as double-ESC: chat tab, no overlays)
-      if (eventMatchesShortcut(e, combo('open_model_selector'))) {
-        const {
-          isSettingsDialogOpen,
-          isCommandPaletteOpen,
-          isHelpDialogOpen,
-          isSessionSwitcherOpen,
-          isAboutDialogOpen,
-          activeMainTab,
-          isModelSelectorOpen,
-        } = useUIStore.getState();
-
-        // Skip if settings open
-        if (isSettingsDialogOpen) {
-          return;
-        }
-
-        // Skip if any overlay open or not on chat tab
-        const hasOverlay = isCommandPaletteOpen || isHelpDialogOpen || isSessionSwitcherOpen || isAboutDialogOpen;
-        const isChatActive = activeMainTab === 'chat';
-
-        if (hasOverlay || !isChatActive) {
-          return;
-        }
-
-        e.preventDefault();
-        setModelSelectorOpen(!isModelSelectorOpen);
-        return;
-      }
-
-      // Cmd/Ctrl+Shift+T: Cycle thinking variant (same gating as Shift+M)
-      if (eventMatchesShortcut(e, combo('cycle_thinking_variant'))) {
-        const {
-          isSettingsDialogOpen,
-          isCommandPaletteOpen,
-          isHelpDialogOpen,
-          isSessionSwitcherOpen,
-          isAboutDialogOpen,
-          activeMainTab,
-        } = useUIStore.getState();
-
-        if (isSettingsDialogOpen) {
-          return;
-        }
-
-        const hasOverlay = isCommandPaletteOpen || isHelpDialogOpen || isSessionSwitcherOpen || isAboutDialogOpen;
-        const isChatActive = activeMainTab === 'chat';
-
-        if (hasOverlay || !isChatActive) {
-          return;
-        }
-
-        const configState = useConfigStore.getState();
-        const variants = configState.getCurrentModelVariants();
-        if (variants.length === 0) {
-          return;
-        }
-
-        e.preventDefault();
-        configState.cycleCurrentVariant();
-
-        const nextVariant = useConfigStore.getState().currentVariant;
-        const sessionId = useSessionUIStore.getState().currentSessionId;
-        const agentName = useConfigStore.getState().currentAgentName;
-        const providerId = useConfigStore.getState().currentProviderId;
-        const modelId = useConfigStore.getState().currentModelId;
-
-        if (sessionId && agentName && providerId && modelId) {
-          useSelectionStore.getState().saveAgentModelVariantForSession(sessionId, agentName, providerId, modelId, nextVariant);
-        }
-
-        return;
-      }
-
-      // Ctrl+] / Ctrl+[: Cycle through starred models (same gating as Shift+M)
-      if (
-        eventMatchesShortcut(e, combo('cycle_favorite_model_forward')) ||
-        eventMatchesShortcut(e, combo('cycle_favorite_model_backward'))
-      ) {
-        const {
-          isSettingsDialogOpen,
-          isCommandPaletteOpen,
-          isHelpDialogOpen,
-          isSessionSwitcherOpen,
-          isAboutDialogOpen,
-          activeMainTab,
-          favoriteModels,
-          addRecentModel,
-        } = useUIStore.getState();
-
-        if (isSettingsDialogOpen) {
-          return;
-        }
-
-        const hasOverlay = isCommandPaletteOpen || isHelpDialogOpen || isSessionSwitcherOpen || isAboutDialogOpen;
-        const isChatActive = activeMainTab === 'chat';
-
-        if (hasOverlay || !isChatActive || favoriteModels.length === 0) {
-          return;
-        }
-
-        e.preventDefault();
-
-        const { currentProviderId, currentModelId, setProvider, setModel } = useConfigStore.getState();
-        const len = favoriteModels.length;
-        const currentIdx = favoriteModels.findIndex(
-          (f) => f.providerID === currentProviderId && f.modelID === currentModelId,
-        );
-        const delta = eventMatchesShortcut(e, combo('cycle_favorite_model_forward')) ? 1 : -1;
-        const next = favoriteModels[(currentIdx + delta + len) % len];
-
-        setProvider(next.providerID);
-        setModel(next.modelID);
-        addRecentModel(next.providerID, next.modelID);
-        return;
-      }
-
       if (eventMatchesShortcut(e, combo('expand_input'))) {
         if (isMobile) {
           return;
@@ -592,7 +474,6 @@ export const useKeyboardShortcuts = () => {
     setSessionSwitcherOpen,
     setActiveMainTab,
     setSettingsDialogOpen,
-    setModelSelectorOpen,
     setTimelineDialogOpen,
     toggleExpandedInput,
     setThemeMode,

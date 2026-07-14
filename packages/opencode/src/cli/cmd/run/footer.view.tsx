@@ -15,7 +15,6 @@ import { createColors, createFrames } from "@mybcabisnis/mage-tui/ui/spinner"
 import {
   RUN_SUBAGENT_PANEL_ROWS,
   RunCommandMenuBody,
-  RunModelSelectBody,
   RunQueuedPromptSelectBody,
   RunSkillSelectBody,
   RunSubagentSelectBody,
@@ -28,7 +27,7 @@ import { RunPermissionBody } from "./footer.permission"
 import { RunQuestionBody } from "./footer.question"
 import { footerWidthPolicy } from "./footer.width"
 import {
-  OPENCODE_BASE_MODE,
+  MAGE_BASE_MODE,
   formatKeyBindings,
   formatKeySequence,
   useBindings,
@@ -104,7 +103,6 @@ type RunFooterViewProps = {
   onExitRequest?: () => boolean
   onRequestExit?: (fn: (() => boolean) | undefined) => void
   onExit: () => void
-  onModelSelect: (model: NonNullable<RunInput["model"]>) => void
   onVariantSelect: (variant: string | undefined) => void
   onRows: (rows: number) => void
   onLayout: (input: { route: FooterPromptRoute; autocomplete: boolean; subagentRows: number }) => void
@@ -140,7 +138,6 @@ export function RunFooterView(props: RunFooterViewProps) {
   const inspecting = createMemo(() => active().type === "prompt" && route().type === "subagent")
   const commanding = createMemo(() => active().type === "prompt" && route().type === "command")
   const skilling = createMemo(() => active().type === "prompt" && route().type === "skill")
-  const modeling = createMemo(() => active().type === "prompt" && route().type === "model")
   const varianting = createMemo(() => active().type === "prompt" && route().type === "variant")
   const panel = createMemo(
     () =>
@@ -150,7 +147,6 @@ export function RunFooterView(props: RunFooterViewProps) {
       selectingSubagent() ||
       commanding() ||
       skilling() ||
-      modeling() ||
       varianting(),
   )
   const selected = createMemo(() => {
@@ -289,11 +285,6 @@ export function RunFooterView(props: RunFooterViewProps) {
 
   const openCommand = () => {
     setRoute({ type: "command" })
-    props.onSubagentSelect?.(undefined)
-  }
-
-  const openModel = () => {
-    setRoute({ type: "model" })
     props.onSubagentSelect?.(undefined)
   }
 
@@ -498,7 +489,7 @@ export function RunFooterView(props: RunFooterViewProps) {
   })
 
   useBindings(() => ({
-    mode: OPENCODE_BASE_MODE,
+    mode: MAGE_BASE_MODE,
     enabled: active().type === "prompt" && route().type === "composer" && !composer.visible(),
     commands: [
       {
@@ -521,7 +512,7 @@ export function RunFooterView(props: RunFooterViewProps) {
   }))
 
   useBindings(() => ({
-    mode: OPENCODE_BASE_MODE,
+    mode: MAGE_BASE_MODE,
     enabled: active().type === "prompt" && route().type === "composer" && foregroundSubagents(),
     priority: 1,
     commands: [
@@ -536,7 +527,7 @@ export function RunFooterView(props: RunFooterViewProps) {
   }))
 
   useBindings(() => ({
-    mode: OPENCODE_BASE_MODE,
+    mode: MAGE_BASE_MODE,
     enabled: active().type === "prompt" && route().type === "composer" && tabs().length > 0,
     commands: [
       {
@@ -550,7 +541,7 @@ export function RunFooterView(props: RunFooterViewProps) {
   }))
 
   useBindings(() => ({
-    mode: OPENCODE_BASE_MODE,
+    mode: MAGE_BASE_MODE,
     enabled: active().type === "prompt" && route().type === "composer" && queuedPrompts().length > 0,
     commands: [
       {
@@ -602,7 +593,6 @@ export function RunFooterView(props: RunFooterViewProps) {
     if (
       current.type !== "command" &&
       current.type !== "skill" &&
-      current.type !== "model" &&
       current.type !== "variant" &&
       current.type !== "queued-menu" &&
       current.type !== "subagent-menu"
@@ -711,7 +701,6 @@ export function RunFooterView(props: RunFooterViewProps) {
                             variants={props.variants}
                             variantCycle={variantCycle()}
                             onClose={closePanel}
-                            onModel={openModel}
                             onEditor={() => {
                               closePanel()
                               void composer.openEditor()
@@ -749,18 +738,6 @@ export function RunFooterView(props: RunFooterViewProps) {
                                   arguments: "",
                                 },
                               })
-                              closePanel()
-                            }}
-                          />
-                        </Match>
-                        <Match when={modeling()}>
-                          <RunModelSelectBody
-                            theme={theme}
-                            providers={props.providers}
-                            current={props.currentModel}
-                            onClose={closePanel}
-                            onSelect={(model) => {
-                              props.onModelSelect(model)
                               closePanel()
                             }}
                           />

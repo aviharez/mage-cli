@@ -71,8 +71,8 @@ export const WebCommand = effectCmd({
   instance: false,
   handler: Effect.fn("Cli.web")(function* (args) {
     const { Server } = yield* Effect.promise(() => import("../../server/server"))
-    if (!Flag.OPENCODE_SERVER_PASSWORD) {
-      UI.println(UI.Style.TEXT_WARNING_BOLD + "!  OPENCODE_SERVER_PASSWORD is not set; server is unsecured.")
+    if (!Flag.MAGE_SERVER_PASSWORD) {
+      UI.println(UI.Style.TEXT_WARNING_BOLD + "!  MAGE_SERVER_PASSWORD is not set; server is unsecured.")
     }
     const opts = yield* resolveNetworkOptions(args)
     const server = yield* Effect.promise(() => Server.listen(opts))
@@ -97,9 +97,9 @@ export const WebCommand = effectCmd({
     Bun.spawn(["bun", webUiServerEntry!, "--port", String(WEB_UI_PORT)], {
       env: {
         ...process.env,
-        OPENCODE_SKIP_START: "true",
-        OPENCODE_HOST: `http://${webUiHostname}:${server.port}`,
-        OPENCODE_PORT: String(server.port),
+        MAGE_SKIP_START: "true",
+        MAGE_HOST: `http://${webUiHostname}:${server.port}`,
+        MAGE_PORT: String(server.port),
       },
       stdout: "inherit",
       stderr: "inherit",

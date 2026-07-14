@@ -3,9 +3,9 @@ import path from 'path';
 import os from 'os';
 import yaml from 'yaml';
 
-const OPENCODE_CONFIG_DIR = path.join(os.homedir(), '.config', 'opencode');
-const GLOBAL_SNIPPET_DIR = path.join(OPENCODE_CONFIG_DIR, 'snippet');
-const GLOBAL_SNIPPET_DIR_ALT = path.join(OPENCODE_CONFIG_DIR, 'snippets');
+const MAGE_CONFIG_DIR = path.join(os.homedir(), '.config', 'opencode');
+const GLOBAL_SNIPPET_DIR = path.join(MAGE_CONFIG_DIR, 'snippet');
+const GLOBAL_SNIPPET_DIR_ALT = path.join(MAGE_CONFIG_DIR, 'snippets');
 const SNIPPET_EXTENSION = '.md';
 const SNIPPET_NAME_PATTERN = /^[a-z0-9][a-z0-9_-]{0,79}$/i;
 const HASHTAG_PATTERN = /#([a-z0-9_-]+)/gi;

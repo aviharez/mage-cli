@@ -7,8 +7,8 @@ export const createHmrStateRuntime = (dependencies) => {
   } = dependencies;
 
   const getInitialOpenCodeWorkingDirectory = () => {
-    const configured = typeof processLike.env.OPENCHAMBER_OPENCODE_CWD === 'string'
-      ? processLike.env.OPENCHAMBER_OPENCODE_CWD.trim()
+    const configured = typeof processLike.env.OPENCHAMBER_MAGE_CWD === 'string'
+      ? processLike.env.OPENCHAMBER_MAGE_CWD.trim()
       : '';
     return configured || os.homedir();
   };
@@ -33,8 +33,8 @@ export const createHmrStateRuntime = (dependencies) => {
     if (typeof hmrState.userProvidedOpenCodePassword !== 'undefined') {
       return;
     }
-    const initialPassword = typeof processLike.env.OPENCODE_SERVER_PASSWORD === 'string'
-      ? processLike.env.OPENCODE_SERVER_PASSWORD.trim()
+    const initialPassword = typeof processLike.env.MAGE_SERVER_PASSWORD === 'string'
+      ? processLike.env.MAGE_SERVER_PASSWORD.trim()
       : '';
     hmrState.userProvidedOpenCodePassword = initialPassword || null;
   };

@@ -2511,7 +2511,7 @@ export const dict: Record<I18nKey, string> = {
   "onboarding.localSetup.windows.hintInstallInWsl": "En Windows, instala y ejecuta OpenCode de forma nativa.",
   "onboarding.localSetup.windows.hintDetectionFailed": "Si la detección falla, establece una ruta nativa como opencode.cmd u opencode.exe.",
   "onboarding.localSetup.hint.ensurePath": "¿Ya está instalado? Asegúrate de que opencode esté en tu PATH.",
-  "onboarding.localSetup.hint.setEnv": "O establece la variable de entorno OPENCODE_BINARY.",
+  "onboarding.localSetup.hint.setEnv": "O establece la variable de entorno MAGE_BINARY.",
   "onboarding.localSetup.hint.missingRuntime": "Si ves \"env: node: No such file or directory\" o \"env: bun: No such file or directory\", instala ese runtime o asegúrate de que esté en PATH.",
   "onboarding.remoteConnection.title": "Conectar a servidor remoto",
   "onboarding.remoteConnection.titleRecovery": "Conectar a un servidor diferente",

@@ -139,15 +139,15 @@ function getPreferredServerRuntime() {
 }
 
 async function checkOpenCodeCLI(onNotice) {
-  if (process.env.OPENCODE_BINARY) {
-    const override = resolveExplicitBinary(process.env.OPENCODE_BINARY);
+  if (process.env.MAGE_BINARY) {
+    const override = resolveExplicitBinary(process.env.MAGE_BINARY);
     if (override) {
-      process.env.OPENCODE_BINARY = override;
+      process.env.MAGE_BINARY = override;
       return override;
     }
-    const message = `OPENCODE_BINARY="${process.env.OPENCODE_BINARY}" is not an executable file. Falling back to PATH lookup.`;
+    const message = `MAGE_BINARY="${process.env.MAGE_BINARY}" is not an executable file. Falling back to PATH lookup.`;
     if (typeof onNotice === 'function') {
-      onNotice({ level: 'warning', code: 'OPENCODE_BINARY_INVALID', message });
+      onNotice({ level: 'warning', code: 'MAGE_BINARY_INVALID', message });
     } else {
       console.warn(`Warning: ${message}`);
     }
@@ -155,13 +155,13 @@ async function checkOpenCodeCLI(onNotice) {
 
   const resolvedFromPath = searchPathFor('opencode');
   if (resolvedFromPath) {
-    process.env.OPENCODE_BINARY = resolvedFromPath;
+    process.env.MAGE_BINARY = resolvedFromPath;
     return resolvedFromPath;
   }
 
   throw new Error(
     `Unable to locate the opencode CLI on PATH (${process.env.PATH || '<empty>'}). ` +
-    'Ensure the CLI is installed and reachable, or set OPENCODE_BINARY to its full path.'
+    'Ensure the CLI is installed and reachable, or set MAGE_BINARY to its full path.'
   );
 }
 

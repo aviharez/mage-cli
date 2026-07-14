@@ -667,7 +667,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
         }
         if (errorName === 'SessionRetry') {
             return {
-                text: `Opencode failed to send a message. Retry attempt info: \n\`${detail}\``,
+                text: `Mage failed to send a message. Retry attempt info: \n\`${detail}\``,
                 variant: 'info' as const,
             };
         }
@@ -684,7 +684,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
             };
         }
         return {
-            text: `Opencode failed to send message with error:\n\`${detail}\``,
+            text: `Mage failed to send message with error:\n\`${detail}\``,
             variant: 'error' as const,
         };
     }, [isUser, message.info]);

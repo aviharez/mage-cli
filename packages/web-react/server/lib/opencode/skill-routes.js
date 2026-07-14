@@ -105,7 +105,7 @@ export const registerSkillRoutes = (app, dependencies) => {
       path.join(home, '.opencode'),
       path.join(home, '.claude', 'skills'),
       path.join(home, '.agents', 'skills'),
-      process.env.OPENCODE_CONFIG_DIR ? path.resolve(process.env.OPENCODE_CONFIG_DIR) : null,
+      process.env.MAGE_CONFIG_DIR ? path.resolve(process.env.MAGE_CONFIG_DIR) : null,
     ].filter(Boolean);
 
     if (userRoots.some((root) => isPathInside(resolvedPath, root))) {

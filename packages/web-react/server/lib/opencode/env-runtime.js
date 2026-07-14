@@ -278,7 +278,7 @@ export const createOpenCodeEnvRuntime = (deps) => {
   const bundledOpenCodeCliCandidates = () => {
     const names = process.platform === 'win32' ? ['opencode.exe'] : ['opencode'];
     const roots = [
-      process.env.OPENCHAMBER_BUNDLED_OPENCODE_CLI_DIR,
+      process.env.OPENCHAMBER_BUNDLED_MAGE_CLI_DIR,
       typeof process.resourcesPath === 'string' ? path.join(process.resourcesPath, 'opencode-cli') : null,
     ]
       .map((value) => (typeof value === 'string' ? value.trim() : ''))
@@ -332,10 +332,10 @@ export const createOpenCodeEnvRuntime = (deps) => {
 
   const resolveOpencodeCliPath = () => {
     const explicit = [
-      process.env.OPENCODE_BINARY,
-      process.env.OPENCODE_PATH,
-      process.env.OPENCHAMBER_OPENCODE_PATH,
-      process.env.OPENCHAMBER_OPENCODE_BIN,
+      process.env.MAGE_BINARY,
+      process.env.MAGE_PATH,
+      process.env.OPENCHAMBER_MAGE_PATH,
+      process.env.OPENCHAMBER_MAGE_BIN,
     ]
       .map(stripWrappingQuotes)
       .filter(Boolean);
@@ -940,7 +940,7 @@ export const createOpenCodeEnvRuntime = (deps) => {
         return new Error(`Configured OpenCode binary not found: ${candidate}. ${messageSuffix}`);
       }
     })();
-    error.code = 'OPENCODE_BINARY_INVALID';
+    error.code = 'MAGE_BINARY_INVALID';
     return error;
   };
 
@@ -983,7 +983,7 @@ export const createOpenCodeEnvRuntime = (deps) => {
       const normalized = normalizeOpencodeBinarySetting(settings.opencodeBinary);
 
       if (normalized === '') {
-        delete process.env.OPENCODE_BINARY;
+        delete process.env.MAGE_BINARY;
         state.resolvedOpencodeBinary = null;
         state.resolvedOpencodeBinarySource = null;
         clearWslOpencodeResolution();
@@ -1015,7 +1015,7 @@ export const createOpenCodeEnvRuntime = (deps) => {
 
       if (normalized && isExecutable(normalized) && !isKnownOpenCodeDesktopAppPath(normalized)) {
         clearWslOpencodeResolution();
-        process.env.OPENCODE_BINARY = normalized;
+        process.env.MAGE_BINARY = normalized;
         prependToPath(path.dirname(normalized));
         state.resolvedOpencodeBinary = normalized;
         state.resolvedOpencodeBinarySource = 'settings';
@@ -1047,7 +1047,7 @@ export const createOpenCodeEnvRuntime = (deps) => {
       return state.resolvedOpencodeBinary;
     }
 
-    const existing = typeof process.env.OPENCODE_BINARY === 'string' ? process.env.OPENCODE_BINARY.trim() : '';
+    const existing = typeof process.env.MAGE_BINARY === 'string' ? process.env.MAGE_BINARY.trim() : '';
     if (existing && isExecutable(existing)) {
       clearWslOpencodeResolution();
       state.resolvedOpencodeBinary = existing;
@@ -1066,7 +1066,7 @@ export const createOpenCodeEnvRuntime = (deps) => {
         return resolved;
       }
 
-      process.env.OPENCODE_BINARY = resolved;
+      process.env.MAGE_BINARY = resolved;
       prependToPath(path.dirname(resolved));
       ensureOpencodeShimRuntime(resolved);
       state.resolvedOpencodeBinary = resolved;

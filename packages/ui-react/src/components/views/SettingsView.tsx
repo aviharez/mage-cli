@@ -97,7 +97,6 @@ const pageOrder: SettingsPageSlug[] = [
   'commands',
   'mcp',
   'plugins',
-  'providers',
   'usage',
   'skills.installed',
   'skills.catalog',

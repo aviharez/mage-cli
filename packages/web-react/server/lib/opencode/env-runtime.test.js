@@ -4,12 +4,12 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createOpenCodeEnvRuntime } from './env-runtime.js';
 
-const originalOpencodeBinary = process.env.OPENCODE_BINARY;
+const originalOpencodeBinary = process.env.MAGE_BINARY;
 const originalComSpec = process.env.ComSpec;
 const originalPath = process.env.PATH;
 const originalLocalAppData = process.env.LOCALAPPDATA;
 const originalSystemRoot = process.env.SystemRoot;
-const originalBundledOpencodeCliDir = process.env.OPENCHAMBER_BUNDLED_OPENCODE_CLI_DIR;
+const originalBundledOpencodeCliDir = process.env.OPENCHAMBER_BUNDLED_MAGE_CLI_DIR;
 const originalResourcesPath = process.resourcesPath;
 const originalWslBinary = process.env.WSL_BINARY;
 const originalOpenChamberWslBinary = process.env.OPENCHAMBER_WSL_BINARY;
@@ -39,9 +39,9 @@ afterEach(() => {
   }
 
   if (typeof originalOpencodeBinary === 'string') {
-    process.env.OPENCODE_BINARY = originalOpencodeBinary;
+    process.env.MAGE_BINARY = originalOpencodeBinary;
   } else {
-    delete process.env.OPENCODE_BINARY;
+    delete process.env.MAGE_BINARY;
   }
 
   if (typeof originalComSpec === 'string') {
@@ -69,9 +69,9 @@ afterEach(() => {
   }
 
   if (typeof originalBundledOpencodeCliDir === 'string') {
-    process.env.OPENCHAMBER_BUNDLED_OPENCODE_CLI_DIR = originalBundledOpencodeCliDir;
+    process.env.OPENCHAMBER_BUNDLED_MAGE_CLI_DIR = originalBundledOpencodeCliDir;
   } else {
-    delete process.env.OPENCHAMBER_BUNDLED_OPENCODE_CLI_DIR;
+    delete process.env.OPENCHAMBER_BUNDLED_MAGE_CLI_DIR;
   }
 
   Object.defineProperty(process, 'resourcesPath', {
@@ -122,7 +122,7 @@ describe('OpenCode env runtime', () => {
     const { runtime } = createRuntime({ opencodeBinary: '/missing/opencode' });
 
     await expect(runtime.applyOpencodeBinaryFromSettings({ strict: true })).rejects.toMatchObject({
-      code: 'OPENCODE_BINARY_INVALID',
+      code: 'MAGE_BINARY_INVALID',
       message: expect.stringContaining('Configured OpenCode binary not found: /missing/opencode'),
     });
   });
@@ -132,7 +132,7 @@ describe('OpenCode env runtime', () => {
     const { runtime } = createRuntime({ opencodeBinary: dir });
 
     await expect(runtime.applyOpencodeBinaryFromSettings({ strict: true })).rejects.toMatchObject({
-      code: 'OPENCODE_BINARY_INVALID',
+      code: 'MAGE_BINARY_INVALID',
       message: expect.stringContaining('Configured OpenCode binary directory does not contain an executable'),
     });
   });
@@ -145,7 +145,7 @@ describe('OpenCode env runtime', () => {
     const { runtime, state } = createRuntime({ opencodeBinary: binary });
 
     await expect(runtime.applyOpencodeBinaryFromSettings({ strict: true })).resolves.toBe(binary);
-    expect(process.env.OPENCODE_BINARY).toBe(binary);
+    expect(process.env.MAGE_BINARY).toBe(binary);
     expect(state.resolvedOpencodeBinary).toBe(binary);
     expect(state.resolvedOpencodeBinarySource).toBe('settings');
   });
@@ -161,9 +161,9 @@ describe('OpenCode env runtime', () => {
       fs.chmodSync(bundledBinary, 0o755);
       fs.chmodSync(pathBinary, 0o755);
     }
-    process.env.OPENCHAMBER_BUNDLED_OPENCODE_CLI_DIR = bundledDir;
+    process.env.OPENCHAMBER_BUNDLED_MAGE_CLI_DIR = bundledDir;
     process.env.PATH = pathDir;
-    delete process.env.OPENCODE_BINARY;
+    delete process.env.MAGE_BINARY;
     const { runtime, state } = createRuntime({});
 
     expect(runtime.resolveOpencodeCliPath()).toBe(pathBinary);
@@ -181,8 +181,8 @@ describe('OpenCode env runtime', () => {
       fs.chmodSync(bundledBinary, 0o755);
       fs.chmodSync(explicitBinary, 0o755);
     }
-    process.env.OPENCHAMBER_BUNDLED_OPENCODE_CLI_DIR = bundledDir;
-    process.env.OPENCODE_BINARY = explicitBinary;
+    process.env.OPENCHAMBER_BUNDLED_MAGE_CLI_DIR = bundledDir;
+    process.env.MAGE_BINARY = explicitBinary;
     const { runtime, state } = createRuntime({});
 
     expect(runtime.resolveOpencodeCliPath()).toBe(explicitBinary);
@@ -203,8 +203,8 @@ describe('OpenCode env runtime', () => {
       value: resourcesPath,
     });
     process.env.PATH = createTempDir('openchamber-empty-path-');
-    delete process.env.OPENCHAMBER_BUNDLED_OPENCODE_CLI_DIR;
-    delete process.env.OPENCODE_BINARY;
+    delete process.env.OPENCHAMBER_BUNDLED_MAGE_CLI_DIR;
+    delete process.env.MAGE_BINARY;
     // The bundled CLI is the LAST resort now — hide the machine's own installs
     // from the home-directory fallbacks and shell discovery.
     const emptyHome = createTempDir('openchamber-empty-home-');
@@ -221,7 +221,7 @@ describe('OpenCode env runtime', () => {
     const { runtime } = createRuntime({ opencodeBinary: '/Applications/OpenCode.app/Contents/MacOS/OpenCode' });
 
     await expect(runtime.applyOpencodeBinaryFromSettings({ strict: true })).rejects.toMatchObject({
-      code: 'OPENCODE_BINARY_INVALID',
+      code: 'MAGE_BINARY_INVALID',
       message: expect.stringContaining('macOS desktop app bundle'),
     });
   });
@@ -236,7 +236,7 @@ describe('OpenCode env runtime', () => {
     const { runtime } = createRuntime({ opencodeBinary: desktopBinary });
 
     await expect(runtime.applyOpencodeBinaryFromSettings({ strict: true })).rejects.toMatchObject({
-      code: 'OPENCODE_BINARY_INVALID',
+      code: 'MAGE_BINARY_INVALID',
       message: expect.stringContaining('Windows desktop app install'),
     });
   });
@@ -250,7 +250,7 @@ describe('OpenCode env runtime', () => {
     process.env.LOCALAPPDATA = localAppData;
     process.env.PATH = createTempDir('openchamber-empty-path-');
     process.env.SystemRoot = createTempDir('openchamber-empty-systemroot-');
-    delete process.env.OPENCODE_BINARY;
+    delete process.env.MAGE_BINARY;
     const { runtime } = createRuntime({}, {
       spawnSync: () => ({ status: 1, stdout: '', stderr: '' }),
     });
@@ -269,7 +269,7 @@ describe('OpenCode env runtime', () => {
     process.env.LOCALAPPDATA = localAppData;
     process.env.PATH = createTempDir('openchamber-empty-path-');
     process.env.SystemRoot = createTempDir('openchamber-empty-systemroot-');
-    delete process.env.OPENCODE_BINARY;
+    delete process.env.MAGE_BINARY;
     const { runtime, state } = createRuntime({}, {
       spawnSync: () => ({ status: 0, stdout: `${desktopBinary}\r\n${cliBinary}\r\n`, stderr: '' }),
     });
@@ -300,7 +300,7 @@ describe('OpenCode env runtime', () => {
     process.env.PATH = dir;
     process.env.SystemRoot = dir;
     process.env.WSL_BINARY = wslBinary;
-    delete process.env.OPENCODE_BINARY;
+    delete process.env.MAGE_BINARY;
 
     const calls = [];
     const spawnSyncMock = (command, args) => {

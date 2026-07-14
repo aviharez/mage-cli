@@ -5,7 +5,6 @@ import * as Observability from "@mybcabisnis/mage-core/observability"
 import { FSUtil } from "@mybcabisnis/mage-core/fs-util"
 import { Database } from "@mybcabisnis/mage-core/database/database"
 import { Auth } from "@/auth"
-import { Account } from "@/account/account"
 import { Config } from "@/config/config"
 import { Git } from "@/git"
 import { Ripgrep } from "@mybcabisnis/mage-core/ripgrep"
@@ -61,7 +60,6 @@ export const AppLayer = AppNodeBuilderV1.build(
     FSUtil.node,
     Database.node,
     Auth.node,
-    Account.node,
     Config.node,
     Git.node,
     Storage.node,

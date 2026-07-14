@@ -122,14 +122,14 @@ export type ProviderResult = {
   error?: string;
 };
 
-const OPENCODE_CONFIG_DIR = path.join(os.homedir(), '.config', 'opencode');
-const OPENCODE_DATA_DIR = path.join(os.homedir(), '.local', 'share', 'opencode');
-const AUTH_FILE = path.join(OPENCODE_DATA_DIR, 'auth.json');
+const MAGE_CONFIG_DIR = path.join(os.homedir(), '.config', 'opencode');
+const MAGE_DATA_DIR = path.join(os.homedir(), '.local', 'share', 'opencode');
+const AUTH_FILE = path.join(MAGE_DATA_DIR, 'auth.json');
 
 
 const ANTIGRAVITY_ACCOUNTS_PATHS = [
-  path.join(OPENCODE_CONFIG_DIR, 'antigravity-accounts.json'),
-  path.join(OPENCODE_DATA_DIR, 'antigravity-accounts.json'),
+  path.join(MAGE_CONFIG_DIR, 'antigravity-accounts.json'),
+  path.join(MAGE_DATA_DIR, 'antigravity-accounts.json'),
 ];
 
 // OAuth Secret value used to init client

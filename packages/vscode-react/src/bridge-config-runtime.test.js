@@ -13,7 +13,7 @@ mock.module('vscode', () => ({
 const { handleConfigBridgeMessage } = await import('./bridge-config-runtime.ts');
 
 const tempRoots = [];
-const originalOpencodeConfig = process.env.OPENCODE_CONFIG;
+const originalOpencodeConfig = process.env.MAGE_CONFIG;
 
 const createCtx = (workingDirectory, restartImpl = async () => undefined) => {
   const restart = mock(restartImpl);
@@ -39,9 +39,9 @@ const deps = {
 
 afterEach(() => {
   if (originalOpencodeConfig === undefined) {
-    delete process.env.OPENCODE_CONFIG;
+    delete process.env.MAGE_CONFIG;
   } else {
-    process.env.OPENCODE_CONFIG = originalOpencodeConfig;
+    process.env.MAGE_CONFIG = originalOpencodeConfig;
   }
 
   for (const root of tempRoots.splice(0)) {
@@ -178,14 +178,14 @@ describe('VS Code config bridge plugin parity', () => {
     expect(read?.data).toEqual({ fileName: 'demo-plugin.ts', scope: 'project', content: 'export default {}' });
   });
 
-  test('updates and deletes user plugin entries from OPENCODE_CONFIG source', async () => {
+  test('updates and deletes user plugin entries from MAGE_CONFIG source', async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-vscode-custom-config-'));
     tempRoots.push(root);
     const configDir = path.join(root, 'custom-config');
     const configPath = path.join(configDir, 'opencode.json');
     fs.mkdirSync(configDir, { recursive: true });
     fs.writeFileSync(configPath, JSON.stringify({ plugin: ['custom-plugin'] }, null, 2), 'utf8');
-    process.env.OPENCODE_CONFIG = configPath;
+    process.env.MAGE_CONFIG = configPath;
     const ctx = createCtx(root);
 
     const listed = await handleConfigBridgeMessage({
@@ -226,14 +226,14 @@ describe('VS Code config bridge plugin parity', () => {
     expect(readJson(configPath).plugin).toBeUndefined();
   });
 
-  test('writes user plugin files next to OPENCODE_CONFIG', async () => {
+  test('writes user plugin files next to MAGE_CONFIG', async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-vscode-custom-files-'));
     tempRoots.push(root);
     const configDir = path.join(root, 'custom-config');
     const configPath = path.join(configDir, 'opencode.json');
     fs.mkdirSync(configDir, { recursive: true });
     fs.writeFileSync(configPath, '{}', 'utf8');
-    process.env.OPENCODE_CONFIG = configPath;
+    process.env.MAGE_CONFIG = configPath;
     const ctx = createCtx(root);
 
     const created = await handleConfigBridgeMessage({

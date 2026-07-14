@@ -70,28 +70,6 @@ export const HelpDialog: React.FC = () => {
           icon: "ai-agent",
         },
         {
-          id: 'open_model_selector',
-          descriptionKey: "helpDialog.item.openModelSelector",
-          icon: "ai-generate-2",
-          keys: '',
-        },
-        {
-          keys: ["↑↓"],
-          descriptionKey: "helpDialog.item.navigateModels",
-          icon: "ai-generate-2",
-        },
-        {
-          keys: ["←→"],
-          descriptionKey: "helpDialog.item.adjustThinkingMode",
-          icon: "brain-ai-3",
-        },
-        {
-          id: 'cycle_thinking_variant',
-          descriptionKey: "helpDialog.item.cycleThinkingVariant",
-          icon: "brain-ai-3",
-          keys: '',
-        },
-        {
           keys: [`Shift + Alt + ${mod} + N`],
           descriptionKey: "helpDialog.item.newWindow",
           icon: "window",

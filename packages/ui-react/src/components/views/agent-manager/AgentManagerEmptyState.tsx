@@ -6,7 +6,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useDirectoryStore } from '@/stores/useDirectoryStore';
 import { useProjectsStore } from '@/stores/useProjectsStore';
-import { ModelMultiSelect, generateInstanceId, type ModelSelectionWithId } from '@/components/multirun/ModelMultiSelect';
+import { useConfigStore } from '@/stores/useConfigStore';
+import { generateInstanceId, type ModelSelectionWithId } from '@/components/multirun/ModelMultiSelect';
 import { BranchSelector, useBranchOptions } from '@/components/multirun/BranchSelector';
 import { AgentSelector } from '@/components/multirun/AgentSelector';
 import { CommandAutocomplete, type CommandAutocompleteHandle, type CommandInfo } from '@/components/chat/CommandAutocomplete';
@@ -22,8 +23,19 @@ import { useI18n } from '@/lib/i18n';
 
 /** Max file size in bytes (10MB) */
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
-/** Max number of concurrent runs */
-const MAX_MODELS = 5;
+
+// Only one model is ever available, so the run is fixed to it rather than
+// offering a picker.
+const buildDefaultModelSelection = (): ModelSelectionWithId[] => {
+  const { currentProviderId, currentModelId, getCurrentModel } = useConfigStore.getState();
+  if (!currentProviderId || !currentModelId) return [];
+  return [{
+    providerID: currentProviderId,
+    modelID: currentModelId,
+    displayName: getCurrentModel()?.name,
+    instanceId: generateInstanceId(),
+  }];
+};
 
 /** Attached file for agent manager */
 interface AttachedFile {
@@ -50,7 +62,7 @@ export const AgentManagerEmptyState: React.FC<AgentManagerEmptyStateProps> = ({
   const { t } = useI18n();
   const [groupName, setGroupName] = React.useState('');
   const [prompt, setPrompt] = React.useState('');
-  const [selectedModels, setSelectedModels] = React.useState<ModelSelectionWithId[]>([]);
+  const [selectedModels] = React.useState<ModelSelectionWithId[]>(() => buildDefaultModelSelection());
   const [selectedAgent, setSelectedAgent] = React.useState<string>('');
   const [baseBranch, setBaseBranch] = React.useState('');
   const [attachedFiles, setAttachedFiles] = React.useState<AttachedFile[]>([]);
@@ -130,21 +142,6 @@ export const AgentManagerEmptyState: React.FC<AgentManagerEmptyStateProps> = ({
     
     return () => { cancelled = true; };
   }, [projectRef]);
-
-  const handleAddModel = React.useCallback((model: ModelSelectionWithId) => {
-    if (selectedModels.length >= MAX_MODELS) {
-      return;
-    }
-    setSelectedModels((prev) => [...prev, model]);
-  }, [selectedModels.length]);
-
-  const handleRemoveModel = React.useCallback((index: number) => {
-    setSelectedModels((prev) => prev.filter((_, i) => i !== index));
-  }, []);
-
-  const handleUpdateModel = React.useCallback((index: number, model: ModelSelectionWithId) => {
-    setSelectedModels((prev) => prev.map((item, i) => (i === index ? model : item)));
-  }, []);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -353,7 +350,6 @@ export const AgentManagerEmptyState: React.FC<AgentManagerEmptyStateProps> = ({
       // Reset form on success - only after onCreateGroup completes
       setGroupName('');
       setPrompt('');
-      setSelectedModels([]);
       setSelectedAgent('');
       setAttachedFiles([]);
       setBaseBranch('HEAD');
@@ -515,22 +511,6 @@ export const AgentManagerEmptyState: React.FC<AgentManagerEmptyStateProps> = ({
           <p className="typography-micro text-muted-foreground">
             {t('agentManager.empty.agent.description')}
           </p>
-        </div>
-
-        {/* Model Selection */}
-        <div className="space-y-1.5">
-          <label className="typography-ui-label font-medium text-foreground">
-            {t('agentManager.empty.models.label')}
-          </label>
-          <ModelMultiSelect
-            selectedModels={selectedModels}
-            onAdd={handleAddModel}
-            onRemove={handleRemoveModel}
-            onUpdate={handleUpdateModel}
-            minModels={1}
-            addButtonLabel={t('agentManager.empty.models.addModel')}
-            maxModels={5}
-          />
         </div>
 
         {/* Chat Input Style Prompt */}

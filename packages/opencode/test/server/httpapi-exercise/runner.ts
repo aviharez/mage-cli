@@ -258,8 +258,8 @@ function fakeLlmConfig(url: string): Partial<ConfigV1.Info> {
 
 const resetState = Effect.promise(async () => {
   const modules = await runtime()
-  Flag.OPENCODE_SERVER_PASSWORD = original.OPENCODE_SERVER_PASSWORD
-  Flag.OPENCODE_SERVER_USERNAME = original.OPENCODE_SERVER_USERNAME
+  Flag.MAGE_SERVER_PASSWORD = original.MAGE_SERVER_PASSWORD
+  Flag.MAGE_SERVER_USERNAME = original.MAGE_SERVER_USERNAME
   await disposeApps()
   await modules.disposeAllInstances()
   await modules.resetDatabase()

@@ -12,8 +12,6 @@ const dir = path.resolve(__dirname, "..")
 
 process.chdir(dir)
 
-const generated = await import("./generate.ts")
-
 import { Script } from "@mybcabisnis/mage-script"
 import pkg from "../package.json"
 
@@ -27,6 +25,11 @@ const plugin = createSolidTransformPlugin()
 // process (`mage web` spawns it), not embedded in this binary — see
 // packages/opencode/src/cli/cmd/web.ts and src/server/shared/ui.ts.
 const embeddedFileMap = null
+
+// Embedded so packages/opencode/src/global/index.ts can seed a default
+// AGENTS.md even when the compiled binary ships without its defaults/ dir
+// alongside it (e.g. a global npm install).
+const defaultAgentsMd = await Bun.file(path.join(dir, "defaults", "AGENTS.md")).text()
 
 const allTargets: {
   os: string
@@ -158,27 +161,27 @@ for (const item of targets) {
       autoloadTsconfig: true,
       autoloadPackageJson: true,
       target: name.replace(pkg.name, "bun") as any,
-      outfile: `dist/${name}/bin/opencode`,
-      execArgv: [`--user-agent=opencode/${Script.version}`, "--use-system-ca", "--"],
+      outfile: `dist/${name}/bin/mage`,
+      execArgv: [`--user-agent=mage/${Script.version}`, "--use-system-ca", "--"],
       windows: {},
     },
     files: embeddedFileMap ? { "opencode-web-ui.gen.ts": embeddedFileMap } : {},
     entrypoints: ["./src/index.ts", parserWorker, workerPath, ...(embeddedFileMap ? ["opencode-web-ui.gen.ts"] : [])],
     define: {
       FFF_LIBC: JSON.stringify(item.abi === "musl" ? "musl" : "gnu"),
-      OPENCODE_VERSION: `'${Script.version}'`,
-      OPENCODE_MODELS_DEV: generated.modelsData,
+      MAGE_VERSION: `'${Script.version}'`,
       OTUI_TREE_SITTER_WORKER_PATH: bunfsRoot + workerRelativePath,
-      OPENCODE_WORKER_PATH: workerPath,
-      OPENCODE_CHANNEL: `'${Script.channel}'`,
-      OPENCODE_LIBC: item.os === "linux" ? `'${item.abi ?? "glibc"}'` : "",
+      MAGE_WORKER_PATH: workerPath,
+      MAGE_CHANNEL: `'${Script.channel}'`,
+      MAGE_LIBC: item.os === "linux" ? `'${item.abi ?? "glibc"}'` : "",
+      MAGE_AGENTS_MD: JSON.stringify(defaultAgentsMd),
       ...(item.os === "linux" ? { "process.env.OPENTUI_LIBC": JSON.stringify(item.abi ?? "glibc") } : {}),
     },
   })
 
   // Smoke test: only run if binary is for current platform
   if (item.os === process.platform && item.arch === process.arch && !item.abi) {
-    const binaryPath = `dist/${name}/bin/opencode`
+    const binaryPath = `dist/${name}/bin/mage`
     console.log(`Running smoke test: ${binaryPath} --version`)
     try {
       const versionOutput = await $`${binaryPath} --version`.text()

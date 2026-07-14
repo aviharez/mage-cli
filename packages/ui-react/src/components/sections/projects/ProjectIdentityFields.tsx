@@ -74,19 +74,6 @@ export const ProjectIdentityFields: React.FC<ProjectIdentityFieldsProps> = ({ fo
       </ProjectSettingsSubsection>
 
       <ProjectSettingsSubsection
-        title={t('settings.projects.page.field.defaultModel')}
-        description={t('settings.projects.page.field.defaultModelDescription')}
-        settingsItem="projects.default-model"
-      >
-        <ModelSelector
-          providerId={parsedDefaultModel.providerId}
-          modelId={parsedDefaultModel.modelId}
-          onChange={handleDefaultModelChange}
-          className={PROJECT_SETTINGS_CONTROL_WIDTH}
-        />
-      </ProjectSettingsSubsection>
-
-      <ProjectSettingsSubsection
         title={t('settings.projects.page.field.accentColor')}
         settingsItem="projects.accent-color"
       >

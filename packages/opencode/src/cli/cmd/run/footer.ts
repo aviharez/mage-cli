@@ -90,7 +90,6 @@ type RunFooterOptions = {
   onQuestionReply: (input: QuestionReply) => void | Promise<void>
   onQuestionReject: (input: QuestionReject) => void | Promise<void>
   onCycleVariant?: () => CycleResult | void
-  onModelSelect?: (model: NonNullable<RunInput["model"]>) => CycleResult | void | Promise<CycleResult | void>
   onVariantSelect?: (variant: string | undefined) => CycleResult | void | Promise<CycleResult | void>
   onInterrupt?: () => void
   onBackground?: () => void
@@ -105,7 +104,6 @@ const QUESTION_ROWS = 14
 const COMMAND_ROWS = RUN_COMMAND_PANEL_ROWS
 const SKILL_ROWS = RUN_COMMAND_PANEL_ROWS
 const SUBAGENT_ROWS = RUN_SUBAGENT_PANEL_ROWS
-const MODEL_ROWS = RUN_COMMAND_PANEL_ROWS
 const VARIANT_ROWS = RUN_COMMAND_PANEL_ROWS
 const NOTICE_DURATION = 3000
 const THEME_REFRESH_DELAYS = [1000, 1000] as const
@@ -187,7 +185,6 @@ export class RunFooter implements FooterApi {
   private providers: Accessor<RunProvider[] | undefined>
   private setProviders: Setter<RunProvider[] | undefined>
   private currentModel: Accessor<RunInput["model"]>
-  private setCurrentModel: Setter<RunInput["model"]>
   private variants: Accessor<string[]>
   private setVariants: Setter<string[]>
   private currentVariant: Accessor<string | undefined>
@@ -264,9 +261,8 @@ export class RunFooter implements FooterApi {
     const [providers, setProviders] = createSignal<RunProvider[] | undefined>()
     this.providers = providers
     this.setProviders = setProviders
-    const [currentModel, setCurrentModel] = createSignal<RunInput["model"]>(options.model)
+    const [currentModel] = createSignal<RunInput["model"]>(options.model)
     this.currentModel = currentModel
-    this.setCurrentModel = setCurrentModel
     const [variants, setVariants] = createSignal<string[]>([])
     this.variants = variants
     this.setVariants = setVariants
@@ -335,7 +331,6 @@ export class RunFooter implements FooterApi {
               onExitRequest: footer.handleExit,
               onRequestExit: footer.setRequestExitHandler,
               onExit: () => footer.close(),
-              onModelSelect: footer.handleModelSelect,
               onVariantSelect: footer.handleVariantSelect,
               onRows: footer.syncRows,
               onLayout: footer.syncLayout,
@@ -704,9 +699,7 @@ export class RunFooter implements FooterApi {
             ? 1 + COMMAND_ROWS
             : this.promptRoute.type === "skill"
               ? 1 + SKILL_ROWS
-              : this.promptRoute.type === "model"
-                ? 1 + MODEL_ROWS
-                : this.promptRoute.type === "variant"
+              : this.promptRoute.type === "variant"
                   ? 1 + VARIANT_ROWS
                   : this.promptRoute.type === "queued-menu"
                     ? 1 + this.subagentMenuRows
@@ -814,53 +807,6 @@ export class RunFooter implements FooterApi {
 
     this.patch(patch)
     this.setNotice(result.status ?? "variant updated")
-  }
-
-  private handleModelSelect = (model: NonNullable<RunInput["model"]>): void => {
-    if (this.isClosed) {
-      return
-    }
-
-    const previous = this.currentModel()
-    this.setCurrentModel(model)
-    if (!previous || previous.providerID !== model.providerID || previous.modelID !== model.modelID) {
-      this.setCurrentVariant(undefined)
-    }
-    void Promise.resolve()
-      .then(() => this.options.onModelSelect?.(model))
-      .then((result) => {
-        const current = this.currentModel()
-        if (
-          !result ||
-          this.isClosed ||
-          !current ||
-          current.providerID !== model.providerID ||
-          current.modelID !== model.modelID
-        ) {
-          return
-        }
-
-        if ("variants" in result) {
-          this.setVariants(result.variants ?? [])
-        }
-
-        if ("variant" in result) {
-          this.setCurrentVariant(result.variant)
-        }
-
-        const patch: FooterPatch = {}
-        if (result.modelLabel) {
-          patch.model = result.modelLabel
-        }
-
-        if (patch.model) {
-          this.patch(patch)
-        }
-        if (result.status) {
-          this.setNotice(result.status)
-        }
-      })
-      .catch(() => {})
   }
 
   private handleVariantSelect = (variant: string | undefined): void => {

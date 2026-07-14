@@ -5,7 +5,7 @@ import fuzzysort from "fuzzysort"
 import { createEffect, createMemo, createSignal, type Accessor } from "solid-js"
 import { RunFooterMenu, createFooterMenuState, type RunFooterMenuItem } from "./footer.menu"
 import type { RunFooterTheme } from "./theme"
-import type { FooterQueuedPrompt, FooterSubagentTab, RunCommand, RunInput, RunProvider } from "./types"
+import type { FooterQueuedPrompt, FooterSubagentTab, RunCommand } from "./types"
 
 type PanelEntry = RunFooterMenuItem & {
   category: string
@@ -13,7 +13,6 @@ type PanelEntry = RunFooterMenuItem & {
 }
 
 type CommandEntry =
-  | (PanelEntry & { action: "model" })
   | (PanelEntry & { action: "editor" })
   | (PanelEntry & { action: "skill" })
   | (PanelEntry & { action: "queued" })
@@ -22,13 +21,6 @@ type CommandEntry =
   | (PanelEntry & { action: "variant.list" })
   | (PanelEntry & { action: "slash"; name: string })
   | (PanelEntry & { action: "exit" })
-
-type ModelEntry = PanelEntry & {
-  providerID: string
-  modelID: string
-  providerName: string
-  current: boolean
-}
 
 type VariantEntry = PanelEntry & {
   variant: string | undefined
@@ -339,7 +331,6 @@ export function RunCommandMenuBody(props: {
   variants: Accessor<string[]>
   variantCycle: string
   onClose: () => void
-  onModel: () => void
   onEditor: () => void
   onSkill: () => void
   onSubagent: () => void
@@ -403,11 +394,6 @@ export function RunCommandMenuBody(props: {
           ]
         : []
     const agent: CommandEntry[] = [
-      {
-        action: "model",
-        category: "Agent",
-        display: "Switch model",
-      },
       ...(props.queued().length > 0
         ? [
             {
@@ -429,16 +415,6 @@ export function RunCommandMenuBody(props: {
         footer: props.variantCycle,
         keywords: "variant cycle",
       },
-      ...(props.variants().length > 0
-        ? [
-            {
-              action: "variant.list" as const,
-              category: "Agent",
-              display: "Switch model variant",
-              keywords: `variant variants ${props.variants().join(" ")}`,
-            },
-          ]
-        : []),
     ]
     const commands = (props.commands() ?? [])
       .filter((item) => item.source !== "skill" && !builtins.includes(item.name))
@@ -469,11 +445,6 @@ export function RunCommandMenuBody(props: {
   const items = createMemo<CommandEntry[]>(() => match(query(), entries()))
   const menu = createFooterMenuState({ count: () => items().length, limit: PANEL_LIST_ROWS })
   const pick = (item: CommandEntry) => {
-    if (item.action === "model") {
-      props.onModel()
-      return
-    }
-
     if (item.action === "editor") {
       props.onEditor()
       return
@@ -941,124 +912,3 @@ export function RunVariantSelectBody(props: {
   )
 }
 
-export function RunModelSelectBody(props: {
-  theme: Accessor<RunFooterTheme>
-  providers: Accessor<RunProvider[] | undefined>
-  current: Accessor<RunInput["model"]>
-  onClose: () => void
-  onSelect: (model: NonNullable<RunInput["model"]>) => void
-}) {
-  let field: InputRenderable | undefined
-  const [query, setQuery] = createSignal("")
-  const entries = createMemo<ModelEntry[]>(() =>
-    (props.providers() ?? [])
-      .flatMap((provider) =>
-        Object.entries(provider.models)
-          .filter(([, model]) => model.status !== "deprecated")
-          .map(([modelID, model]) => {
-            const title = model.name ?? modelID
-            const current = props.current()?.providerID === provider.id && props.current()?.modelID === modelID
-            const footer = current
-              ? "current"
-              : model.cost?.input === 0 && provider.id === "opencode"
-                ? "Free"
-                : title !== modelID
-                  ? modelID
-                  : undefined
-            return {
-              providerID: provider.id,
-              modelID,
-              providerName: provider.name,
-              category: provider.name,
-              display: title,
-              footer,
-              keywords: `${provider.id} ${provider.name} ${modelID} ${title} ${footer ?? ""}`,
-              current,
-            }
-          }),
-      )
-      .sort((a, b) => {
-        const provider = Number(a.providerID !== "opencode") - Number(b.providerID !== "opencode")
-        if (provider !== 0) {
-          return provider
-        }
-
-        const name = a.providerName.localeCompare(b.providerName)
-        if (name !== 0) {
-          return name
-        }
-
-        return a.display.localeCompare(b.display)
-      }),
-  )
-  const items = createMemo<ModelEntry[]>(() => match(query(), entries()))
-  const menu = createFooterMenuState({ count: () => items().length, limit: PANEL_LIST_ROWS })
-  const pick = (item: ModelEntry) => {
-    props.onSelect({ providerID: item.providerID, modelID: item.modelID })
-  }
-  const select = () => {
-    const item = items()[menu.selected()]
-    if (!item) {
-      return
-    }
-
-    pick(item)
-  }
-
-  createEffect(() => {
-    query()
-    menu.reset()
-  })
-
-  createEffect(() => {
-    if (query().trim()) {
-      return
-    }
-
-    const index = items().findIndex((item) => item.current)
-    if (index !== -1) {
-      menu.reveal(index)
-    }
-  })
-
-  useKeyboard((event) => {
-    if (event.defaultPrevented) {
-      return
-    }
-
-    handleKey({ event, menu, field: () => field, setQuery, select, close: props.onClose })
-  })
-
-  return (
-    <PanelShell
-      title="Select model"
-      query={query()}
-      count={items().length}
-      total={entries().length}
-      placeholder="Search"
-      theme={props.theme}
-      inputRef={(input) => {
-        field = input
-      }}
-      onQuery={setQuery}
-      dark
-      chrome="minimal"
-    >
-      <RunFooterMenu
-        theme={props.theme}
-        items={items}
-        selected={menu.selected}
-        offset={menu.offset}
-        rows={() => PANEL_LIST_ROWS}
-        limit={PANEL_LIST_ROWS}
-        empty={props.providers() ? "No results found" : "Models loading"}
-        border={false}
-        paddingLeft={PANEL_PAD}
-        paddingRight={PANEL_PAD}
-        grouped={!query().trim()}
-        background
-        headerColor={props.theme().muted}
-      />
-    </PanelShell>
-  )
-}

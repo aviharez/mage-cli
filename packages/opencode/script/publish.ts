@@ -23,8 +23,15 @@ async function publish(dir: string, name: string, version: string) {
   await $`npm publish *.tgz --access public --tag ${Script.channel}`.cwd(dir)
 }
 
+// pkg.name is scoped (@mybcabisnis/mage); derive the unscoped "mage" form for
+// anything that becomes a bin command name or local filename, since neither
+// npm bin keys nor plain filenames may contain "/".
+const pkgMage = pkg.name.replaceAll("@mybcabisnis/", "")
+
 const binaries: Record<string, string> = {}
-for (const filepath of new Bun.Glob("*/package.json").scanSync({ cwd: "./dist" })) {
+// Per-platform packages publish under the @mybcabisnis scope, so their
+// package.json sits two levels deep (dist/@mybcabisnis/mage-*/package.json).
+for (const filepath of new Bun.Glob("{*/package.json,*/*/package.json}").scanSync({ cwd: "./dist" })) {
   const pkg = await Bun.file(`./dist/${filepath}`).json()
   binaries[pkg.name] = pkg.version
 }
@@ -34,8 +41,9 @@ const version = Object.values(binaries)[0]
 await $`mkdir -p ./dist/${pkg.name}`
 await $`mkdir -p ./dist/${pkg.name}/bin`
 await $`cp ./script/postinstall.mjs ./dist/${pkg.name}/postinstall.mjs`
+await $`cp -r ./defaults ./dist/${pkg.name}/defaults`
 await Bun.file(`./dist/${pkg.name}/LICENSE`).write(await Bun.file("../../LICENSE").text())
-await Bun.file(`./dist/${pkg.name}/bin/${pkg.name}.exe`).write(
+await Bun.file(`./dist/${pkg.name}/bin/${pkgMage}.exe`).write(
   [
     `echo "Error: ${pkg.name}-ai's postinstall script was not run." >&2`,
     'echo "" >&2',
@@ -56,7 +64,7 @@ await Bun.file(`./dist/${pkg.name}/package.json`).write(
     {
       name: pkg.name + "-ai",
       bin: {
-        [pkg.name]: `./bin/${pkg.name}.exe`,
+        [pkgMage]: `./bin/${pkgMage}.exe`,
       },
       scripts: {
         postinstall: "node ./postinstall.mjs",

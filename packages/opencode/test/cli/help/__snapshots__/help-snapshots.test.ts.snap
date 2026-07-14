@@ -1,7 +1,7 @@
 // Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
 exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode acp --help 1`] = `
-"opencode acp
+"mage acp
 
 start ACP (Agent Client Protocol) server
 
@@ -22,16 +22,16 @@ Options:
 `;
 
 exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode mcp --help 1`] = `
-"opencode mcp
+"mage mcp
 
 manage MCP (Model Context Protocol) servers
 
 Commands:
-  opencode mcp add [name]     add an MCP server
-  opencode mcp list           list MCP servers and their status                        [aliases: ls]
-  opencode mcp auth [name]    authenticate with an OAuth-enabled MCP server
-  opencode mcp logout [name]  remove OAuth credentials for an MCP server
-  opencode mcp debug <name>   debug OAuth connection for an MCP server
+  mage mcp add [name]     add an MCP server
+  mage mcp list           list MCP servers and their status                            [aliases: ls]
+  mage mcp auth [name]    authenticate with an OAuth-enabled MCP server
+  mage mcp logout [name]  remove OAuth credentials for an MCP server
+  mage mcp debug <name>   debug OAuth connection for an MCP server
 
 Options:
   -h, --help        show help                                                              [boolean]
@@ -42,7 +42,7 @@ Options:
 `;
 
 exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode attach --help 1`] = `
-"opencode attach <url>
+"mage attach <url>
 
 attach to a running opencode server
 
@@ -59,16 +59,15 @@ Options:
   -c, --continue      continue the last session                                            [boolean]
   -s, --session       session id to continue                                                [string]
       --fork          fork the session when continuing (use with --continue or --session)  [boolean]
-  -p, --password      basic auth password (defaults to OPENCODE_SERVER_PASSWORD)            [string]
-  -u, --username      basic auth username (defaults to OPENCODE_SERVER_USERNAME or 'opencode')
-                                                                                            [string]
+  -p, --password      basic auth password (defaults to MAGE_SERVER_PASSWORD)                [string]
+  -u, --username      basic auth username (defaults to MAGE_SERVER_USERNAME or 'opencode')  [string]
       --mini          start the minimal interactive interface             [boolean] [default: false]
       --no-replay     disable mini session history replay on resume and after resize       [boolean]
       --replay-limit  cap visible mini replay to the newest N messages                      [number]"
 `;
 
 exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode run --help 1`] = `
-"opencode run [message..]
+"mage run [message..]
 
 run opencode with a message
 
@@ -93,9 +92,8 @@ Options:
   -f, --file         file(s) to attach to message                                            [array]
       --title        title for the session (uses truncated prompt if no value provided)     [string]
       --attach       attach to a running opencode server (e.g., http://localhost:4096)      [string]
-  -p, --password     basic auth password (defaults to OPENCODE_SERVER_PASSWORD)             [string]
-  -u, --username     basic auth username (defaults to OPENCODE_SERVER_USERNAME or 'opencode')
-                                                                                            [string]
+  -p, --password     basic auth password (defaults to MAGE_SERVER_PASSWORD)                 [string]
+  -u, --username     basic auth username (defaults to MAGE_SERVER_USERNAME or 'opencode')   [string]
       --dir          directory to run in, path on remote server if attaching                [string]
       --port         port for the local server (defaults to random port if no value provided)
                                                                                             [number]
@@ -108,24 +106,24 @@ Options:
 `;
 
 exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode debug --help 1`] = `
-"opencode debug
+"mage debug
 
 debugging and troubleshooting tools
 
 Commands:
-  opencode debug config        show resolved configuration
-  opencode debug lsp           LSP debugging utilities
-  opencode debug rg            ripgrep debugging utilities
-  opencode debug file          file system debugging utilities
-  opencode debug scrap         list all known projects
-  opencode debug skill         list all available skills
-  opencode debug snapshot      snapshot debugging utilities
-  opencode debug startup       print startup timing
-  opencode debug agent <name>  show agent configuration details
-  opencode debug v2            debug v2 catalog and built-in plugins
-  opencode debug info          show debug information
-  opencode debug paths         show global paths (data, config, cache, state)
-  opencode debug wait          wait indefinitely (for debugging)
+  mage debug config        show resolved configuration
+  mage debug lsp           LSP debugging utilities
+  mage debug rg            ripgrep debugging utilities
+  mage debug file          file system debugging utilities
+  mage debug scrap         list all known projects
+  mage debug skill         list all available skills
+  mage debug snapshot      snapshot debugging utilities
+  mage debug startup       print startup timing
+  mage debug agent <name>  show agent configuration details
+  mage debug v2            debug v2 catalog and built-in plugins
+  mage debug info          show debug information
+  mage debug paths         show global paths (data, config, cache, state)
+  mage debug wait          wait indefinitely (for debugging)
 
 Options:
   -h, --help        show help                                                              [boolean]
@@ -136,14 +134,14 @@ Options:
 `;
 
 exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode providers --help 1`] = `
-"opencode providers
+"mage providers
 
 manage AI providers and credentials
 
 Commands:
-  opencode providers list               list providers and credentials                 [aliases: ls]
-  opencode providers login [url]        log in to a provider
-  opencode providers logout [provider]  log out from a configured provider
+  mage providers list               list providers and credentials                     [aliases: ls]
+  mage providers login [url]        log in to a provider
+  mage providers logout [provider]  log out from a configured provider
 
 Options:
   -h, --help        show help                                                              [boolean]
@@ -154,13 +152,13 @@ Options:
 `;
 
 exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode agent --help 1`] = `
-"opencode agent
+"mage agent
 
 manage agents
 
 Commands:
-  opencode agent create  create a new agent
-  opencode agent list    list all available agents
+  mage agent create  create a new agent
+  mage agent list    list all available agents
 
 Options:
   -h, --help        show help                                                              [boolean]
@@ -171,7 +169,7 @@ Options:
 `;
 
 exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode upgrade --help 1`] = `
-"opencode upgrade [target]
+"mage upgrade [target]
 
 upgrade opencode to the latest or a specific version
 
@@ -189,9 +187,9 @@ Options:
 `;
 
 exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode uninstall --help 1`] = `
-"opencode uninstall
+"mage uninstall
 
-uninstall opencode and remove all related files
+uninstall mage and remove all related files
 
 Options:
   -h, --help         show help                                                             [boolean]
@@ -206,7 +204,7 @@ Options:
 `;
 
 exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode serve --help 1`] = `
-"opencode serve
+"mage serve
 
 starts a headless opencode server
 
@@ -226,7 +224,7 @@ Options:
 `;
 
 exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode web --help 1`] = `
-"opencode web
+"mage web
 
 start opencode server and open web interface
 
@@ -246,7 +244,7 @@ Options:
 `;
 
 exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode models --help 1`] = `
-"opencode models [provider]
+"mage models [provider]
 
 list all available models
 
@@ -264,7 +262,7 @@ Options:
 `;
 
 exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode stats --help 1`] = `
-"opencode stats
+"mage stats
 
 show token usage and cost statistics
 
@@ -282,7 +280,7 @@ Options:
 `;
 
 exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode export --help 1`] = `
-"opencode export [sessionID]
+"mage export [sessionID]
 
 export session data as JSON
 
@@ -299,7 +297,7 @@ Options:
 `;
 
 exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode import --help 1`] = `
-"opencode import <file>
+"mage import <file>
 
 import session data from JSON file or URL
 
@@ -315,13 +313,13 @@ Options:
 `;
 
 exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode github --help 1`] = `
-"opencode github
+"mage github
 
 manage GitHub agent
 
 Commands:
-  opencode github install  install the GitHub agent
-  opencode github run      run the GitHub agent
+  mage github install  install the GitHub agent
+  mage github run      run the GitHub agent
 
 Options:
   -h, --help        show help                                                              [boolean]
@@ -332,7 +330,7 @@ Options:
 `;
 
 exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode pr --help 1`] = `
-"opencode pr <number>
+"mage pr <number>
 
 fetch and checkout a GitHub PR branch, then run opencode
 
@@ -348,13 +346,13 @@ Options:
 `;
 
 exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode session --help 1`] = `
-"opencode session
+"mage session
 
 manage sessions
 
 Commands:
-  opencode session list                list sessions
-  opencode session delete <sessionID>  delete a session
+  mage session list                list sessions
+  mage session delete <sessionID>  delete a session
 
 Options:
   -h, --help        show help                                                              [boolean]
@@ -365,7 +363,7 @@ Options:
 `;
 
 exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode plugin --help 1`] = `
-"opencode plugin <module>
+"mage plugin <module>
 
 install plugin and update config
 
@@ -383,13 +381,13 @@ Options:
 `;
 
 exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode db --help 1`] = `
-"opencode db
+"mage db
 
 database tools
 
 Commands:
-  opencode db [query]     open an interactive sqlite3 shell or run a query                 [default]
-  opencode db path        print the database path
+  mage db [query]     open an interactive sqlite3 shell or run a query                     [default]
+  mage db path        print the database path
 
 Positionals:
   query  SQL query to execute                                                               [string]
@@ -404,7 +402,7 @@ Options:
 `;
 
 exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode mcp list --help 1`] = `
-"opencode mcp list
+"mage mcp list
 
 list MCP servers and their status
 
@@ -417,7 +415,7 @@ Options:
 `;
 
 exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode mcp add --help 1`] = `
-"opencode mcp add [name]
+"mage mcp add [name]
 
 add an MCP server
 
@@ -436,12 +434,12 @@ Options:
 `;
 
 exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode mcp auth --help 1`] = `
-"opencode mcp auth [name]
+"mage mcp auth [name]
 
 authenticate with an OAuth-enabled MCP server
 
 Commands:
-  opencode mcp auth list  list OAuth-capable MCP servers and their auth status         [aliases: ls]
+  mage mcp auth list  list OAuth-capable MCP servers and their auth status             [aliases: ls]
 
 Positionals:
   name  name of the MCP server                                                              [string]
@@ -455,7 +453,7 @@ Options:
 `;
 
 exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode mcp logout --help 1`] = `
-"opencode mcp logout [name]
+"mage mcp logout [name]
 
 remove OAuth credentials for an MCP server
 
@@ -471,7 +469,7 @@ Options:
 `;
 
 exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode providers list --help 1`] = `
-"opencode providers list
+"mage providers list
 
 list providers and credentials
 
@@ -484,7 +482,7 @@ Options:
 `;
 
 exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode providers login --help 1`] = `
-"opencode providers login [url]
+"mage providers login [url]
 
 log in to a provider
 
@@ -502,7 +500,7 @@ Options:
 `;
 
 exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode providers logout --help 1`] = `
-"opencode providers logout [provider]
+"mage providers logout [provider]
 
 log out from a configured provider
 
@@ -518,7 +516,7 @@ Options:
 `;
 
 exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode agent create --help 1`] = `
-"opencode agent create
+"mage agent create
 
 create a new agent
 
@@ -538,7 +536,7 @@ Options:
 `;
 
 exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode agent list --help 1`] = `
-"opencode agent list
+"mage agent list
 
 list all available agents
 
@@ -551,7 +549,7 @@ Options:
 `;
 
 exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode session list --help 1`] = `
-"opencode session list
+"mage session list
 
 list sessions
 
@@ -566,7 +564,7 @@ Options:
 `;
 
 exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode session delete --help 1`] = `
-"opencode session delete <sessionID>
+"mage session delete <sessionID>
 
 delete a session
 
@@ -582,7 +580,7 @@ Options:
 `;
 
 exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode github install --help 1`] = `
-"opencode github install
+"mage github install
 
 install the GitHub agent
 
@@ -595,7 +593,7 @@ Options:
 `;
 
 exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode github run --help 1`] = `
-"opencode github run
+"mage github run
 
 run the GitHub agent
 
@@ -610,7 +608,7 @@ Options:
 `;
 
 exports[`opencode CLI help-text snapshots every documented command emits stable help text: opencode db path --help 1`] = `
-"opencode db path
+"mage db path
 
 print the database path
 

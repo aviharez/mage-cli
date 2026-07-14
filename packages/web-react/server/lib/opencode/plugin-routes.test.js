@@ -67,7 +67,7 @@ describe('opencode plugin routes', () => {
   beforeAll(async () => {
     rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openchamber-plugin-routes-'));
     userConfigPath = path.join(rootDir, 'user-opencode.json');
-    process.env.OPENCODE_CONFIG = userConfigPath;
+    process.env.MAGE_CONFIG = userConfigPath;
     plugins = await import('./plugins.js');
   });
 
@@ -91,7 +91,7 @@ describe('opencode plugin routes', () => {
 
   afterAll(() => {
     fs.rmSync(rootDir, { recursive: true, force: true });
-    delete process.env.OPENCODE_CONFIG;
+    delete process.env.MAGE_CONFIG;
   });
 
   test('GET /api/config/plugins empty returns entries and files arrays', async () => {

@@ -368,7 +368,7 @@ const OPENCHAMBER_DATA_DIR = process.env.OPENCHAMBER_DATA_DIR
 const JWT_SECRET_FILE = path.join(OPENCHAMBER_DATA_DIR, 'jwt-secret');
 
 function getOrCreateJwtSecret() {
-  const envSecret = process.env.OPENCODE_JWT_SECRET;
+  const envSecret = process.env.MAGE_JWT_SECRET;
   if (envSecret) {
     return new TextEncoder().encode(envSecret);
   }
@@ -394,8 +394,8 @@ function getOrCreateJwtSecret() {
 }
 
 function persistJwtSecret(secret) {
-  if (process.env.OPENCODE_JWT_SECRET) {
-    const error = new Error('Global sign-out is unavailable while OPENCODE_JWT_SECRET is set');
+  if (process.env.MAGE_JWT_SECRET) {
+    const error = new Error('Global sign-out is unavailable while MAGE_JWT_SECRET is set');
     error.statusCode = 400;
     throw error;
   }

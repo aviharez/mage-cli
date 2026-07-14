@@ -281,40 +281,6 @@ async function runInteractiveRuntime(input: RunRuntimeInput, deps: RunRuntimeDep
         variant: state.activeVariant,
       }
     },
-    onModelSelect: async (model) => {
-      if (state.model?.providerID === model.providerID && state.model.modelID === model.modelID) {
-        return
-      }
-
-      state.model = model
-      state.activeVariant = undefined
-      state.variants = variantsFor(state.providers, model)
-      const switching = resolveSavedVariant(model).then((saved) => {
-        const current = state.model
-        if (!current || current.providerID !== model.providerID || current.modelID !== model.modelID) {
-          return
-        }
-
-        state.activeVariant = resolveVariant(ctx.variant, undefined, saved, state.variants)
-      })
-      state.switching = switching
-      await switching
-      if (state.switching === switching) {
-        state.switching = undefined
-      }
-
-      const current = state.model
-      if (!current || current.providerID !== model.providerID || current.modelID !== model.modelID) {
-        return
-      }
-
-      return {
-        modelLabel: formatModelLabel(model, state.activeVariant, state.providers),
-        status: `model ${model.modelID}`,
-        variant: state.activeVariant,
-        variants: state.variants,
-      }
-    },
     onVariantSelect: async (variant) => {
       if (!state.model || state.variants.length === 0) {
         return {
@@ -404,7 +370,7 @@ async function runInteractiveRuntime(input: RunRuntimeInput, deps: RunRuntimeDep
     .then(loadCatalog)
     .catch(() => {})
 
-  if (Flag.OPENCODE_SHOW_TTFD) {
+  if (Flag.MAGE_SHOW_TTFD) {
     footer.append({
       kind: "system",
       text: `startup ${Math.max(0, Math.round(performance.now() - start))}ms`,

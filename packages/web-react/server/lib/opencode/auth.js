@@ -2,8 +2,8 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 
-const OPENCODE_DATA_DIR = path.join(os.homedir(), '.local', 'share', 'opencode');
-const AUTH_FILE = path.join(OPENCODE_DATA_DIR, 'auth.json');
+const MAGE_DATA_DIR = path.join(os.homedir(), '.local', 'share', 'opencode');
+const AUTH_FILE = path.join(MAGE_DATA_DIR, 'auth.json');
 
 function readAuthFile() {
   if (!fs.existsSync(AUTH_FILE)) {
@@ -24,8 +24,8 @@ function readAuthFile() {
 
 function writeAuthFile(auth) {
   try {
-    if (!fs.existsSync(OPENCODE_DATA_DIR)) {
-      fs.mkdirSync(OPENCODE_DATA_DIR, { recursive: true });
+    if (!fs.existsSync(MAGE_DATA_DIR)) {
+      fs.mkdirSync(MAGE_DATA_DIR, { recursive: true });
     }
 
     if (fs.existsSync(AUTH_FILE)) {
@@ -77,5 +77,5 @@ export {
   getProviderAuth,
   listProviderAuths,
   AUTH_FILE,
-  OPENCODE_DATA_DIR
+  MAGE_DATA_DIR
 };

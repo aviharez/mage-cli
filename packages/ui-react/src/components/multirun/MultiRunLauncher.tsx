@@ -13,10 +13,11 @@ import { useDirectoryStore } from '@/stores/useDirectoryStore';
 import { useMultiRunStore } from '@/stores/useMultiRunStore';
 import { useSessionUIStore } from '@/sync/session-ui-store';
 import { useProjectsStore } from '@/stores/useProjectsStore';
+import { useConfigStore } from '@/stores/useConfigStore';
 import { getWorktreeSetupCommands } from '@/lib/openchamberConfig';
 import type { ProjectRef } from '@/lib/openchamberConfig';
 import type { CreateMultiRunParams, MultiRunGroup } from '@/types/multirun';
-import { ModelMultiSelect, generateInstanceId, type ModelSelectionWithId } from './ModelMultiSelect';
+import { generateInstanceId, type ModelSelectionWithId } from './ModelMultiSelect';
 import { BranchSelector, useBranchOptions } from './BranchSelector';
 import { AgentSelector } from './AgentSelector';
 import { CommandAutocomplete, type CommandAutocompleteHandle, type CommandInfo } from '@/components/chat/CommandAutocomplete';
@@ -32,7 +33,6 @@ import { startDesktopWindowDrag } from '@/lib/desktopNative';
 import { useI18n } from '@/lib/i18n';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
-const MAX_MODELS_PER_GROUP = 5;
 
 interface MultiRunAttachedFile {
   id: string;
@@ -83,6 +83,19 @@ const FieldLabel: React.FC<{
   </div>
 );
 
+// Only one model is ever available, so each run group is fixed to it rather
+// than offering a picker.
+const buildDefaultModelSelection = (): ModelSelectionWithId[] => {
+  const { currentProviderId, currentModelId, getCurrentModel } = useConfigStore.getState();
+  if (!currentProviderId || !currentModelId) return [];
+  return [{
+    providerID: currentProviderId,
+    modelID: currentModelId,
+    displayName: getCurrentModel()?.name,
+    instanceId: generateInstanceId(),
+  }];
+};
+
 export const MultiRunLauncher: React.FC<MultiRunLauncherProps> = ({
   initialPrompt,
   onCreated,
@@ -92,7 +105,7 @@ export const MultiRunLauncher: React.FC<MultiRunLauncherProps> = ({
   const { t } = useI18n();
   const [name, setName] = React.useState('');
   const [runGroups, setRunGroups] = React.useState<RunGroupState[]>(() => [
-    { id: generateInstanceId(), prompt: '', models: [] },
+    { id: generateInstanceId(), prompt: '', models: buildDefaultModelSelection() },
   ]);
   const [selectedAgent, setSelectedAgent] = React.useState<string>('');
   const [attachedFiles, setAttachedFiles] = React.useState<MultiRunAttachedFile[]>([]);
@@ -301,7 +314,7 @@ export const MultiRunLauncher: React.FC<MultiRunLauncherProps> = ({
   }, []);
 
   const addGroup = React.useCallback(() => {
-    setRunGroups((prev) => [...prev, { id: generateInstanceId(), prompt: '', models: [] }]);
+    setRunGroups((prev) => [...prev, { id: generateInstanceId(), prompt: '', models: buildDefaultModelSelection() }]);
   }, []);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -722,19 +735,6 @@ const RunGroupCard: React.FC<RunGroupCardProps> = ({
   const commandRef = React.useRef<CommandAutocompleteHandle>(null);
   const snippetRef = React.useRef<SnippetAutocompleteHandle>(null);
 
-  const handleAddModel = React.useCallback((model: ModelSelectionWithId) => {
-    if (group.models.length >= MAX_MODELS_PER_GROUP) return;
-    onUpdate(group.id, { models: [...group.models, model] });
-  }, [group.id, group.models, onUpdate]);
-
-  const handleRemoveModel = React.useCallback((index: number) => {
-    onUpdate(group.id, { models: group.models.filter((_, i) => i !== index) });
-  }, [group.id, group.models, onUpdate]);
-
-  const handleUpdateModel = React.useCallback((index: number, model: ModelSelectionWithId) => {
-    onUpdate(group.id, { models: group.models.map((item, i) => (i === index ? model : item)) });
-  }, [group.id, group.models, onUpdate]);
-
   const updateAutocompleteState = React.useCallback((value: string, cursorPosition: number) => {
     if (value.startsWith('/')) {
       const firstSpace = value.indexOf(' ');
@@ -978,23 +978,6 @@ const RunGroupCard: React.FC<RunGroupCardProps> = ({
             />
           ) : null}
         </div>
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <FieldLabel
-          required
-          info={<InfoTip>{t('multirun.launcher.models.info', { max: MAX_MODELS_PER_GROUP })}</InfoTip>}
-        >
-          {t('multirun.launcher.models.label')}
-        </FieldLabel>
-        <ModelMultiSelect
-          selectedModels={group.models}
-          onAdd={handleAddModel}
-          onRemove={handleRemoveModel}
-          onUpdate={handleUpdateModel}
-          minModels={1}
-          maxModels={MAX_MODELS_PER_GROUP}
-        />
       </div>
     </div>
   );

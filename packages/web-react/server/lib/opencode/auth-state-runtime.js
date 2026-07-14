@@ -32,26 +32,26 @@ export const createOpenCodeAuthStateRuntime = (dependencies) => {
     if (!isValidOpenCodePassword(normalized)) {
       setAuthPassword(null);
       setAuthSource(null);
-      delete process.env.OPENCODE_SERVER_PASSWORD;
+      delete process.env.MAGE_SERVER_PASSWORD;
       syncToHmrState();
       return null;
     }
 
     setAuthPassword(normalized);
     setAuthSource(source);
-    process.env.OPENCODE_SERVER_PASSWORD = normalized;
+    process.env.MAGE_SERVER_PASSWORD = normalized;
     syncToHmrState();
     return normalized;
   };
 
   const getOpenCodeAuthHeaders = () => {
-    const password = normalizeOpenCodePassword(getAuthPassword() || process.env.OPENCODE_SERVER_PASSWORD || '');
+    const password = normalizeOpenCodePassword(getAuthPassword() || process.env.MAGE_SERVER_PASSWORD || '');
 
     if (!password) {
       return {};
     }
 
-    const username = process.env.OPENCODE_SERVER_USERNAME?.trim() || 'opencode';
+    const username = process.env.MAGE_SERVER_USERNAME?.trim() || 'opencode';
     const credentials = Buffer.from(`${username}:${password}`).toString('base64');
     return { Authorization: `Basic ${credentials}` };
   };

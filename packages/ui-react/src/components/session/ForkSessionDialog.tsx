@@ -8,9 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ModelSelector } from '@/components/sections/agents/ModelSelector';
 import { AgentSelector } from '@/components/sections/commands/AgentSelector';
-import { ThinkingPill } from '@/components/session/ThinkingPill';
 import { useConfigStore } from '@/stores/useConfigStore';
 import { useAgentsStore } from '@/stores/useAgentsStore';
 import { isPrimaryMode } from '@/components/chat/mobileControlsUtils';
@@ -160,29 +158,6 @@ export function ForkSessionDialog(props: ForkSessionDialogProps) {
         </DialogHeader>
 
         <div className="flex flex-col gap-4">
-          <div className="flex min-w-0 flex-col gap-1.5">
-            <span className="typography-meta font-medium text-muted-foreground">{t('chat.modelControls.model')}</span>
-            <ModelSelector
-              providerId={providerID}
-              modelId={modelID}
-              className="max-w-[320px] justify-between"
-              dropdownPortalToBody
-              onChange={(nextProviderID, nextModelID) => {
-                setProviderID(nextProviderID);
-                setModelID(nextModelID);
-                setVariant('');
-              }}
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <span className="typography-meta font-medium text-muted-foreground">{t('sessions.scheduledTasks.editor.thinkingLevel.label')}</span>
-            <ThinkingPill
-              value={variant}
-              options={variantOptions}
-              disabled={!hasVariantOptions}
-              onChange={setVariant}
-            />
-          </div>
           <div className="flex flex-col gap-1.5">
             <span className="typography-meta font-medium text-muted-foreground">{t('sessions.scheduledTasks.editor.agent.label')}</span>
             <AgentSelector

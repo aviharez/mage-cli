@@ -4,7 +4,6 @@ import { HttpClient, HttpMiddleware, HttpRouter, HttpServer, HttpServerResponse 
 import * as Socket from "effect/unstable/socket/Socket"
 import { FSUtil } from "@mybcabisnis/mage-core/fs-util"
 import * as Observability from "@mybcabisnis/mage-core/observability"
-import { Account } from "@/account/account"
 import { Agent } from "@/agent/agent"
 import { Auth } from "@/auth"
 import { BackgroundJob } from "@/background/job"
@@ -229,7 +228,6 @@ const app = LayerNode.group([
   FSUtil.node,
   Database.node,
   Auth.node,
-  Account.node,
   Config.node,
   Env.node,
   Git.node,

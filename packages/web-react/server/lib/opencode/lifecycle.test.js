@@ -10,15 +10,15 @@ vi.mock('node:child_process', () => ({
 
 const { createOpenCodeLifecycleRuntime } = await import('./lifecycle.js');
 
-const originalOpencodeBinary = process.env.OPENCODE_BINARY;
+const originalOpencodeBinary = process.env.MAGE_BINARY;
 const originalPath = process.env.PATH;
 
 afterEach(() => {
   spawnMock.mockReset();
   if (typeof originalOpencodeBinary === 'string') {
-    process.env.OPENCODE_BINARY = originalOpencodeBinary;
+    process.env.MAGE_BINARY = originalOpencodeBinary;
   } else {
-    delete process.env.OPENCODE_BINARY;
+    delete process.env.MAGE_BINARY;
   }
 
   if (typeof originalPath === 'string') {
@@ -70,11 +70,11 @@ const createRuntime = (overrides = {}) => {
   return createOpenCodeLifecycleRuntime({
     state,
     env: {
-      ENV_CONFIGURED_OPENCODE_PORT: 45678,
-      ENV_CONFIGURED_OPENCODE_HOST: null,
+      ENV_CONFIGURED_MAGE_PORT: 45678,
+      ENV_CONFIGURED_MAGE_HOST: null,
       ENV_EFFECTIVE_PORT: 3001,
-      ENV_CONFIGURED_OPENCODE_HOSTNAME: '127.0.0.1',
-      ENV_SKIP_OPENCODE_START: false,
+      ENV_CONFIGURED_MAGE_HOSTNAME: '127.0.0.1',
+      ENV_SKIP_MAGE_START: false,
     },
     syncToHmrState: vi.fn(),
     syncFromHmrState: vi.fn(),
@@ -98,7 +98,7 @@ const createRuntime = (overrides = {}) => {
     getManagedOpenCodeShellEnvSnapshot: vi.fn(() => ({
       PATH: '/home/user/.bun/bin:/usr/local/bin:/usr/bin',
       SHELL_ONLY: 'yes',
-      OPENCODE_SERVER_PASSWORD: 'shell-password',
+      MAGE_SERVER_PASSWORD: 'shell-password',
     })),
     ...overrides,
   });
@@ -106,7 +106,7 @@ const createRuntime = (overrides = {}) => {
 
 describe('OpenCode lifecycle', () => {
   it('launches managed OpenCode with the managed PATH', async () => {
-    delete process.env.OPENCODE_BINARY;
+    delete process.env.MAGE_BINARY;
     const child = createMockChild();
     spawnMock.mockImplementationOnce(() => {
       queueMicrotask(() => {
@@ -123,13 +123,13 @@ describe('OpenCode lifecycle', () => {
     expect(args).toEqual(['serve', '--hostname', '127.0.0.1', '--port', '45678']);
     expect(options.env.PATH).toBe('/home/user/.bun/bin:/usr/local/bin:/usr/bin');
     expect(options.env.SHELL_ONLY).toBe('yes');
-    expect(options.env.OPENCODE_SERVER_PASSWORD).toBe('password');
+    expect(options.env.MAGE_SERVER_PASSWORD).toBe('password');
 
     await server.close();
   });
 
   it('falls back to buildAugmentedPath when buildManagedOpenCodePath is not provided', async () => {
-    delete process.env.OPENCODE_BINARY;
+    delete process.env.MAGE_BINARY;
     const child = createMockChild();
     spawnMock.mockImplementationOnce(() => {
       queueMicrotask(() => {
@@ -151,7 +151,7 @@ describe('OpenCode lifecycle', () => {
   });
 
   it('falls back to process.env.PATH when neither build function is provided', async () => {
-    delete process.env.OPENCODE_BINARY;
+    delete process.env.MAGE_BINARY;
     process.env.PATH = '/usr/bin:/bin';
     const child = createMockChild();
     spawnMock.mockImplementationOnce(() => {
@@ -174,7 +174,7 @@ describe('OpenCode lifecycle', () => {
   });
 
   it('reports the binary when managed OpenCode exits before becoming ready', async () => {
-    delete process.env.OPENCODE_BINARY;
+    delete process.env.MAGE_BINARY;
     const firstChild = createMockChild();
     const secondChild = createMockChild();
     spawnMock.mockImplementationOnce(() => {
@@ -197,9 +197,9 @@ describe('OpenCode lifecycle', () => {
   });
 
   it('does not retry managed startup when the configured OpenCode binary is invalid', async () => {
-    delete process.env.OPENCODE_BINARY;
+    delete process.env.MAGE_BINARY;
     const error = new Error('Configured OpenCode binary not found: /missing/opencode');
-    error.code = 'OPENCODE_BINARY_INVALID';
+    error.code = 'MAGE_BINARY_INVALID';
     const applyOpencodeBinaryFromSettings = vi.fn(async () => {
       throw error;
     });
@@ -213,7 +213,7 @@ describe('OpenCode lifecycle', () => {
   });
 
   it('retries managed OpenCode startup once after a pre-ready exit', async () => {
-    delete process.env.OPENCODE_BINARY;
+    delete process.env.MAGE_BINARY;
     const firstChild = createMockChild();
     const secondChild = createMockChild();
     spawnMock.mockImplementationOnce(() => {
