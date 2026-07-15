@@ -98,8 +98,11 @@ export const WebCommand = effectCmd({
       env: {
         ...process.env,
         MAGE_SKIP_START: "true",
-        MAGE_HOST: `http://${webUiHostname}:${server.port}`,
-        MAGE_PORT: String(server.port),
+        // Dedicated backend-attach vars, not MAGE_HOST: MAGE_HOST is also read
+        // as the sidecar's own Express bind host (server-startup-runtime.js),
+        // so passing a URL there would break the sidecar's own listen() call.
+        MAGE_MAGE_HOSTNAME: webUiHostname,
+        MAGE_INTERNAL_PORT: String(server.port),
       },
       stdout: "inherit",
       stderr: "inherit",

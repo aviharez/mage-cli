@@ -18,8 +18,13 @@ const keep = 10
 
 let level: Level = "INFO"
 
+function currentLevel(): Level {
+  const envLevel = process.env.MAGE_LOG_LEVEL?.toUpperCase()
+  return envLevel && envLevel in levelPriority ? (envLevel as Level) : level
+}
+
 function shouldLog(input: Level): boolean {
-  return levelPriority[input] >= levelPriority[level]
+  return levelPriority[input] >= levelPriority[currentLevel()]
 }
 
 export type Logger = {
@@ -52,8 +57,28 @@ let logpath = ""
 export function file() {
   return logpath
 }
+
+let logStream: ReturnType<typeof createWriteStream> | undefined
+function defaultStream() {
+  if (!logStream) {
+    if (!logpath) logpath = path.join(Global.Path.log, "mage.log")
+    logStream = createWriteStream(logpath, { flags: "a" })
+  }
+  return logStream
+}
+
+// Default writer, active until/unless `init()` below is called. Writes to
+// mage.log under this package's own Global.Path.log (~/.mage/data/log, mkdir'd
+// at import time by ../global) rather than stderr - the in-process TUI's
+// terminal *is* its own stderr, so unconditionally writing here used to
+// corrupt the rendered frame on every request (worst case: a burst of
+// request/failure logs off-VPN). Mirrors to stderr only when explicitly
+// requested via `--print-logs` (MAGE_PRINT_LOGS=1), matching the same policy
+// as core/observability/logging.ts's Logging.loggers() (a separate log file -
+// this module predates and doesn't share the Effect logging pipeline).
 let write = (msg: any) => {
-  process.stderr.write(msg)
+  if (process.env.MAGE_PRINT_LOGS === "1") process.stderr.write(msg)
+  defaultStream().write(msg)
   return msg.length
 }
 

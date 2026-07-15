@@ -11,8 +11,8 @@ const __dirname = path.dirname(__filename);
 const PACKAGE_NAME = '@mybcabisnis/mage-web-react';
 const PACKAGE_PATH_SEGMENTS = PACKAGE_NAME.split('/');
 const NPM_REGISTRY_URL = `https://registry.npmjs.org/${PACKAGE_NAME}`;
-const CHANGELOG_URL = 'https://raw.githubusercontent.com/btriapitsyn/openchamber/main/CHANGELOG.md';
-const GITHUB_RELEASES_URL = 'https://github.com/openchamber/openchamber/releases';
+const CHANGELOG_URL = 'https://bcagitlab/MDZ-TCP/RnD/agent/mage/-/raw/master/CHANGELOG.md';
+const RELEASES_URL = 'https://bcagitlab/MDZ-TCP/RnD/agent/mage/-/releases';
 let cachedDetectedPm = null;
 
 function getSpawnSyncBaseOptions() {
@@ -122,7 +122,7 @@ async function checkForUpdatesFromApi(currentVersion, options = {}) {
     const versionComparison = compareVersions(data.latestVersion, currentVersion);
     if (versionComparison < 0) return null;
 
-    const releaseUrl = `${GITHUB_RELEASES_URL}/tag/v${data.latestVersion}`;
+    const releaseUrl = `${RELEASES_URL}/v${data.latestVersion}`;
     const downloadUrl = typeof data.downloadUrl === 'string'
       ? data.downloadUrl
       : typeof data.download?.url === 'string'
@@ -771,8 +771,8 @@ export async function checkForUpdates(options = {}) {
     version: latestVersion,
     currentVersion,
     body: changelog,
-    releaseUrl: `${GITHUB_RELEASES_URL}/tag/v${latestVersion}`,
-    downloadUrl: appType === 'mobile-capacitor' && platform === 'android' ? `${GITHUB_RELEASES_URL}/tag/v${latestVersion}` : undefined,
+    releaseUrl: `${RELEASES_URL}/v${latestVersion}`,
+    downloadUrl: appType === 'mobile-capacitor' && platform === 'android' ? `${RELEASES_URL}/v${latestVersion}` : undefined,
     packageManager: pm,
     // Show our CLI command, not raw package manager command
     updateCommand: 'mage update',

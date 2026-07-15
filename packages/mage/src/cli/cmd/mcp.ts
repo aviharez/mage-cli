@@ -17,9 +17,10 @@ import { InstanceRef } from "@/effect/instance-ref"
 import { InstallationVersion } from "@mybcabisnis/mage-core/installation/version"
 import path from "path"
 import { Global } from "@mybcabisnis/mage-core/global"
-import { modify, applyEdits } from "jsonc-parser"
+import { modify, applyEdits, parse } from "jsonc-parser"
 import { Filesystem } from "@/util/filesystem"
 import { Effect } from "effect"
+import { Marketplace } from "@/marketplace"
 
 function getAuthStatusIcon(status: MCP.AuthStatus): string {
   switch (status) {
@@ -98,6 +99,8 @@ export const McpCommand = cmd({
   builder: (yargs) =>
     yargs
       .command(McpAddCommand)
+      .command(McpInstallCommand)
+      .command(McpRemoveCommand)
       .command(McpListCommand)
       .command(McpAuthCommand)
       .command(McpLogoutCommand)
@@ -653,6 +656,221 @@ export const McpAddCommand = effectCmd({
 
       prompts.outro("MCP server added successfully")
     })
+  }),
+})
+
+export const McpInstallCommand = effectCmd({
+  command: "install [name]",
+  describe: "install an MCP server from the marketplace",
+  builder: (yargs) =>
+    yargs.positional("name", {
+      describe: "name of the MCP server in the marketplace catalog",
+      type: "string",
+    }),
+  handler: Effect.fn("Cli.mcp.install")(function* (args) {
+    const maybeCtx = yield* InstanceRef
+    if (!maybeCtx) return yield* Effect.die("InstanceRef not provided")
+    const ctx = maybeCtx
+    yield* Effect.promise(async () => {
+      UI.empty()
+      prompts.intro("Install MCP server")
+
+      const project = ctx.project
+
+      const spinner = prompts.spinner()
+      spinner.start("Fetching marketplace catalog...")
+      let cat: Awaited<ReturnType<typeof Marketplace.catalog>>
+      try {
+        cat = await Marketplace.catalog()
+      } catch (error) {
+        spinner.stop("Failed to fetch catalog", 1)
+        prompts.log.error(error instanceof Error ? error.message : String(error))
+        prompts.outro("Done")
+        return
+      }
+      spinner.stop(`Loaded ${cat.mcp.length} MCP server(s) from Rune`)
+
+      if (cat.mcp.length === 0) {
+        prompts.log.warn("No MCP servers available in the marketplace catalog")
+        prompts.outro("Done")
+        return
+      }
+
+      let name = args.name
+      if (!name) {
+        const selected = await prompts.select({
+          message: "Select an MCP server to install",
+          options: cat.mcp.map((m) => ({ label: m.name, value: m.name, hint: m.description })),
+        })
+        if (prompts.isCancel(selected)) throw new UI.CancelledError()
+        name = selected
+      }
+
+      const entry = cat.mcp.find((m) => m.name === name)
+      if (!entry) {
+        prompts.log.error(
+          `MCP server "${name}" not found in catalog. Available: ${cat.mcp.map((m) => m.name).join(", ")}`,
+        )
+        prompts.outro("Done")
+        return
+      }
+
+      // Resolve config paths eagerly for hints
+      const [projectConfigPath, globalConfigPath] = await Promise.all([
+        resolveConfigPath(ctx.worktree),
+        resolveConfigPath(Global.Path.config, true),
+      ])
+
+      // Determine scope (mirrors McpAddCommand above)
+      let configPath = globalConfigPath
+      if (project.vcs === "git") {
+        const scopeResult = await prompts.select({
+          message: "Location",
+          options: [
+            {
+              label: "Current project",
+              value: projectConfigPath,
+              hint: projectConfigPath,
+            },
+            {
+              label: "Global",
+              value: globalConfigPath,
+              hint: globalConfigPath,
+            },
+          ],
+        })
+        if (prompts.isCancel(scopeResult)) throw new UI.CancelledError()
+        configPath = scopeResult
+      }
+
+      const inputs: Record<string, string> = {}
+      for (const input of entry.inputs) {
+        const value = input.secret
+          ? await prompts.password({ message: input.message })
+          : await prompts.text({
+              message: input.message,
+              placeholder: input.placeholder,
+            })
+        if (prompts.isCancel(value)) throw new UI.CancelledError()
+        inputs[input.key] = value
+      }
+
+      const mcpConfig = Marketplace.buildMcpConfig(entry, inputs)
+      await Marketplace.writeMcpToConfig(name, mcpConfig, configPath)
+
+      void Marketplace.recordInstall(name)
+
+      prompts.log.success(`MCP server "${name}" installed to ${configPath}`)
+      prompts.outro("MCP server installed successfully")
+    })
+  }),
+})
+
+async function findMcpConfigFiles(name: string, worktree: string) {
+  const candidates = [
+    ...["mage.json", "mage.jsonc", "config.json"].map((file) => path.join(Global.Path.config, file)),
+    ...["mage.json", "mage.jsonc"].map((file) => path.join(worktree, file)),
+    ...["mage.json", "mage.jsonc"].map((file) => path.join(worktree, ".mage", file)),
+  ]
+
+  const matches: string[] = []
+  for (const candidate of candidates) {
+    if (!(await Filesystem.exists(candidate))) continue
+    const text = await Filesystem.readText(candidate)
+    const parsed = parse(text)
+    if (parsed?.mcp?.[name] !== undefined) matches.push(candidate)
+  }
+  return matches
+}
+
+async function removeMcpFromConfig(name: string, configPath: string) {
+  const text = await Filesystem.readText(configPath)
+  const edits = modify(text, ["mcp", name], undefined, {
+    formattingOptions: { tabSize: 2, insertSpaces: true },
+  })
+  await Filesystem.write(configPath, applyEdits(text, edits))
+}
+
+export const McpRemoveCommand = effectCmd({
+  command: "remove [name]",
+  aliases: ["rm"],
+  describe: "remove an MCP server",
+  builder: (yargs) =>
+    yargs.positional("name", {
+      describe: "name of the MCP server to remove",
+      type: "string",
+    }),
+  handler: Effect.fn("Cli.mcp.remove")(function* (args) {
+    const maybeCtx = yield* InstanceRef
+    if (!maybeCtx) return yield* Effect.die("InstanceRef not provided")
+    const ctx = maybeCtx
+    const config = yield* Config.Service.use((cfg) => cfg.get())
+    const servers = configuredServers(config)
+
+    const removedName = yield* Effect.promise(async (): Promise<string | undefined> => {
+      UI.empty()
+      prompts.intro("Remove MCP server")
+
+      if (servers.length === 0) {
+        prompts.log.warn("No MCP servers configured")
+        prompts.outro("Done")
+        return undefined
+      }
+
+      let name = args.name
+      if (!name) {
+        const selected = await prompts.select({
+          message: "Select an MCP server to remove",
+          options: servers.map(([serverName, serverConfig]) => ({
+            label: serverName,
+            value: serverName,
+            hint: serverConfig.type === "remote" ? serverConfig.url : serverConfig.command.join(" "),
+          })),
+        })
+        if (prompts.isCancel(selected)) throw new UI.CancelledError()
+        name = selected
+      }
+
+      const entry = servers.find(([serverName]) => serverName === name)
+      if (!entry) {
+        prompts.log.error(
+          `MCP server not found: ${name}. Available: ${servers.map(([serverName]) => serverName).join(", ")}`,
+        )
+        prompts.outro("Done")
+        return undefined
+      }
+
+      const files = await findMcpConfigFiles(name, ctx.worktree)
+      if (files.length === 0) {
+        prompts.log.error(`"${name}" is not defined in a local config file (managed/remote config); cannot remove`)
+        prompts.outro("Done")
+        return undefined
+      }
+
+      const confirmed = await prompts.confirm({
+        message: `Remove MCP server "${name}" from ${files.join(", ")}?`,
+      })
+      if (prompts.isCancel(confirmed) || !confirmed) {
+        prompts.outro("Cancelled")
+        return undefined
+      }
+
+      for (const file of files) {
+        await removeMcpFromConfig(name, file)
+      }
+
+      return name
+    })
+
+    if (!removedName) return
+
+    const mcp = yield* MCP.Service
+    if (yield* mcp.hasStoredTokens(removedName)) {
+      yield* mcp.removeAuth(removedName)
+    }
+
+    prompts.log.success(`MCP server "${removedName}" removed`)
+    prompts.outro("MCP server removed successfully")
   }),
 })
 

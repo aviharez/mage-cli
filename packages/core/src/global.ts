@@ -1,6 +1,6 @@
 import path from "path"
 import fs from "fs/promises"
-import { xdgData, xdgCache, xdgConfig, xdgState } from "xdg-basedir"
+import { xdgData, xdgCache, xdgState } from "xdg-basedir"
 import os from "os"
 import { Context, Effect, Layer } from "effect"
 import { Flock } from "./util/flock"
@@ -10,7 +10,11 @@ import { makeGlobalNode } from "./effect/app-node"
 const app = "mage"
 const data = path.join(xdgData!, app)
 const cache = path.join(xdgCache!, app)
-const config = path.join(xdgConfig!, app)
+// The global config directory is `~/.mage` (not the XDG config dir) — this is
+// the canonical location for `mage.json` and is what `mage init`/first-run
+// writes to. Kept as a plain const (evaluated once at import), matching how
+// `data`/`cache`/`state` above are derived from xdg-basedir.
+const config = path.join(process.env.MAGE_TEST_HOME ?? os.homedir(), ".mage")
 const state = path.join(xdgState!, app)
 const tmp = path.join(os.tmpdir(), app)
 

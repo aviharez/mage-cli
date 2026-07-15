@@ -819,6 +819,21 @@ export const createMageLifecycleRuntime = (deps) => {
         state.lastMageError = null;
         state.mageNotReadySince = 0;
         syncToHmrState();
+      } else if (env.ENV_SKIP_MAGE_START) {
+        // MAGE_SKIP_START was requested but no backend port resolved (bare
+        // MAGE_HOST like "127.0.0.1" is rejected by env-config.js; MAGE_PORT /
+        // MAGE_INTERNAL_PORT was never set either). Falling through to
+        // startMage() here used to silently launch a managed instance, which
+        // then resolves whatever binary is on PATH named "mage" (possibly an
+        // unrelated third-party tool) and crash-loops with a confusing
+        // "Unknown command serve" error. Fail fast with an actionable message
+        // instead.
+        throw new Error(
+          'MAGE_SKIP_START is set but no backend port was resolved. Set ' +
+          'MAGE_INTERNAL_PORT (or MAGE_MAGE_PORT/MAGE_PORT) to the backend ' +
+          'port, or MAGE_HOST to a full URL like "http://127.0.0.1:4096" ' +
+          '(bare hostnames are rejected).',
+        );
       } else {
         // We never auto-attach to an arbitrary pre-existing Mage instance.
         // Attaching to an external server requires explicit opt-in via env

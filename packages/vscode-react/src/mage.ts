@@ -1018,7 +1018,7 @@ export function createMageManager(context: vscode.ExtensionContext): MageManager
           moreInfoLabel
         ).then(selection => {
           if (selection === moreInfoLabel) {
-            vscode.env.openExternal(vscode.Uri.parse('https://github.com/anomalyco/opencode'));
+            vscode.env.openExternal(vscode.Uri.parse('https://bcagitlab/MDZ-TCP/RnD/agent/mage'));
           }
         });
       } else {

@@ -189,8 +189,8 @@ export function ErrorComponent(props: { error: Error; reset: () => void; mode?: 
           <box flexDirection="column" alignItems="center" flexShrink={0}>
             <text fg={colors.muted}>
               {copied()
-                ? "Report copied — paste it into a new GitHub issue."
-                : "Copy the report and open a GitHub issue to help us fix this."}
+                ? "Report copied — paste it into a new GitLab issue."
+                : "Copy the report and open a GitLab issue to help us fix this."}
             </text>
             <text fg={colors.muted}>mage {InstallationVersion}</text>
           </box>
@@ -201,27 +201,26 @@ export function ErrorComponent(props: { error: Error; reset: () => void; mode?: 
 }
 
 function buildIssueURL(message: string, stack: string) {
-  // Field keys match the ids in .github/ISSUE_TEMPLATE/bug-report.yml so the issue
-  // form opens pre-filled. Populating os/terminal/reproduce keeps the report past
-  // the contributing-guidelines compliance check, which pushes for system info.
-  const url = new URL("https://github.com/anomalyco/opencode/issues/new?template=bug-report.yml")
-  url.searchParams.set("title", `TUI crash: ${message}`)
-  url.searchParams.set("mage-version", InstallationVersion)
-  url.searchParams.set("os", describeOS())
-  url.searchParams.set("terminal", describeTerminal())
-  url.searchParams.set(
-    "reproduce",
-    "Reported automatically from the mage crash screen. If you can, describe what you were doing when it crashed.",
-  )
+  // GitLab's "new issue" form only prefills via `issue[title]`/`issue[description]`
+  // query params (no per-field ids like GitHub's issue-forms), so the system info
+  // that used to be separate template fields is folded into the description body.
+  const url = new URL("https://bcagitlab/MDZ-TCP/RnD/agent/mage/-/issues/new")
+  url.searchParams.set("issue[title]", `TUI crash: ${message}`)
 
   // Budget the stack against the fully URL-encoded length (not the raw length) so
-  // the final link stays under GitHub's practical limit; flag truncation so a
+  // the final link stays under a practical URL length limit; flag truncation so a
   // clipped trace is obvious. searchParams.set handles encoding without throwing,
   // so measuring url.toString() is both correct and safe on any input.
   const MAX_URL_LENGTH = 6000
   const marker = "\n... (truncated)"
-  const head = `The mage TUI crashed with an unexpected error.\n\n**Error:** ${message}\n\n**Stack trace:**\n`
-  const setBody = (body: string) => url.searchParams.set("description", head + "```\n" + body + "\n```")
+  const head =
+    `The mage TUI crashed with an unexpected error.\n\n` +
+    `**Mage version:** ${InstallationVersion}\n` +
+    `**OS:** ${describeOS()}\n` +
+    `**Terminal:** ${describeTerminal()}\n\n` +
+    "Reported automatically from the mage crash screen. If you can, describe what you were doing when it crashed.\n\n" +
+    `**Error:** ${message}\n\n**Stack trace:**\n`
+  const setBody = (body: string) => url.searchParams.set("issue[description]", head + "```\n" + body + "\n```")
 
   setBody(stack)
   if (url.toString().length <= MAX_URL_LENGTH) return url

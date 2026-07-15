@@ -40,13 +40,13 @@ already-loaded config until then.
 | Scope                         | Path                                                                                                                      |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | Project config                | `./mage.json`, `./mage.jsonc`, or `.mage/mage.json` (mage walks up from the cwd to the worktree root)                |
-| Global config                 | `~/.config/mage/mage.json` (NOT `~/.mage/`)                                                                               |
+| Global config                 | `~/.mage/mage.json`                                                                                                       |
 | Project agents                | `.mage/agent/<name>.md` or `.mage/agents/<name>.md`                                                                       |
-| Global agents                 | `~/.config/mage/agent(s)/<name>.md`                                                                                       |
+| Global agents                 | `~/.mage/agent(s)/<name>.md`                                                                                              |
 | Project commands              | `.mage/command/<name>.md` or `.mage/commands/<name>.md`                                                                   |
-| Global commands               | `~/.config/mage/command(s)/<name>.md`                                                                                     |
+| Global commands               | `~/.mage/command(s)/<name>.md`                                                                                            |
 | Project skills                | `.mage/skill(s)/<name>/SKILL.md`                                                                                          |
-| Global skills                 | `~/.config/mage/skill(s)/<name>/SKILL.md`                                                                                 |
+| Global skills                 | `~/.mage/skill(s)/<name>/SKILL.md`                                                                                        |
 | External skills (auto-loaded) | `~/.claude/skills/<name>/SKILL.md`, `~/.agents/skills/<name>/SKILL.md`                                                    |
 
 Configs from each scope are deep-merged. Project overrides global. Unknown

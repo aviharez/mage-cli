@@ -31,7 +31,7 @@ const SKILL_PATTERN = "**/SKILL.md"
 // actual schemas instead of guesses.
 const CUSTOMIZE_MAGE_SKILL_NAME = "customize-mage"
 const CUSTOMIZE_MAGE_SKILL_DESCRIPTION =
-  "Use ONLY when the user is editing or creating mage's own configuration: mage.json, mage.jsonc, files under .mage/, or files under ~/.config/mage/. Also use when creating or fixing mage agents, subagents, skills, plugins, MCP servers, or permission rules. Do not use for the user's own application code, or for any project that is not configuring mage itself."
+  "Use ONLY when the user is editing or creating mage's own configuration: mage.json, mage.jsonc, files under .mage/, or files under ~/.mage/. Also use when creating or fixing mage agents, subagents, skills, plugins, MCP servers, or permission rules. Do not use for the user's own application code, or for any project that is not configuring mage itself."
 const CUSTOMIZE_MAGE_SKILL_BODY = SkillPlugin.CustomizeMageContent
 
 export const Info = Schema.Struct({

@@ -34,3 +34,4 @@ tsconfig.tsbuildinfo
 .agents/
 skills-lock.json
 memory/
+graphify-out/
