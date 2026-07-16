@@ -17,7 +17,7 @@ export function DialogNewSession() {
     <DialogSelect<Choice>
       title="New session"
       current="this-window"
-      skipFilter
+      renderFilter={false}
       options={[
         {
           title: "This window",

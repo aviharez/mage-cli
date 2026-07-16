@@ -625,14 +625,14 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
           local.agent.move(1)
         },
       },
-      {
-        name: "variant.cycle",
-        title: "Variant cycle",
-        category: "Agent",
-        run: () => {
-          local.model.variant.cycle()
-        },
-      },
+      // {
+      //   name: "variant.cycle",
+      //   title: "Variant cycle",
+      //   category: "Agent",
+      //   run: () => {
+      //     local.model.variant.cycle()
+      //   },
+      // },
       {
         name: "agent.cycle.reverse",
         title: "Agent cycle reverse",

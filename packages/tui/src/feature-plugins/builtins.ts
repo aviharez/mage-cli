@@ -22,7 +22,7 @@ export function createBuiltinPlugins(options: { experimentalEventSystem: boolean
   return [
     HomeFooter,
     HomeTips,
-    SidebarContext,
+    // SidebarContext,
     SidebarMcp,
     SidebarLsp,
     SidebarTodo,
