@@ -31,7 +31,7 @@ spec:
       uri: >-
         https://bcagitlab.intra.bca.co.id/MDZ-TCP/mybcabisnis-web/framework/mage.git
       ref: DEV1
-    contextDir: packages/web
+    contextDir: packages/wiki
     sourceSecret:
       name: mbb-webserver-git
     triggers:

@@ -4,7 +4,7 @@
  * gen-skills.ts
  * Reads packages/mage/defaults/skills/*\/SKILL.md and extracts the name +
  * description from each file's YAML frontmatter, then writes the result to
- * packages/web/src/data/builtin-skills.json so the hub page can list all
+ * packages/wiki/src/data/builtin-skills.json so the hub page can list all
  * built-in skills at build time.
  *
  * Safe to run in standalone / Docker builds: if the skills directory doesn't

@@ -18,7 +18,7 @@
       "outputs": [".artifacts/unit/junit.xml"],
       "passThroughEnv": ["*"]
     },
-    "@mybcabisnis/mage-web#build": {
+    "@mybcabisnis/mage-wiki#build": {
       "dependsOn": ["@mybcabisnis/mage#build"],
       "outputs": ["dist/**"]
     },

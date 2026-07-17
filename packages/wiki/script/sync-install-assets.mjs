@@ -33,7 +33,7 @@ for (const [src, dest] of assets) {
 }
 
 if (synced > 0) {
-  console.log(`Synced ${synced} install asset(s) → packages/web/public/`)
+  console.log(`Synced ${synced} install asset(s) → packages/wiki/public/`)
 } else {
   console.log("No install assets to sync (standalone build — using vendored copies)")
 }

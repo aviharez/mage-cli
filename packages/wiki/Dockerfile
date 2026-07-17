@@ -1,4 +1,4 @@
-# ── Mage docs site (packages/web) – OCP runtime image ─────────────────────────
+# ── Mage wiki site (packages/wiki) – OCP runtime image ─────────────────────────
 #
 # WHY no `npm run build` here:
 #   This image is built on an arm64 Mac targeting an amd64 base image. Podman
@@ -8,9 +8,9 @@
 #   runtime deps and copy the prebuilt dist/.
 #
 # BEFORE running podman build, run from the repo root:
-#   bun run --cwd packages/web build
+#   bun run --cwd packages/wiki build
 #
-# Build context: packages/web  (contextDir: packages/web in BuildConfig.yml)
+# Build context: packages/wiki  (contextDir: packages/wiki in BuildConfig.yml)
 # Runtime entry: dist/server/entry.mjs  (Astro standalone / @astrojs/node)
 # Listens on:   HOST=0.0.0.0  PORT=8080  (matches Service.yml 8080-tcp)
 # ──────────────────────────────────────────────────────────────────────────────

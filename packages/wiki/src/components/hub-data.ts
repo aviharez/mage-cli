@@ -1,6 +1,6 @@
 // Hub marketplace data
 // Built-in skills are auto-generated from packages/mage/defaults/skills/*/SKILL.md
-// by packages/web/script/gen-skills.ts (run via `bun run gen:skills` or automatically
+// by packages/wiki/script/gen-skills.ts (run via `bun run gen:skills` or automatically
 // during `bun run build` via the prebuild hook). The committed JSON is the fallback
 // for standalone / Docker builds where the monorepo is not present.
 

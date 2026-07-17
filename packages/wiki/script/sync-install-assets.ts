@@ -18,4 +18,4 @@ for (const [src, dest] of assets) {
   fs.copyFileSync(src, dest)
 }
 
-console.log("Synced install assets → packages/web/public/")
+console.log("Synced install assets → packages/wiki/public/")

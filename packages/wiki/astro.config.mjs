@@ -154,7 +154,7 @@ export default defineConfig({
       ...(config.github
         ? {
             editLink: {
-              baseUrl: `${config.github}/edit/dev/packages/web/src/content/`,
+              baseUrl: `${config.github}/edit/dev/packages/wiki/src/content/`,
             },
           }
         : {}),
