@@ -1,63 +1,58 @@
 /**
  * Cloud Merlin provider adapter for the Vercel AI SDK (LanguageModelV3).
  *
- * The Merlin API is a proprietary BCA endpoint that is NOT OpenAI-compatible.
- * This adapter translates Mage's standard LanguageModelV3 calls into
- * Merlin's custom request/response envelope.
+ * Talks to BCA's GAIA gateway `/chat/completions` endpoint (Techdoc "LLM
+ * GATEWAY API v2.4" §1.1.3), which is OpenAI-compatible: standard
+ * `messages`/`tools` request body, real SSE streaming, and native
+ * `message.tool_calls` — no prompt-injected XML tool-call parsing needed.
  *
- * Request shape (Merlin):
- *   POST <endpoint>
- *   { client_id, domain_id, service_id,
- *     config: { temperature, max_token, recommendation },
- *     new_session: 'True',
- *     prompt: OpenAI-format message array | string,
- *     file: '' }
+ * URL shape (positional path segments, §1.1.3):
+ *   POST <origin>/<client_id>/<session_id>/<domain_id>/<user_name>/<divisi>/<new_session>/<task>/chat/completions
+ *   We send fixed "none" placeholders for session_id/user_name/divisi and
+ *   "false" for new_session; task is always "vllm-text-generation" (sending
+ *   "none" here makes the gateway return its canned error).
  *
- * Response shape (Merlin):
- *   { output_schema?: { result?: { answer, token_input, token_output } }, error_schema? }
+ * Request body (§1.2.2): { model, messages, temperature, max_completion_tokens,
+ * service_id, tools?, tool_choice?, stream }.
  *
- * No true streaming — we perform a full request then emit a single text-delta.
- * (The company's GAIA gateway proved unreliable under SSE streaming — connections
- * were dropped mid-answer with no finish signal — so this adapter deliberately
- * stays on the single request/response shape instead of /chat/completions SSE.)
+ * Response body:
+ *   - Success (§1.3.2, streaming or not): standard OpenAI `choices[].message`
+ *     (non-streaming) or `choices[].delta` (SSE) shape, with native
+ *     `tool_calls`. `reasoning` (§1.3.2 — the model's thinking-mode
+ *     chain-of-thought) is mapped to LanguageModelV3 `reasoning` content
+ *     parts, ahead of the real answer, both non-streaming and as
+ *     `reasoning-start`/`reasoning-delta`/`reasoning-end` stream parts closed
+ *     out the moment real `content` starts arriving. Streaming responses
+ *     decode as `text/event-stream`; `application/json` from a `stream: true`
+ *     request means the gateway rejected the request before generating (see
+ *     below).
+ *   - Business-logic failure (§1.4): `{ error_schema: { error_code,
+ *     error_message }, output_schema: { err_debug, result: { answer } } }`,
+ *     always a plain JSON body (never SSE) even when `stream: true` was sent,
+ *     because GAIA validates the request before it starts generating.
  *
- * Tool calling strategy:
- *   Merlin has no native function-calling API, so we use prompt-based tool calling:
- *   1. Inject tool schemas as XML into the system prompt.
- *   2. Instruct the model to emit <tool_call> XML blocks when it wants to use a tool.
- *   3. Parse the model's text response for those blocks.
- *   4. Return LanguageModelV3 tool-call content parts so the AI SDK agentic loop
- *      can execute the real tools and send results back.
- *
- * Resilience layered on top of the base request/response flow:
- *   - A genuine per-request timeout (AbortSignal.timeout(this.timeoutMs)
- *     firing) and a DPA-115/DPA-117 error_schema (transient gateway/OCP
- *     hiccups) are surfaced as retryable APICallErrors, so the existing
- *     session-level retry policy (session/retry.ts) backs off and re-sends
- *     automatically. Every other failure — non-timeout fetch errors, raw HTTP
- *     error responses (including 5xx), and the gateway parse-diagnostic below
- *     — is surfaced as non-retryable (isRetryable: false, no >=500
- *     statusCode) so it is shown once instead of retried indefinitely
+ * Error scenario handling (§1.4 DPA-1xx table), see `mapErrorEnvelope`:
+ *   - DPA-111 (success), DPA-120 (PII flagged, answer still returned),
+ *     DPA-129 (recommendation-generation failed, answer still returned) are
+ *     not treated as fatal — they carry a real answer in `result.answer`.
+ *   - DPA-115 (internal bug/syntax error) and DPA-117 (OCP connection
+ *     timeout) are transient — surfaced as retryable APICallErrors so the
+ *     existing session-level retry policy (session/retry.ts) backs off and
+ *     re-sends automatically.
+ *   - DPA-126 (prompt exceeds limit) and DPA-124 (generic engine error) whose
+ *     `err_debug` names a context-length limit are both converted to a 413
+ *     APICallError so the session auto-compacts. Other DPA-124s (e.g. a
+ *     generic engine 500) surface as "GAIA Error: 500 Internal Server Error"
+ *     without compacting.
+ *   - Every other DPA code is non-retryable (isRetryable: false, no >=500
+ *     statusCode) and surfaces the localized "Answer to User" text from
+ *     `output_schema.result.answer` (falling back to the English error
+ *     message) so it is shown once instead of retried indefinitely
  *     (retry.ts has no max-attempt cap and retries on `isRetryable ||
  *     statusCode >= 500`).
- *   - DPA-124 ("engine error while processing the query") is GAIA's catch-all
- *     failure code. Only DPA-124s whose err_debug names a context-length limit
- *     are treated as context overflow and converted to a 413 APICallError so
- *     the session auto-compacts; other DPA-124s (e.g. a generic engine 500)
- *     surface as "GAIA Error: 500 Internal Server Error" without compacting.
- *     DPA-115 and DPA-117, by contrast, are always transient and always
- *     retried — see above.
- *   - A genuine reply that only announces an action ("Let me read the key
- *     files...") without ever emitting the tool call is detected and
- *     transparently continued, bounded by MAX_CONTINUATIONS, so the agent loop
- *     doesn't stall mid-task.
- *   - An internal engine parse diagnostic ("Tool results was maybe incorrectly
- *     parsed for json...") occasionally comes back as a 200 "answer" instead of
- *     a real reply — usually when a large, multiline tool-result block fails to
- *     JSON-parse gateway-side. This is detected and surfaced as a
- *     non-retryable APICallError (not a timeout, so not auto-retried) instead
- *     of being shown to the user as raw engine internals or misclassified as
- *     context overflow.
+ *   - A genuine per-request timeout (AbortSignal.timeout(this.timeoutMs)
+ *     firing) and raw HTTP errors are handled the same way as before: only
+ *     the timeout is retryable.
  */
 
 import { APICallError } from "@ai-sdk/provider"
@@ -69,6 +64,7 @@ import type {
   LanguageModelV3StreamResult,
   LanguageModelV3StreamPart,
   LanguageModelV3ToolResultOutput,
+  LanguageModelV3Usage,
 } from "@ai-sdk/provider"
 import * as Log from "../util/log"
 import * as Network from "../util/network"
@@ -77,330 +73,82 @@ const log = Log.create({ service: "merlin" })
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const MERLIN_ENDPOINT =
-  "https://gaia-gateway-multimodal-uat.apps.ocpuatgra.dti.co.id/llm-gateway/multimodal"
+const MERLIN_ORIGIN = "https://gaia-gateway-multimodal-uat.apps.ocpuatgra.dti.co.id"
 const CLIENT_ID = "MAGEDEV"
+const DEFAULT_MODEL = "/app/models/text-2"
 
-/**
- * Maximum number of transparent re-requests issued when the model announces an
- * action ("Let me check the config...") but never actually emits the tool call
- * for it (see `isPrematureActionStop`). Bounds retries so a model stuck in that
- * pattern can't loop forever.
- */
-export const MAX_CONTINUATIONS = 2
+// ── GAIA wire types ──────────────────────────────────────────────────────────
 
-// ── Merlin API types ──────────────────────────────────────────────────────────
+interface OpenAIToolCall {
+  id: string
+  type: "function"
+  function: { name: string; arguments: string }
+}
 
-interface MerlinRequest {
-  client_id: string
-  domain_id: string
-  /**
-   * Omitted entirely (not sent as "") when the MAGE_USE_SERVICE_ID env var is
-   * falsy — some gateways/tenants reject an unrecognized service_id outright.
-   */
+interface OpenAIMessage {
+  role: "system" | "user" | "assistant" | "tool"
+  content: string
+  tool_calls?: OpenAIToolCall[]
+  tool_call_id?: string
+}
+
+interface ChatCompletionsRequest {
+  model: string
+  messages: OpenAIMessage[]
+  temperature: number
+  max_completion_tokens: number
   service_id?: string
-  config: {
-    temperature: number
-    top_p: number
-    top_k: number
-    min_p: number
-    presence_penalty: number
-    repetition_penalty: number
-    max_token: number
-    recommendation: string
-    /** Optional model override, populated from MAGE_MODEL_NAME when set. */
-    model_name?: string
-  }
-  new_session: string
-  prompt: string
-  /**
-   * Attached file(s) as base64. Per the GAIA multimodal docs this may be a
-   * single base64 string or an array of base64 strings. We always send an
-   * array (empty when there are no attachments) for a consistent shape.
-   */
-  file: string | string[]
+  tools?: Array<{ type: "function"; function: { name: string; description?: string; parameters: unknown } }>
+  tool_choice?: "auto"
+  stream: boolean
+  stream_options?: { include_usage: true }
+  priority?: number
 }
 
-interface MerlinResponse {
-  error_schema?: {
-    error_code: string
-    error_message?: { english?: string }
-  }
-  output_schema?: {
-    result?: {
-      answer: string
-      token_input?: number
-      token_output?: number
+interface ChatCompletionsUsage {
+  completion_tokens: number
+  prompt_tokens: number
+  total_tokens: number
+}
+
+/** Non-streaming success response (§1.3.2). */
+interface ChatCompletionsResponse {
+  choices?: Array<{
+    finish_reason: string | null
+    message: {
+      content: string | null
+      /** Model thinking process, per §1.3.2 — Qwen's reasoning-mode chain-of-thought. */
+      reasoning?: string | null
+      role: string
+      tool_calls?: OpenAIToolCall[]
     }
-    status?: string
-    err_debug?: string
-  }
-  response?: string
-  error?: string
+  }>
+  usage?: ChatCompletionsUsage
+  // Present only on a business-logic failure (§1.4) — never alongside a real `choices` answer.
+  error_schema?: { error_code: string; error_message?: { english?: string; indonesian?: string } }
+  output_schema?: { err_debug?: string; result?: { answer?: string } }
 }
 
-// ── Tool calling helpers ──────────────────────────────────────────────────────
-
-/**
- * Render tool schemas into the system prompt so the model knows which tools
- * are available and how to call them.
- *
- * Uses Qwen3's native JSON-in-tag format which the model produces reliably
- * without needing extra fine-tuning on a custom XML schema.
- */
-function renderToolsBlock(options: LanguageModelV3CallOptions): string {
-  if (!options.tools || options.tools.length === 0) return ""
-
-  const toolDefs = options.tools
-    .filter((t): t is LanguageModelV3FunctionTool => t.type === "function")
-    .map((t) => JSON.stringify({ name: t.name, description: t.description ?? "", parameters: t.inputSchema }))
-    .join("\n")
-
-  if (!toolDefs) return ""
-
-  return `# Tools
-
-You have access to the following tools. Call them by outputting a JSON object inside <tool_call> tags.
-
-${toolDefs}
-
-When you need to use a tool output EXACTLY this format — no other text on the same line:
-<tool_call>
-{"name": "<tool_name>", "arguments": {<json_args>}}
-</tool_call>
-
-Rules:
-- Tool names are CASE-SENSITIVE. Copy them exactly as listed above (e.g. "Edit" not "edit", "Read" not "read", "Bash" not "bash").
-- ALWAYS close every <tool_call> with </tool_call> on its own line. Never leave a <tool_call> tag open.
-- Output valid JSON inside the tag — no comments, no trailing commas, no markdown code fences.
-- You MAY call multiple tools in sequence. Call one at a time and wait for the result.
-- After ALL tool results are returned, synthesise a final answer in plain text.
-- If you do NOT need a tool, reply in plain text only — no <tool_call> tags.`
-}
-
-type ParsedCall = { name: string; callId: string; args: Record<string, unknown> }
-
-/** Extract the first balanced-brace JSON object substring, ignoring braces inside strings. */
-function extractBalancedJson(s: string): string | null {
-  const start = s.indexOf("{")
-  if (start < 0) return null
-  let depth = 0
-  let inString = false
-  let escape = false
-  for (let i = start; i < s.length; i++) {
-    const c = s[i]
-    if (escape) { escape = false; continue }
-    if (c === "\\") { escape = true; continue }
-    if (c === '"') { inString = !inString; continue }
-    if (inString) continue
-    if (c === "{") depth++
-    else if (c === "}") {
-      depth--
-      if (depth === 0) return s.slice(start, i + 1)
+/** One SSE `data:` chunk (OpenAI streaming shape). */
+interface ChatCompletionsStreamChunk {
+  choices?: Array<{
+    delta?: {
+      content?: string | null
+      /** Streamed reasoning-mode chain-of-thought, mirroring `content` (vLLM reasoning-parser convention). */
+      reasoning?: string | null
+      tool_calls?: Array<{ index: number; id?: string; function?: { name?: string; arguments?: string } }>
     }
-  }
-  return null
+    finish_reason?: string | null
+  }>
+  usage?: ChatCompletionsUsage
 }
 
-/**
- * Escape backslashes that are not part of a valid JSON escape sequence
- * (`\" \\ \/ \b \f \n \r \t \uXXXX`). Turns a raw Windows path emitted by the
- * model — `C:\Users\me` — into valid JSON `C:\\Users\\me` so the tool call
- * survives instead of being dropped. Returns null if given null.
- */
-function escapeStrayBackslashes(s: string | null): string | null {
-  return s === null ? null : s.replace(/\\(?!["\\/bfnrtu])/g, "\\\\")
-}
+// ── URL / request builders ────────────────────────────────────────────────────
 
-/** Parse a single tool_call body into {name, args}, or null if unrecognized. */
-function parseToolCallBody(body: string): { name: string; args: Record<string, unknown> } | null {
-  // Strip surrounding markdown code fences if the model wrapped its JSON in them.
-  const stripped = body.replace(/^```(?:json|xml)?\s*/i, "").replace(/\s*```\s*$/, "").trim()
-
-  // Format 1: JSON object. Try a sequence of increasingly forgiving candidates:
-  //   1. the string as-is,
-  //   2. the balanced-brace substring (model appended trailing text after `}`),
-  //   3. with stray backslashes escaped (raw Windows paths like C:\Users\me make
-  //      the JSON invalid — `\U` is not a legal escape — and would otherwise drop
-  //      the whole tool call, so the agent silently does nothing).
-  if (stripped.startsWith("{")) {
-    const balanced = extractBalancedJson(stripped)
-    const candidates = [stripped, balanced, escapeStrayBackslashes(stripped), escapeStrayBackslashes(balanced)]
-    for (const candidate of candidates) {
-      if (!candidate) continue
-      try {
-        const parsed = JSON.parse(candidate) as { name?: string; arguments?: Record<string, unknown> }
-        if (parsed.name) return { name: parsed.name, args: parsed.arguments ?? {} }
-      } catch { /* try next candidate */ }
-    }
-  }
-
-  // Format 2: XML sub-elements
-  const nameMatch = /<name>([\s\S]*?)<\/name>/.exec(stripped)
-  if (nameMatch) {
-    const argsMatch = /<arguments>([\s\S]*?)<\/arguments>/.exec(stripped)
-    let args: Record<string, unknown> = {}
-    if (argsMatch) {
-      try { args = JSON.parse(argsMatch[1].trim()) } catch { /* ignore */ }
-    }
-    return { name: nameMatch[1].trim(), args }
-  }
-  return null
-}
-
-/**
- * Parse tool calls from the model response.
- * Handles formats Qwen3.5 may emit:
- *   1. Closed JSON:   <tool_call>{"name":"x","arguments":{...}}</tool_call>
- *   2. Closed XML:    <tool_call><name>x</name><arguments>{...}</arguments></tool_call>
- *   3. Unclosed:      <tool_call>{"name":"x","arguments":{...}}    (model forgot the close tag)
- *   4. Bare line:     funcName({...})  or  funcName(key=val)
- *
- * Tool names are normalized against `availableTools` to recover from case drift —
- * e.g. when the model emits "edit" but the registered tool is "Edit".
- */
-export function parseToolCalls(
-  text: string,
-  availableTools?: LanguageModelV3CallOptions["tools"],
-): ParsedCall[] {
-  const results: ParsedCall[] = []
-  let idx = 0
-
-  const nameMap = new Map<string, string>()
-  if (availableTools) {
-    for (const t of availableTools) {
-      if (t.type === "function") nameMap.set(t.name.toLowerCase(), t.name)
-    }
-  }
-  const normalizeName = (n: string) => nameMap.get(n.toLowerCase()) ?? n
-
-  // Closed AND unclosed <tool_call> blocks. The `(?:</tool_call>|$)` alternation
-  // falls back to end-of-string when the model omits the closing tag.
-  const tagRegex = /<tool_call>([\s\S]*?)(?:<\/tool_call>|$)/g
-  let match: RegExpExecArray | null
-  while ((match = tagRegex.exec(text)) !== null) {
-    const body = match[1].trim()
-    if (!body) continue
-    const parsed = parseToolCallBody(body)
-    if (parsed) {
-      results.push({
-        name: normalizeName(parsed.name),
-        callId: `merlin-tc-${idx++}`,
-        args: parsed.args,
-      })
-    }
-  }
-
-  // Fallback: bare funcName(...) lines. Only run when no tag-based calls were found,
-  // and only accept names that match a registered tool — keeps prose like "use Edit()"
-  // from being misread as a phantom call.
-  if (results.length === 0) {
-    const lineRegex = /^([a-zA-Z_][a-zA-Z0-9_]*)\(([\s\S]*?)\)\s*$/gm
-    while ((match = lineRegex.exec(text)) !== null) {
-      const name = match[1]
-      if (nameMap.size > 0 && !nameMap.has(name.toLowerCase())) continue
-      const rawArgs = match[2].trim()
-      let args: Record<string, unknown> = {}
-      try {
-        args = JSON.parse(rawArgs.startsWith("{") ? rawArgs : `{${rawArgs}}`)
-      } catch {
-        const kvRegex = /([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*("[^"]*"|'[^']*'|[^,)]+)/g
-        let kv: RegExpExecArray | null
-        while ((kv = kvRegex.exec(rawArgs)) !== null) {
-          const val = kv[2].trim().replace(/^["']|["']$/g, "")
-          args[kv[1]] = val
-        }
-      }
-      results.push({ name: normalizeName(name), callId: `merlin-tc-${idx++}`, args })
-    }
-  }
-
-  return results
-}
-
-/**
- * Return the required field names absent from (or `undefined` in) `call.args`,
- * as declared by the matching tool's inputSchema. Returns an empty array when
- * the tool is not found, the schema has no `required` array, or all required
- * fields are present — i.e. a non-empty return means the call is incomplete.
- */
-export function missingRequiredArgs(
-  call: ParsedCall,
-  tools?: LanguageModelV3CallOptions["tools"],
-): string[] {
-  if (!tools) return []
-  const tool = tools.find(
-    (t): t is LanguageModelV3FunctionTool => t.type === "function" && t.name === call.name,
-  )
-  if (!tool) return []
-  const required = (tool.inputSchema as { required?: string[] }).required
-  if (!Array.isArray(required)) return []
-  return required.filter((k) => call.args[k] === undefined)
-}
-
-/**
- * Force strict one-tool-per-turn sequencing.
- *
- * Merlin's text-only model can emit several <tool_call> blocks in a single
- * response, but it has no way to know a later call is safe before the earlier
- * call's result returns — e.g. a Read whose path depends on a Glob emitted in
- * the SAME turn fires with a guessed path and reports "file not found". We keep
- * only the first call; the model re-emits the rest, with real context, on the
- * next round-trip. The discard is logged so we can measure how often it happens.
- */
-export function capToolCalls(calls: ParsedCall[]): ParsedCall[] {
-  if (calls.length > 1) {
-    log.warn("tool_call_discard", {
-      kept: calls[0]!.name,
-      discarded: calls.slice(1).map((c) => c.name),
-      count: calls.length - 1,
-    })
-    return [calls[0]!]
-  }
-  return calls
-}
-
-/**
- * Strip hallucinated transcript continuation that Qwen/GAIA generates after a
- * real tool call.
- *
- * When the model emits a closed `<tool_call>` it sometimes keeps generating and
- * fabricates the rest of the conversation — fake `Tool Results:`, `<tool_result>`
- * blocks with invented results, and new `Assistant:` turn markers. These use the
- * exact delimiters `flattenPrompt` injects, so the model is just continuing the
- * pattern it was shown.
- *
- * Strategy: the model's genuine output for one turn is at most one `<tool_call>`.
- * Anchor the search for continuation delimiters to **after** the real tool call so
- * we never accidentally cut inside a tool-call argument string. Everything from the
- * first line-anchored delimiter onwards is hallucinated and is discarded.
- */
-export function stripHallucinatedTurns(answer: string): string {
-  // Find where the real tool call ends (prefer the close tag; fall back to the
-  // open tag for unclosed calls; use 0 if there's no tool call at all).
-  const closeIdx = answer.indexOf("</tool_call>")
-  const openIdx = answer.indexOf("<tool_call>")
-  const searchFrom =
-    closeIdx >= 0 ? closeIdx + "</tool_call>".length :
-    openIdx  >= 0 ? openIdx :
-    0
-
-  // Match the first line-anchored continuation delimiter after searchFrom.
-  // \b on "Assistant" catches both bare "Assistant" and "Assistant:".
-  const tail = answer.slice(searchFrom)
-  const continuationRe = /\n[ \t]*(?:Assistant\b|Tool Results:|User:|<tool_result>)/
-  const match = continuationRe.exec(tail)
-  if (!match) return answer
-  return answer.slice(0, searchFrom + match.index).trimEnd()
-}
-
-/** Strip closed, unclosed, and bare func-call traces so they don't leak to the user. */
-export function stripToolCalls(text: string): string {
-  return text
-    .replace(/<tool_call>[\s\S]*?<\/tool_call>/g, "")  // closed blocks
-    .replace(/<tool_call>[\s\S]*$/g, "")               // unclosed block to end-of-string
-    .replace(/^[a-zA-Z_][a-zA-Z0-9_]*\([\s\S]*?\)\s*$/gm, "")  // bare func-call lines
-    .trim()
+/** Build the positional-path /chat/completions URL (Techdoc §1.1.3). */
+function buildChatCompletionsUrl(origin: string, clientId: string, domainId: string): string {
+  const segments = [clientId, "none", domainId || "none", "none", "none", "false", "vllm-text-generation", "chat", "completions"]
+  return `${origin.replace(/\/+$/, "")}/${segments.join("/")}`
 }
 
 /** Extract a readable string from a LanguageModelV3ToolResultOutput. */
@@ -419,112 +167,161 @@ function outputToString(output: LanguageModelV3ToolResultOutput): string {
   return ""
 }
 
-// ── Prompt flattening ─────────────────────────────────────────────────────────
+/** Convert the AI SDK's LanguageModelV3Prompt into an OpenAI `messages` array. */
+function toOpenAIMessages(prompt: LanguageModelV3CallOptions["prompt"]): OpenAIMessage[] {
+  const messages: OpenAIMessage[] = []
 
-/**
- * Escape <tool_call> tags in untrusted external content (user messages, tool
- * results) so the model cannot be tricked into executing injected tool calls
- * if it echoes back user-supplied or file-read content verbatim.
- */
-function sanitizeExternal(text: string): string {
-  return text.replace(/<(\/?tool_call)>/gi, "&lt;$1&gt;")
-}
-
-/** Flatten the standard prompt messages array into a single prompt string. */
-function flattenPrompt(options: LanguageModelV3CallOptions): string {
-  const parts: string[] = []
-
-  for (const msg of options.prompt) {
+  for (const msg of prompt) {
     if (msg.role === "system") {
-      parts.push(msg.content)
-      parts.push("---")
+      messages.push({ role: "system", content: msg.content })
     } else if (msg.role === "user") {
       const text = msg.content
-        .filter((p) => p.type === "text")
-        .map((p) => (p as { type: "text"; text: string }).text)
+        .filter((p): p is { type: "text"; text: string } => p.type === "text")
+        .map((p) => p.text)
         .join("\n")
-      parts.push(`User: ${sanitizeExternal(text)}`)
+      messages.push({ role: "user", content: text })
     } else if (msg.role === "assistant") {
-      const textParts = msg.content.filter((p) => p.type === "text")
-      const toolCalls = msg.content.filter((p) => p.type === "tool-call")
-
-      if (textParts.length > 0) {
-        const text = textParts.map((p) => (p as { type: "text"; text: string }).text).join("\n")
-        parts.push(`Assistant: ${text}`)
-      }
-
-      for (const tc of toolCalls) {
-        if (tc.type !== "tool-call") continue
-        const inputJson = typeof tc.input === "string" ? tc.input : JSON.stringify(tc.input)
-        let argsObj: unknown = {}
-        try { argsObj = JSON.parse(inputJson.trim() || "{}") } catch { argsObj = inputJson }
-        const callJson = JSON.stringify({ name: tc.toolName, arguments: argsObj })
-        parts.push(`Assistant: <tool_call>\n${callJson}\n</tool_call>`)
-      }
-    } else if (msg.role === "tool") {
-      const resultBlocks = msg.content
-        .filter((p) => p.type === "tool-result")
-        .map((p) => {
-          if (p.type !== "tool-result") return ""
-          return `<tool_result>\n  <name>${p.toolName}</name>\n  <result>${sanitizeExternal(outputToString(p.output))}</result>\n</tool_result>`
-        })
+      const text = msg.content
+        .filter((p): p is { type: "text"; text: string } => p.type === "text")
+        .map((p) => p.text)
         .join("\n")
-      if (resultBlocks) parts.push(`Tool Results:\n${resultBlocks}`)
+      const toolCalls: OpenAIToolCall[] = msg.content
+        .filter((p) => p.type === "tool-call")
+        .map((tc) => ({
+          id: tc.toolCallId,
+          type: "function" as const,
+          function: { name: tc.toolName, arguments: typeof tc.input === "string" ? tc.input : JSON.stringify(tc.input) },
+        }))
+      messages.push({ role: "assistant", content: text, ...(toolCalls.length > 0 ? { tool_calls: toolCalls } : {}) })
+    } else if (msg.role === "tool") {
+      for (const part of msg.content) {
+        if (part.type !== "tool-result") continue
+        messages.push({ role: "tool", tool_call_id: part.toolCallId, content: outputToString(part.output) })
+      }
     }
   }
 
-  return parts.join("\n\n")
+  return messages
 }
 
-// ── File attachment extraction ─────────────────────────────────────────────────
-
-/**
- * A LanguageModelV3 file content part. The AI SDK delivers user-uploaded
- * attachments here: a `data:<mime>;base64,…` URL from the web composer is
- * decoded by `convertToModelMessages` into a bare base64 string in `data`,
- * while binary attachments may arrive as a Uint8Array or, for un-downloaded
- * remote assets, a URL.
- */
-type FilePart = {
-  type: "file"
-  mediaType: string
-  filename?: string
-  data: string | Uint8Array | ArrayBuffer | URL
+/** Convert LanguageModelV3 function tools into OpenAI `tools` schema entries. */
+function toOpenAITools(
+  tools: LanguageModelV3CallOptions["tools"],
+): NonNullable<ChatCompletionsRequest["tools"]> {
+  if (!tools) return []
+  return tools
+    .filter((t): t is LanguageModelV3FunctionTool => t.type === "function")
+    .map((t) => ({ type: "function" as const, function: { name: t.name, description: t.description, parameters: t.inputSchema } }))
 }
 
-/** Convert a single file part's data into a bare base64 string, or null if it can't be inlined. */
-function filePartToBase64(data: FilePart["data"]): string | null {
-  if (typeof data === "string") {
-    // Already base64, or a data: URL we need to strip the prefix from.
-    if (data.startsWith("data:")) {
-      const comma = data.indexOf(",")
-      return comma === -1 ? null : data.slice(comma + 1)
-    }
-    return data
-  }
-  if (data instanceof Uint8Array) return Buffer.from(data).toString("base64")
-  if (data instanceof ArrayBuffer) return Buffer.from(new Uint8Array(data)).toString("base64")
-  // A bare URL (e.g. an un-downloaded remote asset) can't be inlined as base64.
-  return null
+/** Rough token estimate (chars/4) used as a fallback when GAIA doesn't report usage. */
+function estimatePromptTokens(messages: OpenAIMessage[]): number {
+  return Math.ceil(JSON.stringify(messages).length / 4)
 }
 
 /**
- * Collect every uploaded attachment across the conversation as base64 strings,
- * to populate Merlin's `file` field. Walks user messages for file content parts
- * — the same parts the prompt composer produces from the file-picker / paste /
- * drag-drop flows in the web UI.
+ * `outputTokenEstimate` (chars/4 of the streamed text, default 0) kicks in
+ * when GAIA's own `completion_tokens` is absent or zero. Without it every
+ * streaming turn can report outputTokens.total === 0,
+ * which fails the TUI's "has this turn produced output" gate (sidebar/prompt/
+ * subagent context indicators all skip messages with tokens.output === 0) and
+ * the context-window display silently shows 0 tokens / 0% forever.
  */
-function extractFiles(options: LanguageModelV3CallOptions): string[] {
-  const files: string[] = []
-  for (const msg of options.prompt) {
-    if (msg.role !== "user") continue
-    for (const part of msg.content) {
-      if (part.type !== "file") continue
-      const base64 = filePartToBase64((part as FilePart).data)
-      if (base64) files.push(base64)
-    }
+function toUnifiedUsage(
+  usage: ChatCompletionsUsage | undefined,
+  promptTokenEstimate: number,
+  outputTokenEstimate = 0,
+): LanguageModelV3Usage {
+  const inputTotal = usage?.prompt_tokens && usage.prompt_tokens > 0 ? usage.prompt_tokens : promptTokenEstimate
+  const outputTotal = usage?.completion_tokens && usage.completion_tokens > 0 ? usage.completion_tokens : outputTokenEstimate
+  return {
+    inputTokens: { total: inputTotal, noCache: inputTotal, cacheRead: undefined, cacheWrite: undefined },
+    outputTokens: { total: outputTotal, text: undefined, reasoning: undefined },
+    raw: usage ? { ...usage } : undefined,
   }
-  return files
+}
+
+function mapFinishReason(raw: string | null | undefined, hasToolCalls: boolean): LanguageModelV3GenerateResult["finishReason"] {
+  if (hasToolCalls || raw === "tool_calls") return { unified: "tool-calls", raw: raw ?? "tool_calls" }
+  if (raw === "length") return { unified: "length", raw }
+  if (raw === "content_filter") return { unified: "content-filter", raw }
+  return { unified: "stop", raw: raw ?? "stop" }
+}
+
+// ── Error scenario mapping (Techdoc §1.4) ────────────────────────────────────
+
+/**
+ * Map a GAIA `error_schema` envelope to the right failure behavior. Returns
+ * `null` for codes that are not fatal (DPA-111 success, DPA-120 PII-flagged,
+ * DPA-129 recommendation-failed — all still carry a real answer).
+ */
+function mapErrorEnvelope(data: ChatCompletionsResponse, url: string, promptTokenEstimate: number): Error | null {
+  const code = data.error_schema?.error_code
+  if (!code) return null
+  if (code === "DPA-111" || code === "DPA-120" || code === "DPA-129") return null
+
+  const englishMsg = data.error_schema?.error_message?.english
+  const localizedAnswer = data.output_schema?.result?.answer
+  const errDebug = data.output_schema?.err_debug ?? ""
+  const userMessage = localizedAnswer || englishMsg || code
+
+  // DPA-115 / DPA-117: transient gateway/OCP hiccups — always retried, same
+  // treatment as a request timeout, instead of a one-shot error for a hiccup
+  // that a re-send would clear.
+  if (code === "DPA-115" || code === "DPA-117") {
+    log.warn("transient_gateway_error", { error_code: code })
+    return new APICallError({
+      message: `GAIA transient error ${code}: ${englishMsg ?? "gateway error"}`,
+      url,
+      requestBodyValues: {},
+      statusCode: 503,
+      responseBody: userMessage,
+      isRetryable: true,
+    })
+  }
+
+  // DPA-126: prompt (+persona/history) exceeds the gateway's length limit —
+  // always a context overflow.
+  if (code === "DPA-126") {
+    return new APICallError({
+      message: `context_length_exceeded: GAIA DPA-126 (estimated ~${promptTokenEstimate} tokens): ${englishMsg ?? "prompt exceeds limit"}`,
+      url,
+      requestBodyValues: {},
+      statusCode: 413,
+      responseBody: errDebug || userMessage,
+      isRetryable: false,
+    })
+  }
+
+  // DPA-124 is GAIA's catch-all engine failure. Only convert to a
+  // context-overflow APICallError when err_debug names a context-length
+  // limit; other DPA-124s (e.g. a generic engine 500) must not trigger
+  // auto-compaction.
+  if (code === "DPA-124") {
+    log.error("DPA-124 err_debug", { error_code: code, err_debug: errDebug || "(none)" })
+    if (errDebug.toLowerCase().includes("context length")) {
+      return new APICallError({
+        message: `context_length_exceeded: GAIA DPA-124 (estimated ~${promptTokenEstimate} tokens): ${englishMsg ?? "engine error"}`,
+        url,
+        requestBodyValues: {},
+        statusCode: 413,
+        responseBody: errDebug,
+        isRetryable: false,
+      })
+    }
+    return new Error(errDebug ? `GAIA Error: 500 Internal Server Error\n${errDebug}` : "GAIA Error: 500 Internal Server Error")
+  }
+
+  // Every remaining DPA code (112,113,114,116,118,119,121,122,123,125,127,128,130):
+  // non-retryable, surfaced once with the localized "Answer to User" text.
+  log.warn("gaia_error", { error_code: code })
+  return new APICallError({
+    message: `GAIA ${code}: ${userMessage}`,
+    url,
+    requestBodyValues: {},
+    responseBody: errDebug || userMessage,
+    isRetryable: false,
+  })
 }
 
 // ── Service ID resolution ─────────────────────────────────────────────────────
@@ -559,62 +356,6 @@ function resolveServiceId(options: LanguageModelV3CallOptions): string {
   return SERVICE_IDS["general"]!
 }
 
-// ── Premature-stop detection ──────────────────────────────────────────────────
-
-// First-person intent to act; "let me know" is excluded since it's a common
-// turn-ending closer, not an announcement of pending work.
-const INTENT_RE = /\b(let me(?! know)|let'?s|i'?ll|i will|i'?m going to|going to|now i|next,? i|proceed to|proceed)\b/i
-// A tool-ish action verb that implies work should follow the announcement.
-const ACTION_RE =
-  /\b(read|check|run|look|search|create|write|update|edit|fix|explore|examine|investigate|gather|inspect|review|open|list|find|grep|analyze|start|build|test)\b/i
-
-/**
- * The gateway sometimes returns a reply that only announces an action ("Let me
- * read the key files...") with no `<tool_call>` at all — the announced work
- * never happens and the agentic loop exits mid-task. Detect that pattern so
- * the caller can transparently re-request instead of ending the turn. Gated on
- * the trailing line only, and requires both an intent phrase and an action
- * verb, to avoid re-prompting legitimate text-only final answers.
- */
-export function isPrematureActionStop(fullText: string): boolean {
-  const lines = fullText
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter(Boolean)
-  const lastLine = lines[lines.length - 1] ?? ""
-  return lastLine.length > 0 && INTENT_RE.test(lastLine) && ACTION_RE.test(lastLine)
-}
-
-// ── Gateway parse-error detection ─────────────────────────────────────────────
-
-// The engine occasionally returns an internal parse diagnostic as the ANSWER
-// (HTTP 200, non-empty) instead of a real reply — typically when it fails to
-// JSON-parse a large, multiline tool-result block out of the flattened prompt:
-//   "Tool results was maybe incorrectly parsed for json
-//    Block name: "read"
-//    Error character: <newline>"
-// Without this, the diagnostic slips past every other guard (no error_schema, no
-// <tool_call>, doesn't match isPrematureActionStop) and is shown to the user as
-// the assistant's reply. Match only the machine-diagnostic shapes (an opening
-// "tool results … incorrectly parsed" line, or the structured "Block name: …
-// Error character:" pair) so a genuine answer that merely mentions JSON/parsing
-// is never mistaken for one.
-const GATEWAY_PARSE_ERROR_RES = [
-  /\btool results?\b[\s\S]{0,40}\bincorrectly parsed\b/i,
-  /\bblock name:\s*["']?[\w.-]+["']?[\s\S]{0,80}\berror character:/i,
-]
-
-/**
- * Detect a gateway-side parse-diagnostic masquerading as a normal answer (see
- * `session-error.md` for a captured repro). Treated as a transient failure —
- * the caller throws a retryable APICallError so the session retry policy
- * (session/retry.ts) backs off and re-sends instead of showing raw engine
- * internals to the user.
- */
-export function isGatewayParseError(answer: string): boolean {
-  return GATEWAY_PARSE_ERROR_RES.some((re) => re.test(answer))
-}
-
 // ── Model implementation ──────────────────────────────────────────────────────
 
 class MerlinLanguageModel implements LanguageModelV3 {
@@ -630,70 +371,47 @@ class MerlinLanguageModel implements LanguageModelV3 {
     private readonly timeoutMs: number,
     /** Whether to send service_id at all (MAGE_USE_SERVICE_ID can disable it). */
     private readonly sendServiceId: boolean,
-    /** Optional model override sent as model_name (from MAGE_MODEL_NAME). */
+    /** Optional model override sent as `model` (from MAGE_MODEL_NAME). */
     private readonly modelName: string | undefined,
   ) {}
 
-  private buildPrompt(options: LanguageModelV3CallOptions): string {
-    const toolsBlock = renderToolsBlock(options)
-    const conversation = flattenPrompt(options)
-    return toolsBlock ? `${toolsBlock}\n\n${conversation}` : conversation
+  private get url(): string {
+    return buildChatCompletionsUrl(this.endpoint, this.clientId, this.username)
   }
 
-  private async callMerlin(
+  /**
+   * POST the OpenAI-shaped chat completion request. Handles the genuine
+   * per-request timeout, connection-class failures, and raw HTTP errors the
+   * same way regardless of streaming — only the response body's shape
+   * (SSE vs JSON, success vs error_schema) differs afterward.
+   */
+  private async postChat(
     options: LanguageModelV3CallOptions,
-  ): Promise<{ answer: string; inputTokens: number; outputTokens: number }> {
-    const files = extractFiles(options)
-    // Compute a local token estimate from the flattened prompt length.
-    // Used as a floor for the overflow check when GAIA under-reports, and as the
-    // signal for context overflow when GAIA errors on a large prompt.
+    stream: boolean,
+  ): Promise<{ response: Response; promptTokenEstimate: number }> {
+    const url = this.url
+    const messages = toOpenAIMessages(options.prompt)
+    const tools = toOpenAITools(options.tools)
+    const promptTokenEstimate = estimatePromptTokens(messages)
 
-    const body: MerlinRequest = {
-      client_id: this.clientId,
-      domain_id: this.username,
-      // Omitted (not sent as "") when MAGE_USE_SERVICE_ID is falsy.
+    const body: ChatCompletionsRequest = {
+      model: this.modelName ?? DEFAULT_MODEL,
+      messages,
+      // Qwen3.6-27B (dense) official thinking-mode coding preset: temperature
+      // 0.6 for low-variance determinism without degrading into repetition
+      // (unlike temperature 0 greedy decoding). Ref: huggingface.co/Qwen/Qwen3.6-27B.
+      temperature: 0.3,
+      max_completion_tokens: 128000,
+      priority: 3,
       ...(this.sendServiceId ? { service_id: resolveServiceId(options) } : {}),
-      // Qwen3.6-27B (dense) official thinking-mode coding preset. Qwen recommends
-      // temperature 0.6, top_p 0.95, top_k 20, min_p 0, presence_penalty 0,
-      // repetition_penalty 1.0 for code generation — low temperature for
-      // determinism, no presence_penalty (unlike the 35B-A3B MoE variant). Do NOT
-      // use greedy decoding (temperature 0) — Qwen3.6 degrades into endless
-      // repetition. Ref: huggingface.co/Qwen/Qwen3.6-27B sampling guidance.
-      //
-      // GATEWAY TYPE CONSTRAINT: the GAIA gateway only accepts a float for
-      // `temperature`; every other sampling field must be an integer. JS already
-      // serializes 0, 1.0 → "0", "1" (integers), but top_p 0.95 would serialize
-      // as a float and be rejected — so top_p is sent as 1 (nucleus sampling
-      // effectively off). top_k 20 still does the heavy token-set constraining,
-      // so quality impact is minimal. Keep temperature written with a decimal.
-      config: {
-        temperature: 0.6,
-        top_p: 1,
-        top_k: 20,
-        min_p: 0,
-        presence_penalty: 0,
-        repetition_penalty: 1,
-        max_token: 128000,
-        recommendation: "False",
-        // Only sent when MAGE_MODEL_NAME is set.
-        ...(this.modelName ? { model_name: this.modelName } : {}),
-      },
-      new_session: "True",
-      prompt: this.buildPrompt(options),
-      file: files,
+      ...(tools.length > 0 ? { tools, tool_choice: "auto" as const } : {}),
+      stream,
+      ...(stream ? { stream_options: { include_usage: true as const } } : {}),
     }
 
-    const promptTokenEstimate = Math.round(body.prompt.length / 4)
-
-    const { prompt: _prompt, file: _file, ...loggableBody } = body
-    log.info("request", {
-      ...loggableBody,
-      prompt_length: body.prompt.length,
-      prompt_token_estimate: promptTokenEstimate,
-      file_count: files.length,
-      file_bytes: files.reduce((sum, f) => sum + f.length, 0),
-    })
-    log.debug("request_prompt", { prompt: body.prompt })
+    const { messages: _messages, ...loggableBody } = body
+    log.info("request", { ...loggableBody, message_count: messages.length, prompt_token_estimate: promptTokenEstimate })
+    log.debug("request_messages", { messages })
 
     // Bound to its own name (rather than inlined) so the catch block can tell
     // a genuine per-request timeout apart from any other fetch failure —
@@ -706,7 +424,7 @@ class MerlinLanguageModel implements LanguageModelV3 {
     // reads the `tls` option; Node (desktop sidecar) needs an undici dispatcher.
     let response: Response
     try {
-      response = await fetch(this.endpoint, {
+      response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -724,7 +442,7 @@ class MerlinLanguageModel implements LanguageModelV3 {
         log.warn("request_timeout", { timeoutMs: this.timeoutMs })
         throw new APICallError({
           message: `GAIA request timed out after ${this.timeoutMs}ms`,
-          url: this.endpoint,
+          url,
           requestBodyValues: {},
           statusCode: 504,
           isRetryable: true,
@@ -744,7 +462,7 @@ class MerlinLanguageModel implements LanguageModelV3 {
       log.warn("request_failed", { error: String(surfaced) })
       throw new APICallError({
         message: `GAIA request failed: ${String(surfaced)}`,
-        url: this.endpoint,
+        url,
         requestBodyValues: {},
         isRetryable: false,
       })
@@ -757,12 +475,11 @@ class MerlinLanguageModel implements LanguageModelV3 {
       // transport level) are never retried here. statusCode is omitted for
       // >=500 so it can't fall through retry.ts's `status >= 500` fallback;
       // a real 4xx status (e.g. 413) is preserved so downstream classification
-      // (e.g. context-overflow on 413) still works. Note this is distinct from
-      // DPA-115/DPA-117, which arrive as a 200 response with an error_schema
-      // and ARE retried — see the check below.
+      // still works. Note this is distinct from DPA-1xx codes, which arrive as
+      // a 200 response with an error_schema — see mapErrorEnvelope.
       throw new APICallError({
         message: `GAIA HTTP ${response.status} ${response.statusText}: ${responseText}`,
-        url: this.endpoint,
+        url,
         requestBodyValues: {},
         statusCode: response.status < 500 ? response.status : undefined,
         responseBody: responseText,
@@ -770,358 +487,213 @@ class MerlinLanguageModel implements LanguageModelV3 {
       })
     }
 
-    const data = (await response.json()) as MerlinResponse
-
-    if (data.error_schema?.error_code === "DPA-124") {
-      const errDebug = data.output_schema?.err_debug ?? ""
-      log.error("DPA-124 err_debug", {
-        error_code: data.error_schema.error_code,
-        err_debug: errDebug || "(none)",
-      })
-      // DPA-124 ("engine error while processing the query") is GAIA's catch-all
-      // failure code. It fires both for real context overflow (err_debug names
-      // the model's context length limit) and for unrelated engine failures
-      // (err_debug is a generic 500 Internal Server Error page). Only the former
-      // should convert to a context-overflow APICallError so the existing
-      // parseAPICallError → ContextOverflowError chain fires and the session
-      // auto-compacts; the latter is not a context problem and must not trigger
-      // compaction.
-      if (errDebug.toLowerCase().includes("context length")) {
-        throw new APICallError({
-          message: `context_length_exceeded: GAIA DPA-124 (estimated ~${promptTokenEstimate} tokens): ${data.error_schema.error_message?.english ?? "engine error"}`,
-          url: this.endpoint,
-          requestBodyValues: {},
-          statusCode: 413,
-          responseBody: errDebug,
-          isRetryable: false,
-        })
-      }
-      throw new Error(
-        errDebug
-          ? `GAIA Error: 500 Internal Server Error\n${errDebug}`
-          : "GAIA Error: 500 Internal Server Error",
-      )
-    }
-
-    // DPA-115 / DPA-117 are transient gateway/OCP failures (connection drops,
-    // upstream hiccups) delivered as a 200 error_schema. Surface them as a
-    // retryable APICallError so the session retry policy (session/retry.ts)
-    // backs off and re-sends automatically — same treatment as a request
-    // timeout — instead of showing a one-shot error for a hiccup that a
-    // re-send would clear.
-    if (data.error_schema?.error_code === "DPA-115" || data.error_schema?.error_code === "DPA-117") {
-      const code = data.error_schema.error_code
-      log.warn("transient_gateway_error", { error_code: code })
-      throw new APICallError({
-        message: `GAIA transient error ${code}: ${data.error_schema.error_message?.english ?? "gateway error"}`,
-        url: this.endpoint,
-        requestBodyValues: {},
-        statusCode: 503,
-        responseBody: data.error_schema.error_message?.english ?? "",
-        isRetryable: true,
-      })
-    }
-
-    if (
-      data.error_schema?.error_code &&
-      data.error_schema.error_code !== "DPA-111" &&
-      data.error_schema.error_code !== "DPA-120"
-    ) {
-      const msg = data.error_schema.error_message?.english ?? data.error_schema.error_code
-      // When the prompt is already large and GAIA errors, it is almost certainly a
-      // context overflow. Throw as APICallError with statusCode 413 so the existing
-      // parseAPICallError → ContextOverflowError chain fires and auto-compaction
-      // triggers instead of surfacing a generic "stop" error to the user.
-      if (promptTokenEstimate >= 200_000) {
-        throw new APICallError({
-          message: `context_length_exceeded: GAIA error (estimated ~${promptTokenEstimate} tokens): ${msg}`,
-          url: this.endpoint,
-          requestBodyValues: {},
-          statusCode: 413,
-          responseBody: msg,
-          isRetryable: false,
-        })
-      }
-      throw new Error(`GAIA error: ${msg}`)
-    }
-
-    const rawAnswer = data.output_schema?.result?.answer ?? data.response
-    if (!rawAnswer) {
-      // No answer with a large prompt is also treated as context overflow.
-      if (promptTokenEstimate >= 200_000) {
-        throw new APICallError({
-          message: `context_length_exceeded: GAIA returned no answer (estimated ~${promptTokenEstimate} tokens)`,
-          url: this.endpoint,
-          requestBodyValues: {},
-          statusCode: 413,
-          responseBody: "",
-          isRetryable: false,
-        })
-      }
-      throw new Error("GAIA returned no answer in output_schema.result.answer")
-    }
-
-    if (isGatewayParseError(rawAnswer)) {
-      // A degenerate engine diagnostic came back as a 200 "answer" instead of a
-      // real reply (see isGatewayParseError). This is gateway-side, not a
-      // context-overflow or a genuine model error, but only genuine timeouts
-      // are retried (see the fetch catch-block above) — surface it as a
-      // non-retryable APICallError so it is shown once rather than looped on.
-      log.warn("gateway_parse_diagnostic", { answer: rawAnswer.slice(0, 500) })
-      throw new APICallError({
-        message: `GAIA returned an internal parse diagnostic instead of a reply: ${rawAnswer.slice(0, 200)}`,
-        url: this.endpoint,
-        requestBodyValues: {},
-        responseBody: rawAnswer,
-        isRetryable: false,
-      })
-    }
-
-    return {
-      // Strip hallucinated transcript continuation before any caller sees the answer.
-      // Qwen keeps generating after its own <tool_call>, fabricating fake Tool Results:
-      // / <tool_result> / Assistant: turns using the same delimiters flattenPrompt injects.
-      answer: stripHallucinatedTurns(rawAnswer),
-      // Use the local prompt-length estimate as a floor: if GAIA reports fewer tokens
-      // than the flattened prompt implies (e.g. per-turn counting instead of cumulative),
-      // the overflow check would never fire. The max() ensures it fires correctly.
-      inputTokens: Math.max(data.output_schema?.result?.token_input ?? 0, promptTokenEstimate),
-      outputTokens: data.output_schema?.result?.token_output ?? 0,
-    }
-  }
-
-  /**
-   * Append a corrective turn instructing the model to re-emit a single, valid
-   * tool call. Used by the self-correction retry when the first reply contained
-   * a <tool_call> tag we couldn't parse, or when it parsed but had missing
-   * required fields.
-   *
-   * When `details` is supplied the message names the specific tool and the
-   * missing fields, which helps prompt-only models fill in the right arguments
-   * rather than sending another empty `arguments: {}`.
-   */
-  private withRepairTurn(
-    options: LanguageModelV3CallOptions,
-    malformedAnswer: string,
-    details?: { toolName: string; missingFields: string[] },
-  ): LanguageModelV3CallOptions {
-    const correction = details
-      ? `Your previous \`${details.toolName}\` tool call was missing required arguments: ${details.missingFields.join(", ")}. ` +
-        "Re-emit the tool call now with ALL required fields filled in, using EXACTLY this format — valid JSON, a closing tag, and nothing else:\n" +
-        '<tool_call>\n{"name": "<tool_name>", "arguments": {<json_args>}}\n</tool_call>'
-      : "Your previous reply contained a <tool_call> block that could not be parsed. " +
-        "Re-emit the tool call now using EXACTLY this format — valid JSON, a closing tag, and nothing else:\n" +
-        '<tool_call>\n{"name": "<tool_name>", "arguments": {<json_args>}}\n</tool_call>'
-    return {
-      ...options,
-      prompt: [
-        ...options.prompt,
-        { role: "assistant", content: [{ type: "text", text: malformedAnswer }] },
-        { role: "user", content: [{ type: "text", text: correction }] },
-      ],
-    }
-  }
-
-  /**
-   * Call Merlin, parse tool calls, and self-correct once when needed:
-   *
-   * Branch 1 — tag found but nothing parsed (malformed JSON, stray prose, broken
-   * tag): send one repair round-trip rather than dropping the turn — a dropped
-   * call is a stalled agent.
-   *
-   * Branch 2 — call parsed cleanly but required arguments are missing (e.g. the
-   * model emitted `{"name":"task","arguments":{}}`): send one repair round-trip
-   * that names the specific tool and the absent fields, so the model knows exactly
-   * what to fill in rather than repeating the empty call.
-   *
-   * In both branches token usage is summed across both calls. If the repair also
-   * fails we fall through and return the original (no worse than current behavior).
-   */
-  private async resolveAnswer(
-    options: LanguageModelV3CallOptions,
-  ): Promise<{ answer: string; toolCalls: ParsedCall[]; inputTokens: number; outputTokens: number }> {
-    const first = await this.callMerlin(options)
-    const toolCalls = capToolCalls(parseToolCalls(first.answer, options.tools))
-
-    // Branch 1: tag present but nothing parsed — classic malformed JSON / broken tag.
-    if (toolCalls.length === 0 && /<tool_call>/i.test(first.answer)) {
-      log.warn("tool_call_parse_miss", { answer: first.answer })
-      const repaired = await this.callMerlin(this.withRepairTurn(options, first.answer))
-      const repairedCalls = capToolCalls(parseToolCalls(repaired.answer, options.tools))
-      const inputTokens = first.inputTokens + repaired.inputTokens
-      const outputTokens = first.outputTokens + repaired.outputTokens
-      if (repairedCalls.length > 0) {
-        log.info("tool_call_repair_ok", { count: repairedCalls.length })
-        return { answer: repaired.answer, toolCalls: repairedCalls, inputTokens, outputTokens }
-      }
-      log.warn("tool_call_repair_failed", { answer: repaired.answer })
-      return { answer: first.answer, toolCalls, inputTokens, outputTokens }
-    }
-
-    // Branch 2: call parsed OK but required arguments are absent.
-    if (toolCalls.length > 0) {
-      const tc = toolCalls[0]!
-      const missing = missingRequiredArgs(tc, options.tools)
-      if (missing.length > 0) {
-        log.warn("tool_call_invalid_args", { name: tc.name, missing })
-        const repaired = await this.callMerlin(
-          this.withRepairTurn(options, first.answer, { toolName: tc.name, missingFields: missing }),
-        )
-        const repairedCalls = capToolCalls(parseToolCalls(repaired.answer, options.tools))
-        const inputTokens = first.inputTokens + repaired.inputTokens
-        const outputTokens = first.outputTokens + repaired.outputTokens
-        if (repairedCalls.length > 0 && missingRequiredArgs(repairedCalls[0]!, options.tools).length === 0) {
-          log.info("tool_call_repair_ok", { count: repairedCalls.length })
-          return { answer: repaired.answer, toolCalls: repairedCalls, inputTokens, outputTokens }
-        }
-        log.warn("tool_call_repair_failed", { answer: repaired.answer })
-        return { answer: first.answer, toolCalls, inputTokens, outputTokens }
-      }
-    }
-
-    return { answer: first.answer, toolCalls, inputTokens: first.inputTokens, outputTokens: first.outputTokens }
-  }
-
-  /**
-   * Wrap `resolveAnswer` with transparent continuation for the premature
-   * action-stop case: the model announced work ("Let me look at X...") but
-   * never emitted the `<tool_call>` for it. When that pattern is detected and
-   * tools are available, re-request with the accumulated answer folded back in
-   * as an assistant turn plus a nudge, bounded by MAX_CONTINUATIONS. Token usage
-   * and answer text are summed/concatenated across rounds so the caller sees one
-   * uninterrupted reply.
-   */
-  private async resolveWithContinuation(
-    options: LanguageModelV3CallOptions,
-  ): Promise<{ answer: string; toolCalls: ParsedCall[]; inputTokens: number; outputTokens: number }> {
-    const toolsAvailable = !!options.tools && options.tools.length > 0
-
-    let combinedAnswer = ""
-    let inputTokens = 0
-    let outputTokens = 0
-    let toolCalls: ParsedCall[] = []
-    let currentOptions = options
-
-    for (let round = 0; round <= MAX_CONTINUATIONS; round++) {
-      const result = await this.resolveAnswer(currentOptions)
-      inputTokens += result.inputTokens
-      outputTokens += result.outputTokens
-      combinedAnswer = combinedAnswer ? `${combinedAnswer}\n\n${result.answer}` : result.answer
-      toolCalls = result.toolCalls
-
-      // Only the latest round's delta can end in an "announced but not done" line, so
-      // check that instead of re-stripping the whole (monotonically growing) combined
-      // answer every round — avoids O(rounds * total length) work across continuations.
-      const strippedDelta = stripToolCalls(result.answer)
-      const premature = toolsAvailable && toolCalls.length === 0 && isPrematureActionStop(strippedDelta)
-      if (!premature) break
-
-      if (round >= MAX_CONTINUATIONS) {
-        log.warn("continuation_exhausted", { round, answer: stripToolCalls(combinedAnswer) })
-        break
-      }
-
-      log.warn("premature_action_stop", { round: round + 1, answer: result.answer })
-      currentOptions = {
-        ...options,
-        prompt: [
-          ...options.prompt,
-          { role: "assistant", content: [{ type: "text", text: combinedAnswer }] },
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: "You described your next step but did not carry it out. Continue by actually issuing the tool call and performing the work you described. Do not repeat any text you already produced.",
-              },
-            ],
-          },
-        ],
-      }
-    }
-
-    return { answer: combinedAnswer, toolCalls, inputTokens, outputTokens }
+    return { response, promptTokenEstimate }
   }
 
   async doGenerate(options: LanguageModelV3CallOptions): Promise<LanguageModelV3GenerateResult> {
-    const { answer, toolCalls, inputTokens, outputTokens } = await this.resolveWithContinuation(options)
+    const { response, promptTokenEstimate } = await this.postChat(options, false)
+    const data = (await response.json()) as ChatCompletionsResponse
 
-    const usage = {
-      inputTokens: { total: inputTokens, noCache: inputTokens, cacheRead: undefined, cacheWrite: undefined },
-      outputTokens: { total: outputTokens, text: undefined, reasoning: undefined },
+    if (data.error_schema) {
+      const mapped = mapErrorEnvelope(data, this.url, promptTokenEstimate)
+      if (mapped) throw mapped
     }
 
-    if (toolCalls.length > 0) {
-      const content: LanguageModelV3GenerateResult["content"] = toolCalls.map((tc) => ({
-        type: "tool-call" as const,
-        toolCallId: tc.callId,
-        toolName: tc.name,
-        // LanguageModelV3ToolCall.input must be a stringified JSON string
-        input: JSON.stringify(tc.args),
-      }))
-      const textRemainder = stripToolCalls(answer)
-      if (textRemainder) content.unshift({ type: "text", text: textRemainder })
+    const choice = data.choices?.[0]
+    if (!choice?.message) throw new Error("GAIA returned no choices in chat completion response")
 
-      return {
-        content,
-        finishReason: { unified: "tool-calls", raw: "tool_calls" },
-        usage,
-        warnings: [],
-      }
+    const toolCalls = choice.message.tool_calls ?? []
+    const content: LanguageModelV3GenerateResult["content"] = []
+    if (choice.message.reasoning) content.push({ type: "reasoning", text: choice.message.reasoning })
+    if (choice.message.content) content.push({ type: "text", text: choice.message.content })
+    for (const tc of toolCalls) {
+      content.push({ type: "tool-call", toolCallId: tc.id, toolName: tc.function.name, input: tc.function.arguments })
     }
 
     return {
-      content: [{ type: "text", text: stripToolCalls(answer) }],
-      finishReason: { unified: "stop", raw: "stop" },
-      usage,
+      content,
+      finishReason: mapFinishReason(choice.finish_reason, toolCalls.length > 0),
+      usage: toUnifiedUsage(data.usage, promptTokenEstimate),
       warnings: [],
     }
   }
 
   async doStream(options: LanguageModelV3CallOptions): Promise<LanguageModelV3StreamResult> {
-    const { answer, toolCalls, inputTokens, outputTokens } = await this.resolveWithContinuation(options)
+    const { response, promptTokenEstimate } = await this.postChat(options, true)
+    const url = this.url
+    const contentType = response.headers.get("content-type") ?? ""
 
-    const usage = {
-      inputTokens: { total: inputTokens, noCache: inputTokens, cacheRead: undefined, cacheWrite: undefined },
-      outputTokens: { total: outputTokens, text: undefined, reasoning: undefined },
-    }
-
-    const parts: LanguageModelV3StreamPart[] = [{ type: "stream-start", warnings: [] }]
-
-    if (toolCalls.length > 0) {
-      const textRemainder = stripToolCalls(answer)
-      if (textRemainder) {
-        const textId = "merlin-text"
-        parts.push({ type: "text-start", id: textId })
-        parts.push({ type: "text-delta", id: textId, delta: textRemainder })
-        parts.push({ type: "text-end", id: textId })
+    // The gateway validates the request before it starts generating: a
+    // business-logic failure (§1.4 DPA-1xx) comes back as one JSON body even
+    // though stream:true was requested, instead of an SSE text/event-stream
+    // body. Handle that as a one-shot (non-streaming) result.
+    if (contentType.includes("application/json")) {
+      const data = (await response.json()) as ChatCompletionsResponse
+      if (data.error_schema) {
+        const mapped = mapErrorEnvelope(data, url, promptTokenEstimate)
+        if (mapped) throw mapped
       }
 
+      const choice = data.choices?.[0]
+      if (!choice?.message) throw new Error("GAIA returned no choices in chat completion response")
+      const toolCalls = choice.message.tool_calls ?? []
+
+      const parts: LanguageModelV3StreamPart[] = [{ type: "stream-start", warnings: [] }]
+      if (choice.message.reasoning) {
+        parts.push({ type: "reasoning-start", id: "merlin-reasoning-0" })
+        parts.push({ type: "reasoning-delta", id: "merlin-reasoning-0", delta: choice.message.reasoning })
+        parts.push({ type: "reasoning-end", id: "merlin-reasoning-0" })
+      }
+      if (choice.message.content) {
+        parts.push({ type: "text-start", id: "merlin-0" })
+        parts.push({ type: "text-delta", id: "merlin-0", delta: choice.message.content })
+        parts.push({ type: "text-end", id: "merlin-0" })
+      }
       for (const tc of toolCalls) {
-        const argsJson = JSON.stringify(tc.args)
-        // Streaming UI parts (progressive display in the TUI)
-        parts.push({ type: "tool-input-start", id: tc.callId, toolName: tc.name })
-        parts.push({ type: "tool-input-delta", id: tc.callId, delta: argsJson })
-        parts.push({ type: "tool-input-end", id: tc.callId })
-        // The "tool-call" part is what actually triggers execute() in the AI SDK's
-        // runToolsTransformation pipeline. Without it the AI SDK never calls execute()
-        // and no "tool-result" is produced — causing every tool to abort during cleanup.
-        parts.push({ type: "tool-call", toolCallId: tc.callId, toolName: tc.name, input: argsJson })
+        parts.push({ type: "tool-input-start", id: tc.id, toolName: tc.function.name })
+        parts.push({ type: "tool-input-delta", id: tc.id, delta: tc.function.arguments })
+        parts.push({ type: "tool-input-end", id: tc.id })
+        parts.push({ type: "tool-call", toolCallId: tc.id, toolName: tc.function.name, input: tc.function.arguments })
       }
+      // Same chars/4 fallback as the real SSE path (see toUnifiedUsage) — this
+      // branch only fires when GAIA answers a `stream: true` request with a
+      // plain JSON body instead of SSE, so `data.usage` may be just as absent.
+      const outputChars =
+        (choice.message.content?.length ?? 0) +
+        (choice.message.reasoning?.length ?? 0) +
+        toolCalls.reduce((sum, tc) => sum + tc.function.arguments.length, 0)
+      parts.push({
+        type: "finish",
+        finishReason: mapFinishReason(choice.finish_reason, toolCalls.length > 0),
+        usage: toUnifiedUsage(data.usage, promptTokenEstimate, Math.ceil(outputChars / 4)),
+      })
 
-      parts.push({ type: "finish", finishReason: { unified: "tool-calls", raw: "tool_calls" }, usage })
-    } else {
-      const textId = "merlin-0"
-      parts.push({ type: "text-start", id: textId })
-      parts.push({ type: "text-delta", id: textId, delta: stripToolCalls(answer) })
-      parts.push({ type: "text-end", id: textId })
-      parts.push({ type: "finish", finishReason: { unified: "stop", raw: "stop" }, usage })
+      return {
+        stream: new ReadableStream({
+          start(controller) {
+            for (const part of parts) controller.enqueue(part)
+            controller.close()
+          },
+        }),
+      }
     }
+
+    if (!response.body) throw new Error("GAIA streaming response had no body")
+
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
 
     const stream = new ReadableStream<LanguageModelV3StreamPart>({
-      start(controller) {
-        for (const part of parts) controller.enqueue(part)
+      async start(controller) {
+        controller.enqueue({ type: "stream-start", warnings: [] })
+
+        let textId: string | null = null
+        let reasoningId: string | null = null
+        let reasoningClosed = false
+        let rawFinish: string | null = null
+        let usage: ChatCompletionsUsage | undefined
+        // chars/4 fallback for outputTokens when GAIA sends no usage object (see toUnifiedUsage).
+        let outputChars = 0
+        const toolCalls = new Map<number, { id: string; name: string; args: string }>()
+        let buffer = ""
+
+        // Parse one SSE line. GAIA (like OpenAI) sends `data: {...}` lines
+        // separated by blank lines, terminated by `data: [DONE]`.
+        const handleLine = (line: string) => {
+          const trimmed = line.trim()
+          if (!trimmed.startsWith("data:")) return
+          const payload = trimmed.slice("data:".length).trim()
+          if (!payload || payload === "[DONE]") return
+
+          let chunk: ChatCompletionsStreamChunk
+          try {
+            chunk = JSON.parse(payload)
+          } catch {
+            log.warn("sse_parse_error", { payload: payload.slice(0, 200) })
+            return
+          }
+
+          const choice = chunk.choices?.[0]
+          if (choice?.delta?.reasoning) {
+            if (!reasoningId) {
+              reasoningId = "merlin-reasoning-0"
+              controller.enqueue({ type: "reasoning-start", id: reasoningId })
+            }
+            controller.enqueue({ type: "reasoning-delta", id: reasoningId, delta: choice.delta.reasoning })
+            outputChars += choice.delta.reasoning.length
+          }
+
+          if (choice?.delta?.content) {
+            // Reasoning always precedes the real answer — close it out the moment
+            // real content starts arriving, so reasoning-end isn't deferred to the
+            // very end of the stream (which would delay the UI collapsing the
+            // "thinking" block until the whole answer had already streamed in).
+            if (reasoningId && !reasoningClosed) {
+              controller.enqueue({ type: "reasoning-end", id: reasoningId })
+              reasoningClosed = true
+            }
+            if (!textId) {
+              textId = "merlin-0"
+              controller.enqueue({ type: "text-start", id: textId })
+            }
+            controller.enqueue({ type: "text-delta", id: textId, delta: choice.delta.content })
+            outputChars += choice.delta.content.length
+          }
+
+          for (const tcDelta of choice?.delta?.tool_calls ?? []) {
+            const idx = tcDelta.index ?? 0
+            const existing = toolCalls.get(idx)
+            if (!existing) {
+              toolCalls.set(idx, {
+                id: tcDelta.id ?? `merlin-tc-${idx}`,
+                name: tcDelta.function?.name ?? "",
+                args: tcDelta.function?.arguments ?? "",
+              })
+            } else {
+              if (tcDelta.function?.name) existing.name = tcDelta.function.name
+              if (tcDelta.function?.arguments) existing.args += tcDelta.function.arguments
+            }
+          }
+
+          if (choice?.finish_reason) rawFinish = choice.finish_reason
+          if (chunk.usage) usage = chunk.usage
+        }
+
+        try {
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+            buffer += decoder.decode(value, { stream: true })
+            const lines = buffer.split("\n")
+            buffer = lines.pop() ?? "" // keep the trailing partial line for the next chunk
+            for (const line of lines) handleLine(line)
+          }
+          if (buffer) handleLine(buffer)
+        } catch (error) {
+          controller.error(error)
+          return
+        }
+
+        if (reasoningId && !reasoningClosed) controller.enqueue({ type: "reasoning-end", id: reasoningId })
+        if (textId) controller.enqueue({ type: "text-end", id: textId })
+
+        for (const tc of toolCalls.values()) {
+          controller.enqueue({ type: "tool-input-start", id: tc.id, toolName: tc.name })
+          controller.enqueue({ type: "tool-input-delta", id: tc.id, delta: tc.args })
+          controller.enqueue({ type: "tool-input-end", id: tc.id })
+          controller.enqueue({ type: "tool-call", toolCallId: tc.id, toolName: tc.name, input: tc.args })
+          outputChars += tc.args.length
+        }
+
+        controller.enqueue({
+          type: "finish",
+          finishReason: mapFinishReason(rawFinish, toolCalls.size > 0),
+          usage: toUnifiedUsage(usage, promptTokenEstimate, Math.ceil(outputChars / 4)),
+        })
         controller.close()
+      },
+      cancel(reason) {
+        reader.cancel(reason).catch(() => {})
       },
     })
 
@@ -1132,9 +704,9 @@ class MerlinLanguageModel implements LanguageModelV3 {
 // ── Factory ───────────────────────────────────────────────────────────────────
 
 export interface MerlinProviderOptions {
-  /** Override Merlin API endpoint URL (defaults to the hardcoded GAIA endpoint) */
+  /** Override GAIA gateway origin (defaults to the hardcoded UAT origin) */
   baseURL?: string
-  /** User's domain username sent as domain_id in every request */
+  /** User's domain username sent as the domain_id URL segment in every request */
   username?: string
   /** Request timeout in milliseconds (defaults to 600 000 ms) */
   timeoutMs?: number
@@ -1152,25 +724,26 @@ function isEnvFalsy(key: string): boolean {
 
 /**
  * Create a Merlin provider instance.
- * All options are optional — endpoint, client_id, and model are hardcoded
+ * All options are optional — origin, client_id, and model are hardcoded
  * for the BCA GAIA gateway and require no external configuration.
  *
- * Optionally set `username` to populate the domain_id field for gateway
+ * Optionally set `username` to populate the domain_id URL segment for gateway
  * user tracking. Can be configured via provider.merlin.options.username
  * in mage.jsonc if needed.
  *
  * Four env vars intercept/augment the request at runtime, for deployments
  * pointed at a different GAIA gateway or tenant:
- *   - MAGE_GAIA_ENDPOINT: overrides the request endpoint.
- *   - MAGE_CLIENT_ID: overrides client_id.
+ *   - MAGE_GAIA_ENDPOINT: overrides the gateway origin.
+ *   - MAGE_CLIENT_ID: overrides the client_id URL segment.
  *   - MAGE_USE_SERVICE_ID: when set to a falsy value ("false"/"0"), omits
  *     service_id from the request entirely (some gateways reject an
  *     unrecognized service_id outright).
- *   - MAGE_MODEL_NAME: when set, adds a model_name field under config.
+ *   - MAGE_MODEL_NAME: when set, overrides the `model` field (defaults to
+ *     the vllm-backed text model).
  */
 export function createMerlin(options: MerlinProviderOptions = {}): MerlinProvider {
   const {
-    baseURL = MERLIN_ENDPOINT,
+    baseURL = MERLIN_ORIGIN,
     username = "",
     timeoutMs = 600_000,
   } = options
