@@ -1,0 +1,44 @@
+---
+title: ACP Support
+description: Menggunakan Mage dari editor yang mendukung Agent Client Protocol.
+---
+
+Mage mendukung [Agent Client Protocol](https://agentclientprotocol.com) (ACP), protokol terbuka untuk komunikasi antara code editor dan AI coding agent.
+
+Command berikut menjalankan Mage sebagai subprocess ACP melalui JSON-RPC di stdio.
+
+```bash
+mage acp
+```
+
+## JetBrains IDEs
+
+Tambahkan konfigurasi berikut ke `acp.json` sesuai dokumentasi JetBrains AI Assistant.
+
+```json title="acp.json"
+{
+  "agent_servers": {
+    "Mage": {
+      "command": "/absolute/path/bin/mage",
+      "args": ["acp"]
+    }
+  }
+}
+```
+
+Pilih agent Mage dari AI Chat agent selector.
+
+## Dukungan fitur
+
+Melalui ACP, Mage tetap dapat memakai:
+
+- Built-in tools untuk file dan terminal.
+- Custom command dan Agent Skills.
+- MCP server dari `~/.mage/mage.json`.
+- Rules project dari `AGENTS.md`.
+- Agent dan permission system.
+- Formatter dan linter yang dikonfigurasi project.
+
+:::note
+Beberapa slash command yang bergantung pada state TUI, termasuk `/undo` dan `/redo`, mungkin tidak tersedia melalui ACP.
+:::

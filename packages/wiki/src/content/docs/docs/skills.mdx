@@ -1,120 +1,132 @@
 ---
-title: Skill
-description: Cara memasang, memicu, dan membuat skill kustom di .mage.
-eyebrow: Dokumentasi
+title: Agent Skills
+description: Membuat instruksi reusable yang dimuat Mage sesuai kebutuhan.
 ---
 
-**Skill** adalah instruksi dan alur kerja khusus yang dimuat model secara otomatis ketika prompt Anda cocok dengan deskripsi skill tersebut. Tidak ada perintah khusus yang perlu diingat. Cukup tuliskan apa yang ingin Anda lakukan dalam bahasa natural.
+Agent Skills adalah paket instruksi reusable yang disimpan dalam `SKILL.md`. Mage menampilkan nama dan description skill kepada agent, lalu memuat isi lengkapnya hanya ketika relevan.
 
----
+## Lokasi file
 
-## Cara memicu skill
+Buat satu folder per skill dan letakkan `SKILL.md` di dalamnya.
 
-Tulis prompt natural yang mendeskripsikan tugas Anda. Model akan mencocokkan prompt dengan deskripsi skill yang tersedia dan memuat skill yang relevan sebelum mulai mengerjakan.
+- Project Mage: `.mage/skills/<nama>/SKILL.md`
+- Global Mage: `~/.mage/skills/<nama>/SKILL.md`
 
-### Contoh trigger (English & Indonesia)
+Untuk project-local skill, Mage berjalan naik dari current directory sampai root Git worktree dan menemukan skill pada setiap scope yang sesuai.
 
-| Skill | Contoh prompt (EN) | Contoh prompt (ID) |
-|-------|-------------------|-------------------|
-| **angular-developer** | "Migrate this project to Angular standalone components" | "Migrasikan project ini ke Angular standalone components" |
-| **mbb-lib** | "Build a login form using the MBB component library" | "Buat form login menggunakan library komponen MBB" |
-| **functional-flow** | "Generate a functional flow diagram for this project" | "Buat diagram functional flow untuk project ini" |
-| **readme** | "Generate a README for this project" | "Buatkan README untuk project ini" |
-| **verify** | "Verify that the payment feature works correctly" | "Verifikasi bahwa fitur pembayaran berjalan dengan benar" |
-| **code-review-and-quality** | "Review this code before I commit it" | "Review kode ini sebelum saya commit" |
+## Frontmatter
 
-:::tip[Browse skill secara manual]
-Ketikkan `/skills` di TUI untuk membuka dialog browser skill. Anda bisa melihat semua skill yang tersedia dan mengaktifkannya secara manual jika diperlukan.
-:::
+Setiap `SKILL.md` harus diawali YAML frontmatter.
 
----
+- `name`: wajib.
+- `description`: wajib.
+- `metadata`: opsional, map string ke string.
 
-## Membuat skill kustom
+Field lain diabaikan.
 
-Anda bisa menambahkan skill sendiri untuk workflow atau konvensi tim yang spesifik.
+## Aturan nama
 
-### Lokasi
+Nama skill harus:
 
-| Scope | Path |
-|-------|------|
-| Global (berlaku di semua proyek) | `~/.mage/skills/<nama-skill>/SKILL.md` |
-| Per-proyek | `<direktori-proyek>/.mage/skills/<nama-skill>/SKILL.md` |
+- Panjang 1 sampai 64 karakter.
+- Menggunakan huruf kecil, angka, dan satu hyphen sebagai pemisah.
+- Tidak diawali atau diakhiri hyphen.
+- Tidak memiliki dua hyphen berurutan.
+- Sama dengan nama direktori skill.
 
-### Format `SKILL.md`
-
-Hanya dua field yang wajib ada: `name` dan `description`.
-
-```markdown
----
-name: your-skill-name
-description: >
-  What this skill does. Use/Activate when the user asks for X, Y,
-  or Z. The more specific the trigger description, the more accurately
-  the model detects when to load this skill.
----
-
-# Skill Title
-
-## Overview
-Short explanation of what this skill does.
-
-## When to Use
-- When the user asks for ...
-- When the project uses ...
-
-## Workflow
-### Step 1 - ...
-### Step 2 - ...
-
-## Verification
-- [ ] Check this
-- [ ] Check that
+```text
+^[a-z0-9]+(-[a-z0-9]+)*$
 ```
 
-:::tip[Menulis deskripsi yang baik]
-Field `description` adalah satu-satunya yang digunakan model untuk menentukan kapan skill ini cocok. Tulis secara eksplisit kondisi pemicunya: "Gunakan ketika pengguna meminta membuat/mengubah X" atau "Aktifkan sebelum membuat komponen Y". Deskripsi yang samar menghasilkan trigger yang tidak akurat.
-:::
+Description harus memiliki panjang 1 sampai 1024 karakter dan menjelaskan dengan spesifik kapan skill dipakai.
 
-### Contoh skill minimal
+## Contoh
 
-````markdown
+```markdown title=".mage/skills/api-documentation/SKILL.md"
 ---
-name: spring-boot-service
-description: >
-  Generate or modify Spring Boot service classes following BCA
-  backend team conventions. Use when the user asks to create a
-  service, repository, or controller.
+name: api-documentation
+description: Generate clear API documentation from source changes
+metadata:
+  audience: developers
+  workflow: documentation
 ---
 
-# Spring Boot Service Generator
+## What it does
 
-Follow these conventions when creating a Spring Boot service:
+- Extract endpoints and parameters from source changes
+- Keep request and response examples up to date
+- Flag breaking changes for review
 
-1. Use the `@Service` annotation
-2. Inject dependencies via constructor (not field injection)
-3. Method names follow the `verbNoun` pattern (e.g. `getUserById`)
-4. All errors thrown as `BusinessException` with an error code
+## When to use
 
-## Package structure
-```
-id.co.bca.app/
-├── service/        ← put service classes here
-├── repository/
-└── controller/
-```
-````
-
-### File pendukung
-
-Anda bisa menyertakan file pendukung (referensi, contoh kode, template) di dalam direktori skill yang sama. Jalur relatif dalam `SKILL.md` akan diresolvasi terhadap direktori skill tersebut.
-
-```
-~/.mage/skills/spring-boot-service/
-├── SKILL.md
-├── references/
-│   └── service-template.java
-└── examples/
-    └── ExampleUserService.java
+Use when documenting a new or changed API.
+Ask for the target documentation format when unspecified.
 ```
 
-Mage akan mengekspos file-file ini ke model saat skill dimuat, sehingga model bisa menggunakannya sebagai referensi.
+## Cara discovery bekerja
+
+Agent melihat katalog ringkas berisi `name` dan `description`. Saat skill dipilih, tool `skill` memuat isi `SKILL.md` ke context. Karena itu, description harus membedakan skill dari skill lain tanpa memasukkan seluruh workflow.
+
+## Permission skill
+
+Kontrol akses skill melalui pattern di `~/.mage/mage.json`.
+
+```json title="~/.mage/mage.json"
+{
+  "permission": {
+    "skill": {
+      "*": "allow",
+      "internal-*": "deny",
+      "experimental-*": "ask"
+    }
+  }
+}
+```
+
+| Action | Perilaku |
+| --- | --- |
+| `allow` | Skill dimuat langsung. |
+| `ask` | Mage meminta approval. |
+| `deny` | Skill disembunyikan dan tidak dapat dimuat. |
+
+Agent kustom dapat memiliki override sendiri.
+
+```markdown title="~/.mage/agents/docs.md"
+---
+description: Menulis dokumentasi
+mode: subagent
+permission:
+  skill:
+    "documents-*": allow
+---
+
+Tulis dokumentasi yang jelas dan teruji.
+```
+
+## Menonaktifkan skill
+
+Blokir seluruh skill tool pada agent tertentu dengan permission.
+
+```json title="~/.mage/mage.json"
+{
+  "agent": {
+    "restricted": {
+      "description": "Agent tanpa external instruction",
+      "permission": {
+        "skill": "deny"
+      }
+    }
+  }
+}
+```
+
+## Troubleshooting
+
+Jika skill tidak muncul:
+
+1. Pastikan nama file tepat `SKILL.md`.
+2. Pastikan `name` dan `description` tersedia.
+3. Cocokkan `name` dengan nama direktori.
+4. Pastikan nama unik pada seluruh lokasi discovery.
+5. Periksa apakah permission mengatur skill ke `deny`.
+6. Jalankan `mage skills` untuk melihat command pengelolaan yang tersedia.

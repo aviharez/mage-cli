@@ -1,6 +1,46 @@
 @import "@fontsource/ibm-plex-mono/400.css";
 @import "@fontsource/ibm-plex-mono/500.css";
 
+@font-face {
+  font-family: "Avenir Next Web";
+  src: url("/fonts/AvenirNext-Regular.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Avenir Next Web";
+  src: url("/fonts/AvenirNext-Medium.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Avenir Next Web";
+  src: url("/fonts/AvenirNext-Demi.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Avenir Next Web";
+  src: url("/fonts/AvenirNext-Bold.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Avenir Next Web";
+  src: url("/fonts/AvenirNext-Heavy.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+}
+
 /* Mage documentation theme */
 
 /* ---------- Design tokens ---------- */
@@ -26,8 +66,8 @@
   --mg-radius-sm: 2px;
   --mg-radius-lg: 2px;
 
-  --mg-font-sans:    "Avenir Next", Avenir, ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --mg-font-display: "Avenir Next", Avenir, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --mg-font-sans:    "Avenir Next Web", "Avenir Next", Avenir, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --mg-font-display: "Avenir Next Web", "Avenir Next", Avenir, ui-sans-serif, system-ui, -apple-system, sans-serif;
   --mg-font-mono:    "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
 
   /* ---- Starlight overrides ---- */
@@ -240,50 +280,49 @@ a {
 }
 
 /* ---------- Code blocks (expressive-code) ---------- */
-/* Matches reference .code / .code-head layout: persistent header + always-visible Copy pill */
 .expressive-code {
-  margin: 0.75rem 0 2rem !important;
-  border-radius: var(--mg-radius) !important;
+  margin: 1.25rem 0 2.25rem !important;
+  --ec-codePadBlk: 1rem;
+  --ec-codePadInl: 1.25rem;
 }
 .expressive-code figure {
   background: var(--mg-bg-code) !important;
-  border: 1px solid var(--mg-border) !important;
-  border-radius: var(--mg-radius) !important;
+  border: 0 !important;
+  border-block: 1px solid var(--mg-border) !important;
+  border-inline-start: 3px solid var(--mg-accent) !important;
+  border-radius: 0 !important;
+  overflow: clip;
   position: relative;
 }
 .expressive-code .frame {
   box-shadow: none !important;
   position: relative;
 }
-/* Header bar — always visible, matches .code-head */
 .expressive-code .frame figcaption.header,
 .expressive-code .header {
   display: flex !important;
   align-items: center !important;
-  padding: 6px 12px !important;
-  min-height: 36px !important;
-  background: color-mix(in oklab, var(--mg-bg-elev) 70%, var(--mg-bg-code)) !important;
-  border-bottom: 1px solid var(--mg-border) !important;
+  padding: 9px 12px 0 18px !important;
+  min-height: 34px !important;
+  background: var(--mg-bg-code) !important;
+  border: 0 !important;
 }
-/* Lang label injected by our plugin (.mage-lang-label) */
 .expressive-code .frame figcaption.header .mage-lang-label {
   font-family: var(--mg-font-mono);
   font-size: 11px;
-  color: var(--mg-text-dim);
-  letter-spacing: 0.04em;
+  color: var(--mg-accent-bright);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   flex: 1;
-  padding-left: 48px;
 }
-/* Existing EC title for blocks with explicit title="..." */
 .expressive-code .frame figcaption.header .title:not(.mage-lang-label) {
   font-family: var(--mg-font-mono);
   font-size: 11px;
-  color: var(--mg-text-dim);
+  color: var(--mg-text-muted);
   letter-spacing: 0.04em;
   flex: 1;
   margin: 0;
 }
-/* Copy button: always visible, styled as reference .copy-btn */
 .expressive-code .copy {
   position: absolute !important;
   inset-inline-end: 8px !important;
@@ -291,32 +330,59 @@ a {
   opacity: 1 !important;
   transition: none !important;
   z-index: 2;
+  width: auto !important;
 }
 .expressive-code .copy button {
   display: inline-flex !important;
   align-items: center !important;
-  gap: 5px !important;
-  padding: 3px 8px !important;
+  gap: 0 !important;
+  padding: 3px 7px !important;
   font-family: var(--mg-font-mono) !important;
   font-size: 11px !important;
   color: var(--mg-text-muted) !important;
   background: transparent !important;
-  border: 1px solid var(--mg-border) !important;
-  border-radius: 4px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
   cursor: pointer !important;
   height: 26px !important;
+  min-width: 44px !important;
+  width: auto !important;
   opacity: 1 !important;
+  white-space: nowrap;
+  justify-content: center;
+}
+.expressive-code .copy button > div {
+  display: none !important;
+}
+.expressive-code .copy button::before {
+  display: none !important;
+}
+.expressive-code .copy button::after {
+  content: "Salin";
+  position: static !important;
+  width: auto !important;
+  height: auto !important;
+  margin: 0 !important;
+  background: none !important;
+  mask: none !important;
+  -webkit-mask: none !important;
+  line-height: inherit !important;
 }
 .expressive-code .copy button:hover {
-  color: var(--mg-text) !important;
-  border-color: var(--mg-border-strong) !important;
+  color: var(--mg-accent-bright) !important;
+  background: var(--mg-bg-elev-2) !important;
   opacity: 1 !important;
 }
-/* Copied state */
-.expressive-code .copy button[data-copied="true"] {
-  color: var(--mg-success) !important;
-  border-color: var(--mg-success) !important;
-  opacity: 1 !important;
+.expressive-code .copy button:active {
+  transform: translateY(1px);
+}
+.expressive-code .copy .feedback {
+  border-radius: 0 !important;
+  font-size: 0 !important;
+}
+.expressive-code .copy .feedback::before {
+  content: "Disalin";
+  font-size: 11px;
 }
 
 /* Dark shiki colors */
@@ -647,10 +713,10 @@ div.right-sidebar .sl-container ul li ul li a {
 }
 @media (max-width: 768px) {
   .content-panel footer.site-footer {
-    margin-left: -1.5rem;
-    margin-right: -1.5rem;
-    padding-left: 1.5rem;
-    padding-right: 1.5rem;
+    margin-left: -1rem;
+    margin-right: -1rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
   }
 }
 
@@ -730,14 +796,61 @@ body > .page > header,
 }
 
 .expressive-code .frame,
-.expressive-code pre,
-.starlight-aside {
-  border-radius: 2px !important;
+.expressive-code pre {
+  border-radius: 0 !important;
   box-shadow: none !important;
 }
 
-.expressive-code .frame {
-  border-color: var(--mg-border-strong) !important;
+.expressive-code pre {
+  border: 0 !important;
+}
+
+/* Filename blocks use a document caption, not the terminal-style header. */
+.expressive-code figure.has-title {
+  background: transparent !important;
+  border: 0 !important;
+  overflow: visible;
+}
+
+.expressive-code figure.has-title figcaption.header {
+  min-height: 0 !important;
+  padding: 0 64px 10px 0 !important;
+  background: transparent !important;
+}
+
+.expressive-code figure.has-title figcaption.header::before,
+.expressive-code figure.has-title figcaption.header .title::after {
+  display: none !important;
+}
+
+.expressive-code figure.has-title figcaption.header .title {
+  min-width: 0;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  color: var(--mg-text) !important;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1.5;
+}
+
+.expressive-code figure.has-title pre {
+  background: var(--mg-bg-code) !important;
+  border-block: 1px solid var(--mg-border) !important;
+  border-inline-start: 3px solid var(--mg-accent) !important;
+}
+
+.expressive-code figure.has-title .copy {
+  inset-inline-end: 0 !important;
+  top: -4px !important;
+}
+
+.starlight-aside {
+  border-radius: 2px !important;
+  box-shadow: none !important;
 }
 
 .sidebar-pane {
@@ -801,6 +914,7 @@ html:has(.changelog-ledger) .page-lede {
 }
 
 .changelog-summary > div + div {
+  margin-top: 0;
   padding-left: clamp(24px, 4vw, 56px);
   border-left: 1px solid var(--mg-border);
 }
@@ -1133,28 +1247,23 @@ html:has(.changelog-ledger) .page-lede {
   text-align: left;
 }
 
-:root[data-has-sidebar] .expressive-code {
-  margin: 1.25rem 0 2.25rem !important;
-}
-
 :root[data-has-sidebar] .expressive-code figure {
-  border-color: var(--mg-border-strong) !important;
   background: var(--mg-bg-code) !important;
 }
 
 :root[data-has-sidebar] .expressive-code .frame figcaption.header,
 :root[data-has-sidebar] .expressive-code .header {
-  min-height: 38px !important;
-  background: var(--mg-bg-elev) !important;
+  background: var(--mg-bg-code) !important;
+}
+
+:root[data-has-sidebar] .expressive-code figure.has-title,
+:root[data-has-sidebar] .expressive-code figure.has-title figcaption.header {
+  background: transparent !important;
 }
 
 :root[data-has-sidebar] .expressive-code .mage-lang-label,
 :root[data-has-sidebar] footer.site-footer {
   color: var(--mg-text-muted) !important;
-}
-
-:root[data-has-sidebar] .expressive-code .copy button {
-  border-radius: 2px !important;
 }
 
 :root[data-has-sidebar] starlight-tabs {

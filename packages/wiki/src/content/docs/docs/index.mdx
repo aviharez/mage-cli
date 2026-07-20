@@ -9,15 +9,15 @@ import { Tabs, TabItem } from "@astrojs/starlight/components"
 
 <nav class="docs-route-map" aria-label="Jalur dokumentasi">
   <a class="route-primary" href="/docs/instalasi">
-    <strong>Pasang Mage</strong>
+    <strong>Install Mage</strong>
     <small>Installer, prasyarat, dan pilihan instalasi untuk setiap sistem operasi.</small>
   </a>
-  <a href="/docs/penggunaan">
+  <a href="/docs/tui">
     <strong>Gunakan Mage</strong>
-    <small>TUI, perintah langsung, dan sesi web.</small>
+    <small>Mulai dari TUI, lanjutkan melalui CLI atau Web.</small>
   </a>
   <a href="/docs/troubleshooting">
-    <strong>Cari solusi</strong>
+    <strong>Troubleshoot</strong>
     <small>Masalah instalasi dan konfigurasi yang paling umum.</small>
   </a>
 </nav>
@@ -33,6 +33,8 @@ Node.js **≥ 18** harus sudah terinstal. Unduh di Software Center.
     ```powershell
     irm https://mage.apps.ocpdevgra.dti.co.id/install.ps1 | iex
     ```
+
+    Jika muncul error `running scripts is disabled on this system`, lihat [solusi untuk Windows](/docs/troubleshooting/#error-running-scripts-is-disabled-on-this-system-windows).
   </TabItem>
   <TabItem label="macOS / Linux">
     ```bash
@@ -78,6 +80,7 @@ mage
 
 - [Instalasi](/docs/instalasi) - semua metode instalasi termasuk Windows dan manual.
 - [Setup Awal](/docs/setup) - detail wizard, file konfigurasi, dan `mage init`.
-- [Penggunaan](/docs/penggunaan) - semua subcommand, TUI, dan versi web.
-- [Slash Commands](/docs/slash-commands) - daftar lengkap perintah `/` di TUI.
-- [Skill](/docs/skills) - cara memasang dan membuat skill kustom.
+- [TUI](/docs/tui) - antarmuka terminal, slash command, dan keybind.
+- [CLI](/docs/cli) - seluruh command untuk terminal dan automation.
+- [Web](/docs/web) - menjalankan Mage di browser dan menghubungkan TUI.
+- [Agent Skills](/docs/skills) - membuat instruksi reusable untuk agent.

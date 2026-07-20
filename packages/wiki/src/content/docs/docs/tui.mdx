@@ -1,0 +1,123 @@
+---
+title: TUI
+description: Menggunakan antarmuka terminal interaktif Mage.
+---
+
+import { Tabs, TabItem } from "@astrojs/starlight/components"
+
+TUI adalah antarmuka utama Mage untuk bekerja dengan AI agent langsung dari terminal. Jalankan Mage dari root project:
+
+```bash
+mage
+```
+
+Anda juga dapat menentukan working directory secara langsung.
+
+```bash
+mage /path/to/project
+```
+
+Setelah TUI terbuka, tulis hasil yang Anda inginkan. Mage akan membaca konteks project, menjelaskan rencana, memakai tools yang dibutuhkan, lalu menampilkan perubahan untuk direview.
+
+```text
+Jelaskan alur autentikasi di project ini dan tunjukkan file utamanya.
+```
+
+## Referensi file
+
+Gunakan `@` untuk mencari dan memasukkan file ke dalam prompt. Pencarian fuzzy berjalan dari working directory aktif.
+
+```text "@packages/api/src/auth.ts"
+Bagaimana autentikasi ditangani di @packages/api/src/auth.ts?
+```
+
+Isi file ditambahkan ke context secara otomatis. Ketik `@alias/` bila project memiliki reference root yang sudah dikonfigurasi.
+
+## Perintah shell
+
+Awali pesan dengan `!` untuk menjalankan shell command. Output command akan ditambahkan ke percakapan sebagai tool result.
+
+```bash frame="none"
+!git status --short
+```
+
+## Slash command
+
+Ketik `/` untuk membuka daftar command. Sebagian command juga memiliki keybind dengan `ctrl+x` sebagai leader key default.
+
+| Command | Fungsi | Keybind |
+| --- | --- | --- |
+| `/compact` | Meringkas context sesi. Alias: `/summarize`. | `ctrl+x c` |
+| `/editor` | Menulis prompt melalui external editor. | `ctrl+x e` |
+| `/exit` | Keluar dari Mage. Alias: `/quit`, `/q`. | `ctrl+x q` |
+| `/export` | Mengekspor percakapan ke Markdown. | `ctrl+x x` |
+| `/help` | Membuka bantuan. | - |
+| `/init` | Membuat atau memperbarui `AGENTS.md`. | - |
+| `/new` | Membuat sesi baru. Alias: `/clear`. | `ctrl+x n` |
+| `/redo` | Mengembalikan pesan dan perubahan setelah `/undo`. | `ctrl+x r` |
+| `/sessions` | Membuka dan berpindah sesi. | `ctrl+x l` |
+| `/themes` | Memilih theme TUI. | `ctrl+x t` |
+| `/undo` | Membatalkan pesan terakhir beserta perubahan file. | `ctrl+x u` |
+
+`/undo` dan `/redo` memakai Git untuk mengelola perubahan file, sehingga project harus berupa Git repository.
+
+## Setup editor
+
+Command `/editor` dan `/export` memakai environment variable `EDITOR`.
+
+<Tabs>
+  <TabItem label="Windows PowerShell">
+    ```powershell
+    $env:EDITOR = "code --wait"
+    ```
+  </TabItem>
+  <TabItem label="Windows CMD">
+    ```batch
+    set EDITOR=code --wait
+    ```
+  </TabItem>
+  <TabItem label="Linux dan macOS">
+    ```bash
+    export EDITOR="code --wait"
+    ```
+
+    Simpan nilai tersebut di `~/.bashrc`, `~/.zshrc`, atau shell profile Anda.
+  </TabItem>
+</Tabs>
+
+Editor GUI seperti VS Code, Cursor, Windsurf, dan Zed memerlukan `--wait` agar Mage menunggu sampai editor ditutup.
+
+## Konfigurasi
+
+Pengaturan TUI disimpan terpisah dari runtime config. Gunakan `~/.mage/tui.json`.
+
+```json title="~/.mage/tui.json"
+{
+  "theme": "mage",
+  "leader_timeout": 2000,
+  "keybinds": {
+    "leader": "ctrl+x",
+    "command_list": "ctrl+p"
+  },
+  "scroll_speed": 3,
+  "scroll_acceleration": {
+    "enabled": false
+  },
+  "diff_style": "auto",
+  "mouse": true
+}
+```
+
+- `theme`: theme aktif. Lihat [Themes](/docs/themes).
+- `keybinds`: override keybind bawaan.
+- `leader_timeout`: waktu tunggu setelah leader key dalam milidetik.
+- `scroll_acceleration.enabled`: mengaktifkan akselerasi scroll dan mengambil prioritas atas `scroll_speed`.
+- `scroll_speed`: kecepatan scroll saat akselerasi nonaktif.
+- `diff_style`: `auto` mengikuti lebar terminal, `stacked` selalu satu kolom.
+- `mouse`: mengaktifkan mouse capture.
+
+Gunakan `MAGE_TUI_CONFIG` untuk memuat file TUI dari lokasi lain.
+
+## Kustomisasi
+
+Buka command palette dengan `ctrl+p` untuk mengubah preferensi yang tersedia, termasuk tampilan username. Perubahan disimpan dan dipakai kembali pada sesi berikutnya.

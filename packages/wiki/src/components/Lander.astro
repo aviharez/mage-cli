@@ -2,7 +2,7 @@
 import { Image } from "astro:assets"
 import { getRelativeLocaleUrl } from "astro:i18n"
 import tui from "../assets/lander/screenshot.png"
-import web from "../assets/web/web-homepage-active-session.png"
+import web from "../assets/web/screenshot.png"
 
 const locale = Astro.currentLocale || "root"
 const docsHref = getRelativeLocaleUrl(locale, "docs")
@@ -14,7 +14,7 @@ const installCmd = "irm https://mage.apps.ocpdevgra.dti.co.id/install.ps1 | iex"
   <header class="hero">
     <div class="hero-copy enter">
       <p class="eyebrow">AI Agentic MDZ</p>
-      <h1>Mage ngerti repo kamu. <span>Tinggal bilang mau ubah apa.</span></h1>
+      <h1>Mage ngerti repo kamu. <span>Tinggal bilang mau bikin apa.</span></h1>
       <p class="hero-lede">
         Asisten coding internal yang membawa konteks proyek, GAIA, dan tooling langsung ke terminal.
       </p>
@@ -41,7 +41,7 @@ const installCmd = "irm https://mage.apps.ocpdevgra.dti.co.id/install.ps1 | iex"
       </div>
       <div>
         <dt>GAIA On Prem</dt>
-        <dd>Model on prem GAIA tetap berada di jalur kerja yang sudah dikenal tim.</dd>
+        <dd>Model on prem GAIA membuat code tidak akan ter-expose keluar.</dd>
       </div>
       <div>
         <dt>TUI dan Web</dt>
@@ -58,12 +58,12 @@ const installCmd = "irm https://mage.apps.ocpdevgra.dti.co.id/install.ps1 | iex"
     <div class="surface-copy">
       <h2 id="surfaces-title">Tetap fokus saat pekerjaan berubah bentuk.</h2>
       <p>Gunakan TUI untuk kecepatan. Buka Web untuk membaca percakapan, perubahan, dan hasil dalam ruang yang lebih luas.</p>
-      <a class="text-link" href={getRelativeLocaleUrl(locale, "docs/penggunaan")}>Lihat cara menggunakan Mage</a>
+      <a class="text-link" href={getRelativeLocaleUrl(locale, "docs/tui")}>Lihat cara menggunakan Mage</a>
     </div>
 
     <div class="surface-gallery">
       <figure class="surface surface-tui">
-        <div class="surface-frame">
+        <div class="surface-frame surface-frame-tui">
           <Image class="surface-image" src={tui} alt="Sesi coding Mage di terminal." loading="lazy" widths={[720, 1080, 1440]} sizes="(max-width: 767px) calc(100vw - 32px), 58vw" />
         </div>
         <figcaption>TUI</figcaption>
@@ -415,10 +415,14 @@ const installCmd = "irm https://mage.apps.ocpdevgra.dti.co.id/install.ps1 | iex"
   }
 
   .surface-frame {
-    aspect-ratio: 7 / 5;
     overflow: hidden;
     border: 1px solid var(--mg-border-strong);
     background: var(--mg-bg-code);
+  }
+
+  .surface-frame-tui {
+    aspect-ratio: 7 / 5;
+    padding: 24px;
   }
 
   .surface-frame :global(.surface-image) {

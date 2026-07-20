@@ -1,0 +1,166 @@
+---
+title: CLI
+description: Command dan option untuk menjalankan Mage dari terminal atau automation.
+---
+
+Menjalankan `mage` tanpa subcommand akan membuka [TUI](/docs/tui). Untuk automation, gunakan subcommand seperti `run`, `serve`, atau `web`.
+
+```bash
+mage run "Jelaskan cara kerja closure di JavaScript"
+```
+
+## TUI
+
+```bash
+mage [project]
+```
+
+Option utama:
+
+| Option | Alias | Keterangan |
+| --- | --- | --- |
+| `--continue` | `-c` | Melanjutkan sesi terakhir. |
+| `--session` | `-s` | Melanjutkan session ID tertentu. |
+| `--fork` | - | Membuat fork saat melanjutkan sesi. |
+| `--agent` | - | Memilih agent. |
+| `--auto` | - | Menyetujui permission yang tidak diatur sebagai `deny`. |
+| `--mini` | - | Membuka antarmuka interaktif minimal. |
+| `--port` | - | Menentukan port server lokal. |
+| `--hostname` | - | Menentukan hostname server lokal. |
+
+## Command
+
+### `mage init`
+
+Menjalankan setup awal Mage.
+
+### `mage run`
+
+Menjalankan Mage secara non-interaktif dengan sebuah prompt.
+
+```bash
+mage run "Cari penyebab test auth gagal dan perbaiki"
+```
+
+Option yang sering digunakan:
+
+| Option | Alias | Keterangan |
+| --- | --- | --- |
+| `--command` | - | Menjalankan custom command dan memakai message sebagai argumen. |
+| `--continue` | `-c` | Melanjutkan sesi terakhir. |
+| `--session` | `-s` | Melanjutkan session ID tertentu. |
+| `--fork` | - | Membuat fork dari sesi yang dilanjutkan. |
+| `--agent` | - | Memilih primary agent. |
+| `--format` | - | Output `default` atau raw event `json`. |
+| `--file` | `-f` | Melampirkan satu atau beberapa file. |
+| `--attach` | - | Terhubung ke Mage server yang sedang berjalan. |
+| `--dir` | - | Menentukan working directory lokal atau remote. |
+| `--variant` | - | Memilih model variant atau reasoning effort. |
+| `--thinking` | - | Menampilkan reasoning block. |
+| `--interactive` | `-i` | Menjalankan direct interactive mode. |
+| `--auto` | - | Auto-approve kecuali rule `deny`. |
+
+Gunakan format JSON untuk pipeline yang membaca event Mage secara programatis.
+
+```bash
+mage run --format json "Ringkas perubahan pada branch ini"
+```
+
+### `mage agent`
+
+Mengelola agent kustom.
+
+```bash
+mage agent create
+mage agent list
+```
+
+`create` memandu pemilihan lokasi, mode, system prompt, model, dan permission. Lihat [Agents](/docs/agents).
+
+### `mage attach`
+
+Menghubungkan TUI ke backend Mage yang sudah berjalan.
+
+```bash
+mage attach http://localhost:4096
+```
+
+Gunakan `--dir`, `--continue`, `--session`, `--password`, atau `--username` bila dibutuhkan.
+
+### `mage mcp`
+
+Mengelola MCP server lokal dan remote.
+
+```bash
+mage mcp add
+mage mcp install
+mage mcp list
+mage mcp auth nama-server
+mage mcp logout nama-server
+mage mcp debug nama-server
+```
+
+Lihat [MCP Servers](/docs/mcp-servers) untuk konfigurasi lengkap.
+
+### `mage serve`
+
+Menjalankan headless Mage server tanpa membuka browser.
+
+```bash
+mage serve --port 4096 --hostname 127.0.0.1
+```
+
+### `mage web`
+
+Menjalankan server dan membuka antarmuka Web.
+
+```bash
+mage web --port 4096
+```
+
+Lihat [Web](/docs/web) untuk network access, mDNS, CORS, dan autentikasi.
+
+### `mage acp`
+
+Menjalankan Mage sebagai ACP-compatible subprocess melalui JSON-RPC di stdio.
+
+```bash
+mage acp
+```
+
+### Command lain
+
+| Command | Fungsi |
+| --- | --- |
+| `mage skills` | Mengelola Agent Skills. |
+| `mage stats` | Menampilkan token usage dan cost. |
+| `mage export [sessionID]` | Mengekspor sesi ke JSON. |
+| `mage import <file>` | Mengimpor sesi dari file. |
+| `mage session` | Menampilkan atau menghapus sesi. |
+
+## Global option
+
+Global option berlaku pada seluruh command:
+
+- `--help`, `-h`: menampilkan bantuan.
+- `--version`, `-v`: menampilkan versi.
+- `--print-logs`: menulis log ke stderr.
+- `--log-level`: memilih `DEBUG`, `INFO`, `WARN`, atau `ERROR`.
+- `--pure`: menjalankan Mage tanpa external plugin.
+
+## Environment variable
+
+Mage memakai prefix `MAGE_*`. Beberapa variable yang paling umum:
+
+| Variable | Fungsi |
+| --- | --- |
+| `MAGE_CONFIG` | Memakai file config tertentu. |
+| `MAGE_CONFIG_DIR` | Menambahkan direktori config. |
+| `MAGE_TUI_CONFIG` | Memakai file config TUI tertentu. |
+| `MAGE_SERVER_USERNAME` | Username Basic Auth server. |
+| `MAGE_SERVER_PASSWORD` | Password Basic Auth server. |
+| `MAGE_LOG_LEVEL` | Level logging. |
+| `MAGE_DISABLE_AUTOCOMPACT` | Menonaktifkan automatic compaction. |
+| `MAGE_DISABLE_PRUNE` | Menonaktifkan pruning context. |
+
+Daftar option yang paling akurat untuk versi terpasang selalu tersedia melalui `mage --help` dan `mage <command> --help`.

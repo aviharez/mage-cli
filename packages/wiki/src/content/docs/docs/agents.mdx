@@ -1,0 +1,201 @@
+---
+title: Agents
+description: Mengatur primary agent dan subagent khusus untuk workflow Mage.
+---
+
+Agent adalah AI assistant dengan system prompt, model, dan permission yang dapat disesuaikan untuk pekerjaan tertentu. Anda dapat berpindah primary agent selama sesi atau memanggil subagent melalui mention `@`.
+
+## Jenis agent
+
+### Primary agent
+
+Primary agent menangani percakapan utama. Tekan **Tab** atau keybind `switch_agent` untuk berpindah agent.
+
+- **Build**: agent default untuk implementasi dengan akses tool lengkap sesuai permission.
+- **Plan**: agent untuk analisis dan perencanaan. Edit serta shell command dibatasi agar tidak mengubah project tanpa persetujuan.
+
+### Subagent
+
+Subagent mengerjakan task khusus di child session agar context utama tetap fokus. Primary agent dapat memanggilnya otomatis berdasarkan description, atau Anda dapat memanggilnya langsung.
+
+```text frame="none"
+@explore find every caller of the createSession function
+```
+
+Built-in subagent yang umum:
+
+- **General**: riset dan task multi-step dengan tool access luas.
+- **Explore**: pencarian codebase secara cepat dan read-only.
+- **Scout**: riset external docs atau source dependency secara read-only.
+
+Mage juga memakai hidden agent untuk compaction, title, dan summary. Agent tersebut berjalan otomatis dan tidak muncul sebagai pilihan utama.
+
+## Menggunakan Build dan Plan
+
+### Build
+
+Gunakan **Build** ketika task sudah jelas dan Anda ingin Mage langsung mengubah file, menjalankan command, serta memverifikasi hasilnya. Build adalah primary agent default. Sertakan file terkait dengan mention `@` dan jelaskan hasil yang diharapkan.
+
+```text frame="none"
+@src/auth.ts add expired token validation, then run the related tests
+```
+
+### Plan
+
+Gunakan **Plan** untuk memahami codebase, membandingkan pendekatan, atau menyusun langkah implementasi sebelum file diubah. Tekan **Tab** sampai indikator agent menunjukkan Plan. Secara default, edit file dan shell command memerlukan persetujuan.
+
+```text frame="none"
+Analyze the current authentication flow and create a plan for adding refresh tokens.
+List the affected files, migration risks, and verification steps.
+```
+
+Anda dapat memberi feedback untuk memperbaiki rencana. Setelah rencana siap, tekan **Tab** untuk kembali ke Build, lalu minta Mage menjalankannya.
+
+```text frame="none"
+Implement the plan and run the relevant verification.
+```
+{/*
+## Navigasi child session
+
+- `session_child_first`: masuk ke child session pertama.
+- `session_child_cycle`: pindah ke child session berikutnya.
+- `session_child_cycle_reverse`: kembali ke child session sebelumnya.
+- `session_parent`: kembali ke parent session.
+
+Keybind default dapat dilihat dan diubah melalui config TUI.
+*/}
+
+## Konfigurasi JSON
+
+Atur agent di `~/.mage/mage.json`.
+
+```json title="~/.mage/mage.json"
+{
+  "agent": {
+    "build": {
+      "mode": "primary",
+      "permission": {
+        "edit": "allow",
+        "bash": "ask"
+      }
+    },
+    "review": {
+      "description": "Review code tanpa mengubah file",
+      "mode": "subagent",
+      "permission": {
+        "edit": "deny",
+        "bash": {
+          "*": "deny",
+          "git diff *": "allow",
+          "git log *": "allow"
+        }
+      }
+    }
+  }
+}
+```
+
+## Konfigurasi Markdown
+
+Agent dapat disimpan sebagai Markdown:
+
+- Global: `~/.mage/agents/*.md`
+- Project: `.mage/agents/*.md`
+
+```markdown title="~/.mage/agents/review.md"
+---
+description: Review kualitas dan risiko perubahan code
+mode: subagent
+permission:
+  edit: deny
+  bash:
+    "*": deny
+    "git diff *": allow
+---
+
+Review the provided changes. Focus on correctness, security,
+performance, and maintainability. Do not modify any files.
+```
+
+Nama file menjadi nama agent. `review.md` dapat dipanggil dengan `@review`.
+
+## Option
+
+| Option | Fungsi |
+| --- | --- |
+| `description` | Menjelaskan fungsi agent dan kapan agent dipakai. Wajib untuk agent kustom. |
+| `mode` | `primary`, `subagent`, atau `all`. |
+| `prompt` | System prompt langsung atau reference file. |
+| `steps` | Batas agentic iteration sebelum agent harus merangkum hasil. |
+| `disable` | Menonaktifkan agent tanpa menghapus konfigurasi. |
+| `hidden` | Menyembunyikan subagent dari autocomplete `@`. |
+| `color` | Warna agent di UI dalam hex atau semantic theme color. |
+| `permission` | Mengatur akses tool dan pola input. |
+
+Field `tools` masih didukung untuk compatibility, tetapi konfigurasi baru sebaiknya memakai `permission`.
+
+### Prompt file
+
+```json title="~/.mage/mage.json"
+{
+  "agent": {
+    "review": {
+      "description": "Review perubahan code",
+      "prompt": "{file:./prompts/review.txt}"
+    }
+  }
+}
+```
+
+Path bersifat relatif terhadap lokasi config file.
+
+### Permission
+
+Permission menerima `allow`, `ask`, atau `deny`. Rule yang lebih spesifik dapat memakai pola.
+
+```json title="~/.mage/mage.json"
+{
+  "agent": {
+    "review": {
+      "description": "Review read-only",
+      "permission": {
+        "edit": "deny",
+        "bash": {
+          "*": "ask",
+          "git status *": "allow",
+          "git diff *": "allow"
+        },
+        "task": {
+          "*": "deny",
+          "explore": "allow"
+        }
+      }
+    }
+  }
+}
+```
+
+Rule dibaca berurutan dan kecocokan terakhir menang. Lihat [Permissions](/docs/permissions).
+
+{/*
+## Membuat agent
+
+Gunakan wizard CLI:
+
+```bash
+mage agent create
+```
+
+Wizard menanyakan lokasi file, description, mode, system prompt, model, dan permission. Tampilkan seluruh agent dengan:
+
+```bash
+mage agent list
+```
+*/}
+
+## Contoh penggunaan
+
+- Agent dokumentasi: boleh edit Markdown, tetapi tidak boleh menjalankan shell command berisiko.
+- Agent security: read-only dengan akses ke dependency audit dan web documentation.
+- Agent debug: boleh membaca log dan menjalankan test, tetapi tidak boleh push.
+- Agent orchestrator: hanya boleh memanggil subagent dengan prefix tertentu melalui `permission.task`.
