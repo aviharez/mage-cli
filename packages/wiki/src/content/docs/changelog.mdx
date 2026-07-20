@@ -1,176 +1,160 @@
 ---
 title: Changelog
-description: Riwayat perubahan dan pembaruan Mage.
+description: Semua yang baru, diperbaiki, dan dipercepat di Mage.
 template: splash
 ---
 
-import { Card } from "@astrojs/starlight/components"
+import ChangelogRelease from "../../components/ChangelogRelease.astro"
 
----
+<dl className="changelog-summary" aria-label="Ringkasan changelog">
+  <div>
+    <dt>Rilis terbaru</dt>
+    <dd>v1.2.11</dd>
+  </div>
+  <div>
+    <dt>Diperbarui</dt>
+    <dd>10 Juli 2026</dd>
+  </div>
+</dl>
 
-## v1.2.11
-
-_10 Juli 2026_
-
-### Yang baru
-- **Dukungan Mac Intel** — Mage kini tersedia untuk Mac dengan prosesor Intel (x64), melengkapi build Apple Silicon (arm64) yang sudah ada. Pengguna Mac Intel dapat menginstall dan menjalankan mage.
-- **New session di window baru** — Saat memulai session baru kini muncul pilihan **This window** (lanjut di jendela ini) atau **New window** (membuka mage di jendela terminal baru pada direktori yang sama). Fitur window baru hanya didukung di macOS dan Windows; platform lain menampilkan toast error.
-
-### Perbaikan
-- **Auto-recovery lebih tangguh** — Error gateway **DPA-115** dan **DPA-117** (gangguan sementara pada gateway/OCP) kini diperlakukan sebagai error retryable dan diulang otomatis oleh policy retry session, bukan langsung ditampilkan sebagai error ke pengguna.
-
----
-
-## v1.2.10
-
-_8 Juli 2026_
+<div className="changelog-ledger">
+<ChangelogRelease version="v1.2.11" date="10 Juli 2026" dateTime="2026-07-10" latest>
 
 ### Yang baru
-- **`mage skills`** — Perintah CLI baru untuk install/remove skill dari Rune (`mage skills install`, `mage skills remove`), menggantikan halaman catalog di TUI.
-- **Context gauge di footer** — Persentase context kini ditampilkan di footer prompt (di sebelah hint agent/command), menggantikan panel sidebar lama.
+- **Dukungan Mac Intel:** Mage kini tersedia untuk Mac dengan prosesor Intel (x64), melengkapi build Apple Silicon (arm64) yang sudah ada. Pengguna Mac Intel dapat menginstal dan menjalankan Mage.
+- **New session di window baru:** Saat memulai session baru kini muncul pilihan **This window** (lanjut di jendela ini) atau **New window** (membuka Mage di jendela terminal baru pada direktori yang sama). Fitur window baru hanya didukung di macOS dan Windows; platform lain menampilkan toast error.
 
 ### Perbaikan
-- **Akurasi context gauge** — Perhitungan token auto-compaction diselaraskan dengan angka persentase context yang ditampilkan; estimasi pasca-compact disimpan sehingga `/compact` manual ikut memperbarui angka, tidak lagi menampilkan nilai basi.
-- **DPA-124 tidak selalu dianggap context overflow** — DPA-124 (error catch-all engine GAIA) sebelumnya selalu dikonversi menjadi context-overflow untuk trigger auto-compaction, padahal juga muncul untuk kegagalan engine lain (mis. 500 generik) yang salah diklasifikasikan. Kini hanya DPA-124 yang `err_debug`-nya menyebut context-length limit yang memicu compaction; sisanya tampil sebagai error biasa.
+- **Auto-recovery lebih tangguh:** Error gateway **DPA-115** dan **DPA-117** (gangguan sementara pada gateway/OCP) kini diperlakukan sebagai error retryable dan diulang otomatis oleh policy retry session, bukan langsung ditampilkan sebagai error ke pengguna.
 
----
+</ChangelogRelease>
 
-## v1.2.9
-
-_3 Juli 2026_
+<ChangelogRelease version="v1.2.10" date="8 Juli 2026" dateTime="2026-07-08">
 
 ### Yang baru
-- **Rename agent** — Seluruh agent dinamai ulang menjadi `build`, `plan`, `explore`, dan `general`.
-- **Subagent paralel tanpa batas** — Batas `MAGE_SUBAGENT` dihapus; subagent dan tool call kini berjalan paralel tanpa dibatasi (seperti upstream), mengembalikan throttle yang ditambahkan di v1.2.7.
-- **Estimasi token sidebar** — Sidebar menampilkan pemakaian context berdasarkan estimasi token sisi klien, sehingga tetap akurat meski gateway GAIA tidak mengirim data usage.
+- **`mage skills`:** Perintah CLI baru untuk install/remove skill langsung dari Rune (`mage skills install`, `mage skills remove`).
+- **Context gauge di footer:** Persentase context kini ditampilkan di footer prompt (di sebelah hint agent/command), menggantikan panel sidebar lama.
 
 ### Perbaikan
-- **Todo list di context tiap turn** — Daftar todo dibaca ulang dari DB dan disuntikkan sebagai system-reminder setiap turn, sehingga model tidak mengulang langkah yang sudah selesai meski melewati batas compaction.
-- **Auto-recovery Merlin lebih tangguh** — Beberapa kondisi gateway GAIA kini pulih otomatis, bukan ditampilkan sebagai error ke pengguna:
+- **Akurasi context gauge:** Perhitungan token auto-compaction diselaraskan dengan angka persentase context yang ditampilkan; estimasi pasca-compact disimpan sehingga `/compact` manual ikut memperbarui angka, tidak lagi menampilkan nilai basi.
+- **DPA-124 tidak selalu dianggap context overflow:** DPA-124 (error catch-all engine GAIA) sebelumnya selalu dikonversi menjadi context-overflow untuk trigger auto-compaction, padahal juga muncul untuk kegagalan engine lain (mis. 500 generik) yang salah diklasifikasikan. Kini hanya DPA-124 yang `err_debug`-nya menyebut context-length limit yang memicu compaction; sisanya tampil sebagai error biasa.
+
+</ChangelogRelease>
+
+<ChangelogRelease version="v1.2.9" date="3 Juli 2026" dateTime="2026-07-03">
+
+### Yang baru
+- **Rename agent:** Seluruh agent dinamai ulang menjadi `build`, `plan`, `explore`, dan `general`.
+- **Subagent paralel tanpa batas:** Batas `MAGE_SUBAGENT` dihapus; subagent dan tool call kini berjalan paralel tanpa dibatasi (seperti upstream), mengembalikan throttle yang ditambahkan di v1.2.7.
+- **Estimasi token sidebar:** Sidebar menampilkan pemakaian context berdasarkan estimasi token sisi klien, sehingga tetap akurat meski gateway GAIA tidak mengirim data usage.
+
+### Perbaikan
+- **Todo list di context tiap turn:** Daftar todo dibaca ulang dari DB dan disuntikkan sebagai system-reminder setiap turn, sehingga model tidak mengulang langkah yang sudah selesai meski melewati batas compaction.
+- **Auto-recovery Merlin lebih tangguh:** Beberapa kondisi gateway GAIA kini pulih otomatis, bukan ditampilkan sebagai error ke pengguna:
   - Error **An error occurred while the engine was processing the query** dikonversi ke jalur context-overflow sehingga session otomatis compact lalu lanjut.
   - Jawaban yang hanya mengumumkan aksi (mis. "Let me read the files...") tanpa benar-benar memanggil tool kini disambung otomatis (terbatas beberapa putaran) agar agent tidak berhenti di tengah tugas.
   - Diagnostik gateway yang bersifat sementara (tool result gagal di-parse) diperlakukan sebagai error retryable dan diulang, bukan disalahartikan sebagai overflow.
-- **Compaction overflow** — Mengatasi "history too large to compact" dengan membuang byte output tool call lama (dan, bila perlu, turn tertua) sebelum request summarization. Gauge token sidebar juga mengecualikan summary compaction sehingga turun setelah compact.
-- **Cache instruksi AGENTS.md** — File instruksi tidak lagi dibaca ulang dari disk pada setiap step (di-cache berdasarkan mtime), mengurangi overhead per turn.
+- **Compaction overflow:** Mengatasi "history too large to compact" dengan membuang byte output tool call lama (dan, bila perlu, turn tertua) sebelum request summarization. Gauge token sidebar juga mengecualikan summary compaction sehingga turun setelah compact.
+- **Cache instruksi AGENTS.md:** File instruksi tidak lagi dibaca ulang dari disk pada setiap step (di-cache berdasarkan mtime), mengurangi overhead per turn.
 
 ### Performa
-- **Kondensasi built-in prompt** — Prompt bawaan `bash`, `todowrite`, dan `qwen` diringkas (~27KB → ~9KB) tanpa menghapus aturan perilaku/keamanan, untuk memangkas token overhead per turn pada GAIA.
+- **Kondensasi built-in prompt:** Prompt bawaan `bash`, `todowrite`, dan `qwen` diringkas (~27KB ke ~9KB) tanpa menghapus aturan perilaku/keamanan, untuk memangkas token overhead per turn pada GAIA.
 
----
+</ChangelogRelease>
 
-## v1.2.8
-
-_15 Juni 2026_
+<ChangelogRelease version="v1.2.8" date="15 Juni 2026" dateTime="2026-06-15">
 
 ### Perbaikan
-- **Perbaikan batas context compaction** — Batas context model GAIA dikoreksi dari 262K menjadi 128K sesuai limit aktual gateway. Sebelumnya, compaction tidak pernah terpicu karena threshold dihitung berdasarkan nilai yang terlalu besar, sehingga gateway menolak request ketika prompt mendekati 128K token.
+- **Perbaikan batas context compaction:** Batas context model GAIA dikoreksi dari 262K menjadi 128K sesuai limit aktual gateway. Sebelumnya, compaction tidak pernah terpicu karena threshold dihitung berdasarkan nilai yang terlalu besar, sehingga gateway menolak request ketika prompt mendekati 128K token.
 
----
+</ChangelogRelease>
 
-## v1.2.7
-
-_15 Juni 2026_
+<ChangelogRelease version="v1.2.7" date="15 Juni 2026" dateTime="2026-06-15">
 
 ### Yang baru
-- **Parallel subagent** — Mage kini dapat menjalankan hingga 2 subagent secara bersamaan (sebelumnya hanya 1). Jumlah maksimal dapat dikonfigurasi melalui env var `MAGE_SUBAGENT` (contoh: `MAGE_SUBAGENT=3` untuk 3 parallel, `MAGE_SUBAGENT=1` untuk kembali ke mode serial). Subagent yang melebihi batas akan otomatis mengantri hingga slot tersedia.
+- **Parallel subagent:** Mage kini dapat menjalankan hingga 2 subagent secara bersamaan (sebelumnya hanya 1). Jumlah maksimal dapat dikonfigurasi melalui env var `MAGE_SUBAGENT` (contoh: `MAGE_SUBAGENT=3` untuk 3 parallel, `MAGE_SUBAGENT=1` untuk kembali ke mode serial). Subagent yang melebihi batas akan otomatis mengantri hingga slot tersedia.
 
----
+</ChangelogRelease>
 
-## v1.2.6
-
-_15 Juni 2026_
+<ChangelogRelease version="v1.2.6" date="15 Juni 2026" dateTime="2026-06-15">
 
 ### Perbaikan
 - Pencabutan OS lock pada plugin angular update.
 - Perubahan timezone pada file log dengan menggunakan GMT+7.
 
----
+</ChangelogRelease>
 
-## v1.2.5
-
-_15 Juni 2026_
+<ChangelogRelease version="v1.2.5" date="15 Juni 2026" dateTime="2026-06-15">
 
 ### Yang baru
-- **Toggle notif audio** — Penambahan opsi untuk mengaktifkan/menonaktifkan notif audio langsung dari Command dialog (kategori System).
+- **Toggle notif audio:** Penambahan opsi untuk mengaktifkan/menonaktifkan notif audio langsung dari Command dialog (kategori System).
 
 ### Perbaikan
 - Perbaikan copy clipboard di Windows ketika menyalin respons AI.
 
----
+</ChangelogRelease>
 
-## v1.2.4
+<ChangelogRelease version="v1.2.4" date="12 Juni 2026" dateTime="2026-06-12">
 
-_12 Juni 2026_
-
-## Yang baru
-- **Notif audio** — Kini mage akan memunculkan audio notif ketika meminta permission atau memberikan pertanyaan.
+### Yang baru
+- **Notif audio:** Kini Mage akan memunculkan audio notif ketika meminta permission atau memberikan pertanyaan.
 
 ### Perbaikan
 - Penambahan self-repair untuk argumen kosong yang dikembalikan oleh GAIA ketika tool call.
 - Penambahan handle spam transcript assistant ketika sebuah tool call selesai.
 
----
+</ChangelogRelease>
 
-## v1.2.3
-
-_11 Juni 2026_
+<ChangelogRelease version="v1.2.3" date="11 Juni 2026" dateTime="2026-06-11">
 
 ### Perbaikan
 - Perbaikan skill functional-flow untuk hasil yang lebih dalam dan tidak membaca `.gitignore`.
 - Perubahan batas context untuk trigger compaction ke 262K context.
 
----
+</ChangelogRelease>
 
-## v1.2.2
-
-_9 Juni 2026_
+<ChangelogRelease version="v1.2.2" date="9 Juni 2026" dateTime="2026-06-09">
 
 ### Yang baru
-- **Skill functional-flow** — Skill baru untuk generate Functional Flow Diagram dengan template output.
-- **Skill Angular & MBB-lib** — Skill angular-developer sekarang terhubung dengan skill mbb-lib.
+- **Skill functional-flow:** Skill baru untuk generate Functional Flow Diagram dengan template output.
+- **Skill Angular & MBB-lib:** Skill angular-developer sekarang terhubung dengan skill mbb-lib.
 
 ### Perbaikan
-- Perbaikan intent untuk trigger Skills
+- Perbaikan intent untuk trigger Skills.
 
----
+</ChangelogRelease>
 
-## v1.2.1
-
-_8 Juni 2026_
+<ChangelogRelease version="v1.2.1" date="8 Juni 2026" dateTime="2026-06-08">
 
 ### Yang baru
 - Perubahan config Qwen dengan config `temperature=0.6`, `top_p=1`, `top_k=20`, `min_p=0`, `presence_penalty=0`, `repetition_penalty=1` berdasarkan rekomendasi Qwen untuk coding preset.
 
----
+</ChangelogRelease>
 
-## v1.2.0
-
-_8 Juni 2026_
+<ChangelogRelease version="v1.2.0" date="8 Juni 2026" dateTime="2026-06-08">
 
 ### Yang baru
 - Revamp UI dan flow web untuk persiapan versi desktop.
 - Update model ke Qwen3.6 27b.
 - Perubahan default AGENTS.md.
-- Penambahan beberapa skill default.
 
 ### Perbaikan
 - Pembatasan subagent untuk hanya 1 subagent yang berjalan untuk mengantisipasi error GAIA karena overload.
 
----
+</ChangelogRelease>
 
-## v1.1.0
-
-_21 Mei 2026_
+<ChangelogRelease version="v1.1.0" date="21 Mei 2026" dateTime="2026-05-21">
 
 ### Yang baru
 - Pembaruan model ke Qwen3.5 27b.
 - Penambahan fitur auto update ketika re-open `mage` via TUI.
 - Penambahan default AGENTS.md.
 
----
+</ChangelogRelease>
 
-## v1.0.0
+<ChangelogRelease version="v1.0.0" date="11 Mei 2026" dateTime="2026-05-11">
 
-_11 Mei 2026_
+Versi awal Mage dengan integrasi GAIA.
 
-Versi awal MAGE dengan integrasi GAIA.
+</ChangelogRelease>
+</div>

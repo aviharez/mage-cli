@@ -1,6 +1,6 @@
 ---
 title: Instalasi
-description: Semua cara untuk menginstal Mage — script otomatis, Windows, manual npmrc, dan dari source.
+description: Semua cara untuk menginstal Mage - script otomatis, Windows, manual npmrc, dan dari source.
 eyebrow: Dokumentasi
 ---
 
@@ -13,7 +13,7 @@ Node.js **≥ 18** wajib terinstal sebelum menjalankan installer.
 - Unduh: Via Software Center.
 - Verifikasi: `node --version`
 
-## Metode 1 — Script installer (recommended)
+## Metode 1 - Script installer (recommended)
 
 Script otomatis mengonfigurasi `~/.npmrc` untuk BCA Artifactory lalu menginstal `@mybcabisnis/mage` secara global.
 
@@ -59,11 +59,11 @@ setx PATH "$((npm prefix -g));$env:Path"
 ```
 :::
 
-## Metode 2 — Manual (konfigurasi npmrc sendiri)
+## Metode 2 - Manual (konfigurasi npmrc sendiri)
 
 Cocok jika Anda ingin mengontrol konfigurasi registry secara manual.
 
-**Langkah 1** — Tambahkan baris berikut ke `~/.npmrc` (buat file jika belum ada):
+**Langkah 1** - Tambahkan baris berikut ke `~/.npmrc` (buat file jika belum ada):
 
 ```
 @mybcabisnis:registry=https://artifactory.intra.bca.co.id/artifactory/api/npm/MBB-Registry-npm/
@@ -72,7 +72,7 @@ strict-ssl=false
 //artifactory.intra.bca.co.id/artifactory/api/npm/MBB-Registry-npm/:_auth=dXNlcm1iYjpCY2FiY2ExMjM=
 ```
 
-**Langkah 2** — Instal secara global:
+**Langkah 2** - Instal secara global:
 
 ```bash
 npm install -g @mybcabisnis/mage

@@ -1,132 +1,55 @@
----
-import config from "virtual:starlight/user-config"
-import { Icon } from "@astrojs/starlight/components"
-
-const { lang, editUrl, lastUpdated, entry } = Astro.locals.starlightRoute
-const template = entry.data.template
-const changelogUrl = "/changelog/"
----
-
-{/* ── Minimal global footer bar — on every page ── */}
 <footer class="site-footer">
-  <span class="sf-sparkle" aria-hidden="true">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M12 2l1.8 6.6 6.6 1.8-6.6 1.8L12 18.8l-1.8-6.6L3.6 10.4l6.6-1.8z"/>
-    </svg>
-  </span>
-  <span>
-    <em style="font-family:'Instrument Serif',Georgia,serif;">mage</em>
-    {" · "}MDZ AI Agent
-  </span>
-  <span class="sf-spacer"></span>
-  <a href={changelogUrl}>Changelog</a>
+  <span><strong>mage</strong> / MDZ Agentic AI</span>
+  <nav aria-label="Footer">
+    <a href="/docs/">Dokumentasi</a>
+    <a href="https://rune-mage.apps.ocpdevgra.dti.co.id">Rune</a>
+    <a href="/changelog/">Changelog</a>
+  </nav>
 </footer>
 
 <style>
-  /* ── Doc meta block ── */
-  footer.doc-meta {
-    border-top: 1px solid var(--mg-border, var(--sl-color-hairline));
-    margin-top: 2rem;
-  }
-
-  .meta {
-    gap: 0.75rem 3rem;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    margin-block: 2rem 1rem;
-    font-size: var(--sl-text-sm, 0.875rem);
-  }
-
-  @media (min-width: 30rem) {
-    .meta {
-      flex-direction: row;
-    }
-  }
-
-  .doc-meta a,
-  .doc-meta p {
-    padding-block: 0.125rem;
-  }
-
-  .doc-meta a {
-    gap: 0.4375rem;
-    align-items: center;
-    text-decoration: none;
-    color: var(--mg-text-muted, var(--sl-color-text)) !important;
-    font-size: var(--sl-text-sm, 0.875rem);
-    border-bottom: none !important;
-  }
-  .doc-meta a:hover {
-    color: var(--mg-accent-bright, var(--sl-color-text-accent)) !important;
-    border-bottom: none !important;
-  }
-  .doc-meta a svg {
-    opacity: 0.75;
-  }
-  .doc-meta p {
-    color: var(--mg-text-dim, var(--sl-color-gray-5));
-    margin: 0;
-  }
-  .doc-meta p a {
-    color: var(--mg-text-muted, var(--sl-color-gray-5)) !important;
-    border-bottom: none !important;
-  }
-  .doc-meta p a:hover {
-    color: var(--mg-accent-bright) !important;
-  }
-  .doc-meta :global(starlight-lang-select) {
-    display: inline-flex;
-    margin-top: 0.5rem;
-  }
-  .doc-meta :global(starlight-lang-select select) {
-    min-width: 15em;
-  }
-  @media (min-width: 30rem) {
-    .doc-meta p {
-      text-align: right;
-    }
-  }
-
-  /* ── Global footer bar ── */
-  footer.site-footer {
-    border-top: 1px solid var(--mg-border, var(--sl-color-hairline));
-    margin-top: 2rem;
-    padding: 28px 0;
-    color: var(--mg-text-dim, var(--sl-color-gray-5));
-    font-size: 13px;
+  .site-footer {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 24px;
-    flex-wrap: wrap;
+    margin-top: 64px;
+    padding: 28px 0;
+    border-top: 1px solid var(--mg-border, var(--sl-color-hairline));
+    color: var(--mg-text-dim, var(--sl-color-gray-5));
+    font-family: var(--mg-font-mono, ui-monospace, monospace);
+    font-size: 11px;
   }
 
-  .sf-sparkle {
-    color: var(--mg-accent, var(--sl-color-accent));
-    display: inline-flex;
-    flex-shrink: 0;
+  .site-footer strong {
+    color: var(--mg-text, var(--sl-color-white));
+    font-family: var(--mg-font-display, ui-sans-serif, sans-serif);
+    font-size: 13px;
   }
 
-  .sf-spacer {
-    flex: 1;
+  nav {
+    display: flex;
+    gap: 20px;
   }
 
-  footer.site-footer a {
-    color: var(--mg-text-dim, var(--sl-color-gray-5)) !important;
+  a {
+    color: var(--mg-text-muted, var(--sl-color-gray-6)) !important;
     text-decoration: none !important;
-    border-bottom: none !important;
-  }
-  footer.site-footer a:hover {
-    color: var(--mg-text, var(--sl-color-white)) !important;
-    border-bottom: none !important;
+    border: 0 !important;
   }
 
-  @media (max-width: 480px) {
-    footer.site-footer {
-      padding: 20px 0;
-      gap: 16px;
+  a:hover {
+    color: var(--mg-accent-bright, var(--sl-color-accent-high)) !important;
+  }
+
+  @media (max-width: 560px) {
+    .site-footer {
+      align-items: flex-start;
+      flex-direction: column;
     }
-    .sf-spacer {
-      display: none;
+
+    nav {
+      flex-wrap: wrap;
     }
   }
 </style>

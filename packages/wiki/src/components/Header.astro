@@ -23,7 +23,7 @@ function href(url: string) {
 
 // A link is "active" when the current path starts with its resolved URL,
 // EXCEPT for "/" which would always match — only highlight "/" when we're
-// actually on the root (not /hub/ or other sections)
+// actually on the root (not another section)
 function isActive(url: string): boolean {
   if (url.startsWith("http")) return false
   const resolved = href(url)

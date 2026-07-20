@@ -1,713 +1,663 @@
 ---
-import { getRelativeLocaleUrl } from 'astro:i18n';
-import config from "virtual:starlight/user-config";
+import { Image } from "astro:assets"
+import { getRelativeLocaleUrl } from "astro:i18n"
+import tui from "../assets/lander/screenshot.png"
+import web from "../assets/web/web-homepage-active-session.png"
 
-const locale = Astro.currentLocale || 'root';
-const t = Astro.locals.t as (key: string) => string;
-const docsHref = getRelativeLocaleUrl(locale, "docs");
-
-const installCmd = "irm https://mage.apps.ocpdevgra.dti.co.id/install.ps1 | iex";
+const locale = Astro.currentLocale || "root"
+const docsHref = getRelativeLocaleUrl(locale, "docs")
+const installHref = getRelativeLocaleUrl(locale, "docs/instalasi")
+const installCmd = "irm https://mage.apps.ocpdevgra.dti.co.id/install.ps1 | iex"
 ---
 
 <div class="lander">
-
-  <!-- ===== HERO ===== -->
   <header class="hero">
-    <div class="hero-left">
-      <span class="hero-eyebrow">
-        <span class="dot"></span>
-        <span>{t('app.lander.eyebrow')}</span>
-      </span>
-
-      <h1>
-        {t('app.lander.hero.line1')}<br/>
-        {t('app.lander.hero.line2')}<br/>
-        {t('app.lander.hero.line3')} <span class="ampersand">{t('app.lander.hero.accent')}</span><br/>
-      </h1>
-
-      <p class="lede">
-        <strong>mage</strong> {t('app.lander.hero.lede')}
+    <div class="hero-copy enter">
+      <p class="eyebrow">AI Agentic MDZ</p>
+      <h1>Mage ngerti repo kamu. <span>Tinggal bilang mau ubah apa.</span></h1>
+      <p class="hero-lede">
+        Asisten coding internal yang membawa konteks proyek, GAIA, dan tooling langsung ke terminal.
       </p>
-
-      <div class="hero-cta">
-        <a class="btn primary" href={docsHref}>
-          <span>{t('app.lander.cta.getStarted')}</span>
-          <svg class="arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
-        </a>
+      <div class="hero-actions">
+        <a class="action action-primary" href={docsHref}>Buka dokumentasi</a>
+        <button class="copy-command" type="button" data-copy={installCmd}>
+          <code>{installCmd}</code>
+          <span data-copy-label aria-live="polite">Salin installer</span>
+        </button>
       </div>
-
-      <button class="hero-install" id="hero-install" data-cmd={installCmd}>
-        <span class="prompt">$</span>
-        <span>{installCmd}</span>
-        <span class="copy-ico" id="hero-copy-ico">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
-        </span>
-      </button>
-    </div>
-
-    <!-- Animated terminal -->
-    <div class="term" id="hero-term">
-      <div class="term-head">
-        <span class="term-dot"></span>
-        <span class="term-dot"></span>
-        <span class="term-dot"></span>
-        <span class="term-title">~/proj/api · mage</span>
-      </div>
-      <div class="term-body" id="term-body"></div>
     </div>
   </header>
 
-  <!-- ===== QUICKSTART STEPS ===== -->
-  <section class="band">
-    <div class="band-inner">
-      <div class="eyebrow">{t('app.lander.steps.eyebrow')}</div>
-      <h2>{t('app.lander.steps.title')}</h2>
-      <p class="band-lede">{t('app.lander.steps.lede')}</p>
-
-      <ol class="steps">
-        <li class="step">
-          <span class="step-marker" aria-hidden="true">01</span>
-          <div class="step-body">
-            <div class="step-num">{t('app.lander.steps.01.num')}</div>
-            <h4>{t('app.lander.steps.01.title')}</h4>
-            <p>{t('app.lander.steps.01.desc')}</p>
-            <pre>{t('app.lander.steps.01.code')}</pre>
-          </div>
-        </li>
-        <li class="step">
-          <span class="step-marker" aria-hidden="true">02</span>
-          <div class="step-body">
-            <div class="step-num">{t('app.lander.steps.02.num')}</div>
-            <h4>{t('app.lander.steps.02.title')}</h4>
-            <p>{t('app.lander.steps.02.desc')}</p>
-            <pre>{t('app.lander.steps.02.code')}</pre>
-          </div>
-        </li>
-        <li class="step">
-          <span class="step-marker" aria-hidden="true">03</span>
-          <div class="step-body">
-            <div class="step-num">{t('app.lander.steps.03.num')}</div>
-            <h4>{t('app.lander.steps.03.title')}</h4>
-            <p>{t('app.lander.steps.03.desc')}</p>
-            <pre>{t('app.lander.steps.03.code')}</pre>
-          </div>
-        </li>
-        <li class="step">
-          <span class="step-marker" aria-hidden="true">04</span>
-          <div class="step-body">
-            <div class="step-num">{t('app.lander.steps.04.num')}</div>
-            <h4>{t('app.lander.steps.04.title')}</h4>
-            <p>{t('app.lander.steps.04.desc')}</p>
-            <pre>{t('app.lander.steps.04.code')}</pre>
-          </div>
-        </li>
-      </ol>
+  <section class="ledger reveal" aria-labelledby="value-title">
+    <div class="section-intro">
+      <h2 id="value-title">Dari instruksi ke perubahan yang bisa direview.</h2>
+      <p>Mage menjaga alur kerja tetap dekat dengan kode, bukan berpindah-pindah alat.</p>
     </div>
-  </section>
 
-  <!-- ===== LEARN MORE ROW ===== -->
-  <section class="band">
-    <div class="band-inner learn-inner">
-      <p class="learn-label">{t('app.lander.learn.label')}</p>
-      <div class="learn-grid">
-        <a class="learn-card" href={getRelativeLocaleUrl(locale, "docs/slash-commands")}>
-          <svg class="learn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 9l4-4 4 4M8 15l4 4 4-4"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg>
-          <div>
-            <h3>{t('app.lander.learn.slash.title')}</h3>
-            <p>{t('app.lander.learn.slash.desc')}</p>
-          </div>
-        </a>
-        <a class="learn-card" href={getRelativeLocaleUrl(locale, "docs/skills")}>
-          <svg class="learn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2l3 6.5L22 9l-5 4.8L18.2 21 12 17.5 5.8 21 7 13.8 2 9l7-.5z"/></svg>
-          <div>
-            <h3>{t('app.lander.learn.skills.title')}</h3>
-            <p>{t('app.lander.learn.skills.desc')}</p>
-          </div>
-        </a>
-        <a class="learn-card" href={getRelativeLocaleUrl(locale, "docs/penggunaan") + "#versi-web"}>
-          <svg class="learn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>
-          <div>
-            <h3>{t('app.lander.learn.web.title')}</h3>
-            <p>{t('app.lander.learn.web.desc')}</p>
-          </div>
-        </a>
-        <a class="learn-card" href={getRelativeLocaleUrl(locale, "docs/instalasi")}>
-          <svg class="learn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3v12M8 11l4 4 4-4M5 21h14"/></svg>
-          <div>
-            <h3>{t('app.lander.learn.install.title')}</h3>
-            <p>{t('app.lander.learn.install.desc')}</p>
-          </div>
-        </a>
+    <dl class="value-list">
+      <div>
+        <dt>Konteks proyek</dt>
+        <dd>Membaca struktur repo, pemanggil fungsi, dan file terkait sebelum mengubah kode.</dd>
       </div>
+      <div>
+        <dt>GAIA On Prem</dt>
+        <dd>Model on prem GAIA tetap berada di jalur kerja yang sudah dikenal tim.</dd>
+      </div>
+      <div>
+        <dt>TUI dan Web</dt>
+        <dd>Mulai dari terminal, lanjutkan sesi yang sama di browser saat butuh ruang visual.</dd>
+      </div>
+      <div>
+        <dt>Perintah singkat</dt>
+        <dd>Gunakan slash command untuk pekerjaan berulang tanpa merangkai prompt dari awal.</dd>
+      </div>
+    </dl>
+  </section>
+
+  <section class="surfaces reveal" aria-labelledby="surfaces-title">
+    <div class="surface-copy">
+      <h2 id="surfaces-title">Tetap fokus saat pekerjaan berubah bentuk.</h2>
+      <p>Gunakan TUI untuk kecepatan. Buka Web untuk membaca percakapan, perubahan, dan hasil dalam ruang yang lebih luas.</p>
+      <a class="text-link" href={getRelativeLocaleUrl(locale, "docs/penggunaan")}>Lihat cara menggunakan Mage</a>
+    </div>
+
+    <div class="surface-gallery">
+      <figure class="surface surface-tui">
+        <div class="surface-frame">
+          <Image class="surface-image" src={tui} alt="Sesi coding Mage di terminal." loading="lazy" widths={[720, 1080, 1440]} sizes="(max-width: 767px) calc(100vw - 32px), 58vw" />
+        </div>
+        <figcaption>TUI</figcaption>
+      </figure>
+      <figure class="surface surface-web">
+        <div class="surface-frame">
+          <Image class="surface-image" src={web} alt="Sesi Mage dalam tampilan web dengan panel review." loading="lazy" widths={[720, 1080, 1440]} sizes="(max-width: 767px) calc(100vw - 32px), 58vw" />
+        </div>
+        <figcaption>Web</figcaption>
+      </figure>
     </div>
   </section>
 
+  <section class="quickstart reveal" aria-labelledby="quickstart-title">
+    <div class="quickstart-head">
+      <p class="eyebrow">Mulai cepat</p>
+      <h2 id="quickstart-title">Tiga langkah menuju prompt pertama.</h2>
+      <a class="text-link" href={installHref}>Baca panduan instalasi</a>
+    </div>
+
+    <ol class="path">
+      <li>
+        <span>Instal</span>
+        <p>Jalankan installer untuk sistem operasi Anda.</p>
+        <code>irm ... | iex</code>
+      </li>
+      <li>
+        <span>Hubungkan</span>
+        <p>Masukkan udomain BCA saat wizard setup terbuka.</p>
+        <code>mage</code>
+      </li>
+      <li>
+        <span>Kerjakan</span>
+        <p>Buka repo, jelaskan hasil yang diinginkan, lalu review perubahan.</p>
+        <code>mage</code>
+      </li>
+    </ol>
+  </section>
+
+  <section class="closing reveal" aria-labelledby="closing-title">
+    <div class="closing-copy">
+      <h2 id="closing-title">Lebih sedikit perpindahan konteks. Lebih banyak pekerjaan selesai.</h2>
+      <p>Mulai dari panduan singkat, lalu bawa Mage ke repo yang sedang Anda kerjakan.</p>
+      <a class="action action-primary" href={docsHref}>Buka dokumentasi</a>
+    </div>
+
+    <div class="faq">
+      <details>
+        <summary>Apakah Mage aman untuk kode internal?</summary>
+        <p>Mage menggunakan GAIA On Prem sehingga code tidak akan ter-expose keluar.</p>
+      </details>
+      <details>
+        <summary>Apakah Mage tersedia di luar terminal?</summary>
+        <p>Ya. Sesi dapat dibuka melalui tampilan Web saat Anda membutuhkan panel percakapan dan review yang lebih luas.</p>
+      </details>
+      <details>
+        <summary>Platform apa yang didukung?</summary>
+        <p>Tersedia installer Windows serta panduan macOS dan Linux di halaman instalasi.</p>
+      </details>
+    </div>
+  </section>
 </div>
 
+<script>
+  document.querySelectorAll<HTMLButtonElement>("[data-copy]").forEach((button) => {
+    button.addEventListener("click", () => {
+      navigator.clipboard.writeText(button.dataset.copy || "").then(() => {
+        const label = button.querySelector<HTMLElement>("[data-copy-label]")
+        if (label) label.textContent = "Disalin"
+        window.setTimeout(() => {
+          if (label) label.textContent = "Salin installer"
+        }, 1600)
+      })
+    })
+  })
+</script>
+
 <style>
-/* ---- Layout ---- */
-.lander {
-  width: 100%;
-  overflow-x: hidden;
-}
+  .lander {
+    width: 100%;
+    overflow: clip;
+    color: var(--mg-text);
+  }
 
-/* ---- Hero ---- */
-.hero {
-  max-width: 1240px;
-  margin: 0 auto;
-  padding: 80px 56px 60px;
-  display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
-  gap: 72px;
-  align-items: start;
-}
+  .hero,
+  .ledger,
+  .surfaces,
+  .quickstart,
+  .closing {
+    width: min(100% - 40px, 1280px);
+    margin-inline: auto;
+  }
 
-.hero-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 10px 4px 6px;
-  background: var(--mg-accent-dim);
-  border: 1px solid var(--mg-accent-line);
-  border-radius: 999px;
-  font-family: var(--mg-font-mono);
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  color: var(--mg-accent-bright);
-  margin-bottom: 22px;
-}
-.hero-eyebrow .dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  background: var(--mg-accent);
-  animation: glow 2s infinite;
-}
-@keyframes glow {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 1; }
-}
-
-.hero-left h1 {
-  font-family: var(--mg-font-serif) !important;
-  font-style: italic !important;
-  font-weight: 400 !important;
-  font-size: 76px !important;
-  line-height: 0.98 !important;
-  letter-spacing: -0.025em !important;
-  margin: 0 0 22px !important;
-  text-transform: none !important;
-  color: var(--mg-text) !important;
-}
-.hero-left h1 .ampersand {
-  color: var(--mg-accent);
-}
-
-.lede {
-  font-size: 18px;
-  line-height: 1.55;
-  color: var(--mg-text-muted);
-  max-width: 50ch;
-  margin: 0 0 32px;
-  text-wrap: pretty;
-}
-.lede strong {
-  color: var(--mg-text) !important;
-  font-weight: 500 !important;
-}
-
-.hero-cta {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 28px;
-  align-items: center;
-}
-
-/* Buttons */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 16px;
-  font-size: 14px;
-  font-weight: 500;
-  border-radius: var(--mg-radius);
-  border: 1px solid var(--mg-border);
-  background: var(--mg-bg-elev);
-  color: var(--mg-text) !important;
-  cursor: pointer;
-  text-decoration: none !important;
-  border-bottom: none !important;
-  transition: border-color .15s, background .15s;
-}
-.btn:hover {
-  border-color: var(--mg-border-strong);
-  background: var(--mg-bg-elev-2);
-  border-bottom: none !important;
-}
-.btn.primary {
-  background: var(--mg-accent);
-  color: #15101f !important;
-  border-color: var(--mg-accent);
-}
-.btn.primary:hover {
-  background: var(--mg-accent-bright);
-  border-color: var(--mg-accent-bright);
-}
-.btn .arrow {
-  transition: transform .2s;
-}
-.btn:hover .arrow {
-  transform: translateX(2px);
-}
-
-/* Install command */
-.hero-install {
-  all: unset;
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
-  font-family: var(--mg-font-mono);
-  font-size: 13px;
-  background: var(--mg-bg-elev);
-  border: 1px solid var(--mg-border);
-  border-radius: var(--mg-radius);
-  color: var(--mg-text);
-  cursor: pointer;
-  transition: border-color .15s;
-  max-width: 100%;
-  overflow: hidden;
-}
-.hero-install:hover {
-  border-color: var(--mg-border-strong);
-}
-.hero-install.copied {
-  border-color: var(--mg-success);
-}
-.prompt {
-  color: var(--mg-text-dim);
-  flex-shrink: 0;
-}
-.hero-install > span:nth-child(2) {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.copy-ico {
-  margin-left: 8px;
-  color: var(--mg-text-dim);
-  flex-shrink: 0;
-}
-.hero-install:hover .copy-ico {
-  color: var(--mg-accent);
-}
-.hero-install.copied .copy-ico {
-  color: var(--mg-success);
-}
-
-/* ---- Terminal mockup ---- */
-.term {
-  background: var(--mg-bg-elev);
-  border: 1px solid var(--mg-border-strong);
-  border-radius: var(--mg-radius-lg);
-  overflow: hidden;
-  box-shadow: 0 30px 80px -20px rgba(167, 139, 250, 0.15),
-              0 0 0 1px rgba(167, 139, 250, 0.05);
-  font-family: var(--mg-font-mono);
-  font-size: 13px;
-  line-height: 1.65;
-}
-.term-head {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--mg-border);
-  background: var(--mg-bg-elev-2);
-}
-.term-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
-  background: var(--mg-border-strong);
-}
-.term-title {
-  margin-left: auto;
-  font-family: var(--mg-font-mono);
-  font-size: 11px;
-  color: var(--mg-text-dim);
-  letter-spacing: 0.04em;
-}
-.term-body {
-  padding: 16px 18px 20px;
-  min-height: 360px;
-  color: var(--mg-text);
-  white-space: pre-wrap;
-  overflow: hidden;
-}
-/* Terminal line classes injected by JS */
-:global(.term-body .ln) { display: block; }
-:global(.term-body .t-prompt) { color: var(--mg-accent); }
-:global(.term-body .t-dim) { color: var(--mg-text-dim); }
-:global(.term-body .t-accent) { color: var(--mg-accent-bright); }
-:global(.term-body .t-ok) { color: var(--mg-success); }
-:global(.term-body .t-ai) {
-  border-left: 2px solid var(--mg-accent);
-  padding-left: 10px;
-  margin-left: 2px;
-  color: var(--mg-text);
-}
-:global(.term-body .t-ai .tag) {
-  color: var(--mg-accent);
-  font-style: italic;
-  font-family: var(--mg-font-serif);
-  font-size: 14px;
-}
-:global(.term-body .cursor) {
-  display: inline-block;
-  width: 7px;
-  height: 14px;
-  background: var(--mg-accent);
-  vertical-align: -2px;
-  margin-left: 1px;
-  animation: blink 1s steps(2) infinite;
-}
-@keyframes blink { 50% { opacity: 0; } }
-
-/* ---- Sections / bands ---- */
-.band {
-  border-top: 1px solid var(--mg-border);
-}
-.band-inner {
-  max-width: 1240px;
-  margin: 0 auto;
-  padding: 88px 56px;
-}
-.band-inner h2 {
-  font-family: var(--mg-font-serif) !important;
-  font-style: italic !important;
-  font-weight: 400 !important;
-  font-size: 44px !important;
-  line-height: 1.05 !important;
-  letter-spacing: -0.02em !important;
-  margin: 0 0 18px !important;
-  color: var(--mg-text) !important;
-  text-transform: none !important;
-}
-.band-lede {
-  color: var(--mg-text-muted);
-  font-size: 17px;
-  max-width: 55ch;
-  margin: 0 0 48px;
-}
-.eyebrow {
-  font-family: var(--mg-font-mono);
-  font-size: 11px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--mg-accent);
-  margin-bottom: 12px;
-}
-
-/* ---- Steps (vertical timeline) ---- */
-.steps {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  max-width: 640px;
-}
-.step {
-  display: grid;
-  grid-template-columns: 44px 1fr;
-  gap: 0 24px;
-  position: relative;
-}
-/* Connecting line between steps */
-.step:not(:last-child)::before {
-  content: '';
-  position: absolute;
-  left: 22px;
-  top: 44px;
-  bottom: 0;
-  width: 1px;
-  background: var(--mg-border);
-}
-.step-marker {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  border: 1px solid var(--mg-accent-line);
-  background: var(--mg-accent-dim);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--mg-font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  color: var(--mg-accent-bright);
-  flex-shrink: 0;
-  z-index: 1;
-}
-.step-body {
-  padding-bottom: 36px;
-}
-.step:last-child .step-body {
-  padding-bottom: 0;
-}
-.step-num {
-  font-family: var(--mg-font-mono);
-  font-size: 10.5px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--mg-accent);
-  margin-bottom: 6px;
-  padding-top: 12px;
-}
-.step h4 {
-  font-size: 16px !important;
-  margin: 0 0 6px !important;
-  font-weight: 600 !important;
-  color: var(--mg-text) !important;
-  text-transform: none !important;
-  font-style: normal !important;
-  font-family: var(--mg-font-sans) !important;
-}
-.step p {
-  margin: 0 !important;
-  color: var(--mg-text-muted);
-  font-size: 13.5px;
-  line-height: 1.5;
-}
-.step pre {
-  margin: 12px 0 0;
-  padding: 10px 14px;
-  background: var(--mg-bg-elev);
-  border: 1px solid var(--mg-border);
-  border-radius: var(--mg-radius-sm);
-  font-family: var(--mg-font-mono);
-  font-size: 12px;
-  color: var(--mg-accent-bright);
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  max-width: 520px;
-}
-
-/* ---- Learn more row ---- */
-.learn-inner {
-  padding-top: 56px;
-  padding-bottom: 56px;
-}
-.learn-label {
-  font-family: var(--mg-font-mono);
-  font-size: 11px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--mg-accent);
-  margin: 0 0 20px;
-}
-.learn-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-}
-.learn-card {
-  display: flex;
-  align-items: flex-start;
-  gap: 13px;
-  padding: 18px 20px;
-  background: var(--mg-bg-elev);
-  border: 1px solid var(--mg-border);
-  border-radius: var(--mg-radius-lg);
-  transition: border-color .15s;
-  text-decoration: none !important;
-  border-bottom: none !important;
-  color: inherit;
-}
-.learn-card:hover {
-  border-color: var(--mg-accent-line);
-  border-bottom: none !important;
-}
-.learn-ico {
-  width: 20px;
-  height: 20px;
-  color: var(--mg-accent);
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-.learn-card h3 {
-  font-size: 14.5px !important;
-  margin: 0 0 3px !important;
-  font-weight: 600 !important;
-  letter-spacing: -0.005em !important;
-  color: var(--mg-text) !important;
-  text-transform: none !important;
-  font-style: normal !important;
-  font-family: var(--mg-font-sans) !important;
-}
-.learn-card p {
-  margin: 0 !important;
-  color: var(--mg-text-muted);
-  font-size: 13px;
-  line-height: 1.45;
-}
-
-/* ---- Responsive ---- */
-@media (max-width: 960px) {
   .hero {
-    grid-template-columns: 1fr;
-    padding: 40px 20px;
+    position: relative;
+    min-height: calc(100dvh - var(--sl-nav-height, 3.5rem));
+    padding: clamp(40px, 7vh, 76px) 0;
+    display: flex;
+    align-items: center;
+  }
+
+  .hero::before,
+  .hero::after {
+    position: absolute;
+    color: var(--mg-accent-bright);
+    font-family: var(--mg-font-display);
+    line-height: 1;
+    pointer-events: none;
+  }
+
+  .hero::before {
+    content: "✦";
+    top: 16%;
+    right: 8%;
+    font-size: clamp(84px, 9vw, 132px);
+    transform: rotate(12deg);
+    opacity: .88;
+  }
+
+  .hero::after {
+    content: "✧";
+    top: 53%;
+    right: 1%;
+    font-size: clamp(44px, 5vw, 68px);
+    transform: rotate(-16deg);
+    opacity: .48;
+  }
+
+  .hero-copy {
+    position: relative;
+    z-index: 1;
+    width: min(100%, 1160px);
+    margin-left: clamp(0px, 4vw, 64px);
+  }
+
+  .eyebrow {
+    margin: 0 0 20px;
+    font-family: var(--mg-font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--mg-accent-bright);
+  }
+
+  .hero h1,
+  .lander h2 {
+    font-family: var(--mg-font-display);
+    color: var(--mg-text);
+    text-wrap: balance;
+  }
+
+  .hero h1 {
+    margin: 0;
+    font-size: clamp(58px, 7.4vw, 106px);
+    line-height: .93;
+    letter-spacing: -.06em;
+    font-weight: 720;
+  }
+
+  .hero h1 span {
+    color: var(--mg-accent-bright);
+  }
+
+  .hero-lede {
+    max-width: 54ch;
+    margin: 26px 0 0;
+    color: var(--mg-text-muted);
+    font-size: clamp(16px, 1.35vw, 19px);
+    line-height: 1.6;
+  }
+
+  .hero-actions {
+    display: flex;
+    align-items: stretch;
+    gap: 10px;
+    margin-top: 32px;
+    max-width: 780px;
+    min-width: 0;
+  }
+
+  .action,
+  .copy-command {
+    min-height: 44px;
+    border-radius: 2px;
+    transition: transform .15s ease, border-color .15s ease, background .15s ease;
+  }
+
+  .action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 18px;
+    font-size: 14px;
+    font-weight: 650;
+    text-decoration: none !important;
+    border: 1px solid transparent;
+    white-space: nowrap;
+  }
+
+  .action-primary {
+    color: var(--mg-bg) !important;
+    background: var(--mg-accent-bright);
+    border-color: var(--mg-accent-bright);
+  }
+
+  .action:hover,
+  .copy-command:hover {
+    transform: translateY(-1px);
+  }
+
+  .action:active,
+  .copy-command:active {
+    transform: translateY(1px);
+  }
+
+  .copy-command {
+    min-width: 0;
+    flex: 1;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 16px;
+    padding: 8px 12px;
+    background: var(--mg-bg-elev);
+    color: var(--mg-text-muted);
+    border: 1px solid var(--mg-border-strong);
+    cursor: pointer;
+  }
+
+  .copy-command code {
+    overflow: hidden;
+    color: var(--mg-text-muted);
+    font-family: var(--mg-font-mono);
+    font-size: 11px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .copy-command span {
+    color: var(--mg-accent-bright);
+    font-family: var(--mg-font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .ledger,
+  .surfaces,
+  .quickstart,
+  .closing {
+    padding-block: clamp(84px, 11vw, 150px);
+    border-top: 1px solid var(--mg-border);
+  }
+
+  .section-intro {
+    display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(260px, .75fr);
+    gap: 52px;
+    align-items: end;
+    max-width: 1000px;
+  }
+
+  .lander h2 {
+    margin: 0;
+    font-size: clamp(36px, 5vw, 66px);
+    line-height: 1.02;
+    letter-spacing: -.045em;
+    font-weight: 700;
+  }
+
+  .section-intro p,
+  .surface-copy p,
+  .closing-copy p {
+    margin: 0;
+    color: var(--mg-text-muted);
+    font-size: 16px;
+    line-height: 1.65;
+  }
+
+  .value-list {
+    margin: clamp(56px, 7vw, 88px) 0 0 22%;
+  }
+
+  .value-list > div {
+    display: grid;
+    grid-template-columns: minmax(160px, .55fr) minmax(0, 1fr);
+    gap: 32px;
+    padding: 24px 0;
+    border-top: 1px solid var(--mg-border);
+  }
+
+  .value-list > div:last-child {
+    border-bottom: 1px solid var(--mg-border);
+  }
+
+  .value-list dt {
+    color: var(--mg-text);
+    font-family: var(--mg-font-mono);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .value-list dd {
+    margin: 0;
+    max-width: 58ch;
+    color: var(--mg-text-muted);
+    line-height: 1.6;
+  }
+
+  .surfaces {
+    display: grid;
+    grid-template-columns: minmax(280px, .7fr) minmax(0, 1.3fr);
+    gap: clamp(44px, 7vw, 100px);
+    align-items: start;
+  }
+
+  .surface-copy {
+    position: sticky;
+    top: calc(var(--sl-nav-height, 3.5rem) + 42px);
+  }
+
+  .surface-copy p {
+    max-width: 45ch;
+    margin-top: 24px;
+  }
+
+  .text-link {
+    display: inline-block;
+    margin-top: 24px;
+    color: var(--mg-accent-bright) !important;
+    font-family: var(--mg-font-mono);
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 5px;
+  }
+
+  .surface-gallery {
+    display: grid;
     gap: 36px;
   }
-  .hero-left h1 {
-    font-size: 52px !important;
+
+  .surface {
+    min-width: 0;
+    margin: 0;
   }
-  .band-inner {
-    padding: 56px 20px;
+
+  .surface-frame {
+    aspect-ratio: 7 / 5;
+    overflow: hidden;
+    border: 1px solid var(--mg-border-strong);
+    background: var(--mg-bg-code);
   }
-  .band-inner h2 {
-    font-size: 32px !important;
+
+  .surface-frame :global(.surface-image) {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: top center;
   }
-  .steps {
-    max-width: 100%;
+
+  .surface figcaption {
+    margin-top: 10px;
+    color: var(--mg-text-dim);
+    font-family: var(--mg-font-mono);
+    font-size: 11px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
   }
-  .step pre {
-    max-width: 100%;
+
+  .quickstart-head {
+    max-width: 760px;
   }
-  .learn-grid {
-    grid-template-columns: 1fr 1fr;
+
+  .quickstart-head .text-link {
+    margin-top: 20px;
   }
-}
-@media (max-width: 480px) {
-  .step {
-    grid-template-columns: 36px 1fr;
-    gap: 0 16px;
+
+  .path {
+    display: grid;
+    grid-template-columns: 1fr 1.1fr 1.35fr;
+    margin: clamp(50px, 7vw, 84px) 0 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: path;
+    border-top: 1px solid var(--mg-border-strong);
   }
-  .step-marker {
-    width: 36px;
-    height: 36px;
-    font-size: 10px;
+
+  .path li {
+    counter-increment: path;
+    min-height: 240px;
+    padding: 28px 28px 24px 0;
+    border-right: 1px solid var(--mg-border);
   }
-  .step:not(:last-child)::before {
-    left: 18px;
-    top: 36px;
+
+  .path li + li {
+    padding-left: 28px;
   }
-  .learn-grid {
-    grid-template-columns: 1fr;
+
+  .path li:last-child {
+    padding-right: 0;
+    border-right: 0;
   }
-}
+
+  .path li::before {
+    content: "0" counter(path);
+    display: block;
+    margin-bottom: 54px;
+    color: var(--mg-accent-bright);
+    font-family: var(--mg-font-mono);
+    font-size: 11px;
+  }
+
+  .path span {
+    color: var(--mg-text);
+    font-size: 19px;
+    font-weight: 650;
+  }
+
+  .path p {
+    min-height: 52px;
+    margin: 12px 0 22px;
+    color: var(--mg-text-muted);
+    font-size: 14px;
+    line-height: 1.55;
+  }
+
+  .path code {
+    color: var(--mg-accent-bright);
+    font-family: var(--mg-font-mono);
+    font-size: 12px;
+  }
+
+  .closing {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(360px, .95fr);
+    gap: clamp(48px, 8vw, 120px);
+    align-items: start;
+  }
+
+  .closing-copy p {
+    max-width: 52ch;
+    margin-top: 24px;
+  }
+
+  .closing-copy .action {
+    margin-top: 30px;
+  }
+
+  .faq {
+    border-top: 1px solid var(--mg-border-strong);
+  }
+
+  .faq details {
+    padding: 22px 0;
+    border-bottom: 1px solid var(--mg-border);
+  }
+
+  .faq summary {
+    color: var(--mg-text);
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .faq p {
+    max-width: 58ch;
+    margin: 14px 0 0;
+    color: var(--mg-text-muted);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .enter {
+      animation: enter .75s cubic-bezier(.16, 1, .3, 1) both;
+    }
+
+    .reveal {
+      animation: reveal linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 34%;
+    }
+  }
+
+  @keyframes enter {
+    from { opacity: 0; transform: translateY(18px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  @keyframes reveal {
+    from { opacity: .72; transform: translateY(18px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  @media (max-width: 960px) {
+    .hero-actions {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .surfaces,
+    .closing {
+      grid-template-columns: 1fr;
+    }
+
+    .surface-copy {
+      position: static;
+    }
+
+    .closing-copy {
+      max-width: 760px;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .hero,
+    .ledger,
+    .surfaces,
+    .quickstart,
+    .closing {
+      width: min(100% - 32px, 1280px);
+    }
+
+    .hero {
+      min-height: auto;
+      padding: 44px 0 72px;
+    }
+
+    .hero-copy {
+      margin-left: 0;
+    }
+
+    .hero::before {
+      top: 15%;
+      right: -6px;
+      font-size: 72px;
+      opacity: .42;
+    }
+
+    .hero::after {
+      display: none;
+    }
+
+    .hero h1 {
+      font-size: clamp(42px, 12vw, 58px);
+      line-height: 1.01;
+    }
+
+    .section-intro,
+    .value-list > div {
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    .value-list {
+      margin-left: 0;
+    }
+
+    .path {
+      grid-template-columns: 1fr;
+    }
+
+    .path li,
+    .path li + li {
+      min-height: auto;
+      padding: 24px 0;
+      border-right: 0;
+      border-bottom: 1px solid var(--mg-border);
+    }
+
+    .path li::before {
+      margin-bottom: 28px;
+    }
+
+    .path p {
+      min-height: 0;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .hero-actions {
+      width: 100%;
+    }
+
+    .copy-command {
+      min-height: 50px;
+    }
+
+    .lander h2 {
+      font-size: 38px;
+    }
+  }
 </style>
-
-
-<script is:inline>
-(function () {
-  // ---- Install copy ----
-  const btn = document.getElementById('hero-install');
-  if (btn) {
-    btn.addEventListener('click', () => {
-      navigator.clipboard.writeText(btn.dataset.cmd || '');
-      btn.classList.add('copied');
-      setTimeout(() => btn.classList.remove('copied'), 1400);
-    });
-  }
-
-  // ---- Terminal animation ----
-  const TERM_SCRIPT = [
-    { t: 'cmd',  text: 'mage' },
-    { t: 'wait', ms: 400 },
-    { t: 'sys',  text: '◆ mage v1.2.11  ·  GAIA' },
-    { t: 'wait', ms: 300 },
-    { t: 'user', text: 'refactor api/checkout.ts to use the new gateway client' },
-    { t: 'wait', ms: 500 },
-    { t: 'ai',   tag: 'mage', text: "I'll trace usages, swap the import, and update the two callers." },
-    { t: 'wait', ms: 300 },
-    { t: 'tool', text: '→ grep "from \'@/lib/api\'" · 14 matches' },
-    { t: 'tool', text: '→ edit api/checkout.ts · +12 −8' },
-    { t: 'tool', text: '→ edit api/checkout.test.ts · +4 −2' },
-    { t: 'wait', ms: 400 },
-    { t: 'ok',   text: '✓ 3 files changed' },
-    { t: 'wait', ms: 500 },
-    { t: 'prompt', text: '' },
-  ];
-
-  const body = document.getElementById('term-body');
-  if (!body) return;
-  let cursorEl = null;
-
-  function appendLine(cls, txt) {
-    const ln = document.createElement('span');
-    ln.className = 'ln ' + cls;
-    if (txt) ln.appendChild(document.createTextNode(txt));
-    body.appendChild(ln);
-    return ln;
-  }
-
-  async function typeText(el, text, speed) {
-    speed = speed || 14;
-    for (let i = 0; i < text.length; i++) {
-      el.appendChild(document.createTextNode(text[i]));
-      await sleep(speed + Math.random() * 12);
-    }
-  }
-
-  function sleep(ms) { return new Promise(function(r) { setTimeout(r, ms); }); }
-
-  function setCursorAt(el) {
-    if (cursorEl) cursorEl.remove();
-    cursorEl = document.createElement('span');
-    cursorEl.className = 'cursor';
-    el.appendChild(cursorEl);
-  }
-
-  async function runTerm() {
-    body.innerHTML = '';
-    for (const step of TERM_SCRIPT) {
-      if (step.t === 'wait') { await sleep(step.ms); continue; }
-      if (step.t === 'cmd') {
-        const ln = appendLine('', '');
-        const p = document.createElement('span');
-        p.className = 't-prompt';
-        p.textContent = '$ ';
-        ln.appendChild(p);
-        setCursorAt(ln);
-        await typeText(ln, step.text, 50);
-        ln.appendChild(document.createTextNode('\n'));
-      } else if (step.t === 'sys' || step.t === 'tool') {
-        appendLine('t-dim', step.text + '\n');
-      } else if (step.t === 'user') {
-        const ln = appendLine('', '');
-        const p = document.createElement('span');
-        p.className = 't-accent';
-        p.textContent = '> ';
-        ln.appendChild(p);
-        setCursorAt(ln);
-        await typeText(ln, step.text, 22);
-        ln.appendChild(document.createTextNode('\n'));
-      } else if (step.t === 'ai') {
-        const ln = appendLine('t-ai', '');
-        const tagEl = document.createElement('span');
-        tagEl.className = 'tag';
-        tagEl.textContent = (step.tag || 'mage') + ' › ';
-        ln.appendChild(tagEl);
-        setCursorAt(ln);
-        await typeText(ln, step.text, 14);
-        ln.appendChild(document.createTextNode('\n'));
-      } else if (step.t === 'ok') {
-        appendLine('t-ok', step.text + '\n');
-      } else if (step.t === 'prompt') {
-        const ln = appendLine('', '');
-        const p = document.createElement('span');
-        p.className = 't-accent';
-        p.textContent = '> ';
-        ln.appendChild(p);
-        setCursorAt(ln);
-      }
-    }
-    await sleep(4000);
-    runTerm();
-  }
-
-  runTerm();
-})();
-</script>

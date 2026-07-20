@@ -1,6 +1,6 @@
 ---
 title: Prompting Qwen3.6 27b
-description: Cara menulis prompt yang efektif untuk Qwen3.6 27b — model di balik Mage. Prinsip prompt yang jelas, pemberian anchor, batasan scope.
+description: Cara menulis prompt yang efektif untuk Qwen3.6 27b - model di balik Mage. Prinsip prompt yang jelas, pemberian anchor, batasan scope.
 eyebrow: Dokumentasi
 ---
 
@@ -28,7 +28,7 @@ Tidak semua prompt memerlukan kelima bagian secara eksplisit. Untuk tugas kecil,
 
 ## Beri anchor, jangan dikte caranya
 
-Qwen3.6 27b bekerja paling baik saat diberi **titik awal yang jelas** — bukan prosedur langkah demi langkah yang Anda tentukan sendiri. Model ini sudah menjalankan loop agentic-nya sendiri (rencanakan → pakai tool → amati hasil → putuskan langkah berikutnya), jadi mendikte urutan langkah biasanya redundan, dan kadang malah bentrok dengan rencana yang sudah dibuat model.
+Qwen3.6 27b bekerja paling baik saat diberi **titik awal yang jelas** - bukan prosedur langkah demi langkah yang Anda tentukan sendiri. Model ini sudah menjalankan loop agentic-nya sendiri (rencanakan → pakai tool → amati hasil → putuskan langkah berikutnya), jadi mendikte urutan langkah biasanya redundan, dan kadang malah bentrok dengan rencana yang sudah dibuat model.
 
 **Anchor yang berguna:**
 - Path file: `src/app/shared/components/data-table/`
@@ -39,9 +39,9 @@ Qwen3.6 27b bekerja paling baik saat diberi **titik awal yang jelas** — bukan 
 :::tip[Minimal tapi spesifik]
 Prompt singkat yang punya anchor jelas lebih baik dari prompt panjang yang mendiktekan cara berpikir model.
 
-❌ *"Pikirkan langkah demi langkah. Pertama buka semua file di module ini. Kemudian periksa service-nya. Lalu..."*
+**Kurang efektif:** *"Pikirkan langkah demi langkah. Pertama buka semua file di module ini. Kemudian periksa service-nya. Lalu..."*
 
-✅ *"Add pagination to `TransactionListComponent`. Service: `TransactionService.getList(page, size)` already exists. Keep template changes minimal."*
+**Lebih efektif:** *"Add pagination to `TransactionListComponent`. Service: `TransactionService.getList(page, size)` already exists. Keep template changes minimal."*
 :::
 
 ---
@@ -53,7 +53,7 @@ Prompt singkat yang punya anchor jelas lebih baik dari prompt panjang yang mendi
 ```
 Create an Inquiry page for [feature name].
 Files: [folder/module path]
-Use existing [ServiceName] — do not create a new service.
+Use existing [ServiceName] - do not create a new service.
 Component must be standalone.
 Output: component class, template, and TypeScript interface for the response model.
 Success: compiles clean, table renders data rows, filter narrows results.
@@ -65,7 +65,7 @@ Success: compiles clean, table renders data rows, filter narrows results.
 Fix [observed behavior] in [ComponentName].
 Expected: [expected behavior].
 Relevant files: [file-a.ts], [file-b.html]
-Apply the smallest patch that resolves the issue — do not refactor unrelated code.
+Apply the smallest patch that resolves the issue - do not refactor unrelated code.
 ```
 
 ### Refactor
@@ -92,20 +92,20 @@ Stop after the minimal working implementation.
 :::tip[Gunakan English untuk prompt teknis/coding]
 Anda bebas berbicara dalam Bahasa Indonesia untuk pertanyaan konseptual atau diskusi. Namun untuk prompt yang menghasilkan kode, **English lebih disarankan** karena:
 
-- Sebagian besar data training Qwen untuk kode berbahasa English — istilah teknis, nama API, dan konvensi framework lebih presisi dalam English.
+- Sebagian besar data training Qwen untuk kode berbahasa English - istilah teknis, nama API, dan konvensi framework lebih presisi dalam English.
 - Nama file, class, dan method sudah dalam English; prompt yang mencampurkan Indonesia dan English cenderung menghasilkan keluaran yang inkonsisten.
-- Error message dan dokumentasi Angular/TypeScript juga berbahasa English — lebih mudah di-copy-paste langsung ke prompt.
+- Error message dan dokumentasi Angular/TypeScript juga berbahasa English - lebih mudah di-copy-paste langsung ke prompt.
 
-Gunakan Indonesia hanya jika Anda mendiskusikan pendekatan, bertanya tentang arsitektur, atau meminta penjelasan — bukan saat meminta Mage menulis atau mengubah kode.
+Gunakan Indonesia hanya jika Anda mendiskusikan pendekatan, bertanya tentang arsitektur, atau meminta penjelasan - bukan saat meminta Mage menulis atau mengubah kode.
 :::
 
 ---
 
 ## Contoh: membuat fitur Inquiry di Angular
 
-**Skenario:** Anda perlu membuat halaman Inquiry di aplikasi Angular — sebuah halaman berisi form filter di bagian atas dan tabel hasil di bawahnya, misalnya daftar transaksi dengan kolom status, nomor referensi, dan tanggal.
+**Skenario:** Anda perlu membuat halaman Inquiry di aplikasi Angular - sebuah halaman berisi form filter di bagian atas dan tabel hasil di bawahnya, misalnya daftar transaksi dengan kolom status, nomor referensi, dan tanggal.
 
-### Prompt lemah ❌
+### Prompt lemah
 
 ```
 buatkan halaman inquiry transaksi di angular
@@ -113,7 +113,7 @@ buatkan halaman inquiry transaksi di angular
 
 Prompt ini tidak memberi informasi tentang module yang digunakan, service yang ada, atau batasan apa pun. Model akan menebak-nebak struktur, kemungkinan membuat service baru yang tidak diperlukan, dan hasilnya mungkin tidak konsisten dengan codebase Anda.
 
-### Prompt kuat ✅
+### Prompt kuat
 
 ```
 Create a standalone Angular component: TransactionInquiryComponent.
@@ -135,7 +135,7 @@ Requirements:
 
 Constraints:
 - Standalone component only
-- Reuse TransactionService — do not create a new one
+- Reuse TransactionService - do not create a new one
 - Do not add new npm dependencies
 - Keep all existing exports in transaction.module.ts intact
 
@@ -165,7 +165,7 @@ Minta perubahan satu per satu, bukan sekaligus. Setiap iterasi lebih mudah di-re
 
 ## Sesi panjang: ulangi batasan penting
 
-Instruksi dan batasan yang Anda berikan di awal sesi bisa "melemah" seiring percakapan yang panjang — model cenderung lebih patuh pada instruksi yang baru saja diberikan dibanding instruksi lama yang sudah tertimbun banyak pesan. Untuk sesi yang berjalan lama atau multi-iterasi:
+Instruksi dan batasan yang Anda berikan di awal sesi bisa "melemah" seiring percakapan yang panjang - model cenderung lebih patuh pada instruksi yang baru saja diberikan dibanding instruksi lama yang sudah tertimbun banyak pesan. Untuk sesi yang berjalan lama atau multi-iterasi:
 
 - Ulangi batasan kritis (misalnya "jangan tambah dependency baru") setiap kali Anda meminta perubahan baru, jangan asumsikan model masih mengingatnya.
 - Jangan mengandalkan satu prompt panjang di awal sebagai jaminan perilaku model untuk seluruh sesi.
@@ -176,7 +176,7 @@ Instruksi dan batasan yang Anda berikan di awal sesi bisa "melemah" seiring perc
 
 Sebelum menekan Enter, periksa apakah prompt Anda sudah mencakup:
 
-- [ ] **Goal jelas** — satu kalimat yang menggambarkan hasil akhir yang diinginkan
+- [ ] **Goal jelas** - satu kalimat yang menggambarkan hasil akhir yang diinginkan
 - [ ] **Path file atau nama modul** disertakan sebagai anchor
 - [ ] **Service atau dependency yang sudah ada** disebutkan agar tidak dibuat ulang
 - [ ] **Batasan** dinyatakan secara eksplisit (jangan tambah X, jangan ubah Y)

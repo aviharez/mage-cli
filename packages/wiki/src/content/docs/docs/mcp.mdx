@@ -4,9 +4,9 @@ description: Apa itu MCP, cara menambahkan MCP server kustom, dan contoh penggun
 eyebrow: Dokumentasi
 ---
 
-**MCP (Model Context Protocol)** adalah protokol standar yang menghubungkan Mage ke server eksternal yang menyediakan *tools*, data, dan konteks tambahan — mulai dari browser, database, hingga issue tracker. Anggap MCP sebagai "USB-C untuk tools AI": satu standar koneksi yang membuat agent bisa memakai kemampuan baru tanpa Mage perlu tahu detail implementasinya.
+**MCP (Model Context Protocol)** adalah protokol standar yang menghubungkan Mage ke server eksternal yang menyediakan *tools*, data, dan konteks tambahan - mulai dari browser, database, hingga issue tracker. Anggap MCP sebagai "USB-C untuk tools AI": satu standar koneksi yang membuat agent bisa memakai kemampuan baru tanpa Mage perlu tahu detail implementasinya.
 
-Setelah sebuah MCP server terhubung, semua tool yang disediakannya otomatis tersedia untuk agent — tidak ada perintah khusus yang perlu dihafal. Anda cukup menulis prompt natural, dan model akan memilih tool yang relevan.
+Setelah sebuah MCP server terhubung, semua tool yang disediakannya otomatis tersedia untuk agent - tidak ada perintah khusus yang perlu dihafal. Anda cukup menulis prompt natural, dan model akan memilih tool yang relevan.
 
 ---
 
@@ -15,7 +15,7 @@ Setelah sebuah MCP server terhubung, semua tool yang disediakannya otomatis ters
 | Tipe | Cara jalan | Kapan dipakai |
 |------|-----------|----------------|
 | `local` | Dijalankan sebagai proses lokal (command + argumen) | Tool yang berjalan di mesin Anda, mis. akses filesystem atau browser lokal |
-| `remote` | Terhubung ke URL server MCP jarak jauh (HTTP/SSE) | Layanan pihak ketiga yang di-hosting, mis. Sentry, Linear, dsb. — bisa memerlukan OAuth |
+| `remote` | Terhubung ke URL server MCP jarak jauh (HTTP/SSE) | Layanan pihak ketiga yang di-hosting, mis. Sentry, Linear, dsb. - bisa memerlukan OAuth |
 
 ---
 
@@ -29,9 +29,9 @@ mage mcp add
 
 Wizard akan menanyakan:
 
-1. **Location** — simpan di config proyek saat ini atau global (`~/.mage/mage.json`)
-2. **Nama** — nama unik untuk server ini, mis. `sentry` atau `chrome-devtools`
-3. **Type** — `Local` (jalankan command) atau `Remote` (URL)
+1. **Location** - simpan di config proyek saat ini atau global (`~/.mage/mage.json`)
+2. **Nama** - nama unik untuk server ini, mis. `sentry` atau `chrome-devtools`
+3. **Type** - `Local` (jalankan command) atau `Remote` (URL)
 4. Untuk `Local`: **command** yang dijalankan, mis. `mage x @modelcontextprotocol/server-filesystem`
 5. Untuk `Remote`: **URL** server, lalu apakah server membutuhkan **OAuth**
 
@@ -43,7 +43,7 @@ mage mcp list
 
 Setiap server akan menunjukkan status: `connected`, `disabled`, `needs authentication`, atau `failed`.
 
-Anda juga bisa mengaktifkan/menonaktifkan server tanpa mengedit config lewat TUI — ketik `/mcps` untuk membuka dialog toggle. Lihat [Slash Commands](/docs/slash-commands).
+Anda juga bisa mengaktifkan/menonaktifkan server tanpa mengedit config lewat TUI - ketik `/mcps` untuk membuka dialog toggle. Lihat [Slash Commands](/docs/slash-commands).
 
 ---
 
@@ -76,7 +76,7 @@ Server MCP juga bisa ditambahkan langsung dengan mengedit `mage.json` (lihat [Ko
 
 ## Contoh: Chrome DevTools (local)
 
-[Chrome DevTools MCP](https://github.com/ChromeDevTools/chrome-devtools-mcp) memberi agent kemampuan mengontrol dan menginspeksi browser Chrome — membuka halaman, membaca console log, memeriksa network request, dan lainnya.
+[Chrome DevTools MCP](https://github.com/ChromeDevTools/chrome-devtools-mcp) memberi agent kemampuan mengontrol dan menginspeksi browser Chrome - membuka halaman, membaca console log, memeriksa network request, dan lainnya.
 
 ```json
 {
@@ -172,7 +172,7 @@ Untuk server remote yang memakai API key sederhana alih-alih OAuth:
 
 ## Cara memakai MCP (prompt)
 
-Begitu server terhubung, tool-nya otomatis muncul di konteks agent — tidak perlu prefix atau perintah khusus. Cukup tulis apa yang ingin Anda lakukan dalam bahasa natural (Indonesia atau English), dan model akan memilih tool MCP yang paling relevan.
+Begitu server terhubung, tool-nya otomatis muncul di konteks agent - tidak perlu prefix atau perintah khusus. Cukup tulis apa yang ingin Anda lakukan dalam bahasa natural (Indonesia atau English), dan model akan memilih tool MCP yang paling relevan.
 
 | MCP server | Contoh prompt |
 |-----------|----------------|

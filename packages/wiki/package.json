@@ -6,8 +6,6 @@
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
-    "gen:skills": "bun script/gen-skills.ts",
-    "prebuild": "bun script/gen-skills.ts",
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro"
