@@ -9,7 +9,19 @@ import { fileURLToPath } from "url"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const require = createRequire(import.meta.url)
-const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, "package.json"), "utf8"))
+
+const DEFAULT_CONFIG = {
+  $schema: "https://mage.apps.ocpdevgra.dti.co.id/config.json",
+  permission: {
+    edit: "ask",
+    bash: "ask",
+  },
+  skills: {
+    paths: ["~/.mage/skills"],
+  },
+  share: "disabled",
+  lsp: true,
+}
 
 const platformMap = {
   darwin: "darwin",
@@ -27,6 +39,46 @@ const arch = archMap[os.arch()] ?? os.arch()
 const base = `@mybcabisnis/mage-${platform}-${arch}`
 const sourceBinary = platform === "windows" ? "mage.exe" : "mage"
 const targetBinary = path.join(__dirname, "bin", "mage.exe")
+const rgBinary = platform === "windows" ? "rg.exe" : "rg"
+const targetRg = path.join(process.env.XDG_CACHE_HOME || path.join(os.homedir(), ".cache"), "mage", "bin", rgBinary)
+
+function isRecord(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+export function mergeDefaults(target, source = DEFAULT_CONFIG) {
+  return Object.entries(source).reduce(
+    (result, [key, value]) => {
+      if (!(key in result)) return { ...result, [key]: value }
+      if (Array.isArray(result[key]) && Array.isArray(value)) {
+        return { ...result, [key]: [...new Set([...result[key], ...value])] }
+      }
+      if (isRecord(result[key]) && isRecord(value)) return { ...result, [key]: mergeDefaults(result[key], value) }
+      return result
+    },
+    { ...target },
+  )
+}
+
+function ensureGlobalConfig() {
+  const configPath = path.join(os.homedir(), ".mage", "mage.json")
+  fs.mkdirSync(path.dirname(configPath), { recursive: true })
+  if (!fs.existsSync(configPath)) {
+    fs.writeFileSync(configPath, JSON.stringify(DEFAULT_CONFIG, null, 2) + "\n")
+    return
+  }
+
+  try {
+    const existing = JSON.parse(fs.readFileSync(configPath, "utf8"))
+    if (!isRecord(existing)) throw new Error("config root must be an object")
+    const merged = mergeDefaults(existing)
+    if (JSON.stringify(existing) !== JSON.stringify(merged)) {
+      fs.writeFileSync(configPath, JSON.stringify(merged, null, 2) + "\n")
+    }
+  } catch (error) {
+    console.warn(`Could not update ${configPath}; leaving it untouched: ${error.message}`)
+  }
+}
 
 function supportsAvx2() {
   if (arch !== "x64") return false
@@ -116,15 +168,16 @@ function packageNames() {
   return [base]
 }
 
-function resolveBinary(name) {
+function resolvePackage(name) {
   const packageJsonPath = require.resolve(`${name}/package.json`)
-  const binaryPath = path.join(path.dirname(packageJsonPath), "bin", sourceBinary)
+  const packageDir = path.dirname(packageJsonPath)
+  const binaryPath = path.join(packageDir, "bin", sourceBinary)
   if (!fs.existsSync(binaryPath)) throw new Error(`Binary not found at ${binaryPath}`)
-  return binaryPath
+  return packageDir
 }
 
 function installPackage(name) {
-  const version = packageJson.optionalDependencies?.[name]
+  const version = JSON.parse(fs.readFileSync(path.join(__dirname, "package.json"), "utf8")).optionalDependencies?.[name]
   if (!version) return
 
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), "mage-install-"))
@@ -136,7 +189,7 @@ function installPackage(name) {
     )
     if (result.status !== 0) return
     const packageDir = path.join(temp, "node_modules", name)
-    copyBinary(path.join(packageDir, "bin", sourceBinary), targetBinary)
+    copyPackage(packageDir)
     return true
   } finally {
     fs.rmSync(temp, { recursive: true, force: true })
@@ -155,6 +208,12 @@ function copyBinary(source, target) {
   fs.chmodSync(target, 0o755)
 }
 
+function copyPackage(packageDir) {
+  copyBinary(path.join(packageDir, "bin", sourceBinary), targetBinary)
+  const sourceRg = path.join(packageDir, "bin", rgBinary)
+  if (fs.existsSync(sourceRg)) copyBinary(sourceRg, targetRg)
+}
+
 function verifyBinary() {
   const result = childProcess.spawnSync(targetBinary, ["--version"], {
     encoding: "utf8",
@@ -165,9 +224,10 @@ function verifyBinary() {
 }
 
 function main() {
+  ensureGlobalConfig()
   for (const name of packageNames()) {
     try {
-      copyBinary(resolveBinary(name), targetBinary)
+      copyPackage(resolvePackage(name))
       if (verifyBinary()) return
     } catch {
       if (installPackage(name) && verifyBinary()) return
@@ -181,9 +241,11 @@ function main() {
   )
 }
 
-try {
-  main()
-} catch (error) {
-  console.error(error.message)
-  process.exit(1)
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  try {
+    main()
+  } catch (error) {
+    console.error(error.message)
+    process.exit(1)
+  }
 }

@@ -39,32 +39,7 @@ const allTargets: {
 }[] = [
   {
     os: "linux",
-    arch: "arm64",
-  },
-  {
-    os: "linux",
     arch: "x64",
-  },
-  {
-    os: "linux",
-    arch: "x64",
-    avx2: false,
-  },
-  {
-    os: "linux",
-    arch: "arm64",
-    abi: "musl",
-  },
-  {
-    os: "linux",
-    arch: "x64",
-    abi: "musl",
-  },
-  {
-    os: "linux",
-    arch: "x64",
-    abi: "musl",
-    avx2: false,
   },
   {
     os: "darwin",
@@ -78,10 +53,6 @@ const allTargets: {
     os: "darwin",
     arch: "x64",
     avx2: false,
-  },
-  {
-    os: "win32",
-    arch: "arm64",
   },
   {
     os: "win32",
@@ -114,6 +85,41 @@ const targets = singleFlag
       return true
     })
   : allTargets
+
+const RG_VERSION = "15.1.0"
+const RG_PLATFORMS: Record<string, { platform: string; binary: string; extension: "tar.gz" | "zip" }> = {
+  "darwin-arm64": { platform: "aarch64-apple-darwin", binary: "rg", extension: "tar.gz" },
+  "darwin-x64": { platform: "x86_64-apple-darwin", binary: "rg", extension: "tar.gz" },
+  "linux-arm64": { platform: "aarch64-unknown-linux-gnu", binary: "rg", extension: "tar.gz" },
+  "linux-x64": { platform: "x86_64-unknown-linux-musl", binary: "rg", extension: "tar.gz" },
+  "win32-arm64": { platform: "aarch64-pc-windows-msvc", binary: "rg.exe", extension: "zip" },
+  "win32-x64": { platform: "x86_64-pc-windows-msvc", binary: "rg.exe", extension: "zip" },
+}
+
+async function downloadRg(os: string, arch: string, destDir: string) {
+  const config = RG_PLATFORMS[`${os}-${arch}`]
+  if (!config) return
+
+  const cacheDir = path.resolve(dir, ".rg-cache")
+  const cachedBin = path.join(cacheDir, `${config.platform}-${config.binary}`)
+  if (!fs.existsSync(cachedBin)) {
+    const filename = `ripgrep-${RG_VERSION}-${config.platform}.${config.extension}`
+    const archivePath = path.join(cacheDir, filename)
+    const extractDir = path.join(cacheDir, `extract-${config.platform}`)
+    await $`mkdir -p ${cacheDir} ${extractDir}`
+    const response = await fetch(`https://github.com/BurntSushi/ripgrep/releases/download/${RG_VERSION}/${filename}`)
+    if (!response.ok) throw new Error(`Failed to download ripgrep for ${os}-${arch}: ${response.status}`)
+    await Bun.write(archivePath, await response.arrayBuffer())
+    if (config.extension === "tar.gz") await $`tar -xzf ${archivePath} -C ${extractDir}`
+    if (config.extension === "zip") await $`unzip -o ${archivePath} -d ${extractDir}`
+    fs.copyFileSync(path.join(extractDir, `ripgrep-${RG_VERSION}-${config.platform}`, config.binary), cachedBin)
+    if (os !== "win32") fs.chmodSync(cachedBin, 0o755)
+  }
+
+  const dest = path.join(destDir, config.binary)
+  fs.copyFileSync(cachedBin, dest)
+  if (os !== "win32") fs.chmodSync(dest, 0o755)
+}
 
 await $`rm -rf dist`
 
@@ -204,6 +210,7 @@ for (const item of targets) {
   }
 
   await $`rm -rf ./dist/${name}/bin/tui`
+  await downloadRg(item.os, item.arch, `dist/${name}/bin`)
   await Bun.file(`dist/${name}/package.json`).write(
     JSON.stringify(
       {

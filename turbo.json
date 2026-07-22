@@ -1,34 +1,56 @@
 {
   "$schema": "https://v2-8-13.turborepo.dev/schema.json",
-  "globalEnv": ["CI", "MAGE_DISABLE_SHARE"],
-  "globalPassThroughEnv": ["CI", "MAGE_DISABLE_SHARE"],
+  "globalEnv": [
+    "CI",
+    "MAGE_DISABLE_SHARE"
+  ],
+  "globalPassThroughEnv": [
+    "CI",
+    "MAGE_DISABLE_SHARE"
+  ],
   "tasks": {
     "typecheck": {},
     "build": {
       "dependsOn": [],
-      "outputs": ["dist/**"]
+      "outputs": [
+        "dist/**"
+      ]
     },
     "mage#test": {
-      "dependsOn": ["^build"],
+      "dependsOn": [
+        "^build"
+      ],
       "outputs": [],
-      "passThroughEnv": ["*"]
+      "passThroughEnv": [
+        "*"
+      ]
     },
     "mage#test:ci": {
-      "dependsOn": ["^build"],
-      "outputs": [".artifacts/unit/junit.xml"],
-      "passThroughEnv": ["*"]
-    },
-    "@mybcabisnis/mage-web#build": {
-      "dependsOn": ["@mybcabisnis/mage#build"],
-      "outputs": ["dist/**"]
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        ".artifacts/unit/junit.xml"
+      ],
+      "passThroughEnv": [
+        "*"
+      ]
     },
     "@mybcabisnis/mage-web-react#build": {
-      "dependsOn": ["@mybcabisnis/mage-ui-react#build"],
-      "outputs": ["dist/**"]
+      "dependsOn": [
+        "@mybcabisnis/mage-ui-react#build"
+      ],
+      "outputs": [
+        "dist/**"
+      ]
     },
     "mage-vscode#build": {
-      "dependsOn": ["@mybcabisnis/mage-ui-react#build"],
-      "outputs": ["dist/**"]
+      "dependsOn": [
+        "@mybcabisnis/mage-ui-react#build"
+      ],
+      "outputs": [
+        "dist/**"
+      ]
     }
   }
 }
