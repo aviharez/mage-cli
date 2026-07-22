@@ -7,10 +7,9 @@
   "packageManager": "bun@1.3.14",
   "scripts": {
     "dev": "MAGE_CONFIG_DIR=$PWD/packages/mage/defaults bun run --cwd packages/mage --conditions=browser src/index.ts",
-    "dev:wiki": "bun --cwd packages/wiki dev",
     "dev:serve": "MAGE_CONFIG_DIR=$PWD/packages/mage/defaults bun run --cwd packages/mage --conditions=browser src/index.ts serve --port 4096",
-    "dev:web-react": "bun --cwd packages/web-react dev",
-    "dev:web-react:server": "MAGE_SKIP_START=true MAGE_INTERNAL_PORT=4096 bun --cwd packages/web-react dev:server:watch",
+    "dev:app": "bun --cwd packages/web-react dev",
+    "dev:app:server": "MAGE_SKIP_START=true MAGE_INTERNAL_PORT=4096 bun --cwd packages/web-react dev:server:watch",
     "vscode:dev": "bun --cwd packages/vscode-react dev",
     "vscode:build": "bun --cwd packages/vscode-react build",
     "vscode:package": "bun --cwd packages/vscode-react package",
@@ -129,7 +128,6 @@
     "@aws-sdk/client-s3": "3.933.0",
     "@mybcabisnis/mage-core": "workspace:*",
     "@mybcabisnis/mage-llm": "workspace:*",
-    "@mybcabisnis/mage-wiki": "workspace:*",
     "@mybcabisnis/mage-plugin": "workspace:*",
     "@mybcabisnis/mage-script": "workspace:*",
     "@mybcabisnis/mage-sdk": "workspace:*",
@@ -160,7 +158,6 @@
     "@codemirror/view": "6.39.13",
     "@shikijs/themes": "3.23.0",
     "shiki": "3.23.0",
-    "zod": "catalog:",
     "@types/bun": "catalog:",
     "@types/node": "catalog:"
   },
