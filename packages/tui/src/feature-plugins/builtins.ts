@@ -24,7 +24,7 @@ export function createBuiltinPlugins(options: { experimentalEventSystem: boolean
     HomeTips,
     // SidebarContext,
     SidebarMcp,
-    SidebarLsp,
+    // SidebarLsp,
     SidebarTodo,
     SidebarFiles,
     SidebarFooter,

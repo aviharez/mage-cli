@@ -4968,7 +4968,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({ onOpenSettings, scrollTo
                                             : t('chat.chatInput.placeholder.selectSession')}
                                 </span>
                             </button>
-                            <button
+                            {/* <button
                                 type="button"
                                 className={footerIconButtonClass}
                                 onClick={() => {
@@ -4981,7 +4981,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({ onOpenSettings, scrollTo
                                 aria-label={t('chat.dictation.start')}
                             >
                                 <Icon name="mic" className={cn(iconSizeClass, 'text-current')} />
-                            </button>
+                            </button> */}
                         </div>
                         {/* New-session button: fades/shrinks away when the draft is
                             already open, letting the pill expand into its place. */}

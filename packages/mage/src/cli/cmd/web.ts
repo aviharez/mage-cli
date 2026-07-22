@@ -3,26 +3,42 @@ import { UI } from "../ui"
 import { effectCmd } from "../effect-cmd"
 import { withNetworkOptions, resolveNetworkOptions } from "../network"
 import { Flag } from "@mybcabisnis/mage-core/flag/flag"
+import { Npm } from "@mybcabisnis/mage-core/npm"
+import { InstallationVersion } from "@mybcabisnis/mage-core/installation/version"
+import { which } from "@mybcabisnis/mage-core/util/which"
 import open from "open"
 import { networkInterfaces } from "os"
 import path from "path"
+import { fileURLToPath } from "url"
 
 const WEB_UI_PORT = 3001
+const WEB_UI_PACKAGE = "@mybcabisnis/mage-web-react"
 
 /**
  * Resolve the web-react sidecar's server entry point. In this monorepo
- * checkout it sits alongside packages/mage; in a packaged install it
- * ships as a dependency of the mage package (see AGENTS.md distribution note).
+ * checkout it sits alongside packages/mage. It's never bundled into the
+ * compiled mage binary (its native deps — better-sqlite3, node-pty,
+ * sherpa-onnx-node — can't be cross-compiled into a single executable), so
+ * in a packaged install it's lazily installed on first use via Npm.add,
+ * the same on-demand-install mechanism used for LSP servers and provider
+ * SDKs (see packages/mage/src/lsp/server.ts, src/provider/provider.ts).
  */
 async function resolveWebUiServerEntry(): Promise<string | null> {
-  const candidates = [
-    path.resolve(import.meta.dirname, "../../../../web-react/server/index.js"),
-    path.resolve(import.meta.dirname, "../../../node_modules/@mybcabisnis/mage-web-react/server/index.js"),
-  ]
-  for (const candidate of candidates) {
-    if (await Bun.file(candidate).exists()) return candidate
+  const sibling = path.resolve(import.meta.dirname, "../../../../web-react/server/index.js")
+  if (await Bun.file(sibling).exists()) return sibling
+
+  // No published version to install (running from source outside the monorepo layout).
+  if (InstallationVersion === "local") return null
+
+  UI.println(UI.Style.TEXT_INFO_BOLD + "   Installing web UI…", UI.Style.TEXT_NORMAL, ` ${WEB_UI_PACKAGE}@${InstallationVersion}`)
+  try {
+    const item = await Npm.add(`${WEB_UI_PACKAGE}@${InstallationVersion}`)
+    if (!item.entrypoint) return null
+    return item.entrypoint.startsWith("file://") ? fileURLToPath(item.entrypoint) : item.entrypoint
+  } catch (error) {
+    UI.println(UI.Style.TEXT_WARNING_BOLD + "!  Failed to install web UI: ", UI.Style.TEXT_NORMAL, String(error))
+    return null
   }
-  return null
 }
 
 /** Poll the sidecar's /health endpoint until it responds or the timeout elapses. */
@@ -94,7 +110,10 @@ export const WebCommand = effectCmd({
     }
 
     const webUiHostname = opts.hostname === "0.0.0.0" ? "127.0.0.1" : opts.hostname
-    Bun.spawn(["bun", webUiServerEntry!, "--port", String(WEB_UI_PORT)], {
+    // Prefer bun (faster PTY via bun-pty) but fall back to node — the sidecar
+    // runs fine under either, and an npm-installed mage user may not have bun.
+    const runtime = which("bun") ?? "node"
+    Bun.spawn([runtime, webUiServerEntry!, "--port", String(WEB_UI_PORT)], {
       env: {
         ...process.env,
         MAGE_SKIP_START: "true",

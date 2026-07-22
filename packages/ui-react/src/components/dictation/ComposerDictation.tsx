@@ -342,7 +342,7 @@ export const ComposerDictation: React.FC<ComposerDictationProps> = ({
 
     return (
         <>
-            {renderTrigger ? (
+            {/* {renderTrigger ? (
                 <button
                     type="button"
                     {...keepKeyboardFocusProps}
@@ -356,7 +356,7 @@ export const ComposerDictation: React.FC<ComposerDictationProps> = ({
                 >
                     <Icon name="mic" className={cn(iconSizeClass, 'text-current')} />
                 </button>
-            ) : null}
+            ) : null} */}
             {isActive ? (
                 <div
                     ref={overlayRef}
