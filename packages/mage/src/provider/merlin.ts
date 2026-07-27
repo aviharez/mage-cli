@@ -66,6 +66,8 @@ import type {
   LanguageModelV3ToolResultOutput,
   LanguageModelV3Usage,
 } from "@ai-sdk/provider"
+import { mkdirSync } from "node:fs"
+import { homedir } from "node:os"
 import * as Log from "../util/log"
 import * as Network from "../util/network"
 
@@ -76,6 +78,7 @@ const log = Log.create({ service: "merlin" })
 const MERLIN_ORIGIN = "https://gaia-gateway-multimodal-uat.apps.ocpuatgra.dti.co.id"
 const CLIENT_ID = "MAGEDEV"
 const DEFAULT_MODEL = "/app/models/text-2"
+const DEBUG_PAYLOADS = process.env["MAGE_GAIA_DEBUG_MODE"] === "1" || process.env["MAGE_GAIA_DEBUG_MODE"]?.toLowerCase() === "true"
 
 // ── GAIA wire types ──────────────────────────────────────────────────────────
 
@@ -102,7 +105,8 @@ interface ChatCompletionsRequest {
   tool_choice?: "auto"
   stream: boolean
   stream_options?: { include_usage: true }
-  priority?: number
+  priority?: number,
+  chat_template_kwargs?: { enable_thinking: boolean }
 }
 
 interface ChatCompletionsUsage {
@@ -388,7 +392,7 @@ class MerlinLanguageModel implements LanguageModelV3 {
   private async postChat(
     options: LanguageModelV3CallOptions,
     stream: boolean,
-  ): Promise<{ response: Response; promptTokenEstimate: number }> {
+  ): Promise<{ response: Response; promptTokenEstimate: number; payloadDir: string }> {
     const url = this.url
     const messages = toOpenAIMessages(options.prompt)
     const tools = toOpenAITools(options.tools)
@@ -402,16 +406,23 @@ class MerlinLanguageModel implements LanguageModelV3 {
       // (unlike temperature 0 greedy decoding). Ref: huggingface.co/Qwen/Qwen3.6-27B.
       temperature: 0.3,
       max_completion_tokens: 128000,
-      priority: 3,
+      priority: 1,
+      chat_template_kwargs: { enable_thinking: false },
       ...(this.sendServiceId ? { service_id: resolveServiceId(options) } : {}),
       ...(tools.length > 0 ? { tools, tool_choice: "auto" as const } : {}),
-      stream,
-      ...(stream ? { stream_options: { include_usage: true as const } } : {}),
+      stream: false,
+      // stream_options: { include_usage: true },
     }
 
     const { messages: _messages, ...loggableBody } = body
     log.info("request", { ...loggableBody, message_count: messages.length, prompt_token_estimate: promptTokenEstimate })
     log.debug("request_messages", { messages })
+
+    const exchangeDir = `${homedir()}/.mage/data/payloads/${new Date().toISOString().replace(/[:]/g, "-")}`
+    if (DEBUG_PAYLOADS) {
+      mkdirSync(exchangeDir, { recursive: true })
+      Bun.write(`${exchangeDir}/request.json`, JSON.stringify(body, null, 2))
+    }
 
     // Bound to its own name (rather than inlined) so the catch block can tell
     // a genuine per-request timeout apart from any other fetch failure —
@@ -487,12 +498,13 @@ class MerlinLanguageModel implements LanguageModelV3 {
       })
     }
 
-    return { response, promptTokenEstimate }
+    return { response, promptTokenEstimate, payloadDir: exchangeDir }
   }
 
   async doGenerate(options: LanguageModelV3CallOptions): Promise<LanguageModelV3GenerateResult> {
-    const { response, promptTokenEstimate } = await this.postChat(options, false)
+    const { response, promptTokenEstimate, payloadDir } = await this.postChat(options, false)
     const data = (await response.json()) as ChatCompletionsResponse
+    if (DEBUG_PAYLOADS) Bun.write(`${payloadDir}/response.json`, JSON.stringify(data, null, 2))
 
     if (data.error_schema) {
       const mapped = mapErrorEnvelope(data, this.url, promptTokenEstimate)
@@ -519,7 +531,7 @@ class MerlinLanguageModel implements LanguageModelV3 {
   }
 
   async doStream(options: LanguageModelV3CallOptions): Promise<LanguageModelV3StreamResult> {
-    const { response, promptTokenEstimate } = await this.postChat(options, true)
+    const { response, promptTokenEstimate, payloadDir } = await this.postChat(options, true)
     const url = this.url
     const contentType = response.headers.get("content-type") ?? ""
 
@@ -529,6 +541,19 @@ class MerlinLanguageModel implements LanguageModelV3 {
     // body. Handle that as a one-shot (non-streaming) result.
     if (contentType.includes("application/json")) {
       const data = (await response.json()) as ChatCompletionsResponse
+      if (DEBUG_PAYLOADS) Bun.write(`${payloadDir}/response.json`, JSON.stringify(data, null, 2))
+      log.info("response", {
+        has_error_schema: data.error_schema != null,
+        error_code: data.error_schema?.error_code,
+        has_output_schema: data.output_schema != null,
+        output_answer: data.output_schema?.result?.answer?.slice(0, 200),
+        has_choices: data.choices != null,
+        choice_count: data.choices?.length ?? 0,
+        choice_content: data.choices?.[0]?.message?.content?.slice(0, 200),
+        choice_role: data.choices?.[0]?.message?.role,
+        choice_tool_calls: data.choices?.[0]?.message?.tool_calls?.length ?? 0,
+        usage: data.usage,
+      })
       if (data.error_schema) {
         const mapped = mapErrorEnvelope(data, url, promptTokenEstimate)
         if (mapped) throw mapped
@@ -536,6 +561,14 @@ class MerlinLanguageModel implements LanguageModelV3 {
 
       const choice = data.choices?.[0]
       if (!choice?.message) throw new Error("GAIA returned no choices in chat completion response")
+
+      // GAIA returns canned error messages as choices[0].message.content
+      // when it can't process the request. Signal: prompt_tokens === 0 means
+      // GAIA didn't even count the input tokens — the content is an error.
+      if (data.usage?.prompt_tokens === 0 && choice.message.content) {
+        throw new Error(choice.message.content)
+      }
+
       const toolCalls = choice.message.tool_calls ?? []
 
       const parts: LanguageModelV3StreamPart[] = [{ type: "stream-start", warnings: [] }]
@@ -582,6 +615,7 @@ class MerlinLanguageModel implements LanguageModelV3 {
 
     const reader = response.body.getReader()
     const decoder = new TextDecoder()
+    const rawSseLines: string[] = []
 
     const stream = new ReadableStream<LanguageModelV3StreamPart>({
       async start(controller) {
@@ -601,6 +635,7 @@ class MerlinLanguageModel implements LanguageModelV3 {
         // separated by blank lines, terminated by `data: [DONE]`.
         const handleLine = (line: string) => {
           const trimmed = line.trim()
+          rawSseLines.push(trimmed)
           if (!trimmed.startsWith("data:")) return
           const payload = trimmed.slice("data:".length).trim()
           if (!payload || payload === "[DONE]") return
@@ -690,6 +725,7 @@ class MerlinLanguageModel implements LanguageModelV3 {
           finishReason: mapFinishReason(rawFinish, toolCalls.size > 0),
           usage: toUnifiedUsage(usage, promptTokenEstimate, Math.ceil(outputChars / 4)),
         })
+        if (DEBUG_PAYLOADS) Bun.write(`${payloadDir}/response.sse.txt`, rawSseLines.join("\n"))
         controller.close()
       },
       cancel(reason) {

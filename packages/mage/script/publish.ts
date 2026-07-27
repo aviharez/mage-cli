@@ -255,7 +255,7 @@ async function publish(dir: string, name: string, version: string) {
   if (process.platform !== "win32") await $`chmod -R 755 .`.cwd(dir)
 
   await $`bun pm pack`.cwd(dir)
-  await $`npm publish *.tgz --access public --tag ${Script.channel}`.cwd(dir)
+  await $`npm publish *.tgz --registry https://artifactory.intra.bca.co.id/artifactory/api/npm/MBB-Registry-npm/ --tag ${Script.channel}`.cwd(dir)
 }
 
 const binaries: Record<string, string> = {}
