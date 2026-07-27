@@ -1,6 +1,7 @@
 import { describe, expect } from "bun:test"
 import { Project } from "@/project/project"
 import { $ } from "bun"
+import { rm } from "node:fs/promises"
 import path from "path"
 import { tmpdirScoped } from "../fixture/fixture"
 import { GlobalBus } from "../../src/bus/global"
@@ -15,6 +16,7 @@ import { WorkspaceV2 } from "@mybcabisnis/mage-core/workspace"
 import { Cause, Effect, Exit, Layer, Stream } from "effect"
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process"
 import { ProjectV2 } from "@mybcabisnis/mage-core/project"
+import { AbsolutePath } from "@mybcabisnis/mage-core/schema"
 import { CrossSpawnSpawner } from "@mybcabisnis/mage-core/cross-spawn-spawner"
 import { testEffect } from "../lib/effect"
 import { RuntimeFlags } from "@/effect/runtime-flags"
@@ -232,6 +234,55 @@ describe("Project.fromDirectory", () => {
         (yield* db.select().from(WorkspaceTable).where(eq(WorkspaceTable.id, workspaceID)).get().pipe(Effect.orDie))
           ?.project_id,
       ).toBe(remoteID)
+    }),
+  )
+
+  it.live("migrates same-worktree sessions when the old project ID is not cached", () =>
+    Effect.gen(function* () {
+      const { db } = yield* Database.Service
+      const tmp = yield* tmpdirScoped({ git: true })
+      const projects = yield* Project.Service
+      const current = yield* projects.fromDirectory(tmp)
+      const legacyID = ProjectV2.ID.make("legacy-project")
+      const sessionID = crypto.randomUUID() as SessionID
+
+      yield* db
+        .insert(ProjectTable)
+        .values({
+          id: legacyID,
+          worktree: AbsolutePath.make(current.project.worktree),
+          vcs: "git",
+          time_created: Date.now(),
+          time_updated: Date.now(),
+          sandboxes: [],
+        })
+        .run()
+        .pipe(Effect.orDie)
+      yield* db
+        .insert(SessionTable)
+        .values({
+          id: sessionID,
+          project_id: legacyID,
+          slug: sessionID,
+          directory: tmp,
+          title: "test",
+          version: "0.0.0-test",
+          time_created: Date.now(),
+          time_updated: Date.now(),
+        })
+        .run()
+        .pipe(Effect.orDie)
+      yield* Effect.promise(() => rm(path.join(tmp, ".git", "mage")))
+
+      yield* projects.fromDirectory(tmp)
+
+      expect(
+        yield* db.select().from(ProjectTable).where(eq(ProjectTable.id, legacyID)).get().pipe(Effect.orDie),
+      ).toBeUndefined()
+      expect(
+        (yield* db.select().from(SessionTable).where(eq(SessionTable.id, sessionID)).get().pipe(Effect.orDie))
+          ?.project_id,
+      ).toBe(current.project.id)
     }),
   )
 })

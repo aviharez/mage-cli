@@ -31,6 +31,25 @@ afterEach(async () => {
 
 describe("session.list", () => {
   it.instance(
+    "does not include sessions outside the project when listing project scope",
+    () =>
+      Effect.gen(function* () {
+        const outside = yield* withSession({ title: "outside-project" })
+        const { db } = yield* Database.Service
+        yield* db
+          .update(SessionTable)
+          .set({ directory: "/Users/outside-mage" })
+          .where(eq(SessionTable.id, outside.id))
+          .run()
+          .pipe(Effect.orDie)
+
+        const ids = (yield* SessionNs.use.list({ scope: "project" })).map((session) => session.id)
+        expect(ids).not.toContain(outside.id)
+      }),
+    { git: true },
+  )
+
+  it.instance(
     "does not filter by directory when directory is omitted",
     () =>
       Effect.gen(function* () {
