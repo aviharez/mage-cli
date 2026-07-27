@@ -14,7 +14,7 @@ import {
 import { dropdownMenuItemClass, dropdownMenuPopupClass, dropdownMenuSeparatorClass, dropdownMenuSubTriggerClass } from '@/components/ui/dropdown-menu.styles';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { canUseElectronDesktopIPC, invokeDesktop, isVSCodeRuntime } from '@/lib/desktop';
+import { canUseElectronDesktopIPC, hasElectronCapability, invokeDesktop, isVSCodeRuntime } from '@/lib/desktop';
 import { toast } from '@/components/ui';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -262,7 +262,7 @@ function SessionNodeItemComponent(props: Props): React.ReactNode {
   // under workspace project headers, so the second metadata row (project/branch)
   // is redundant. The display-mode toggle is hidden there, so force it on.
   const isMinimalMode = displayMode === 'minimal' || isVSCode;
-  const isElectron = React.useMemo(() => canUseElectronDesktopIPC(), []);
+  const isElectron = React.useMemo(() => canUseElectronDesktopIPC() && hasElectronCapability('mini-chat'), []);
   const runtimeApis = React.useContext(RuntimeAPIContext);
   const revealOnHoverClass = isVSCode
     ? 'group-hover:opacity-100 group-hover:pointer-events-auto'

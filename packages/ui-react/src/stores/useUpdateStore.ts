@@ -5,6 +5,7 @@ import { useUIStore } from './useUIStore';
 import {
   checkForDesktopUpdates,
   downloadDesktopUpdate,
+  hasElectronCapability,
   restartToApplyUpdate,
   isDesktopLocalOriginActive,
   isElectronShell,
@@ -152,7 +153,7 @@ function detectRuntimeType(): 'desktop' | 'web' | 'vscode' | 'mobile' | null {
     return 'mobile';
   }
   if (isElectronShell()) {
-    return 'desktop';
+    return hasElectronCapability('updates') ? 'desktop' : null;
   }
   if (isVSCodeRuntime()) return 'vscode';
   if (isWebRuntime()) return 'web';

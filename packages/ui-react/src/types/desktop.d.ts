@@ -1,11 +1,26 @@
 import type { DesktopBootOutcome } from '@/lib/desktopBoot';
 
+type MageDesktopCapability =
+  | 'window'
+  | 'files'
+  | 'notifications'
+  | 'browser-capture'
+  | 'open-in-app'
+  | 'launch-at-login'
+  | 'vibrancy'
+  | 'deep-links';
+
 declare global {
   interface Window {
     __MAGE_HOME__?: string;
     __MAGE_MACOS_MAJOR__?: number;
     __MAGE_LOCAL_ORIGIN__?: string;
-    __MAGE_ELECTRON__?: { runtime?: string; macVibrancy?: boolean; macVibrancySupported?: boolean };
+    __MAGE_ELECTRON__?: {
+      runtime?: 'electron' | string;
+      capabilities?: readonly MageDesktopCapability[];
+      macVibrancy?: boolean;
+      macVibrancySupported?: boolean;
+    };
     __MAGE_PLATFORM__?: string;
     __MAGE_DESKTOP_BOOT_OUTCOME__?: DesktopBootOutcome;
   }

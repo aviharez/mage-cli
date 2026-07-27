@@ -14,6 +14,7 @@ import {
   setDesktopKeepAwake,
   setDesktopLaunchAtLogin,
   setDesktopMinimizeToTray,
+  hasElectronCapability,
 } from '@/lib/desktop';
 import { useI18n } from '@/lib/i18n';
 import { runtimeFetch } from '@/lib/runtime-fetch';
@@ -364,6 +365,7 @@ export const DesktopNetworkSettings: React.FC = () => {
           </div>
         ) : null}
 
+        {hasElectronCapability('remote-hosts') ? (<React.Fragment>
         {minimizeToTraySupported ? (
           <div
             data-settings-item="sessions.desktop-minimize-to-tray"
@@ -501,6 +503,7 @@ export const DesktopNetworkSettings: React.FC = () => {
             {isSaving ? t('settings.common.actions.saving') : t('settings.mage.desktopNetwork.actions.saveAndRestart')}
           </Button>
         </div>
+        </React.Fragment>) : null}
       </section>
     </div>
   );

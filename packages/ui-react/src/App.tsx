@@ -18,7 +18,7 @@ import { usePwaInstallPrompt } from '@/hooks/usePwaInstallPrompt';
 import { useWindowTitle } from '@/hooks/useWindowTitle';
 import { useConfigStore } from '@/stores/useConfigStore';
 import { hasModifier } from '@/lib/utils';
-import { isDesktopLocalOriginActive, isDesktopShell, restartDesktopApp, invokeDesktop } from '@/lib/desktop';
+import { hasElectronCapability, isDesktopLocalOriginActive, isDesktopShell, restartDesktopApp, invokeDesktop } from '@/lib/desktop';
 import {
   getInjectedBootOutcome,
   getBootInjectionStatus,
@@ -616,6 +616,7 @@ function App({ apis }: AppProps) {
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
     const onOpenMiniChat = () => {
+      if (!hasElectronCapability('mini-chat')) return;
       const currentDir = useDirectoryStore.getState().currentDirectory;
       const { activeProjectId, projects } = useProjectsStore.getState();
       const activeProject = projects.find((p) => p.id === activeProjectId) ?? null;

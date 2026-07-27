@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { toast } from '@/components/ui';
-import { isElectronShell, isDesktopShell } from '@/lib/desktop';
+import { hasElectronCapability, isElectronShell, isDesktopShell } from '@/lib/desktop';
 import { Icon } from "@/components/icon/Icon";
 import { useUIStore } from '@/stores/useUIStore';
 import { useI18n } from '@/lib/i18n';
@@ -301,7 +301,7 @@ type DesktopHostSwitcherDialogProps = {
   onHostSwitched?: () => void;
 };
 
-export function DesktopHostSwitcherDialog({
+function DesktopHostSwitcherDialogContent({
   open,
   onOpenChange,
   embedded = false,
@@ -1188,6 +1188,11 @@ export function DesktopHostSwitcherDialog({
       {sshSwitchDialog}
     </>
   );
+}
+
+export function DesktopHostSwitcherDialog(props: DesktopHostSwitcherDialogProps) {
+  if (!hasElectronCapability('remote-hosts')) return null;
+  return <DesktopHostSwitcherDialogContent {...props} />;
 }
 
 export function DesktopHostSwitcherInline() {

@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Session } from '@mybcabisnis/mage-sdk/v2';
-import { canUseElectronDesktopIPC, invokeDesktop, isDesktopLocalOriginActive } from '@/lib/desktop';
+import { canUseElectronDesktopIPC, hasElectronCapability, invokeDesktop, isDesktopLocalOriginActive } from '@/lib/desktop';
 import { getRuntimeApiBaseUrl } from '@/lib/runtime-switch';
 import { desktopHostsGet, getDesktopHostApiUrl, locationMatchesHost, redactSensitiveUrl } from '@/lib/desktopHosts';
 import { getSyncChildStores, getAllSyncSessions } from '@/sync/sync-refs';
@@ -418,7 +418,7 @@ const buildSnapshot = (instanceName: string): TraySnapshot => {
 
 export const useTraySync = (): void => {
   React.useEffect(() => {
-    if (!isTrayPlatform() || !canUseElectronDesktopIPC()) return;
+    if (!hasElectronCapability('tray') || !isTrayPlatform() || !canUseElectronDesktopIPC()) return;
 
     let disposed = false;
     let lastSerialized = '';

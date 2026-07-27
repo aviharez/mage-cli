@@ -16,6 +16,7 @@ const mageSdkV2ClientPath = fileURLToPath(import.meta.resolve('@mybcabisnis/mage
 const pwaDevEnabled = process.env.MAGE_DISABLE_PWA_DEV !== '1';
 const reactScanToggle = (process.env.VITE_ENABLE_REACT_SCAN ?? '').toLowerCase();
 const enableReactScan = reactScanToggle === '1' || reactScanToggle === 'true' || reactScanToggle === 'on' || reactScanToggle === 'yes';
+const apiPort = process.env.MAGE_HMR_API_PORT || process.env.MAGE_PORT || 3001;
 
 export default defineConfig({
   root: path.resolve(__dirname, '.'),
@@ -87,15 +88,15 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/auth': {
-        target: `http://127.0.0.1:${process.env.MAGE_PORT || 3001}`,
+        target: `http://127.0.0.1:${apiPort}`,
         changeOrigin: true,
       },
       '/health': {
-        target: `http://127.0.0.1:${process.env.MAGE_PORT || 3001}`,
+        target: `http://127.0.0.1:${apiPort}`,
         changeOrigin: true,
       },
       '/api': {
-        target: `http://127.0.0.1:${process.env.MAGE_PORT || 3001}`,
+        target: `http://127.0.0.1:${apiPort}`,
         changeOrigin: true,
         ws: true,
       },

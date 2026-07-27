@@ -9,10 +9,7 @@ import { Icon } from "@/components/icon/Icon";
 import { MageLogo } from '@/components/ui/MageLogo';
 import { useI18n } from '@/lib/i18n';
 import { runtimeFetch } from '@/lib/runtime-fetch';
-
-const GITHUB_URL = 'https://github.com/openchamber/openchamber';
-const DISCORD_URL = 'https://discord.gg/ZYRSdnwwKA';
-const X_URL = 'https://x.com/openchamber_dev';
+import { hasElectronCapability, isElectronShell } from '@/lib/desktop';
 
 const MIN_CHECKING_DURATION = 800; // ms
 
@@ -42,6 +39,7 @@ export const AboutSettings: React.FC<AboutSettingsProps> = ({ initialUpdateDialo
   const { isMobile } = useDeviceInfo();
 
   const currentVersion = mageAppVersion || updateStore.info?.currentVersion || 'unknown';
+  const updatesAvailable = !isElectronShell() || hasElectronCapability('updates');
 
   React.useEffect(() => {
     let cancelled = false;
@@ -132,7 +130,7 @@ export const AboutSettings: React.FC<AboutSettingsProps> = ({ initialUpdateDialo
           </div>
         </div>
 
-        <div className="flex justify-center">
+        {updatesAvailable && <div className="flex justify-center">
           {!updateStore.available && !updateStore.error && (
             <Button
               type="button"
@@ -159,53 +157,19 @@ export const AboutSettings: React.FC<AboutSettingsProps> = ({ initialUpdateDialo
               {t('settings.mage.about.actions.updateToVersion', { version: updateStore.info?.version || '' })}
             </Button>
           )}
-        </div>
+        </div>}
 
-        {updateStore.error && (
+        {updatesAvailable && updateStore.error && (
           <p className="rounded-xl border border-[var(--status-error-border)] bg-[var(--status-error-background)] px-3 py-2 typography-meta text-[var(--status-error)]">
             {updateStore.error}
           </p>
         )}
 
-        <div className="flex flex-col items-center gap-3 text-center">
-          <div className="flex items-center justify-center gap-5">
-            <a
-              href={GITHUB_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 typography-ui-label text-muted-foreground transition-colors hover:text-foreground"
-            >
-              <Icon name="github-fill" className="size-5" />
-              <span>GitHub</span>
-            </a>
-
-            <a
-              href={DISCORD_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 typography-ui-label text-muted-foreground transition-colors hover:text-foreground"
-            >
-              <Icon name="discord-fill" className="size-5" />
-              <span>Discord</span>
-            </a>
-          </div>
-
-          <a
-            href={X_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 typography-ui-label text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <Icon name="twitter-xfill" className="size-5" />
-            <span>@openchamber_dev</span>
-          </a>
-        </div>
-
         <p className="text-center typography-ui text-muted-foreground/60">
           {t('aboutDialog.footerNote')}
         </p>
 
-        <UpdateDialog
+        {updatesAvailable && <UpdateDialog
           open={updateDialogOpen}
           onOpenChange={setUpdateDialogOpen}
           info={updateStore.info}
@@ -216,7 +180,7 @@ export const AboutSettings: React.FC<AboutSettingsProps> = ({ initialUpdateDialo
           onDownload={updateStore.downloadUpdate}
           onRestart={updateStore.restartToUpdate}
           runtimeType={updateStore.runtimeType}
-        />
+        />}
       </div>
     );
   }
@@ -241,7 +205,7 @@ export const AboutSettings: React.FC<AboutSettingsProps> = ({ initialUpdateDialo
             <span className="typography-meta text-muted-foreground font-mono">{mageCliVersion || t('settings.mage.about.state.unknown')}</span>
           </div>
           
-          <div className="flex items-center gap-3">
+          {updatesAvailable && <div className="flex items-center gap-3">
             {updateStore.checking && (
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Icon name="loader" className="h-4 w-4 animate-spin" />
@@ -270,39 +234,18 @@ export const AboutSettings: React.FC<AboutSettingsProps> = ({ initialUpdateDialo
             >
               {t('settings.mage.about.actions.checkForUpdates')}
             </Button>
-          </div>
+          </div>}
         </div>
         
-        {updateStore.error && (
+        {updatesAvailable && updateStore.error && (
           <div className="px-3 py-2 border-b border-[var(--surface-subtle)]">
             <p className="typography-meta text-[var(--status-error)]">{updateStore.error}</p>
           </div>
         )}
 
-        <div className="flex items-center gap-4 px-4 py-4">
-          <a
-            href={GITHUB_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground typography-meta transition-colors"
-          >
-            <Icon name="github-fill" className="h-4 w-4" />
-            <span>GitHub</span>
-          </a>
-
-            <a
-              href={X_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground typography-meta transition-colors"
-          >
-            <Icon name="twitter-xfill" className="h-4 w-4" />
-              <span>@openchamber_dev</span>
-            </a>
-        </div>
       </div>
 
-      <UpdateDialog
+      {updatesAvailable && <UpdateDialog
         open={updateDialogOpen}
         onOpenChange={setUpdateDialogOpen}
         info={updateStore.info}
@@ -313,7 +256,7 @@ export const AboutSettings: React.FC<AboutSettingsProps> = ({ initialUpdateDialo
         onDownload={updateStore.downloadUpdate}
         onRestart={updateStore.restartToUpdate}
         runtimeType={updateStore.runtimeType}
-      />
+      />}
     </div>
   );
 };

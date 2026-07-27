@@ -149,10 +149,10 @@ export const AboutDialog: React.FC<AboutDialogProps> = ({
             <h2 className="text-lg font-semibold">Mage</h2>
             <div className="space-y-0.5 typography-meta text-muted-foreground">
               {displayVersion && (
-                <p>{t('aboutDialog.mageVersionLabel', { version: displayVersion })}</p>
+                <p>{t('aboutDialog.mageAppVersionLabel', { version: displayVersion })}</p>
               )}
               {mageVersion && (
-                <p>{t('aboutDialog.mageVersionLabel', { version: mageVersion })}</p>
+                <p>{t('aboutDialog.mageCliVersionLabel', { version: mageVersion })}</p>
               )}
             </div>
           </div>

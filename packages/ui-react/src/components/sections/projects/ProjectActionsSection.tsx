@@ -24,7 +24,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { toast } from '@/components/ui';
 import { Icon } from "@/components/icon/Icon";
 import { useDesktopSshStore } from '@/stores/useDesktopSshStore';
-import { isDesktopShell } from '@/lib/desktop';
+import { hasElectronCapability, isDesktopShell } from '@/lib/desktop';
 import {
   getProjectActionsState,
   saveProjectActionsState,
@@ -68,7 +68,7 @@ interface ProjectActionsSectionProps {
 
 export const ProjectActionsSection: React.FC<ProjectActionsSectionProps> = ({ projectRef }) => {
   const { t } = useI18n();
-  const isDesktopShellApp = React.useMemo(() => isDesktopShell(), []);
+  const isDesktopShellApp = React.useMemo(() => isDesktopShell() && hasElectronCapability('remote-hosts'), []);
   const desktopSshInstances = useDesktopSshStore((state) => state.instances);
   const loadDesktopSsh = useDesktopSshStore((state) => state.load);
 

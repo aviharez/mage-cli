@@ -7,7 +7,7 @@ import { useThemeSystem } from '@/contexts/useThemeSystem';
 import { useAssistantStatus } from '@/hooks/useAssistantStatus';
 import { createWorktreeSession } from '@/lib/worktreeSessionCreator';
 import { useConfigStore } from '@/stores/useConfigStore';
-import { canUseElectronDesktopIPC, invokeDesktop, isVSCodeRuntime } from '@/lib/desktop';
+import { canUseElectronDesktopIPC, hasElectronCapability, invokeDesktop, isVSCodeRuntime } from '@/lib/desktop';
 import { showMageStatus } from '@/lib/mageStatus';
 import { eventMatchesShortcut, getEffectiveShortcutCombo, normalizeCombo } from '@/lib/shortcuts';
 import { readEmbeddedThemeSearchParams } from '@/contexts/theme-embedded-bootstrap';
@@ -153,7 +153,7 @@ export const useKeyboardShortcuts = () => {
         return;
       }
 
-      if (canUseElectronDesktopIPC() && eventMatchesShortcut(e, combo('new_mini_chat'))) {
+      if (canUseElectronDesktopIPC() && hasElectronCapability('mini-chat') && eventMatchesShortcut(e, combo('new_mini_chat'))) {
         e.preventDefault();
         void invokeDesktop('desktop_open_draft_mini_chat_window', {
           directory: currentDirectory || activeProject?.path || '',

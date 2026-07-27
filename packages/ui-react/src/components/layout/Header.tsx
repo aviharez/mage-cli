@@ -67,7 +67,7 @@ import { forceKillTerminal } from '@/lib/terminalApi';
 import { useTerminalStore } from '@/stores/useTerminalStore';
 import { ProjectActionsButton } from '@/components/layout/ProjectActionsButton';
 import { SessionSwitcherDropdown } from '@/components/session/SessionSwitcherDropdown';
-import { canUseElectronDesktopIPC, invokeDesktop, isDesktopLocalOriginActive, isDesktopShell, isVSCodeRuntime, startDesktopWindowDrag, type UpdateInfo } from '@/lib/desktop';
+import { canUseElectronDesktopIPC, hasElectronCapability, invokeDesktop, isDesktopLocalOriginActive, isDesktopShell, isVSCodeRuntime, startDesktopWindowDrag, type UpdateInfo } from '@/lib/desktop';
 import { desktopHostsGet, getDesktopHostApiUrl, locationMatchesHost, redactSensitiveUrl } from '@/lib/desktopHosts';
 import { Icon } from "@/components/icon/Icon";
 import { useI18n } from '@/lib/i18n';
@@ -426,12 +426,14 @@ const DesktopServicesMenu = React.memo(function DesktopServicesMenu({
                 </div>
               </div>
             ) : null}
-            <DesktopHostSwitcherDialog
-              embedded
-              open={isDesktopServicesOpen && desktopServicesTab === 'instance'}
-              onOpenChange={() => {}}
-              onHostSwitched={() => setIsDesktopServicesOpen(false)}
-            />
+            {hasElectronCapability('remote-hosts') ? (
+              <DesktopHostSwitcherDialog
+                embedded
+                open={isDesktopServicesOpen && desktopServicesTab === 'instance'}
+                onOpenChange={() => {}}
+                onHostSwitched={() => setIsDesktopServicesOpen(false)}
+              />
+            ) : null}
           </div>
         ) : null}
 
@@ -1419,6 +1421,7 @@ export const Header: React.FC<HeaderProps> = ({
   }, [blurActiveElement, isMobile, isSessionSwitcherOpen, setSessionSwitcherOpen, toggleSidebar]);
 
   const handleOpenDraftMiniChat = React.useCallback(() => {
+    if (!hasElectronCapability('mini-chat')) return;
     void invokeDesktop('desktop_open_draft_mini_chat_window', {
       directory: normalize(openDirectory || activeProject?.path || ''),
       projectId: activeProject?.id ?? null,
@@ -1430,6 +1433,7 @@ export const Header: React.FC<HeaderProps> = ({
   }, [activeProject?.id, activeProject?.path, openDirectory]);
 
   const handleOpenCurrentMiniChat = React.useCallback(() => {
+    if (!hasElectronCapability('mini-chat')) return;
     if (isNewSessionDraftOpen) {
       handleOpenDraftMiniChat();
       return;
@@ -2117,7 +2121,7 @@ export const Header: React.FC<HeaderProps> = ({
     </>
   );
 
-  const showMiniChatHeaderAction = hasElectronDesktopIPC && (isNewSessionDraftOpen || Boolean(currentSessionId));
+  const showMiniChatHeaderAction = hasElectronDesktopIPC && hasElectronCapability('mini-chat') && (isNewSessionDraftOpen || Boolean(currentSessionId));
 
   const renderDesktop = () => (
     <div

@@ -213,8 +213,19 @@ type DesktopBridgeGlobal = {
   ) => Promise<() => void>;
 };
 
+export type MageDesktopCapability =
+  | 'window'
+  | 'files'
+  | 'notifications'
+  | 'browser-capture'
+  | 'open-in-app'
+  | 'launch-at-login'
+  | 'vibrancy'
+  | 'deep-links';
+
 type ElectronRuntimeGlobal = {
   runtime?: string;
+  capabilities?: readonly string[];
   macVibrancy?: boolean;
   macVibrancySupported?: boolean;
 };
@@ -230,6 +241,11 @@ const getDesktopBridge = (): DesktopBridgeGlobal | null => {
 };
 
 export const isElectronShell = (): boolean => getElectronRuntime()?.runtime === 'electron';
+
+export const hasElectronCapability = (capability: MageDesktopCapability | string): boolean => {
+  const runtime = getElectronRuntime();
+  return isElectronShell() && Array.isArray(runtime?.capabilities) && runtime.capabilities.includes(capability);
+};
 
 export const hasDesktopInvoke = (): boolean => {
   return typeof getDesktopBridge()?.invoke === 'function';
@@ -294,7 +310,7 @@ export const setDesktopLaunchAtLogin = async (enabled: boolean): Promise<LaunchA
 };
 
 export const getDesktopMinimizeToTray = async (): Promise<MinimizeToTrayStatus | null> => {
-  if (!canUseElectronDesktopIPC() || !isDesktopLocalOriginActive()) {
+  if (!hasElectronCapability('tray') || !canUseElectronDesktopIPC() || !isDesktopLocalOriginActive()) {
     return null;
   }
 
@@ -311,7 +327,7 @@ export const getDesktopMinimizeToTray = async (): Promise<MinimizeToTrayStatus |
 };
 
 export const setDesktopMinimizeToTray = async (enabled: boolean): Promise<MinimizeToTrayStatus | null> => {
-  if (!canUseElectronDesktopIPC() || !isDesktopLocalOriginActive()) {
+  if (!hasElectronCapability('tray') || !canUseElectronDesktopIPC() || !isDesktopLocalOriginActive()) {
     return null;
   }
 
@@ -328,7 +344,7 @@ export const setDesktopMinimizeToTray = async (enabled: boolean): Promise<Minimi
 };
 
 export const getDesktopKeepAwake = async (): Promise<KeepAwakeStatus | null> => {
-  if (!canUseElectronDesktopIPC() || !isDesktopLocalOriginActive()) {
+  if (!hasElectronCapability('keep-awake') || !canUseElectronDesktopIPC() || !isDesktopLocalOriginActive()) {
     return null;
   }
 
@@ -345,7 +361,7 @@ export const getDesktopKeepAwake = async (): Promise<KeepAwakeStatus | null> => 
 };
 
 export const setDesktopKeepAwake = async (enabled: boolean): Promise<KeepAwakeStatus | null> => {
-  if (!canUseElectronDesktopIPC() || !isDesktopLocalOriginActive()) {
+  if (!hasElectronCapability('keep-awake') || !canUseElectronDesktopIPC() || !isDesktopLocalOriginActive()) {
     return null;
   }
 
@@ -615,7 +631,7 @@ export const stopAccessingDirectory = async (
 };
 
 export const checkForDesktopUpdates = async (): Promise<UpdateInfo | null> => {
-  if (!hasDesktopInvoke()) {
+  if (!hasElectronCapability('updates') || !hasDesktopInvoke()) {
     return null;
   }
 
@@ -631,7 +647,7 @@ export const checkForDesktopUpdates = async (): Promise<UpdateInfo | null> => {
 export const downloadDesktopUpdate = async (
   onProgress?: (progress: UpdateProgress) => void
 ): Promise<boolean> => {
-  if (!hasDesktopInvoke()) {
+  if (!hasElectronCapability('updates') || !hasDesktopInvoke()) {
     return false;
   }
 
@@ -713,7 +729,7 @@ export const restartDesktopApp = async (): Promise<boolean> => {
 };
 
 export const getDesktopLanAddress = async (): Promise<string | null> => {
-  if (!hasDesktopInvoke() || !isDesktopLocalOriginActive()) {
+  if (!hasElectronCapability('remote-hosts') || !hasDesktopInvoke() || !isDesktopLocalOriginActive()) {
     return null;
   }
 

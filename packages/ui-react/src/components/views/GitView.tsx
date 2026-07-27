@@ -1477,7 +1477,8 @@ export const GitView: React.FC<GitViewProps> = ({ isActive }) => {
     if (localBranches.includes('main')) return 'main';
     if (localBranches.includes('master')) return 'master';
     if (localBranches.includes('develop')) return 'develop';
-    return 'main';
+    if (localBranches.includes('dev')) return 'dev';
+    return '';
   }, [effectiveRemotes, localBranches, rootBranchHint, worktreeMetadata?.createdFromBranch]);
 
   const updateTargetBranch = React.useMemo(() => {

@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+
+# Electron build output
+dist/
+dist-bundle/
+
+# Generated packaging resources
+resources/web-dist/
+resources/mage-cli/*
+!resources/mage-cli/.gitkeep
+.cache/
+
+# OS-specific
+.DS_Store

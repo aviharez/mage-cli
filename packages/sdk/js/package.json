@@ -12,11 +12,31 @@
     ".": "./src/index.ts",
     "./client": "./src/client.ts",
     "./server": "./src/server.ts",
-    "./v2": "./src/v2/index.ts",
-    "./v2/client": "./src/v2/client.ts",
-    "./v2/gen/client": "./src/v2/gen/client/index.ts",
-    "./v2/server": "./src/v2/server.ts",
-    "./v2/types": "./src/v2/gen/types.gen.ts"
+    "./v2": {
+      "browser": "./src/v2/index.ts",
+      "node": "./dist/v2/index.js",
+      "default": "./src/v2/index.ts"
+    },
+    "./v2/client": {
+      "browser": "./src/v2/client.ts",
+      "node": "./dist/v2/client.js",
+      "default": "./src/v2/client.ts"
+    },
+    "./v2/gen/client": {
+      "browser": "./src/v2/gen/client/index.ts",
+      "node": "./dist/v2/gen/client/index.js",
+      "default": "./src/v2/gen/client/index.ts"
+    },
+    "./v2/server": {
+      "browser": "./src/v2/server.ts",
+      "node": "./dist/v2/server.js",
+      "default": "./src/v2/server.ts"
+    },
+    "./v2/types": {
+      "browser": "./src/v2/gen/types.gen.ts",
+      "node": "./dist/v2/gen/types.gen.d.ts",
+      "default": "./src/v2/gen/types.gen.ts"
+    }
   },
   "files": [
     "dist"

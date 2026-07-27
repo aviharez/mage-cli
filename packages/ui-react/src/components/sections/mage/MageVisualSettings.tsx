@@ -20,7 +20,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Icon } from "@/components/icon/Icon";
-import { invokeDesktop, isDesktopShell, isVSCodeRuntime, isWebRuntime } from '@/lib/desktop';
+import { hasElectronCapability, invokeDesktop, isDesktopShell, isVSCodeRuntime, isWebRuntime } from '@/lib/desktop';
 import { useDeviceInfo } from '@/lib/device';
 import { usePwaDetection } from '@/hooks/usePwaDetection';
 import { updateDesktopSettings } from '@/lib/persistence';
@@ -356,7 +356,7 @@ export const MageVisualSettings: React.FC<MageVisualSettingsProps> = ({ visibleS
     // macOS-desktop-only vibrancy toggle. Changing it needs a full relaunch
     // (vibrancy is a window-creation option), so we persist + restart on save.
     const macVibrancySupported = React.useMemo(
-        () => isDesktopShell() && typeof window !== 'undefined' && window.__MAGE_ELECTRON__?.macVibrancySupported === true,
+        () => hasElectronCapability('vibrancy') && isDesktopShell() && typeof window !== 'undefined' && window.__MAGE_ELECTRON__?.macVibrancySupported === true,
         [],
     );
     const macVibrancyEnabled = typeof window !== 'undefined' && window.__MAGE_ELECTRON__?.macVibrancy === true;
@@ -367,7 +367,7 @@ export const MageVisualSettings: React.FC<MageVisualSettingsProps> = ({ visibleS
     // The tray sync (mac-only) pumps the count to the main process, so the
     // toggle is offered only where it actually has an effect. No relaunch needed.
     const dockBadgeSupported = React.useMemo(
-        () => isDesktopShell() && typeof window !== 'undefined'
+        () => hasElectronCapability('tray') && isDesktopShell() && typeof window !== 'undefined'
             && (window as unknown as { __MAGE_PLATFORM__?: string }).__MAGE_PLATFORM__ === 'darwin',
         [],
     );

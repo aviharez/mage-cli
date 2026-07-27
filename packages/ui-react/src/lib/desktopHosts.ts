@@ -1,4 +1,4 @@
-import { hasDesktopInvoke, invokeDesktop } from '@/lib/desktop';
+import { hasDesktopInvoke, hasElectronCapability, invokeDesktop, isElectronShell } from '@/lib/desktop';
 import { createRelayTunnelClient } from '@/lib/relay/tunnel-client';
 
 type DesktopInvoke = (cmd: string, args?: Record<string, unknown>) => Promise<unknown>;
@@ -222,7 +222,7 @@ export const getDesktopHostApiUrl = (host: DesktopHost): string => {
 };
 
 const getInvoke = (): DesktopInvoke | null => {
-  if (!hasDesktopInvoke()) return null;
+  if (!hasDesktopInvoke() || (isElectronShell() && !hasElectronCapability('remote-hosts'))) return null;
   return (command, args) => invokeDesktop(command, args) as Promise<unknown>;
 };
 

@@ -12,7 +12,7 @@ import { Icon } from "@/components/icon/Icon";
 import { cn } from '@/lib/utils';
 import { useRuntimeAPIs } from '@/hooks/useRuntimeAPIs';
 import { useDeviceInfo } from '@/lib/device';
-import { isDesktopShell } from '@/lib/desktop';
+import { hasElectronCapability, isDesktopShell } from '@/lib/desktop';
 import { useUIStore } from '@/stores/useUIStore';
 import { useTerminalStore } from '@/stores/useTerminalStore';
 import { useDesktopSshStore } from '@/stores/useDesktopSshStore';
@@ -156,7 +156,7 @@ export const ProjectActionsButton = ({
   const { t } = useI18n();
   const { terminal, runtime } = useRuntimeAPIs();
   const { isMobile } = useDeviceInfo();
-  const isDesktopShellApp = React.useMemo(() => isDesktopShell(), []);
+  const isDesktopShellApp = React.useMemo(() => isDesktopShell() && hasElectronCapability('remote-hosts'), []);
   const desktopSshInstances = useDesktopSshStore((state) => state.instances);
   const loadDesktopSsh = useDesktopSshStore((state) => state.load);
 

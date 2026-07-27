@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui';
-import { invokeDesktop, isDesktopShell, isVSCodeRuntime } from '@/lib/desktop';
+import { hasElectronCapability, invokeDesktop, isDesktopShell, isVSCodeRuntime } from '@/lib/desktop';
 import { syncDesktopSettings, initializeAppearancePreferences } from '@/lib/persistence';
 import { applyPersistedDirectoryPreferences } from '@/lib/directoryPersistence';
 import { DesktopHostSwitcherInline } from '@/components/desktop/DesktopHostSwitcher';
@@ -147,7 +147,7 @@ const issueDesktopClientToken = async (): Promise<string> => {
 };
 
 const shouldUseDesktopShellPasswordLogin = (): boolean => {
-  return isDesktopShell() && !isLocalDesktopRuntime();
+  return isDesktopShell() && hasElectronCapability('remote-hosts') && !isLocalDesktopRuntime();
 };
 
 type DesktopPasswordLoginResult = {
@@ -306,7 +306,7 @@ export const SessionAuthGate: React.FC<SessionAuthGateProps> = ({
   const { t } = useI18n();
   const vscodeRuntime = React.useMemo(() => isVSCodeRuntime(), []);
   const skipAuth = vscodeRuntime;
-  const showHostSwitcher = React.useMemo(() => isDesktopShell() && !vscodeRuntime, [vscodeRuntime]);
+  const showHostSwitcher = React.useMemo(() => isDesktopShell() && hasElectronCapability('remote-hosts') && !vscodeRuntime, [vscodeRuntime]);
   const [state, setState] = React.useState<GateState>(() => (skipAuth ? 'authenticated' : 'pending'));
   const [password, setPassword] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);

@@ -40,6 +40,6 @@ await createClient({
 
 await $`bun prettier --write src/gen`
 await $`bun prettier --write src/v2`
-await $`rm -rf dist`
-await $`bun tsc`
+await $`rm -rf dist tsconfig.tsbuildinfo`
+await $`${path.join(dir, "node_modules", ".bin", process.platform === "win32" ? "tsc.cmd" : "tsc")} --project ${path.join(dir, "tsconfig.json")}`
 await $`rm openapi.json`

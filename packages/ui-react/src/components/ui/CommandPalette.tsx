@@ -31,7 +31,7 @@ import { FileTypeIcon } from '@/components/icons/FileTypeIcon';
 import type { Session } from '@mybcabisnis/mage-sdk/v2';
 import { createWorktreeSession } from '@/lib/worktreeSessionCreator';
 import { formatShortcutForDisplay, getEffectiveShortcutCombo } from '@/lib/shortcuts';
-import { canUseElectronDesktopIPC, invokeDesktop, isDesktopShell, isVSCodeRuntime, isWebRuntime } from '@/lib/desktop';
+import { canUseElectronDesktopIPC, hasElectronCapability, invokeDesktop, isDesktopShell, isVSCodeRuntime, isWebRuntime } from '@/lib/desktop';
 import { SETTINGS_PAGE_METADATA, type SettingsRuntimeContext } from '@/lib/settings/metadata';
 import { getSettingsNavIcon } from '@/components/views/SettingsView';
 import { Icon } from "@/components/icon/Icon";
@@ -227,7 +227,7 @@ export const CommandPalette: React.FC = () => {
         onSelect: run(() => setSettingsDialogOpen(true)),
       },
     ];
-    if (canUseElectronDesktopIPC()) {
+    if (canUseElectronDesktopIPC() && hasElectronCapability('mini-chat')) {
       list.splice(1, 0, {
         id: 'new-mini-chat',
         title: t('commandPalette.item.newMiniChat'),
