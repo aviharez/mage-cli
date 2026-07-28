@@ -3,7 +3,7 @@ import { describe, expect, test } from 'bun:test';
 import { parseGeneratedJsonResult } from './generatedJsonResult';
 
 describe('parseGeneratedJsonResult', () => {
-  test('parses a full pull request JSON result', () => {
+  test('parses a full merge request JSON result', () => {
     expect(parseGeneratedJsonResult('{"title":"Side task","body":"Details"}')).toEqual({
       kind: 'pr',
       title: 'Side task',

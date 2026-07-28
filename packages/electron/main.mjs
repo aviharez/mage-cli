@@ -9,6 +9,7 @@ import {
   Notification,
   powerMonitor,
   protocol,
+  safeStorage,
   screen,
   session,
   shell,
@@ -22,6 +23,15 @@ import path from 'node:path';
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { sanitizeRuntimeRequestHeaders } from './runtime-request-headers.mjs';
+import {
+  LOOPBACK_BYPASS,
+  buildElectronProxyConfig,
+  buildProxyEnvironment,
+  formatProxySettings,
+  matchesProxyChallenge,
+  normalizeProxyDraft,
+} from './desktop-proxy.mjs';
+import { checkForUpdate } from './desktop-update.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isDev = process.env.MAGE_ELECTRON_DEV === '1' || !app.isPackaged;
@@ -42,12 +52,14 @@ const CAPABILITIES = Object.freeze([
   'launch-at-login',
   'vibrancy',
   'deep-links',
+  'proxy',
+  'updates',
 ]);
 
 app.setName('Mage');
 if (isDev) app.setPath('userData', path.join(app.getPath('appData'), 'Mage Dev'));
 app.setAppUserModelId(APP_USER_MODEL_ID);
-app.commandLine.appendSwitch('proxy-bypass-list', '<-loopback>');
+app.commandLine.appendSwitch('proxy-bypass-list', LOOPBACK_BYPASS);
 protocol.registerSchemesAsPrivileged([{
   scheme: UI_PROTOCOL,
   privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true },
@@ -94,6 +106,33 @@ const writeSettings = async (patch) => {
   const next = { ...readSettings(), ...patch };
   await fsp.mkdir(path.dirname(settingsPath), { recursive: true });
   await fsp.writeFile(settingsPath, JSON.stringify(next, null, 2));
+};
+
+const readDesktopProxy = () => {
+  const proxy = readSettings().desktopProxy;
+  return proxy && typeof proxy === 'object' ? proxy : {};
+};
+
+const decryptProxyPassword = (proxy = readDesktopProxy()) => {
+  if (typeof proxy.encryptedPassword !== 'string' || !proxy.encryptedPassword) return '';
+  if (!safeStorage.isEncryptionAvailable()) throw new Error('Secure proxy password storage is unavailable');
+  try {
+    return safeStorage.decryptString(Buffer.from(proxy.encryptedPassword, 'base64'));
+  } catch {
+    throw new Error('Stored proxy password could not be decrypted');
+  }
+};
+
+const applyDesktopProxy = async () => {
+  const proxy = readDesktopProxy();
+  await session.defaultSession.setProxy(buildElectronProxyConfig(proxy));
+  await session.defaultSession.closeAllConnections();
+};
+
+const applyProxyEnvironment = (proxy = readDesktopProxy()) => {
+  const managed = ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy'];
+  managed.forEach((key) => delete process.env[key]);
+  Object.assign(process.env, buildProxyEnvironment(process.env, proxy, proxy.enabled ? decryptProxyPassword(proxy) : ''));
 };
 
 const readShellEnvironment = () => {
@@ -202,6 +241,7 @@ const servePackagedUi = () => {
 const startLocalServer = async () => {
   const env = readShellEnvironment();
   Object.assign(process.env, env);
+  applyProxyEnvironment();
   const binary = resolveMageBinary();
   if (!binary) throw new Error('Mage CLI not found. Run packages/electron prepare:mage-cli or set MAGE_BINARY in development.');
   const settings = readSettings();
@@ -214,8 +254,6 @@ const startLocalServer = async () => {
   process.env.MAGE_BINARY = binary;
   process.env.MAGE_DESKTOP_NOTIFY = 'true';
   process.env.MAGE_SKIP_API_COMPRESSION = 'true';
-  process.env.NO_PROXY = 'localhost,127.0.0.1';
-  process.env.no_proxy = 'localhost,127.0.0.1';
   process.env.MAGE_MAGE_CWD = os.homedir();
   const { startWebUiServer } = await import('@mybcabisnis/mage-web-react/server/index.js');
   state.server = await startWebUiServer({
@@ -278,6 +316,7 @@ const createWindow = () => {
       additionalArguments: [
         `--mage-local-origin=${state.localOrigin}`,
         `--mage-api-base-url=${state.localOrigin}`,
+        ...(isDev ? ['--mage-desktop-boot-outcome=local-ok'] : []),
         `--mage-home=${os.homedir()}`,
         `--mage-macos-major=${macosMajor()}`,
         `--mage-mac-vibrancy=${vibrancy ? '1' : '0'}`,
@@ -431,6 +470,27 @@ const handleInvoke = async (browserWindow, command, args = {}) => {
       app.exit(0);
       return { enabled: args.enabled === true, requiresRestart: true };
     case 'desktop_get_app_version': return app.getVersion();
+    case 'desktop_get_proxy_settings': return formatProxySettings(readDesktopProxy());
+    case 'desktop_set_proxy_settings': {
+      const existing = readDesktopProxy();
+      const draft = normalizeProxyDraft(args, existing);
+      let encryptedPassword = existing.encryptedPassword;
+      if (draft.clearPassword) {
+        encryptedPassword = undefined;
+      } else if (draft.hasNewPassword) {
+        if (!safeStorage.isEncryptionAvailable()) throw new Error('Secure proxy password storage is unavailable');
+        encryptedPassword = safeStorage.encryptString(String(args.password)).toString('base64');
+      }
+      await writeSettings({ desktopProxy: {
+        enabled: draft.enabled,
+        url: draft.url,
+        username: draft.username,
+        ...(encryptedPassword ? { encryptedPassword } : {}),
+      } });
+      return { saved: true, requiresRestart: true };
+    }
+    case 'desktop_check_for_updates':
+      return checkForUpdate({ currentVersion: app.getVersion(), fetch: net.fetch });
     case 'desktop_new_window': await createAndLoadWindow(); return null;
     case 'desktop_focus_main_window': await openMainWindow(); return { focused: true };
     case 'desktop_close_current_window': browserWindow?.close(); return null;
@@ -537,7 +597,7 @@ const buildMenu = () => {
     { label: 'Mage', submenu: [{ role: 'about', label: 'About Mage' }, action('settings'), action('clear-cache'), action('restart'), { type: 'separator' }, { role: 'quit', label: 'Quit' }] },
     { label: 'File', submenu: [action('new-window'), action('new-session'), action('new-worktree'), action('add-workspace')] },
     { label: 'View', submenu: [action('reload'), ...(isDev ? [{ role: 'toggleDevTools', label: 'Developer Tools' }] : []), action('toggle-sidebar'), action('toggle-terminal'), action('toggle-theme'), action('navigation-back'), action('navigation-forward')] },
-    { label: 'Help', submenu: [action('keyboard-shortcuts'), action('show-diagnostics'), action('clear-cache')] },
+    { label: 'Help', submenu: [action('keyboard-shortcuts'), action('show-diagnostics'), { label: 'Check for updates', click: () => emit('mage:check-for-updates') }, action('clear-cache')] },
   ]);
 };
 
@@ -596,6 +656,18 @@ app.on('open-url', (event, url) => {
   void openMainWindow();
 });
 app.on('activate', () => void openMainWindow());
+app.on('login', (event, _webContents, _request, authInfo, callback) => {
+  const proxy = readDesktopProxy();
+  if (!proxy.enabled || !matchesProxyChallenge(authInfo, proxy.url)) return;
+  try {
+    const password = decryptProxyPassword(proxy);
+    if (!password) return;
+    event.preventDefault();
+    callback(proxy.username, password);
+  } catch (error) {
+    log.warn('[electron] proxy authentication unavailable', error instanceof Error ? error.message : 'unknown error');
+  }
+});
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') void requestQuit();
 });
@@ -611,6 +683,7 @@ app.whenReady().then(async () => {
     nativeTheme.themeSource = readSettings().theme || 'system';
     servePackagedUi();
     Menu.setApplicationMenu(buildMenu());
+    await applyDesktopProxy();
     await startLocalServer();
     state.windowState = readSettings().desktopWindowState;
     await openMainWindow();

@@ -14,7 +14,7 @@ import { createWebPermissionsAPI } from './permissions';
 import { createWebNotificationsAPI } from './notifications';
 import { createWebToolsAPI } from './tools';
 import { createWebPushAPI } from './push';
-import { createWebGitHubAPI } from './github';
+import { createWebGitLabAPI } from './gitlab';
 import { createWebClientAuthAPI } from './clientAuth';
 
 export interface WebAPIsOptions {
@@ -44,7 +44,7 @@ export const createWebAPIs = (options: WebAPIsOptions = {}): RuntimeAPIs => {
   settings: createWebSettingsAPI(),
   permissions: createWebPermissionsAPI(),
   notifications: createWebNotificationsAPI(),
-  github: createWebGitHubAPI({ urls: activeUrls }),
+  gitlab: createWebGitLabAPI({ urls: activeUrls }),
   push: createWebPushAPI(),
   clientAuth: createWebClientAuthAPI(),
   tools: createWebToolsAPI(),

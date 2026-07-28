@@ -9,16 +9,16 @@ export type MagicPromptId =
   | 'git.conflict.resolve.instructions'
   | 'git.integrate.cherrypick.resolve.visible'
   | 'git.integrate.cherrypick.resolve.instructions'
-  | 'github.pr.review.visible'
-  | 'github.pr.review.instructions'
-  | 'github.issue.review.visible'
-  | 'github.issue.review.instructions'
-  | 'github.pr.checks.review.visible'
-  | 'github.pr.checks.review.instructions'
-  | 'github.pr.comments.review.visible'
-  | 'github.pr.comments.review.instructions'
-  | 'github.pr.comment.single.visible'
-  | 'github.pr.comment.single.instructions'
+  | 'gitlab.mr.review.visible'
+  | 'gitlab.mr.review.instructions'
+  | 'gitlab.issue.review.visible'
+  | 'gitlab.issue.review.instructions'
+  | 'gitlab.mr.checks.review.visible'
+  | 'gitlab.mr.checks.review.instructions'
+  | 'gitlab.mr.comments.review.visible'
+  | 'gitlab.mr.comments.review.instructions'
+  | 'gitlab.mr.comment.single.visible'
+  | 'gitlab.mr.comment.single.instructions'
   | 'plan.todo.visible'
   | 'plan.todo.instructions'
   | 'plan.improve.visible'
@@ -54,7 +54,7 @@ export interface MagicPromptDefinition {
   id: MagicPromptId;
   title: string;
   description: string;
-  group: 'Git' | 'GitHub' | 'Planning' | 'Session';
+  group: 'Git' | 'GitLab' | 'Planning' | 'Session';
   template: string;
   placeholders?: Array<{ key: string; description: string }>;
 }
@@ -101,16 +101,16 @@ Selected files:
   },
   {
     id: 'git.pr.generate.visible',
-    title: 'PR Generation Visible Prompt',
+    title: 'MR Generation Visible Prompt',
     group: 'Git',
-    description: 'Visible user message for PR title/body generation.',
-    template: 'You are drafting GitHub Pull Request title and body using session context, commit list, and changed files.',
+    description: 'Visible user message for MR title/body generation.',
+    template: 'You are drafting GitLab merge request title and body using session context, commit list, and changed files.',
   },
   {
     id: 'git.pr.generate.instructions',
-    title: 'PR Generation Instructions',
+    title: 'MR Generation Instructions',
     group: 'Git',
-    description: 'Hidden instructions for PR title/body generation.',
+    description: 'Hidden instructions for MR title/body generation.',
     placeholders: [
       { key: 'base_branch', description: 'Base branch name.' },
       { key: 'head_branch', description: 'Head branch name.' },
@@ -141,31 +141,31 @@ Files changed across these commits:
 {{changed_files}}{{additional_context_block}}`,
   },
   {
-    id: 'github.pr.review.visible',
-    title: 'PR Review Visible Prompt',
-    group: 'GitHub',
-    description: 'Visible user message when creating PR review requests from GitHub context.',
+    id: 'gitlab.mr.review.visible',
+    title: 'MR Review Visible Prompt',
+    group: 'GitLab',
+    description: 'Visible user message when creating MR review requests from GitLab context.',
     placeholders: [
-      { key: 'pr_number', description: 'Pull request number.' },
+      { key: 'mr_iid', description: 'merge request number.' },
     ],
-    template: 'Review this pull request #{{pr_number}} using the provided PR context',
+    template: 'Review this merge request #{{mr_iid}} using the provided MR context',
   },
   {
-    id: 'github.pr.review.instructions',
-    title: 'PR Review Instructions',
-    group: 'GitHub',
-    description: 'Hidden instructions attached when generating a PR review response.',
-    template: `You are drafting a pull request review comment that will be posted back to the PR author. You are not the implementer; do not propose to write code or run commands.
+    id: 'gitlab.mr.review.instructions',
+    title: 'MR Review Instructions',
+    group: 'GitLab',
+    description: 'Hidden instructions attached when generating a MR review response.',
+    template: `You are drafting a merge request review comment that will be posted back to the MR author. You are not the implementer; do not propose to write code or run commands.
 
 Before drafting:
-- Read the PR title and body first to anchor on the author's intent. Evaluate whether the implementation matches that intent — missing pieces, incorrect behavior vs intent, scope creep.
-- The PR diff is the source of truth for what changed; the repo on disk may not yet reflect those changes. Read the diff carefully. Use the repo only as ancillary context (imports, call sites, existing patterns, nearby code) when you need to verify a specific claim — not to discover the changes themselves.
+- Read the MR title and body first to anchor on the author's intent. Evaluate whether the implementation matches that intent — missing pieces, incorrect behavior vs intent, scope creep.
+- The MR diff is the source of truth for what changed; the repo on disk may not yet reflect those changes. Read the diff carefully. Use the repo only as ancillary context (imports, call sites, existing patterns, nearby code) when you need to verify a specific claim — not to discover the changes themselves.
 - No speculation: every reported issue must be grounded in the diff plus ancillary repo evidence you actually read. If a claim cannot be verified, drop it — do not hedge or guess.
-- Clarifying question: if the PR's intent itself is unreadable (title/body give no "why", diff is ambiguous on purpose), ask me one focused question about intent and stop. Do not open a discovery loop — this is a review, not a planning session.
+- Clarifying question: if the MR's intent itself is unreadable (title/body give no "why", diff is ambiguous on purpose), ask me one focused question about intent and stop. Do not open a discovery loop — this is a review, not a planning session.
 
 High-signal bar — only report issues that meet all of:
 - Objective and verifiable from the diff plus ancillary repo evidence.
-- Introduced by this PR (not pre-existing).
+- Introduced by this MR (not pre-existing).
 - Material: bugs that will cause incorrect runtime behavior, security/privacy risks, correctness edge cases, backwards-compat breakage, missing implementations across modules/targets, boundary violations, OR a clear CLAUDE.md / AGENTS.md violation where you can quote the exact rule.
 
 Do NOT report:
@@ -180,7 +180,7 @@ Do NOT report:
 Validation pass: before writing the final comment, re-check each candidate issue against the diff + ancillary repo evidence. Drop anything you are not certain about. False positives waste the author's time.
 
 Output rules:
-- Produce a single review comment addressed to the PR author, using the exact format below.
+- Produce a single review comment addressed to the MR author, using the exact format below.
 - No emojis. No code snippets. No fenced blocks. Short inline code identifiers are fine.
 - Reference evidence with file paths and line ranges (e.g., path/to/file.ts:120-138) derived from the diff. Use "approx" only as a last resort when the diff does not expose exact lines.
 - One bullet per unique issue; do not duplicate an issue across sections.
@@ -201,19 +201,19 @@ Nice-to-have:
 - None`,
   },
   {
-    id: 'github.issue.review.visible',
+    id: 'gitlab.issue.review.visible',
     title: 'Issue Review Visible Prompt',
-    group: 'GitHub',
-    description: 'Visible user message when creating issue review requests from GitHub context.',
+    group: 'GitLab',
+    description: 'Visible user message when creating issue review requests from GitLab context.',
     placeholders: [
       { key: 'issue_number', description: 'Issue number.' },
     ],
     template: 'Review this issue #{{issue_number}} using the provided issue context',
   },
   {
-    id: 'github.issue.review.instructions',
+    id: 'gitlab.issue.review.instructions',
     title: 'Issue Review Instructions',
-    group: 'GitHub',
+    group: 'GitLab',
     description: 'Hidden instructions attached when generating an issue review response.',
     template: `Review this issue using the provided issue context.
 
@@ -256,17 +256,17 @@ Question/Support:
 Do not implement changes until I confirm; end with: "Next actions: <1 sentence>".`,
   },
   {
-    id: 'github.pr.checks.review.visible',
-    title: 'PR Failed Checks Visible Prompt',
-    group: 'GitHub',
-    description: 'Visible user message for PR failed checks analysis.',
-    template: 'Review these PR failed checks and propose likely fixes. Do not implement until I confirm.',
+    id: 'gitlab.mr.checks.review.visible',
+    title: 'MR Failed Checks Visible Prompt',
+    group: 'GitLab',
+    description: 'Visible user message for MR failed checks analysis.',
+    template: 'Review these MR failed checks and propose likely fixes. Do not implement until I confirm.',
   },
   {
-    id: 'github.pr.checks.review.instructions',
-    title: 'PR Failed Checks Instructions',
-    group: 'GitHub',
-    description: 'Hidden instructions for PR failed checks analysis.',
+    id: 'gitlab.mr.checks.review.instructions',
+    title: 'MR Failed Checks Instructions',
+    group: 'GitLab',
+    description: 'Hidden instructions for MR failed checks analysis.',
     template: `Use the attached checks payload.
 - Summarize what is failing.
 - Prioritize check annotations/errors over generic status text.
@@ -275,17 +275,17 @@ Do not implement changes until I confirm; end with: "Next actions: <1 sentence>"
 - No speculation: ask for missing info if needed.`,
   },
   {
-    id: 'github.pr.comments.review.visible',
-    title: 'PR Comments Review Visible Prompt',
-    group: 'GitHub',
-    description: 'Visible user message for PR comments analysis.',
-    template: 'Review these PR comments and propose the required changes and next actions. Do not implement until I confirm.',
+    id: 'gitlab.mr.comments.review.visible',
+    title: 'MR Comments Review Visible Prompt',
+    group: 'GitLab',
+    description: 'Visible user message for MR comments analysis.',
+    template: 'Review these MR comments and propose the required changes and next actions. Do not implement until I confirm.',
   },
   {
-    id: 'github.pr.comments.review.instructions',
-    title: 'PR Comments Review Instructions',
-    group: 'GitHub',
-    description: 'Hidden instructions for PR comments analysis.',
+    id: 'gitlab.mr.comments.review.instructions',
+    title: 'MR Comments Review Instructions',
+    group: 'GitLab',
+    description: 'Hidden instructions for MR comments analysis.',
     template: `Use the attached comments payload.
 - Identify required vs optional changes.
 - Call out intent/implementation mismatch if present.
@@ -293,17 +293,17 @@ Do not implement changes until I confirm; end with: "Next actions: <1 sentence>"
 - Once intent is clear, propose a minimal plan and verification steps.`,
   },
   {
-    id: 'github.pr.comment.single.visible',
-    title: 'Single PR Comment Visible Prompt',
-    group: 'GitHub',
-    description: 'Visible user message for single PR comment analysis.',
-    template: 'Address this comment from PR and propose required changes. Do not implement until I confirm.',
+    id: 'gitlab.mr.comment.single.visible',
+    title: 'Single MR Comment Visible Prompt',
+    group: 'GitLab',
+    description: 'Visible user message for single MR comment analysis.',
+    template: 'Address this comment from MR and propose required changes. Do not implement until I confirm.',
   },
   {
-    id: 'github.pr.comment.single.instructions',
-    title: 'Single PR Comment Instructions',
-    group: 'GitHub',
-    description: 'Hidden instructions for single PR comment analysis.',
+    id: 'gitlab.mr.comment.single.instructions',
+    title: 'Single MR Comment Instructions',
+    group: 'GitLab',
+    description: 'Hidden instructions for single MR comment analysis.',
     template: `Use the attached single-comment payload.
 - Explain what the reviewer is asking for.
 - Identify exact code areas likely impacted.
@@ -801,7 +801,7 @@ Respond in the same language the user uses.`,
     id: 'session.catchup.instructions',
     title: 'Catch Up Instructions',
     group: 'Session',
-    description: 'Hidden instructions attached to the /catch-up command. Inspects git state and branches on it: in-progress diff, open PR review state, or recent commits.',
+    description: 'Hidden instructions attached to the /catch-up command. Inspects git state and branches on it: in-progress diff, open MR review state, or recent commits.',
     template: `The user is returning to this project after stepping away and wants to quickly get their bearings — a quick, easy-to-digest "here's where you are and where to pick up", not a status report. Investigate the actual repository state first, then orient them conversationally. Do not assume; check.
 
 Quietly inspect git state first, and do this work silently — the user wants the takeaway, not a play-by-play of the commands you ran. Look at: the current branch and whether it is the repo's default branch (main/master, or whatever this repo uses), uncommitted changes (status and diff), recent commits, and where the branch stands relative to its remote.
@@ -809,14 +809,14 @@ Quietly inspect git state first, and do this work silently — the user wants th
 Build context in LAYERS — they combine, they are not either/or. Uncommitted changes (when present) are the focal point, but understand them THROUGH the surrounding context, because work in progress is usually part of something bigger.
 
 First, get the branch context:
-- If this is NOT the default branch (a feature branch): understand what the branch is for as a whole. Read its recent commits and their diffs — not all of them, just enough, going back until the intent and how it is being implemented become clear. Also check whether the branch has its OWN open pull request, even when there are uncommitted changes — the PR explains what the current diff is in service of (continuing the feature, or addressing review feedback) and helps you judge whether the work looks finished or still mid-flight. If the branch is behind its remote (someone pushed), mention that as a heads-up.
+- If this is NOT the default branch (a feature branch): understand what the branch is for as a whole. Read its recent commits and their diffs — not all of them, just enough, going back until the intent and how it is being implemented become clear. Also check whether the branch has its OWN open merge request, even when there are uncommitted changes — the MR explains what the current diff is in service of (continuing the feature, or addressing review feedback) and helps you judge whether the work looks finished or still mid-flight. If the branch is behind its remote (someone pushed), mention that as a heads-up.
 - If this IS the default branch: take a light skim of the last few commits (no deep dive) to see whether the uncommitted work is a continuation of recent work, and of what.
 
 Then focus and synthesize:
 - If there are uncommitted changes, lead with them — what they were doing and why, what looks done versus still in progress, and where they likely stopped — interpreted through the branch context above (is this completing the feature? addressing review? a new direction?). Open with that, e.g. "Looks like you were in the middle of X…".
-- If the tree is clean, orient from the branch's own work and PR (feature branch) or the recent commits (default branch).
+- If the tree is clean, orient from the branch's own work and MR (feature branch) or the recent commits (default branch).
 
-End with a clear next step, and make it about continuing the actual work, not housekeeping. The fact that they ran this command means they stepped away — if the work were finished they would most likely have shipped it already, so assume there is more to do and point to the substantive next piece ("next you'd wire X into Y and handle Z"). Only suggest housekeeping — pushing, opening a PR, running checks — when there is genuinely nothing left to build, or when it is truly the most useful thing to do next.
+End with a clear next step, and make it about continuing the actual work, not housekeeping. The fact that they ran this command means they stepped away — if the work were finished they would most likely have shipped it already, so assume there is more to do and point to the substantive next piece ("next you'd wire X into Y and handle Z"). Only suggest housekeeping — pushing, opening a MR, running checks — when there is genuinely nothing left to build, or when it is truly the most useful thing to do next.
 
 Hard rules:
 - Only ever discuss the CURRENT branch and its own work. Never mention unrelated branches, other people's PRs, review requests assigned to the user, or PRs that belong to other branches — that is noise here.

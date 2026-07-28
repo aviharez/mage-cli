@@ -555,14 +555,14 @@ interface FilePart {
   source?: Record<string, unknown>;
 }
 
-const GITHUB_ISSUE_LINK_MIME = 'application/vnd.github.issue-link';
-const GITHUB_PR_LINK_MIME = 'application/vnd.github.pull-request-link';
+const GITLAB_ISSUE_LINK_MIME = 'application/vnd.gitlab.issue-link';
+const GITLAB_PR_LINK_MIME = 'application/vnd.gitlab.pull-request-link';
 
-const getGitHubLinkKind = (file: FilePart): 'issue' | 'pr' | null => {
-  if (file.mime === GITHUB_ISSUE_LINK_MIME) {
+const getGitLabLinkKind = (file: FilePart): 'issue' | 'pr' | null => {
+    if (file.mime === GITLAB_ISSUE_LINK_MIME) {
     return 'issue';
   }
-  if (file.mime === GITHUB_PR_LINK_MIME) {
+    if (file.mime === GITLAB_PR_LINK_MIME) {
     return 'pr';
   }
   return null;
@@ -590,8 +590,8 @@ export const MessageFilesDisplay = memo(({ files, onShowPopup, compact = false }
   };
 
   const resolveDisplayName = React.useCallback((file: FilePart): string => {
-    const isGitHubLink = getGitHubLinkKind(file) !== null;
-    if (isGitHubLink && typeof file.filename === 'string' && file.filename.trim().length > 0) {
+    const isGitLabLink = getGitLabLinkKind(file) !== null;
+    if (isGitLabLink && typeof file.filename === 'string' && file.filename.trim().length > 0) {
       return file.filename.trim();
     }
     return extractFilename(file.filename || file.url);
@@ -664,11 +664,11 @@ export const MessageFilesDisplay = memo(({ files, onShowPopup, compact = false }
               const fileName = resolveDisplayName(file);
               const ext = fileName.split('.').pop() || '';
               const sizeText = formatFileSize(file.size);
-              const githubLinkKind = getGitHubLinkKind(file);
+              const gitlabLinkKind = getGitLabLinkKind(file);
               return (
                 <Tooltip key={`file-${file.url || file.filename || index}`}>
                   <TooltipTrigger asChild>
-                    {githubLinkKind && file.url ? (
+                    {gitlabLinkKind && file.url ? (
                       <button
                         type="button"
                         onClick={() => {
@@ -676,10 +676,10 @@ export const MessageFilesDisplay = memo(({ files, onShowPopup, compact = false }
                         }}
                         className="inline-flex items-center bg-muted/30 border border-border/30 typography-meta gap-1 px-2 py-0.5 rounded-lg text-foreground hover:text-primary transition-colors"
                       >
-                        {githubLinkKind === 'pr' ? (
+                        {gitlabLinkKind === 'pr' ? (
                           <Icon name="git-pull-request" className="text-muted-foreground h-3.5 w-3.5" />
                         ) : (
-                          <Icon name="github" className="text-muted-foreground h-3.5 w-3.5" />
+                          <Icon name="git-branch" className="text-muted-foreground h-3.5 w-3.5" />
                         )}
                         <div className="overflow-hidden max-w-[220px]">
                           <span className="truncate block" title={fileName}>{fileName}</span>
@@ -763,7 +763,7 @@ export const MessageFilesDisplay = memo(({ files, onShowPopup, compact = false }
         const fileName = resolveDisplayName(file);
         const isImage = file.mime?.startsWith('image/');
         const sizeText = formatFileSize(file.size);
-        const githubLinkKind = getGitHubLinkKind(file);
+        const gitlabLinkKind = getGitLabLinkKind(file);
 
         if (isImage && file.url) {
           return (
@@ -786,7 +786,7 @@ export const MessageFilesDisplay = memo(({ files, onShowPopup, compact = false }
           );
         }
 
-        if (githubLinkKind && file.url) {
+        if (gitlabLinkKind && file.url) {
           return (
             <Tooltip key={file.url || `${fileName}-${index}`}>
               <TooltipTrigger asChild>
@@ -801,10 +801,10 @@ export const MessageFilesDisplay = memo(({ files, onShowPopup, compact = false }
                   )}
                 >
                   <div className="flex-shrink-0">
-                    {githubLinkKind === 'pr' ? (
+                    {gitlabLinkKind === 'pr' ? (
                       <Icon name="git-pull-request" className={cn("text-muted-foreground", compact ? "h-3.5 w-3.5" : "h-4 w-4")} />
                     ) : (
-                      <Icon name="github" className={cn("text-muted-foreground", compact ? "h-3.5 w-3.5" : "h-4 w-4")} />
+                      <Icon name="git-branch" className={cn("text-muted-foreground", compact ? "h-3.5 w-3.5" : "h-4 w-4")} />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">

@@ -14,7 +14,7 @@ const SHARE_OPINION_MARKDOWN = `**Help shape what Mage becomes next!**
 
 Hey 👋,
 
-Mage has grown mostly through word of mouth, GitHub issues, Discord feedback, and people telling me what is broken, confusing, or surprisingly useful.
+Mage has grown mostly through GitLab issues, Discord feedback, and people telling me what is broken, confusing, or surprisingly useful.
 
 I'm planning the next chapter now - mobile, better remote access, a tighter VS Code ↔ desktop/web/mobile flow, and more, but before building too much, I want to hear from the people actually using it.
 

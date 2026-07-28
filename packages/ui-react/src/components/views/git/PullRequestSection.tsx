@@ -32,20 +32,27 @@ import { formatDateTimeForPreference } from '@/lib/timeFormat';
 import { useSessionUIStore } from '@/sync/session-ui-store';
 import { useSelectionStore } from '@/sync/selection-store';
 import { useConfigStore } from '@/stores/useConfigStore';
-import { useGitHubAuthStore } from '@/stores/useGitHubAuthStore';
-import { getGitHubPrStatusKey, useGitHubPrStatusStore } from '@/stores/useGitHubPrStatusStore';
+import { useGitLabAuthStore } from '@/stores/useGitLabAuthStore';
+import { getGitLabMrStatusKey, useGitLabMrStatusStore } from '@/stores/useGitLabMrStatusStore';
 import type {
-  GitHubPullRequest,
-  GitHubCheckRun,
-  GitHubAPI,
-  GitHubPullRequestContextResult,
-  GitHubPullRequestStatus,
+  GitLabMergeRequest,
+  GitLabCheckRun,
+  GitLabAPI,
+  GitLabMergeRequestContextResult,
+  GitLabMergeRequestStatus,
   GitRemote,
 } from '@/lib/api/types';
 import { useI18n } from '@/lib/i18n';
 
 type MergeMethod = 'merge' | 'squash' | 'rebase';
-type DetectedUpstream = { owner: string; repo: string; url: string; defaultBranch?: string; defaultBranchSha?: string | null; remoteName?: string | null };
+type DetectedUpstream = {
+  projectId: number;
+  pathWithNamespace: string;
+  webUrl: string;
+  defaultBranch?: string;
+  defaultBranchSha?: string | null;
+  remoteName?: string | null;
+};
 
 const statusColor = (state: string | undefined | null): string => {
   switch (state) {
@@ -60,8 +67,8 @@ const statusColor = (state: string | undefined | null): string => {
   }
 };
 
-const getPrVisualState = (status: GitHubPullRequestStatus | null): 'draft' | 'open' | 'blocked' | 'merged' | 'closed' | null => {
-  const pr = status?.pr;
+const getPrVisualState = (status: GitLabMergeRequestStatus | null): 'draft' | 'open' | 'blocked' | 'merged' | 'closed' | null => {
+  const pr = status?.mr;
   if (!pr) {
     return null;
   }
@@ -250,7 +257,7 @@ const pullRequestDraftSnapshots = new Map<string, PullRequestDraftSnapshot>();
 
 const openExternal = openExternalUrl;
 
-function useDetectedUpstreamRepo(directory: string, github: GitHubAPI | undefined) {
+function useDetectedUpstreamRepo(directory: string, gitlab: GitLabAPI | undefined) {
   const [detectedUpstream, setDetectedUpstream] = React.useState<DetectedUpstream | null>(null);
   const [upstreamBranches, setUpstreamBranches] = React.useState<string[]>([]);
   const attemptedDirectoryRef = React.useRef<string | null>(null);
@@ -261,7 +268,7 @@ function useDetectedUpstreamRepo(directory: string, github: GitHubAPI | undefine
   }, [directory]);
 
   React.useEffect(() => {
-    if (!directory || !github?.repoUpstream || attemptedDirectoryRef.current === directory) {
+    if (!directory || !gitlab?.repoUpstream || attemptedDirectoryRef.current === directory) {
       return;
     }
     attemptedDirectoryRef.current = directory;
@@ -269,18 +276,18 @@ function useDetectedUpstreamRepo(directory: string, github: GitHubAPI | undefine
     let cancelled = false;
     void (async () => {
       try {
-        const result = await github.repoUpstream(directory);
+        const result = await gitlab.repoUpstream(directory);
         if (cancelled || !result?.isFork || !result.upstream) {
           return;
         }
 
         setDetectedUpstream(result.upstream);
-        if (!github.repoBranches) {
+        if (!gitlab.repoBranches) {
           return;
         }
 
         try {
-          const branches = await github.repoBranches(result.upstream.owner, result.upstream.repo);
+          const branches = await gitlab.repoBranches(result.upstream.projectId, result.upstream.pathWithNamespace);
           if (!cancelled) {
             setUpstreamBranches(branches);
           }
@@ -295,7 +302,7 @@ function useDetectedUpstreamRepo(directory: string, github: GitHubAPI | undefine
     return () => {
       cancelled = true;
     };
-  }, [directory, github]);
+  }, [directory, gitlab]);
 
   return { detectedUpstream, upstreamBranches };
 }
@@ -311,17 +318,17 @@ export const PullRequestSection: React.FC<{
 }> = ({ directory, branch, baseBranch, trackingBranch, remotes = [], remoteBranches = [], onGeneratedDescription }) => {
   const { t } = useI18n();
   const timeFormatPreference = useUIStore((state) => state.timeFormatPreference);
-  const { github } = useRuntimeAPIs();
-  const githubAuthStatus = useGitHubAuthStore((state) => state.status);
-  const githubAuthChecked = useGitHubAuthStore((state) => state.hasChecked);
+  const { gitlab } = useRuntimeAPIs();
+  const gitlabAuthStatus = useGitLabAuthStore((state) => state.status);
+  const gitlabAuthChecked = useGitLabAuthStore((state) => state.hasChecked);
   const setSettingsDialogOpen = useUIStore((state) => state.setSettingsDialogOpen);
   const setSettingsPage = useUIStore((state) => state.setSettingsPage);
   const setActiveMainTab = useUIStore((state) => state.setActiveMainTab);
   const currentSessionId = useSessionUIStore((state) => state.currentSessionId);
   const { isMobile, hasTouchInput } = useDeviceInfo();
 
-  const openGitHubSettings = React.useCallback(() => {
-    setSettingsPage('github');
+  const openGitLabSettings = React.useCallback(() => {
+    setSettingsPage('gitlab');
     setSettingsDialogOpen(true);
   }, [setSettingsDialogOpen, setSettingsPage]);
 
@@ -330,12 +337,12 @@ export const PullRequestSection: React.FC<{
     () => pullRequestDraftSnapshots.get(snapshotKey) ?? null,
     [snapshotKey]
   );
-  const ensurePrStatusEntry = useGitHubPrStatusStore((state) => state.ensureEntry);
-  const setPrStatusParams = useGitHubPrStatusStore((state) => state.setParams);
-  const startPrStatusWatching = useGitHubPrStatusStore((state) => state.startWatching);
-  const stopPrStatusWatching = useGitHubPrStatusStore((state) => state.stopWatching);
-  const refreshPrStatus = useGitHubPrStatusStore((state) => state.refresh);
-  const updatePrStatus = useGitHubPrStatusStore((state) => state.updateStatus);
+  const ensurePrStatusEntry = useGitLabMrStatusStore((state) => state.ensureEntry);
+  const setPrStatusParams = useGitLabMrStatusStore((state) => state.setParams);
+  const startPrStatusWatching = useGitLabMrStatusStore((state) => state.startWatching);
+  const stopPrStatusWatching = useGitLabMrStatusStore((state) => state.stopWatching);
+  const refreshPrStatus = useGitLabMrStatusStore((state) => state.refresh);
+  const updatePrStatus = useGitLabMrStatusStore((state) => state.updateStatus);
 
   const [title, setTitle] = React.useState(() => initialSnapshot?.title ?? branchToTitle(branch));
   const [body, setBody] = React.useState(() => initialSnapshot?.body ?? '');
@@ -371,7 +378,7 @@ export const PullRequestSection: React.FC<{
     })
   );
   const [useDetectedUpstream, setUseDetectedUpstream] = React.useState(false);
-  const { detectedUpstream, upstreamBranches } = useDetectedUpstreamRepo(directory, github);
+  const { detectedUpstream, upstreamBranches } = useDetectedUpstreamRepo(directory, gitlab);
 
   React.useEffect(() => {
     setUseDetectedUpstream(false);
@@ -381,11 +388,11 @@ export const PullRequestSection: React.FC<{
   const isFork = hasUpstreamRemote || detectedUpstream !== null;
   const canShow = Boolean(directory && branch && baseBranch && (branch !== baseBranch || isFork));
 
-  const prStatusKey = React.useMemo(
-    () => getGitHubPrStatusKey(directory, branch),
+  const mrStatusKey = React.useMemo(
+    () => getGitLabMrStatusKey(directory, branch),
     [directory, branch],
   );
-  const statusEntry = useGitHubPrStatusStore((state) => state.entries[prStatusKey]);
+  const statusEntry = useGitLabMrStatusStore((state) => state.entries[mrStatusKey]);
 
   const isLoading = statusEntry?.isLoading ?? false;
   const status = statusEntry?.status ?? null;
@@ -467,11 +474,11 @@ export const PullRequestSection: React.FC<{
   }, [availableBaseBranches, baseBranch, targetBaseBranch]);
 
   const [checksDialogOpen, setChecksDialogOpen] = React.useState(false);
-  const [checkDetails, setCheckDetails] = React.useState<GitHubPullRequestContextResult | null>(null);
+  const [checkDetails, setCheckDetails] = React.useState<GitLabMergeRequestContextResult | null>(null);
   const [isLoadingCheckDetails, setIsLoadingCheckDetails] = React.useState(false);
   const [expandedCheckStepKeys, setExpandedCheckStepKeys] = React.useState<Set<string>>(new Set());
   const [commentsDialogOpen, setCommentsDialogOpen] = React.useState(false);
-  const [commentsDetails, setCommentsDetails] = React.useState<GitHubPullRequestContextResult | null>(null);
+  const [commentsDetails, setCommentsDetails] = React.useState<GitLabMergeRequestContextResult | null>(null);
   const [isLoadingCommentsDetails, setIsLoadingCommentsDetails] = React.useState(false);
 
   const attemptedBodyHydrationRef = React.useRef<Set<string>>(new Set());
@@ -494,14 +501,14 @@ export const PullRequestSection: React.FC<{
     }
   }, [useDetectedUpstream, detectedUpstream?.defaultBranch]);
 
-  const pr = status?.pr ?? null;
+  const pr = status?.mr ?? null;
   const currentPrBodyHydrationKey = pr ? `${directory}#${pr.number}` : null;
   const isHydratingCurrentPrBody = Boolean(
     currentPrBodyHydrationKey && hydratingPrBodyKey === currentPrBodyHydrationKey,
   );
 
   React.useEffect(() => {
-    if (!github?.prContext || !pr) {
+    if (!gitlab?.mrContext || !pr) {
       return;
     }
 
@@ -517,23 +524,23 @@ export const PullRequestSection: React.FC<{
     setHydratingPrBodyKey(hydrationKey);
 
     let cancelled = false;
-    void github.prContext(directory, pr.number, { includeDiff: false, includeCheckDetails: false, sourceRepo: status?.repo ?? null })
+    void gitlab.mrContext(directory, pr.number, { includeDiff: false, includeCheckDetails: false, sourceRepo: status?.repo ?? null })
       .then((ctx) => {
         if (cancelled) {
           return;
         }
-        const ctxPr = ctx?.pr;
+        const ctxPr = ctx?.mr;
         if (!ctxPr) {
           return;
         }
-        updatePrStatus(prStatusKey, (prev) => {
-          if (!prev?.pr || prev.pr.number !== pr.number) {
+        updatePrStatus(mrStatusKey, (prev) => {
+          if (!prev?.mr || prev.mr.number !== pr.number) {
             return prev;
           }
           return {
             ...prev,
-            pr: {
-              ...prev.pr,
+            mr: {
+              ...prev.mr,
               body: ctxPr.body || '',
             },
           };
@@ -550,7 +557,7 @@ export const PullRequestSection: React.FC<{
     return () => {
       cancelled = true;
     };
-  }, [directory, github, pr, prStatusKey, status?.repo, updatePrStatus]);
+  }, [directory, gitlab, pr, mrStatusKey, status?.repo, updatePrStatus]);
 
   React.useEffect(() => {
     if (!pr) {
@@ -577,8 +584,8 @@ export const PullRequestSection: React.FC<{
   }, [isEditingPr, pr]);
 
   const openChecksDialog = React.useCallback(async () => {
-    if (!github?.prContext) {
-      toast.error(t('gitView.pr.toast.githubApiUnavailable'));
+    if (!gitlab?.mrContext) {
+      toast.error(t('gitView.pr.toast.gitlabApiUnavailable'));
       return;
     }
     if (!pr) return;
@@ -587,7 +594,7 @@ export const PullRequestSection: React.FC<{
     setExpandedCheckStepKeys(new Set());
     setIsLoadingCheckDetails(true);
     try {
-      const ctx = await github.prContext(directory, pr.number, {
+      const ctx = await gitlab.mrContext(directory, pr.number, {
         includeDiff: false,
         includeCheckDetails: true,
         sourceRepo: status?.repo ?? null,
@@ -599,11 +606,11 @@ export const PullRequestSection: React.FC<{
     } finally {
       setIsLoadingCheckDetails(false);
     }
-  }, [directory, github, pr, status?.repo, t]);
+  }, [directory, gitlab, pr, status?.repo, t]);
 
   const openCommentsDialog = React.useCallback(async () => {
-    if (!github?.prContext) {
-      toast.error(t('gitView.pr.toast.githubApiUnavailable'));
+    if (!gitlab?.mrContext) {
+      toast.error(t('gitView.pr.toast.gitlabApiUnavailable'));
       return;
     }
     if (!pr) return;
@@ -611,7 +618,7 @@ export const PullRequestSection: React.FC<{
     setCommentsDialogOpen(true);
     setIsLoadingCommentsDetails(true);
     try {
-      const ctx = await github.prContext(directory, pr.number, {
+      const ctx = await gitlab.mrContext(directory, pr.number, {
         includeDiff: false,
         includeCheckDetails: false,
         sourceRepo: status?.repo ?? null,
@@ -623,7 +630,7 @@ export const PullRequestSection: React.FC<{
     } finally {
       setIsLoadingCommentsDetails(false);
     }
-  }, [directory, github, pr, status?.repo, t]);
+  }, [directory, gitlab, pr, status?.repo, t]);
 
   const formatTimestamp = React.useCallback((value?: string) => {
     if (!value) return '';
@@ -640,25 +647,25 @@ export const PullRequestSection: React.FC<{
     });
   }, [timeFormatPreference]);
 
-  const connectedGitHubLogin = React.useMemo(() => {
-    const login = githubAuthStatus?.user?.login;
+  const connectedGitLabLogin = React.useMemo(() => {
+    const login = gitlabAuthStatus?.user?.login;
     return typeof login === 'string' ? login.trim() : '';
-  }, [githubAuthStatus]);
+  }, [gitlabAuthStatus]);
 
   const selfMentionHighlightClass = React.useMemo(() => {
     return "[&_a[href*='oc-self-mention=1']]:!text-[var(--primary-base)] [&_a[href*='oc-self-mention=1']]:font-semibold [&_a[href*='oc-self-mention=1']]:!no-underline [&_a[href*='oc-self-mention=1']:hover]:!text-[var(--primary-hover)]";
   }, []);
 
   const linkifyMentionsMarkdown = React.useCallback((content: string) => {
-    const selfLoginLower = connectedGitHubLogin.toLowerCase();
+    const selfLoginLower = connectedGitLabLogin.toLowerCase();
     const mentionRegex = /(^|[^\w`])@([a-zA-Z0-9](?:[a-zA-Z0-9-]{0,38}))/g;
     return content.replace(mentionRegex, (_match, prefix: string, username: string) => {
       const mention = `@${username}`;
       const usernameLower = username.toLowerCase();
       const selfTag = selfLoginLower && usernameLower === selfLoginLower ? '?oc-self-mention=1' : '';
-      return `${prefix}[${mention}](https://github.com/${usernameLower}${selfTag})`;
+      return `${prefix}[${mention}](https://bcagitlab/${usernameLower}${selfTag})`;
     });
-  }, [connectedGitHubLogin]);
+  }, [connectedGitLabLogin]);
 
   const timelineComments = React.useMemo<TimelineCommentItem[]>(() => {
     const issue = (commentsDetails?.issueComments ?? []).map((comment) => ({
@@ -744,7 +751,7 @@ export const PullRequestSection: React.FC<{
     });
   }, [t]);
 
-  const renderCheckRunSummary = React.useCallback((run: GitHubCheckRun) => {
+  const renderCheckRunSummary = React.useCallback((run: GitLabCheckRun) => {
     const status = run.status || 'unknown';
     const conclusion = run.conclusion ?? undefined;
     const statusText = conclusion ? `${status} / ${conclusion}` : status;
@@ -877,8 +884,8 @@ export const PullRequestSection: React.FC<{
   const sendFailedChecksToChat = React.useCallback(async () => {
     setActiveMainTab('chat');
 
-    if (!github?.prContext) {
-      toast.error(t('gitView.pr.toast.githubApiUnavailable'));
+    if (!gitlab?.mrContext) {
+      toast.error(t('gitView.pr.toast.gitlabApiUnavailable'));
       return;
     }
     if (!directory || !pr) return;
@@ -888,7 +895,7 @@ export const PullRequestSection: React.FC<{
     }
 
     try {
-      const context = await github.prContext(directory, pr.number, { includeDiff: false, includeCheckDetails: true, sourceRepo: status?.repo ?? null });
+      const context = await gitlab.mrContext(directory, pr.number, { includeDiff: false, includeCheckDetails: true, sourceRepo: status?.repo ?? null });
       const runs = context.checkRuns ?? [];
       const failed = runs.filter((r) => {
         const conclusion = typeof r.conclusion === 'string' ? r.conclusion.toLowerCase() : '';
@@ -901,8 +908,8 @@ export const PullRequestSection: React.FC<{
         return;
       }
 
-      const visibleText = await renderMagicPrompt('github.pr.checks.review.visible');
-      const instructionsText = await renderMagicPrompt('github.pr.checks.review.instructions');
+      const visibleText = await renderMagicPrompt('gitlab.mr.checks.review.visible');
+      const instructionsText = await renderMagicPrompt('gitlab.mr.checks.review.instructions');
       const failedAnnotations = failed.flatMap((run) => {
         const annotations = Array.isArray(run.annotations) ? run.annotations : [];
         return annotations.map((annotation) => ({
@@ -916,9 +923,9 @@ export const PullRequestSection: React.FC<{
           rawDetails: annotation.rawDetails,
         }));
       });
-      const payloadText = `GitHub PR failed checks (JSON)\n${JSON.stringify({
+      const payloadText = `GitLab merge request failed checks (JSON)\n${JSON.stringify({
         repo: context.repo ?? null,
-        pr: context.pr ?? null,
+        mr: context.mr ?? null,
         failedChecks: failed,
         failedAnnotations,
       }, null, 2)}`;
@@ -928,13 +935,13 @@ export const PullRequestSection: React.FC<{
       const message = e instanceof Error ? e.message : String(e);
       toast.error(t('gitView.pr.toast.loadChecksFailed'), { description: message });
     }
-  }, [directory, dispatchSyntheticPrompt, github, pr, resolveChatDispatchTarget, setActiveMainTab, status?.repo, t]);
+  }, [directory, dispatchSyntheticPrompt, gitlab, pr, resolveChatDispatchTarget, setActiveMainTab, status?.repo, t]);
 
   const sendCommentsToChat = React.useCallback(async () => {
     setActiveMainTab('chat');
 
-    if (!github?.prContext) {
-      toast.error(t('gitView.pr.toast.githubApiUnavailable'));
+    if (!gitlab?.mrContext) {
+      toast.error(t('gitView.pr.toast.gitlabApiUnavailable'));
       return;
     }
     if (!directory || !pr) return;
@@ -944,7 +951,7 @@ export const PullRequestSection: React.FC<{
     }
 
     try {
-      const context = await github.prContext(directory, pr.number, { includeDiff: false, includeCheckDetails: false, sourceRepo: status?.repo ?? null });
+      const context = await gitlab.mrContext(directory, pr.number, { includeDiff: false, includeCheckDetails: false, sourceRepo: status?.repo ?? null });
       const issueComments = context.issueComments ?? [];
       const reviewComments = context.reviewComments ?? [];
       const total = issueComments.length + reviewComments.length;
@@ -953,11 +960,11 @@ export const PullRequestSection: React.FC<{
         return;
       }
 
-      const visibleText = await renderMagicPrompt('github.pr.comments.review.visible');
-      const instructionsText = await renderMagicPrompt('github.pr.comments.review.instructions');
-      const payloadText = `GitHub PR comments (JSON)\n${JSON.stringify({
+      const visibleText = await renderMagicPrompt('gitlab.mr.comments.review.visible');
+      const instructionsText = await renderMagicPrompt('gitlab.mr.comments.review.instructions');
+      const payloadText = `GitLab merge request comments (JSON)\n${JSON.stringify({
         repo: context.repo ?? null,
-        pr: context.pr ?? null,
+        mr: context.mr ?? null,
         issueComments,
         reviewComments,
       }, null, 2)}`;
@@ -967,7 +974,7 @@ export const PullRequestSection: React.FC<{
       const message = e instanceof Error ? e.message : String(e);
       toast.error(t('gitView.pr.toast.loadPrCommentsFailed'), { description: message });
     }
-  }, [directory, dispatchSyntheticPrompt, github, pr, resolveChatDispatchTarget, setActiveMainTab, status?.repo, t]);
+  }, [directory, dispatchSyntheticPrompt, gitlab, pr, resolveChatDispatchTarget, setActiveMainTab, status?.repo, t]);
 
   const sendSingleCommentToChat = React.useCallback(async (comment: TimelineCommentItem) => {
     setCommentsDialogOpen(false);
@@ -978,11 +985,11 @@ export const PullRequestSection: React.FC<{
       return;
     }
 
-    const visibleText = await renderMagicPrompt('github.pr.comment.single.visible');
-    const instructionsText = await renderMagicPrompt('github.pr.comment.single.instructions');
-    const payloadText = `GitHub PR comment (JSON)\n${JSON.stringify({
+    const visibleText = await renderMagicPrompt('gitlab.mr.comment.single.visible');
+    const instructionsText = await renderMagicPrompt('gitlab.mr.comment.single.instructions');
+    const payloadText = `GitLab merge request comment (JSON)\n${JSON.stringify({
       repo: commentsDetails?.repo ?? null,
-      pr: commentsDetails?.pr ?? pr ?? null,
+      mr: commentsDetails?.mr ?? pr ?? null,
       comment,
     }, null, 2)}`;
 
@@ -990,8 +997,8 @@ export const PullRequestSection: React.FC<{
   }, [commentsDetails, dispatchSyntheticPrompt, pr, resolveChatDispatchTarget, setActiveMainTab]);
 
   const refresh = React.useCallback(async (options?: { force?: boolean; onlyExistingPr?: boolean; silent?: boolean; markInitialResolved?: boolean }) => {
-    await refreshPrStatus(prStatusKey, options);
-  }, [prStatusKey, refreshPrStatus]);
+    await refreshPrStatus(mrStatusKey, options);
+  }, [mrStatusKey, refreshPrStatus]);
 
   const scheduleActionRefresh = React.useCallback(() => {
     pendingActionRefreshTimersRef.current.forEach((timerId) => {
@@ -1003,13 +1010,13 @@ export const PullRequestSection: React.FC<{
   }, [refresh]);
 
   React.useEffect(() => {
-    if (!github?.prStatus || !canShow || remotes.length <= 1) {
+    if (!gitlab?.mrStatus || !canShow || remotes.length <= 1) {
       return;
     }
     if (didUserOverrideRemoteRef.current) {
       return;
     }
-    if (status?.pr) {
+    if (status?.mr) {
       return;
     }
 
@@ -1032,8 +1039,8 @@ export const PullRequestSection: React.FC<{
           return;
         }
         try {
-          const next = await github.prStatus(directory, branch, candidate.name);
-          if (!next?.pr) {
+          const next = await gitlab.mrStatus(directory, branch, candidate.name);
+          if (!next?.mr) {
             continue;
           }
           if (cancelled) {
@@ -1051,38 +1058,38 @@ export const PullRequestSection: React.FC<{
     return () => {
       cancelled = true;
     };
-  }, [branch, canShow, directory, github, remotes, selectedRemote?.name, snapshotKey, status?.pr, trackingBranch]);
+  }, [branch, canShow, directory, gitlab, remotes, selectedRemote?.name, snapshotKey, status?.mr, trackingBranch]);
 
   React.useEffect(() => {
-    ensurePrStatusEntry(prStatusKey);
-    setPrStatusParams(prStatusKey, {
+    ensurePrStatusEntry(mrStatusKey);
+    setPrStatusParams(mrStatusKey, {
       directory,
       branch,
       remoteName: selectedRemote?.name ?? null,
       canShow,
-      github,
-      githubAuthChecked,
-      githubConnected: githubAuthStatus?.connected ?? null,
+      gitlab,
+      gitlabAuthChecked,
+      gitlabConnected: gitlabAuthStatus?.connected ?? null,
     });
   }, [
     branch,
     canShow,
     directory,
     ensurePrStatusEntry,
-    github,
-    githubAuthChecked,
-    githubAuthStatus?.connected,
-    prStatusKey,
+    gitlab,
+    gitlabAuthChecked,
+    gitlabAuthStatus?.connected,
+    mrStatusKey,
     selectedRemote?.name,
     setPrStatusParams,
   ]);
 
   React.useEffect(() => {
-    startPrStatusWatching(prStatusKey);
+    startPrStatusWatching(mrStatusKey);
     return () => {
-      stopPrStatusWatching(prStatusKey);
+      stopPrStatusWatching(mrStatusKey);
     };
-  }, [prStatusKey, startPrStatusWatching, stopPrStatusWatching]);
+  }, [mrStatusKey, startPrStatusWatching, stopPrStatusWatching]);
 
   React.useEffect(() => {
     const snapshot = pullRequestDraftSnapshots.get(snapshotKey) ?? null;
@@ -1099,7 +1106,7 @@ export const PullRequestSection: React.FC<{
 
   React.useEffect(() => {
     void refresh({ markInitialResolved: true });
-  }, [prStatusKey, refresh]);
+  }, [mrStatusKey, refresh]);
 
   React.useEffect(() => {
     if (!canShow || !selectedRemote?.name) {
@@ -1121,7 +1128,7 @@ export const PullRequestSection: React.FC<{
   }, [remotes, status?.resolvedRemoteName]);
 
   React.useEffect(() => {
-    const isTerminal = status?.pr?.state === 'closed' || status?.pr?.state === 'merged';
+    const isTerminal = status?.mr?.state === 'closed' || status?.mr?.state === 'merged';
     const lastRefreshAt = statusEntry?.lastRefreshAt ?? 0;
     const isStale = Date.now() - lastRefreshAt > 60_000;
     const shouldRefresh = !isTerminal && isStale;
@@ -1145,13 +1152,13 @@ export const PullRequestSection: React.FC<{
       window.removeEventListener('focus', onFocus);
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [refresh, status?.pr?.state, statusEntry?.lastRefreshAt]);
+  }, [refresh, status?.mr?.state, statusEntry?.lastRefreshAt]);
 
   React.useEffect(() => {
-    if (githubAuthChecked && githubAuthStatus?.connected === false) {
+    if (gitlabAuthChecked && gitlabAuthStatus?.connected === false) {
       void refresh({ force: true, silent: true, markInitialResolved: true });
     }
-  }, [githubAuthChecked, githubAuthStatus, refresh]);
+  }, [gitlabAuthChecked, gitlabAuthStatus, refresh]);
 
   React.useEffect(() => {
     if (!directory || !branch) {
@@ -1213,8 +1220,8 @@ export const PullRequestSection: React.FC<{
   }, [additionalContext, branch, detectedUpstream?.defaultBranchSha, directory, isGenerating, onGeneratedDescription, targetBaseBranch, t, useDetectedUpstream]);
 
   const createPr = React.useCallback(async () => {
-    if (!github?.prCreate) {
-      toast.error(t('gitView.pr.toast.githubApiUnavailable'));
+    if (!gitlab?.mrCreate) {
+      toast.error(t('gitView.pr.toast.gitlabApiUnavailable'));
       return;
     }
     const trimmedTitle = title.trim();
@@ -1239,7 +1246,7 @@ export const PullRequestSection: React.FC<{
 
       const usingDetectedUpstream = useDetectedUpstream && detectedUpstream;
 
-      const pr = await github.prCreate({
+      const pr = await gitlab.mrCreate({
         directory,
         title: trimmedTitle,
         head: branch,
@@ -1247,7 +1254,14 @@ export const PullRequestSection: React.FC<{
         ...(body.trim() ? { body } : {}),
         draft,
         ...(usingDetectedUpstream
-          ? { targetRepo: { owner: detectedUpstream.owner, repo: detectedUpstream.repo }, headRemote: 'origin' }
+          ? {
+              targetRepo: {
+                projectId: detectedUpstream.projectId,
+                pathWithNamespace: detectedUpstream.pathWithNamespace,
+                webUrl: detectedUpstream.webUrl,
+              },
+              headRemote: 'origin',
+            }
           : {
               ...(selectedRemote ? { remote: selectedRemote.name } : {}),
               ...(trackingRemoteName && trackingRemoteName !== selectedRemote?.name
@@ -1255,8 +1269,8 @@ export const PullRequestSection: React.FC<{
                 : {}),
             }),
       });
-      toast.success(t('gitView.pr.toast.prCreated'));
-      updatePrStatus(prStatusKey, (prev) => (prev ? { ...prev, pr } : prev));
+      toast.success(t('gitView.pr.toast.mrCreated'));
+      updatePrStatus(mrStatusKey, (prev) => (prev ? { ...prev, pr } : prev));
       await refresh({ force: true });
       scheduleActionRefresh();
     } catch (e) {
@@ -1265,18 +1279,18 @@ export const PullRequestSection: React.FC<{
     } finally {
       setIsCreating(false);
     }
-  }, [body, branch, detectedUpstream, directory, draft, github, prStatusKey, refresh, scheduleActionRefresh, selectedRemote, targetBaseBranch, title, trackingBranch, updatePrStatus, useDetectedUpstream, t]);
+  }, [body, branch, detectedUpstream, directory, draft, gitlab, mrStatusKey, refresh, scheduleActionRefresh, selectedRemote, targetBaseBranch, title, trackingBranch, updatePrStatus, useDetectedUpstream, t]);
 
-  const mergePr = React.useCallback(async (pr: GitHubPullRequest) => {
-    if (!github?.prMerge) {
-      toast.error(t('gitView.pr.toast.githubApiUnavailable'));
+  const mergePr = React.useCallback(async (pr: GitLabMergeRequest) => {
+    if (!gitlab?.mrMerge) {
+      toast.error(t('gitView.pr.toast.gitlabApiUnavailable'));
       return;
     }
     setIsMerging(true);
     try {
-      const result = await github.prMerge({ directory, number: pr.number, method: mergeMethod });
+      const result = await gitlab.mrMerge({ directory, number: pr.number, method: mergeMethod });
       if (result.merged) {
-        toast.success(t('gitView.pr.toast.prMerged'));
+        toast.success(t('gitView.pr.toast.mrMerged'));
       } else {
         toast.message(t('gitView.pr.toast.prNotMerged'), { description: result.message || t('gitView.pr.notMergeable') });
       }
@@ -1291,16 +1305,16 @@ export const PullRequestSection: React.FC<{
     } finally {
       setIsMerging(false);
     }
-  }, [directory, github, mergeMethod, refresh, scheduleActionRefresh, t]);
+  }, [directory, gitlab, mergeMethod, refresh, scheduleActionRefresh, t]);
 
-  const markReady = React.useCallback(async (pr: GitHubPullRequest) => {
-    if (!github?.prReady) {
-      toast.error(t('gitView.pr.toast.githubApiUnavailable'));
+  const markReady = React.useCallback(async (pr: GitLabMergeRequest) => {
+    if (!gitlab?.mrReady) {
+      toast.error(t('gitView.pr.toast.gitlabApiUnavailable'));
       return;
     }
     setIsMarkingReady(true);
     try {
-      await github.prReady({ directory, number: pr.number });
+      await gitlab.mrReady({ directory, number: pr.number });
       toast.success(t('gitView.pr.toast.markedReady'));
       await refresh({ force: true });
       scheduleActionRefresh();
@@ -1313,11 +1327,11 @@ export const PullRequestSection: React.FC<{
     } finally {
       setIsMarkingReady(false);
     }
-  }, [directory, github, refresh, scheduleActionRefresh, t]);
+  }, [directory, gitlab, refresh, scheduleActionRefresh, t]);
 
-  const updatePr = React.useCallback(async (pr: GitHubPullRequest) => {
-    if (!github?.prUpdate) {
-      toast.error(t('gitView.pr.toast.githubApiUnavailable'));
+  const updatePr = React.useCallback(async (pr: GitLabMergeRequest) => {
+    if (!gitlab?.mrUpdate) {
+      toast.error(t('gitView.pr.toast.gitlabApiUnavailable'));
       return;
     }
 
@@ -1329,23 +1343,23 @@ export const PullRequestSection: React.FC<{
 
     setIsUpdating(true);
     try {
-      const updated = await github.prUpdate({
+      const updated = await gitlab.mrUpdate({
         directory,
         number: pr.number,
         title: trimmedTitle,
         body: editBody,
       });
-      updatePrStatus(prStatusKey, (prev) => (prev
+      updatePrStatus(mrStatusKey, (prev) => (prev
         ? {
             ...prev,
-            pr: {
-              ...(prev.pr ?? pr),
+            mr: {
+              ...(prev.mr ?? pr),
               ...updated,
             },
           }
         : prev));
       setIsEditingPr(false);
-      toast.success(t('gitView.pr.toast.prUpdated'));
+      toast.success(t('gitView.pr.toast.mrUpdated'));
       await refresh({ force: true });
       scheduleActionRefresh();
     } catch (e) {
@@ -1354,7 +1368,7 @@ export const PullRequestSection: React.FC<{
     } finally {
       setIsUpdating(false);
     }
-  }, [directory, editBody, editTitle, github, prStatusKey, refresh, scheduleActionRefresh, updatePrStatus, t]);
+  }, [directory, editBody, editTitle, gitlab, mrStatusKey, refresh, scheduleActionRefresh, updatePrStatus, t]);
 
   if (!canShow) {
     return (
@@ -1370,11 +1384,11 @@ export const PullRequestSection: React.FC<{
   }
 
   const originRepoUrl = status?.repo?.url || null;
-  const repoUrl = (useDetectedUpstream && detectedUpstream?.url) ? detectedUpstream.url : originRepoUrl;
+  const repoUrl = (useDetectedUpstream && detectedUpstream?.webUrl) ? detectedUpstream.webUrl : originRepoUrl;
   const checks = status?.checks ?? null;
   const canMerge = Boolean(status?.canMerge);
   const isConnected = Boolean(status?.connected);
-  const shouldShowConnectionNotice = githubAuthChecked && status?.connected === false;
+  const shouldShowConnectionNotice = gitlabAuthChecked && status?.connected === false;
   const prVisualState = getPrVisualState(status);
   const prColorVar = prVisualState ? `var(--pr-${prVisualState})` : 'var(--status-info)';
   const prStateIconName = prVisualState === 'draft'
@@ -1384,7 +1398,7 @@ export const PullRequestSection: React.FC<{
       : prVisualState === 'closed'
         ? 'git-close-pull-request'
         : 'git-pull-request';
-  const prStatusText = pr
+  const mrStatusText = pr
     ? [
         `${pr.state}${pr.draft ? ' (draft)' : ''}`,
         pr.mergeable === false ? t('gitView.pr.notMergeable') : null,
@@ -1414,12 +1428,12 @@ export const PullRequestSection: React.FC<{
                     type="button"
                     className="inline-flex size-6 shrink-0 items-center justify-center rounded-md border border-border/60 bg-background/70 hover:bg-interactive-hover/60"
                     onClick={() => void openExternal(pr.url)}
-                    aria-label={t('gitView.pr.actions.openOnGitHubAria')}
+                    aria-label={t('gitView.pr.actions.openOnGitLabAria')}
                   >
                     <Icon name={prStateIconName} className="size-4 shrink-0" style={{ color: prColorVar }} />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent><p>{t('gitView.pr.actions.openOnGitHub')}</p></TooltipContent>
+                <TooltipContent><p>{t('gitView.pr.actions.openOnGitLab')}</p></TooltipContent>
               </Tooltip>
             ) : (
               <Icon name={prStateIconName} className="size-4 shrink-0" style={{ color: 'var(--surface-muted-foreground)' }} />
@@ -1450,7 +1464,7 @@ export const PullRequestSection: React.FC<{
 
         {pr ? (
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 typography-micro text-muted-foreground">
-            <span style={{ color: prColorVar }}>{prStatusText}</span>
+            <span style={{ color: prColorVar }}>{mrStatusText}</span>
             {checks ? (
               <span className="inline-flex items-center gap-1.5">
                 <span className={`h-2 w-2 rounded-full ${statusColor(checks.state)}`} />
@@ -1470,9 +1484,9 @@ export const PullRequestSection: React.FC<{
         {shouldShowConnectionNotice ? (
           <div className="space-y-2">
               <div className="typography-meta text-muted-foreground">
-              {t('gitView.pr.githubNotConnected')}
+              {t('gitView.pr.gitlabNotConnected')}
             </div>
-                <Button variant="outline" size="sm" onClick={openGitHubSettings} className="w-fit">
+                <Button variant="outline" size="sm" onClick={openGitLabSettings} className="w-fit">
                   {t('gitView.pr.actions.openSettings')}
                 </Button>
               </div>

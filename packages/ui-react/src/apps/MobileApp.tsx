@@ -40,14 +40,13 @@ import { cn } from '@/lib/utils';
 import { useConfigStore } from '@/stores/useConfigStore';
 import { useDirectoryStore } from '@/stores/useDirectoryStore';
 import { useFeatureFlagsStore } from '@/stores/useFeatureFlagsStore';
-import { useGitHubAuthStore } from '@/stores/useGitHubAuthStore';
+import { useGitLabAuthStore } from '@/stores/useGitLabAuthStore';
 import { useGitStatus, useGitStore, useIsGitRepo } from '@/stores/useGitStore';
 import { useMcpConfigStore, type McpDraft } from '@/stores/useMcpConfigStore';
 import { useMcpStore } from '@/stores/useMcpStore';
 import { useProjectsStore } from '@/stores/useProjectsStore';
-import { useQuotaAutoRefresh, useQuotaStore } from '@/stores/useQuotaStore';
 import { listProjectWorktrees, worktreeMapsEqual } from '@/lib/worktrees/worktreeManager';
-import type { QuotaProviderId, UsageWindow } from '@/types';
+import type { ProviderResult, QuotaProviderId, UsageWindow } from '@/types';
 import { useUIStore, type TimeFormatPreference } from '@/stores/useUIStore';
 import { useUpdateStore } from '@/stores/useUpdateStore';
 import { useSelectionStore } from '@/sync/selection-store';
@@ -79,9 +78,6 @@ const MOBILE_SETTINGS_PAGES = [
   'magic-prompts',
   'behavior',
   'mcp',
-  'providers',
-  'usage',
-  'voice',
   'about',
 ] as const;
 
@@ -1715,16 +1711,14 @@ const MobileSessionMetadataButton = React.memo(function MobileSessionMetadataBut
       [currentSessionId],
     ),
   );
-  const quotaResults = useQuotaStore((state) => state.results);
-  const loadQuotaSettings = useQuotaStore((state) => state.loadSettings);
-  const fetchAllQuotas = useQuotaStore((state) => state.fetchAllQuotas);
-  const isQuotaLoading = useQuotaStore((state) => state.isLoading);
-  const quotaDisplayMode = useQuotaStore((state) => state.displayMode);
-  const dropdownProviderIds = useQuotaStore((state) => state.dropdownProviderIds);
-  const selectedQuotaModels = useQuotaStore((state) => state.selectedModels);
+  const quotaResults: ProviderResult[] = [];
+  const loadQuotaSettings = React.useCallback(async () => {}, []);
+  const fetchAllQuotas = React.useCallback(async () => {}, []);
+  const isQuotaLoading = false;
+  const quotaDisplayMode = 'usage' as const;
+  const dropdownProviderIds: QuotaProviderId[] = [];
+  const selectedQuotaModels: Record<string, string[]> = {};
   const timeFormatPreference = useUIStore((state) => state.timeFormatPreference);
-
-  useQuotaAutoRefresh();
 
   React.useEffect(() => {
     if (!gitDirectory) return;
@@ -2678,7 +2672,7 @@ export function MobileApp({ apis }: MobileAppProps) {
   const error = useSessionUIStore((state) => state.error);
   const clearError = useSessionUIStore((state) => state.clearError);
   const setIsMobile = useUIStore((state) => state.setIsMobile);
-  const refreshGitHubAuthStatus = useGitHubAuthStore((state) => state.refreshStatus);
+  const refreshGitLabAuthStatus = useGitLabAuthStore((state) => state.refreshStatus);
   const setPlanModeEnabled = useFeatureFlagsStore((state) => state.setPlanModeEnabled);
   const projects = useProjectsStore((state) => state.projects);
   const [connectionEpoch, setConnectionEpoch] = React.useState(0);
@@ -2719,7 +2713,7 @@ export function MobileApp({ apis }: MobileAppProps) {
     // only refresh in place when the transport is 'unchanged'.
     const refreshInPlace = () => {
       void initializeApp();
-      void refreshGitHubAuthStatus(apis.github, { force: true });
+      void refreshGitLabAuthStatus(apis.gitlab, { force: true });
       if (providersCount === 0) void loadProviders({ source: 'mobileApp:nativeResume' });
       if (agentsCount === 0) void loadAgents({ source: 'mobileApp:nativeResume' });
     };
@@ -2763,7 +2757,7 @@ export function MobileApp({ apis }: MobileAppProps) {
       lastNativeResumeSyncEventAtRef.current = now;
       window.dispatchEvent(new Event('mage:system-resume'));
     }
-  }, [agentsCount, apis.github, initializeApp, loadAgents, loadProviders, providersCount, refreshGitHubAuthStatus]);
+  }, [agentsCount, apis.gitlab, initializeApp, loadAgents, loadProviders, providersCount, refreshGitLabAuthStatus]);
 
   useNativeMobileChrome();
   useNativeMobileLifecycle(handleNativeResume);
@@ -2876,12 +2870,12 @@ export function MobileApp({ apis }: MobileAppProps) {
   }, [currentDirectory, isConnected]);
 
   // Gated on isConnected (and re-run on reconnect/instance switch): probing the
-  // GitHub auth status before the runtime is reachable cached a "not connected"
+  // GitLab auth status before the runtime is reachable cached a "not connected"
   // answer that stuck until something else forced a re-check.
   React.useEffect(() => {
     if (!isConnected) return;
-    void refreshGitHubAuthStatus(apis.github, { force: true });
-  }, [apis.github, isConnected, refreshGitHubAuthStatus]);
+    void refreshGitLabAuthStatus(apis.gitlab, { force: true });
+  }, [apis.gitlab, isConnected, refreshGitLabAuthStatus]);
 
   // Discover all worktrees for every known project so the draft session's
   // worktree/branch dropdown can list every available branch — not only the

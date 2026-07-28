@@ -1,9 +1,9 @@
 import type { Part } from '@mybcabisnis/mage-sdk/v2';
 
-const GITHUB_ISSUE_CONTEXT_PREFIX = 'GitHub issue context (JSON)';
-const GITHUB_PR_CONTEXT_PREFIX = 'GitHub pull request context (JSON)';
+const GITHUB_ISSUE_CONTEXT_PREFIX = 'GitLab issue context (JSON)';
+const GITLAB_MR_CONTEXT_PREFIX = 'GitLab merge request context (JSON)';
 
-type GitHubIssueContextPayload = {
+type GitLabIssueContextPayload = {
     issue?: {
         number?: unknown;
         title?: unknown;
@@ -11,7 +11,7 @@ type GitHubIssueContextPayload = {
     };
 };
 
-type GitHubPrContextPayload = {
+type GitLabMrContextPayload = {
     pr?: {
         number?: unknown;
         title?: unknown;
@@ -41,8 +41,8 @@ const parseSyntheticJsonPayload = <T>(text: string, prefix: string): T | null =>
     }
 };
 
-const buildGitHubAttachmentPart = (text: string): Part | null => {
-    const issuePayload = parseSyntheticJsonPayload<GitHubIssueContextPayload>(text, GITHUB_ISSUE_CONTEXT_PREFIX);
+const buildGitLabAttachmentPart = (text: string): Part | null => {
+    const issuePayload = parseSyntheticJsonPayload<GitLabIssueContextPayload>(text, GITHUB_ISSUE_CONTEXT_PREFIX);
     if (issuePayload) {
         const issue = issuePayload.issue;
         const number = issue?.number;
@@ -54,15 +54,15 @@ const buildGitHubAttachmentPart = (text: string): Part | null => {
 
         return {
             type: 'file',
-            mime: 'application/vnd.github.issue-link',
+            mime: 'application/vnd.gitlab.issue-link',
             filename: `Issue #${number}: ${title}`,
             url,
         } as Part;
     }
 
-    const prPayload = parseSyntheticJsonPayload<GitHubPrContextPayload>(text, GITHUB_PR_CONTEXT_PREFIX);
-    if (prPayload) {
-        const pr = prPayload.pr;
+    const mrPayload = parseSyntheticJsonPayload<GitLabMrContextPayload>(text, GITLAB_MR_CONTEXT_PREFIX);
+    if (mrPayload) {
+        const pr = mrPayload.pr;
         const number = pr?.number;
         const title = pr?.title;
         const url = pr?.url;
@@ -72,8 +72,8 @@ const buildGitHubAttachmentPart = (text: string): Part | null => {
 
         return {
             type: 'file',
-            mime: 'application/vnd.github.pull-request-link',
-            filename: `PR #${number}: ${title}`,
+            mime: 'application/vnd.gitlab.pull-request-link',
+            filename: `MR #${number}: ${title}`,
             url,
         } as Part;
     }
@@ -104,7 +104,7 @@ export const normalizeUserDisplayParts = (parts: Part[], options?: { planModeEna
             const normalizedText = text.trimStart();
             return shouldKeepSyntheticUserText(text, planModeEnabled)
                 || normalizedText.startsWith(GITHUB_ISSUE_CONTEXT_PREFIX)
-                || normalizedText.startsWith(GITHUB_PR_CONTEXT_PREFIX);
+                || normalizedText.startsWith(GITLAB_MR_CONTEXT_PREFIX);
         })
         .map((part) => {
             const rawPart = part as Record<string, unknown>;
@@ -116,7 +116,7 @@ export const normalizeUserDisplayParts = (parts: Part[], options?: { planModeEna
                 const synthetic = rawPart.synthetic === true;
 
                 if (synthetic) {
-                    const attachmentPart = buildGitHubAttachmentPart(text);
+                    const attachmentPart = buildGitLabAttachmentPart(text);
                     if (attachmentPart) {
                         return attachmentPart;
                     }

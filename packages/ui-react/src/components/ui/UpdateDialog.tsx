@@ -31,7 +31,7 @@ interface UpdateDialogProps {
   runtimeType?: 'desktop' | 'web' | 'vscode' | 'mobile' | null;
 }
 
-const GITHUB_RELEASES_URL = 'https://github.com/mage/mage/releases';
+const MAGE_RELEASES_URL = 'https://mage.apps.ocpdevgra.dti.co.id/releases';
 
 type ChangelogSection = {
   version: string;
@@ -71,7 +71,7 @@ function stripChangelogHeading(sectionRaw: string): string {
 
 function processChangelogMentions(content: string): string {
   // Convert @username to markdown links so they can be styled via css
-  return content.replace(/(^|[^a-zA-Z0-9])@([a-zA-Z0-9-]+)/g, '$1[@$2](https://github.com/$2)');
+  return content.replace(/(^|[^a-zA-Z0-9])@([a-zA-Z0-9-]+)/g, '$1[@$2](https://bcagitlab/$2)');
 }
 
 function compareSemverDesc(a: string, b: string): number {
@@ -207,8 +207,9 @@ export const UpdateDialog: React.FC<UpdateDialogProps> = ({
   const [webError, setWebError] = useState<string | null>(null);
 
   const releaseUrl = info?.version
-    ? (info.releaseUrl || `${GITHUB_RELEASES_URL}/tag/v${info.version}`)
-    : GITHUB_RELEASES_URL;
+    ? (info.releaseUrl || `${MAGE_RELEASES_URL}/${info.version}`)
+    : MAGE_RELEASES_URL;
+  const isExternalUpdate = info?.installMode === 'external';
   const mobileUpdateUrl = info?.downloadUrl || releaseUrl;
 
   const progressPercent = progress?.total
@@ -473,15 +474,29 @@ export const UpdateDialog: React.FC<UpdateDialogProps> = ({
             href={releaseUrl}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={(event) => {
+              event.preventDefault();
+              void handleOpenExternal(releaseUrl);
+            }}
             className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
           >
             <Icon name="external-link" className="h-4 w-4" />
-            GitHub
+            Release page
           </a>
 
           <div className="flex-1 flex justify-end">
             {/* Desktop Buttons */}
-            {!isWebRuntime && !isMobileRuntime && !downloaded && !downloading && (
+            {!isWebRuntime && !isMobileRuntime && isExternalUpdate && (
+              <button
+                onClick={() => void handleOpenExternal(releaseUrl)}
+                className="flex items-center justify-center gap-2 px-5 py-2 rounded-md text-sm font-medium bg-[var(--primary-base)] text-[var(--primary-foreground)] hover:opacity-90 transition-opacity"
+              >
+                <Icon name="external-link" className="h-4 w-4" />
+                View Mage {info?.version || ''}
+              </button>
+            )}
+
+            {!isWebRuntime && !isMobileRuntime && !isExternalUpdate && !downloaded && !downloading && (
               <button
                 onClick={onDownload}
                 className="flex items-center justify-center gap-2 px-5 py-2 rounded-md text-sm font-medium bg-[var(--primary-base)] text-[var(--primary-foreground)] hover:opacity-90 transition-opacity"
@@ -491,7 +506,7 @@ export const UpdateDialog: React.FC<UpdateDialogProps> = ({
               </button>
             )}
 
-            {!isWebRuntime && !isMobileRuntime && downloading && (
+            {!isWebRuntime && !isMobileRuntime && !isExternalUpdate && downloading && (
               <button
                 disabled
                 className="flex items-center justify-center gap-2 px-5 py-2 rounded-md text-sm font-medium bg-[var(--primary-base)]/50 text-[var(--primary-foreground)] cursor-not-allowed"
@@ -501,7 +516,7 @@ export const UpdateDialog: React.FC<UpdateDialogProps> = ({
               </button>
             )}
 
-            {!isWebRuntime && !isMobileRuntime && downloaded && (
+            {!isWebRuntime && !isMobileRuntime && !isExternalUpdate && downloaded && (
               <button
                 onClick={onRestart}
                 className="flex items-center justify-center gap-2 px-5 py-2 rounded-md text-sm font-medium bg-[var(--status-success)] text-white hover:opacity-90 transition-opacity"

@@ -25,13 +25,13 @@ export const MagicPromptsSidebar: React.FC<MagicPromptsSidebarProps> = ({ onItem
         ],
       },
       {
-        groupKey: 'settings.magicPrompts.sidebar.group.github',
+        groupKey: 'settings.magicPrompts.sidebar.group.gitlab',
         items: [
-          { id: 'github.pr.review', titleKey: 'settings.magicPrompts.sidebar.item.githubPrReview' },
-          { id: 'github.issue.review', titleKey: 'settings.magicPrompts.sidebar.item.githubIssueReview' },
-          { id: 'github.pr.checks.review', titleKey: 'settings.magicPrompts.sidebar.item.githubPrFailedChecksReview' },
-          { id: 'github.pr.comments.review', titleKey: 'settings.magicPrompts.sidebar.item.githubPrCommentsReview' },
-          { id: 'github.pr.comment.single', titleKey: 'settings.magicPrompts.sidebar.item.githubSinglePrCommentReview' },
+          { id: 'gitlab.mr.review', titleKey: 'settings.magicPrompts.sidebar.item.gitlabMrReview' },
+          { id: 'gitlab.issue.review', titleKey: 'settings.magicPrompts.sidebar.item.gitlabIssueReview' },
+          { id: 'gitlab.mr.checks.review', titleKey: 'settings.magicPrompts.sidebar.item.gitlabMrFailedChecksReview' },
+          { id: 'gitlab.mr.comments.review', titleKey: 'settings.magicPrompts.sidebar.item.gitlabMrCommentsReview' },
+          { id: 'gitlab.mr.comment.single', titleKey: 'settings.magicPrompts.sidebar.item.gitlabSingleMrCommentReview' },
         ],
       },
       {

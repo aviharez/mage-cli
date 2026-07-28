@@ -29,17 +29,13 @@ import { useUpdatePolling } from '@/hooks/useUpdatePolling';
 import { useI18n } from '@/lib/i18n';
 import { toast } from '@/components/ui';
 import { ProviderLogo } from '@/components/ui/ProviderLogo';
-import { UsageProgressBar } from '@/components/sections/usage/UsageProgressBar';
-import { PaceIndicator } from '@/components/sections/usage/PaceIndicator';
 import { Icon } from "@/components/icon/Icon";
 import { formatQuotaValueLabel, formatQuotaResetLabel, formatWindowLabel, QUOTA_PROVIDERS, calculatePace, calculateExpectedUsagePercent } from '@/lib/quota';
-import { useQuotaAutoRefresh, useQuotaStore } from '@/stores/useQuotaStore';
-import { updateDesktopSettings } from '@/lib/persistence';
 import { formatTimeForPreference } from '@/lib/timeFormat';
 import { lazyWithChunkRecovery } from '@/lib/chunkLoadRecovery';
 import type { Session } from '@mybcabisnis/mage-sdk/v2';
-import type { UsageWindow } from '@/types';
 import type { SessionContextUsage } from '@/stores/types/sessionTypes';
+import type { UsageWindow } from '@/types';
 import { useUIStore, type TimeFormatPreference } from '@/stores/useUIStore';
 
 const SettingsView = lazyWithChunkRecovery(() => import('@/components/views/SettingsView').then(m => ({ default: m.SettingsView })));
@@ -531,7 +527,6 @@ export const VSCodeLayout: React.FC = () => {
             title={activeSessionTitle || t('vscodeLayout.title.chat')}
             showMcp
             showContextUsage
-            showRateLimits
             enableSessionSwitcher
           />
           <div className="flex-1 overflow-hidden">
@@ -585,7 +580,6 @@ export const VSCodeLayout: React.FC = () => {
               title={chatTitle}
               showMcp
               showContextUsage
-              showRateLimits
               enableSessionSwitcher
             />
             <div className="flex-1 overflow-hidden">
@@ -623,7 +617,6 @@ export const VSCodeLayout: React.FC = () => {
               onBack={handleBackToSessions}
               showMcp
               showContextUsage
-              showRateLimits
               enableSessionSwitcher
             />
             <div className="flex-1 overflow-hidden">
@@ -664,22 +657,15 @@ const VSCodeHeader: React.FC<VSCodeHeaderProps> = ({ title, showBack, onBack, on
   const activeProjectId = useProjectsStore((state) => state.activeProjectId);
   const currentSessionMessages = useSessionMessages(currentSessionId ?? '');
   const currentSessionMessagesResolved = useSessionMessagesResolved(currentSessionId ?? '');
-  const quotaResults = useQuotaStore((state) => state.results);
-  const fetchAllQuotas = useQuotaStore((state) => state.fetchAllQuotas);
-  const isQuotaLoading = useQuotaStore((state) => state.isLoading);
-  const quotaLastUpdated = useQuotaStore((state) => state.lastUpdated);
-  const quotaDisplayMode = useQuotaStore((state) => state.displayMode);
-  const showPredValues = useQuotaStore((state) => state.showPredValues);
+  const quotaResults: never[] = [];
+  const fetchAllQuotas = React.useCallback(async () => {}, []);
+  const isQuotaLoading = false;
+  const quotaLastUpdated = null;
+  const quotaDisplayMode = 'usage' as 'usage' | 'remaining';
+  const showPredValues = false;
   const timeFormatPreference = useUIStore((state) => state.timeFormatPreference);
-  const dropdownProviderIds = useQuotaStore((state) => state.dropdownProviderIds);
-  const loadQuotaSettings = useQuotaStore((state) => state.loadSettings);
-  const setQuotaDisplayMode = useQuotaStore((state) => state.setDisplayMode);
-
-  useQuotaAutoRefresh();
-
-  React.useEffect(() => {
-    void loadQuotaSettings();
-  }, [loadQuotaSettings]);
+  const dropdownProviderIds: string[] = [];
+  const setQuotaDisplayMode = React.useCallback((_mode: 'usage' | 'remaining') => {}, []);
 
   const currentModel = getCurrentModel();
   const headerMessageSummary = React.useMemo(() => {
@@ -776,38 +762,11 @@ const VSCodeHeader: React.FC<VSCodeHeaderProps> = ({ title, showBack, onBack, on
     }
   }, [contextUsage, currentSessionId, isContextUsageResolvedForSession]);
 
-  const rateLimitGroups = React.useMemo(() => {
-    const groups: Array<{
-      providerId: string;
-      providerName: string;
-      entries: Array<[string, UsageWindow]>;
-      error?: string;
-    }> = [];
-
-    for (const provider of QUOTA_PROVIDERS) {
-      if (!dropdownProviderIds.includes(provider.id)) {
-        continue;
-      }
-      const result = quotaResults.find((entry) => entry.providerId === provider.id);
-      const windows = (result?.usage?.windows ?? {}) as Record<string, UsageWindow>;
-      const entries = Object.entries(windows);
-      const error = (result && !result.ok && result.configured) ? result.error : undefined;
-      if (entries.length > 0 || error) {
-        groups.push({ providerId: provider.id, providerName: provider.name, entries, error });
-      }
-    }
-
-    return groups;
-  }, [dropdownProviderIds, quotaResults]);
+  const rateLimitGroups: Array<{ providerId: string; providerName: string; entries: Array<[string, UsageWindow]>; error?: string }> = [];
   const hasRateLimits = rateLimitGroups.length > 0;
 
   const handleDisplayModeChange = React.useCallback(async (mode: 'usage' | 'remaining') => {
     setQuotaDisplayMode(mode);
-    try {
-      await updateDesktopSettings({ usageDisplayMode: mode });
-    } catch (error) {
-      console.warn('Failed to update usage display mode:', error);
-    }
   }, [setQuotaDisplayMode]);
 
   return (
@@ -991,17 +950,7 @@ const VSCodeHeader: React.FC<VSCodeHeaderProps> = ({ title, showBack, onBack, on
                                   {metricLabel === '-' ? '' : metricLabel}
                                 </span>
                               </span>
-                              <UsageProgressBar
-                                percent={displayPercent}
-                                tonePercent={window.usedPercent}
-                                className="h-1"
-                                expectedMarkerPercent={expectedMarker}
-                              />
-                              {paceInfo && showPredValues && (
-                                <div className="mt-0.5">
-                                  <PaceIndicator paceInfo={paceInfo} compact />
-                                </div>
-                              )}
+                              <div className="h-1 rounded-full bg-muted" />
                               <span className="flex items-center justify-between typography-micro text-muted-foreground text-[10px]">
                                 <span>{formatQuotaResetLabel(window.resetAt, window.resetAfterFormatted ?? window.resetAtFormatted, timeFormatPreference)}</span>
                               </span>

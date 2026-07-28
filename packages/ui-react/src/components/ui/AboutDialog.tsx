@@ -9,7 +9,11 @@ import { cn } from '@/lib/utils';
 import { toast } from '@/components/ui';
 import { useI18n } from '@/lib/i18n';
 import { getDesktopAppVersion } from '@/lib/desktopNative';
+import { isElectronShell } from '@/lib/desktop';
 import { runtimeFetch } from '@/lib/runtime-fetch';
+import { openExternalUrl } from '@/lib/url';
+
+const DOCUMENTATION_URL = 'https://mage.apps.ocpdevgra.dti.co.id/';
 
 interface AboutDialogProps {
   open: boolean;
@@ -23,7 +27,6 @@ export const AboutDialog: React.FC<AboutDialogProps> = ({
   const { t } = useI18n();
   const showDiagnostics = import.meta.env.DEV;
   const [version, setVersion] = React.useState<string | null>(null);
-  const [mageVersion, setMageVersion] = React.useState<string | null>(null);
   const [isCopyingDiagnostics, setIsCopyingDiagnostics] = React.useState(false);
   const [copiedDiagnostics, setCopiedDiagnostics] = React.useState(false);
   const [diagnosticsReport, setDiagnosticsReport] = React.useState<string | null>(null);
@@ -64,6 +67,10 @@ export const AboutDialog: React.FC<AboutDialogProps> = ({
 
     const fetchVersion = async () => {
       try {
+        if (isElectronShell()) {
+          setVersion(await getDesktopAppVersion());
+          return;
+        }
         const response = await runtimeFetch('/api/system/info');
         if (response.ok) {
           const data = await response.json();
@@ -80,32 +87,6 @@ export const AboutDialog: React.FC<AboutDialogProps> = ({
     };
 
     void fetchVersion();
-  }, [open]);
-
-  React.useEffect(() => {
-    if (!open) return;
-
-    let cancelled = false;
-    const fetchMageVersion = async () => {
-      try {
-        const response = await runtimeFetch('/api/mage/upgrade-status', {
-          headers: { Accept: 'application/json' },
-        });
-        if (!response.ok) return;
-        const data = await response.json().catch(() => null) as null | { currentVersion?: unknown };
-        const currentVersion = typeof data?.currentVersion === 'string' ? data.currentVersion.trim() : '';
-        if (!cancelled && currentVersion) {
-          setMageVersion(currentVersion);
-        }
-      } catch {
-        // Mage version is best-effort in About.
-      }
-    };
-
-    void fetchMageVersion();
-    return () => {
-      cancelled = true;
-    };
   }, [open]);
 
   React.useEffect(() => {
@@ -151,9 +132,6 @@ export const AboutDialog: React.FC<AboutDialogProps> = ({
               {displayVersion && (
                 <p>{t('aboutDialog.mageAppVersionLabel', { version: displayVersion })}</p>
               )}
-              {mageVersion && (
-                <p>{t('aboutDialog.mageCliVersionLabel', { version: mageVersion })}</p>
-              )}
             </div>
           </div>
 
@@ -180,6 +158,9 @@ export const AboutDialog: React.FC<AboutDialogProps> = ({
             </div>
           )}
 
+          <a href={DOCUMENTATION_URL} onClick={(event) => { event.preventDefault(); void openExternalUrl(DOCUMENTATION_URL); }} className="typography-meta text-[var(--primary-base)] hover:underline">
+            Mage Documentation
+          </a>
           <p className="typography-meta text-muted-foreground/60 pt-2">
             {t('aboutDialog.footerNote')}
           </p>

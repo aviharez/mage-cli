@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { GitHubPullRequestStatus, RuntimeAPIs } from '@/lib/api/types';
+import type { GitLabMergeRequestStatus, RuntimeAPIs } from '@/lib/api/types';
 import { mapWithConcurrency } from '@/lib/concurrency';
 import { createDeferredSafeJSONStorage } from './utils/safeStorage';
 
@@ -13,10 +13,10 @@ const PR_OPEN_DEFAULT_INTERVAL_MS = 2 * 60_000;
 const PR_OPEN_STABLE_INTERVAL_MS = 5 * 60_000;
 const PR_STATUS_REFRESH_CONCURRENCY = 4;
 const PR_PERSIST_TTL_MS = 12 * 60 * 60_000;
-const PR_STATUS_STORAGE_KEY = 'mage.github-pr-status';
+const PR_STATUS_STORAGE_KEY = 'mage.gitlab-pr-status';
 
 const isTerminalPrState = (state: string | null | undefined): boolean => state === 'closed' || state === 'merged';
-const isPendingChecks = (status: GitHubPullRequestStatus | null): boolean => {
+const isPendingChecks = (status: GitLabMergeRequestStatus | null): boolean => {
   const checks = status?.checks;
   if (!checks) {
     return false;
@@ -24,7 +24,7 @@ const isPendingChecks = (status: GitHubPullRequestStatus | null): boolean => {
   return checks.state === 'pending' || checks.pending > 0;
 };
 
-export const getGitHubPrStatusKey = (directory: string, branch: string, remoteName?: string | null): string => {
+export const getGitLabMrStatusKey = (directory: string, branch: string, remoteName?: string | null): string => {
   void remoteName;
   return `${directory}::${branch}`;
 };
@@ -47,9 +47,9 @@ type PrRuntimeParams = {
   branch: string;
   remoteName: string | null;
   canShow: boolean;
-  github?: RuntimeAPIs['github'];
-  githubAuthChecked: boolean;
-  githubConnected: boolean | null;
+  gitlab?: RuntimeAPIs['gitlab'];
+  gitlabAuthChecked: boolean;
+  gitlabConnected: boolean | null;
 };
 
 type PrEntryIdentity = {
@@ -59,7 +59,7 @@ type PrEntryIdentity = {
 };
 
 type PrStatusEntry = {
-  status: GitHubPullRequestStatus | null;
+  status: GitLabMergeRequestStatus | null;
   isLoading: boolean;
   error: string | null;
   isInitialStatusResolved: boolean;
@@ -76,7 +76,7 @@ type PersistedPrStatusEntry = Pick<
   'status' | 'isInitialStatusResolved' | 'lastRefreshAt' | 'lastDiscoveryPollAt' | 'identity' | 'resolvedRemoteName'
 >;
 
-type GitHubPrStatusStore = {
+type GitLabMrStatusStore = {
   entries: Record<string, PrStatusEntry>;
   activeRequestCount: number;
   totalRequestCount: number;
@@ -86,7 +86,7 @@ type GitHubPrStatusStore = {
   stopWatching: (key: string) => void;
   refresh: (key: string, options?: RefreshOptions) => Promise<void>;
   refreshTargets: (targets: PrTrackingTarget[], options?: RefreshOptions) => Promise<void>;
-  updateStatus: (key: string, updater: (prev: GitHubPullRequestStatus | null) => GitHubPullRequestStatus | null) => void;
+  updateStatus: (key: string, updater: (prev: GitLabMergeRequestStatus | null) => GitLabMergeRequestStatus | null) => void;
 };
 
 const timers = new Map<string, number>();
@@ -94,40 +94,40 @@ const bootstrapTimers = new Map<string, number[]>();
 const inFlightBySignature = new Set<string>();
 const lastRefreshBySignature = new Map<string, number>();
 
-// Global concurrency gate for PR-status network requests.
+// Global concurrency gate for MR-status network requests.
 //
-// PR status is non-critical chrome, but each request can be slow (the server
-// makes many serial GitHub API calls and GitHub secondary-rate-limits bursts,
+// MR status is non-critical chrome, but each request can be slow (the server
+// makes many serial GitLab API calls and GitLab secondary-rate-limits bursts,
 // so a single request can take 20s+). The browser allows only ~6 concurrent
 // HTTP/1.1 connections per origin. Without this cap, watching N worktrees fires
-// N PR-status requests at once (each startWatching() calls refresh() directly,
+// N MR-status requests at once (each startWatching() calls refresh() directly,
 // bypassing refreshTargets' batch limiter), which saturates the connection pool
 // and starves the critical path (bootstrap session.status, diffs, sending
 // messages) for the full duration — the whole UI appears frozen on startup.
 //
 // Capping concurrency low guarantees free sockets remain for critical traffic.
 const PR_STATUS_NETWORK_CONCURRENCY = 2;
-let prStatusNetworkActive = 0;
-const prStatusNetworkWaiters: Array<() => void> = [];
+let mrStatusNetworkActive = 0;
+const mrStatusNetworkWaiters: Array<() => void> = [];
 
 const acquirePrStatusNetworkSlot = (): Promise<void> => {
-  if (prStatusNetworkActive < PR_STATUS_NETWORK_CONCURRENCY) {
-    prStatusNetworkActive += 1;
+  if (mrStatusNetworkActive < PR_STATUS_NETWORK_CONCURRENCY) {
+    mrStatusNetworkActive += 1;
     return Promise.resolve();
   }
   return new Promise<void>((resolve) => {
-    prStatusNetworkWaiters.push(resolve);
+    mrStatusNetworkWaiters.push(resolve);
   });
 };
 
 const releasePrStatusNetworkSlot = (): void => {
-  const next = prStatusNetworkWaiters.shift();
+  const next = mrStatusNetworkWaiters.shift();
   if (next) {
     // Hand the slot directly to the next waiter — keep the active count steady.
     next();
     return;
   }
-  prStatusNetworkActive = Math.max(0, prStatusNetworkActive - 1);
+  mrStatusNetworkActive = Math.max(0, mrStatusNetworkActive - 1);
 };
 
 const createEntry = (): PrStatusEntry => ({
@@ -194,7 +194,7 @@ const mergeParams = (entry: PrStatusEntry, next: PrRuntimeParams): PrStatusEntry
 };
 
 const getFetchableParams = (entry: PrStatusEntry | null | undefined): PrRuntimeParams | null => {
-  if (!entry?.params?.canShow || !entry.params.github?.prStatus) {
+  if (!entry?.params?.canShow || !entry.params.gitlab?.mrStatus) {
     return null;
   }
   return {
@@ -256,7 +256,7 @@ const hydrateEntry = (entry: PersistedPrStatusEntry | undefined): PrStatusEntry 
   resolvedRemoteName: entry?.resolvedRemoteName ?? entry?.status?.resolvedRemoteName ?? null,
 });
 
-export const useGitHubPrStatusStore = create<GitHubPrStatusStore>()(
+export const useGitLabMrStatusStore = create<GitLabMrStatusStore>()(
   persist(
     (set, get) => ({
       entries: {},
@@ -316,7 +316,7 @@ export const useGitHubPrStatusStore = create<GitHubPrStatusStore>()(
             if (!entry || entry.watchers <= 0) {
               return;
             }
-            if (entry.status?.pr) {
+            if (entry.status?.mr) {
               return;
             }
             void get().refresh(key, { force: true, silent: true, markInitialResolved: true });
@@ -339,7 +339,7 @@ export const useGitHubPrStatusStore = create<GitHubPrStatusStore>()(
             return;
           }
 
-          const hasPr = Boolean(entry.status?.pr);
+          const hasPr = Boolean(entry.status?.mr);
           if (!hasPr) {
             const now = Date.now();
             if (now - entry.lastDiscoveryPollAt < PR_DISCOVERY_INTERVAL_MS) {
@@ -364,7 +364,7 @@ export const useGitHubPrStatusStore = create<GitHubPrStatusStore>()(
             return;
           }
 
-          if (isTerminalPrState(entry.status?.pr?.state)) {
+          if (isTerminalPrState(entry.status?.mr?.state)) {
             return;
           }
 
@@ -432,7 +432,7 @@ export const useGitHubPrStatusStore = create<GitHubPrStatusStore>()(
           return;
         }
         const signatureKeys = getKeysBySignature(state.entries, signature);
-        const hasExistingPr = signatureKeys.some((signatureKey) => Boolean(state.entries[signatureKey]?.status?.pr));
+        const hasExistingPr = signatureKeys.some((signatureKey) => Boolean(state.entries[signatureKey]?.status?.mr));
         if (options?.onlyExistingPr && !hasExistingPr) {
           return;
         }
@@ -471,7 +471,7 @@ export const useGitHubPrStatusStore = create<GitHubPrStatusStore>()(
           };
         });
 
-        if (params.githubAuthChecked && params.githubConnected === false) {
+        if (params.gitlabAuthChecked && params.gitlabConnected === false) {
           set((prev) => {
             const nextEntries = { ...prev.entries };
             signatureKeys.forEach((signatureKey) => {
@@ -495,7 +495,7 @@ export const useGitHubPrStatusStore = create<GitHubPrStatusStore>()(
           return;
         }
 
-        if (!params.github?.prStatus) {
+        if (!params.gitlab?.mrStatus) {
           set((prev) => {
             const nextEntries = { ...prev.entries };
             signatureKeys.forEach((signatureKey) => {
@@ -506,7 +506,7 @@ export const useGitHubPrStatusStore = create<GitHubPrStatusStore>()(
               nextEntries[signatureKey] = {
                 ...current,
                 status: null,
-                error: 'GitHub runtime API unavailable',
+                error: 'GitLab runtime API unavailable',
                 isLoading: options?.silent ? current.isLoading : false,
                 isInitialStatusResolved: options?.markInitialResolved === false ? current.isInitialStatusResolved : true,
               };
@@ -526,9 +526,9 @@ export const useGitHubPrStatusStore = create<GitHubPrStatusStore>()(
             totalRequestCount: prev.totalRequestCount + 1,
           }));
           await acquirePrStatusNetworkSlot();
-          let next: GitHubPullRequestStatus;
+          let next: GitLabMergeRequestStatus;
           try {
-            next = await params.github.prStatus(params.directory, params.branch, params.remoteName ?? undefined, { force: options?.force });
+            next = await params.gitlab.mrStatus(params.directory, params.branch, params.remoteName ?? undefined, { force: options?.force });
           } finally {
             releasePrStatusNetworkSlot();
           }
@@ -540,8 +540,8 @@ export const useGitHubPrStatusStore = create<GitHubPrStatusStore>()(
                 return;
               }
 
-              const prevPr = current.status?.pr;
-              const nextPr = next.pr;
+              const prevPr = current.status?.mr;
+              const nextPr = next.mr;
               const shouldCarryBody = Boolean(
                 nextPr
                 && prevPr
@@ -554,7 +554,7 @@ export const useGitHubPrStatusStore = create<GitHubPrStatusStore>()(
               const status = shouldCarryBody && nextPr && prevPr?.body
                 ? {
                   ...next,
-                  pr: {
+                  mr: {
                     ...nextPr,
                     body: prevPr.body,
                   },
@@ -597,7 +597,7 @@ export const useGitHubPrStatusStore = create<GitHubPrStatusStore>()(
               }
               nextEntries[signatureKey] = {
                 ...current,
-                error: message || 'Failed to load PR status',
+                error: message || 'Failed to load MR status',
                 isLoading: options?.silent ? current.isLoading : false,
                 isInitialStatusResolved: options?.markInitialResolved === false ? current.isInitialStatusResolved : true,
               };
@@ -621,7 +621,7 @@ export const useGitHubPrStatusStore = create<GitHubPrStatusStore>()(
               if (!directory || !branch) {
                 return null;
               }
-              return getGitHubPrStatusKey(directory, branch, target.remoteName ?? null);
+              return getGitLabMrStatusKey(directory, branch, target.remoteName ?? null);
             })
             .filter((key): key is string => Boolean(key)),
         ));
@@ -664,7 +664,7 @@ export const useGitHubPrStatusStore = create<GitHubPrStatusStore>()(
       }),
       merge: (persistedState, currentState) => {
         const persistedEntries = (persistedState as { entries?: Record<string, PersistedPrStatusEntry> } | undefined)?.entries ?? {};
-        const current = currentState as GitHubPrStatusStore;
+        const current = currentState as GitLabMrStatusStore;
         return {
           ...current,
           entries: Object.fromEntries(
@@ -690,8 +690,8 @@ export type PrVisualSummary = {
   repo: { owner: string; repo: string } | null;
 };
 
-const derivePrVisualState = (status: GitHubPullRequestStatus | null): string | null => {
-  const pr = status?.pr;
+const derivePrVisualState = (status: GitLabMergeRequestStatus | null): string | null => {
+  const pr = status?.mr;
   if (!pr) return null;
   if (pr.state === 'merged') return 'merged';
   if (pr.state === 'closed') return 'closed';
@@ -705,7 +705,7 @@ const derivePrVisualState = (status: GitHubPullRequestStatus | null): string | n
 
 const deriveSummary = (entry: PrStatusEntry): PrVisualSummary | null => {
   const vs = derivePrVisualState(entry.status ?? null);
-  const pr = entry.status?.pr;
+  const pr = entry.status?.mr;
   if (!vs || !pr?.number) return null;
   return {
     number: pr.number,
@@ -721,7 +721,9 @@ const deriveSummary = (entry: PrStatusEntry): PrVisualSummary | null => {
       : null,
     canMerge: typeof entry.status?.canMerge === 'boolean' ? entry.status.canMerge : null,
     mergeableState: typeof pr.mergeableState === 'string' ? pr.mergeableState : null,
-    repo: entry.status?.repo ? { owner: entry.status.repo.owner, repo: entry.status.repo.repo } : null,
+    repo: entry.status?.repo?.owner && entry.status.repo.repo
+      ? { owner: entry.status.repo.owner, repo: entry.status.repo.repo }
+      : null,
   };
 };
 
@@ -732,7 +734,7 @@ let prKeyedCacheSigs = new Map<string, string>();
 let prKeyedCacheResult: Map<string, PrVisualSummary> = new Map();
 
 export const usePrVisualSummaryByKeys = (keys: string[]) => {
-  return useGitHubPrStatusStore((state) => {
+  return useGitLabMrStatusStore((state) => {
     // Derive summaries for requested keys only
     const nextSigs = new Map<string, string>();
     const nextSummaries = new Map<string, PrVisualSummary>();

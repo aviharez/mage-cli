@@ -44,44 +44,44 @@ const PROMPT_PAGE_MAP: Record<string, PromptPageConfig> = {
       { id: 'git.pr.generate.instructions', titleKey: 'settings.magicPrompts.page.block.instructions' },
     ],
   },
-  'github.pr.review': {
-    titleKey: 'settings.magicPrompts.page.group.githubPrReview.title',
-    descriptionKey: 'settings.magicPrompts.page.group.githubPrReview.description',
+  'gitlab.mr.review': {
+    titleKey: 'settings.magicPrompts.page.group.gitlabMrReview.title',
+    descriptionKey: 'settings.magicPrompts.page.group.gitlabMrReview.description',
     blocks: [
-      { id: 'github.pr.review.visible', titleKey: 'settings.magicPrompts.page.block.visiblePrompt' },
-      { id: 'github.pr.review.instructions', titleKey: 'settings.magicPrompts.page.block.instructions' },
+      { id: 'gitlab.mr.review.visible', titleKey: 'settings.magicPrompts.page.block.visiblePrompt' },
+      { id: 'gitlab.mr.review.instructions', titleKey: 'settings.magicPrompts.page.block.instructions' },
     ],
   },
-  'github.issue.review': {
-    titleKey: 'settings.magicPrompts.page.group.githubIssueReview.title',
-    descriptionKey: 'settings.magicPrompts.page.group.githubIssueReview.description',
+  'gitlab.issue.review': {
+    titleKey: 'settings.magicPrompts.page.group.gitlabIssueReview.title',
+    descriptionKey: 'settings.magicPrompts.page.group.gitlabIssueReview.description',
     blocks: [
-      { id: 'github.issue.review.visible', titleKey: 'settings.magicPrompts.page.block.visiblePrompt' },
-      { id: 'github.issue.review.instructions', titleKey: 'settings.magicPrompts.page.block.instructions' },
+      { id: 'gitlab.issue.review.visible', titleKey: 'settings.magicPrompts.page.block.visiblePrompt' },
+      { id: 'gitlab.issue.review.instructions', titleKey: 'settings.magicPrompts.page.block.instructions' },
     ],
   },
-  'github.pr.checks.review': {
-    titleKey: 'settings.magicPrompts.page.group.githubPrFailedChecksReview.title',
-    descriptionKey: 'settings.magicPrompts.page.group.githubPrFailedChecksReview.description',
+  'gitlab.mr.checks.review': {
+    titleKey: 'settings.magicPrompts.page.group.gitlabMrFailedChecksReview.title',
+    descriptionKey: 'settings.magicPrompts.page.group.gitlabMrFailedChecksReview.description',
     blocks: [
-      { id: 'github.pr.checks.review.visible', titleKey: 'settings.magicPrompts.page.block.visiblePrompt' },
-      { id: 'github.pr.checks.review.instructions', titleKey: 'settings.magicPrompts.page.block.instructions' },
+      { id: 'gitlab.mr.checks.review.visible', titleKey: 'settings.magicPrompts.page.block.visiblePrompt' },
+      { id: 'gitlab.mr.checks.review.instructions', titleKey: 'settings.magicPrompts.page.block.instructions' },
     ],
   },
-  'github.pr.comments.review': {
-    titleKey: 'settings.magicPrompts.page.group.githubPrCommentsReview.title',
-    descriptionKey: 'settings.magicPrompts.page.group.githubPrCommentsReview.description',
+  'gitlab.mr.comments.review': {
+    titleKey: 'settings.magicPrompts.page.group.gitlabMrCommentsReview.title',
+    descriptionKey: 'settings.magicPrompts.page.group.gitlabMrCommentsReview.description',
     blocks: [
-      { id: 'github.pr.comments.review.visible', titleKey: 'settings.magicPrompts.page.block.visiblePrompt' },
-      { id: 'github.pr.comments.review.instructions', titleKey: 'settings.magicPrompts.page.block.instructions' },
+      { id: 'gitlab.mr.comments.review.visible', titleKey: 'settings.magicPrompts.page.block.visiblePrompt' },
+      { id: 'gitlab.mr.comments.review.instructions', titleKey: 'settings.magicPrompts.page.block.instructions' },
     ],
   },
-  'github.pr.comment.single': {
-    titleKey: 'settings.magicPrompts.page.group.githubSinglePrCommentReview.title',
-    descriptionKey: 'settings.magicPrompts.page.group.githubSinglePrCommentReview.description',
+  'gitlab.mr.comment.single': {
+    titleKey: 'settings.magicPrompts.page.group.gitlabSingleMrCommentReview.title',
+    descriptionKey: 'settings.magicPrompts.page.group.gitlabSingleMrCommentReview.description',
     blocks: [
-      { id: 'github.pr.comment.single.visible', titleKey: 'settings.magicPrompts.page.block.visiblePrompt' },
-      { id: 'github.pr.comment.single.instructions', titleKey: 'settings.magicPrompts.page.block.instructions' },
+      { id: 'gitlab.mr.comment.single.visible', titleKey: 'settings.magicPrompts.page.block.visiblePrompt' },
+      { id: 'gitlab.mr.comment.single.instructions', titleKey: 'settings.magicPrompts.page.block.instructions' },
     ],
   },
   'git.conflict.resolve': {

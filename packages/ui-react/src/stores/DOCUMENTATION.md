@@ -24,7 +24,7 @@ There are multiple store categories in this directory.
 These are the most performance-sensitive.
 
 - `useGitStore.ts`
-- `useGitHubPrStatusStore.ts`
+- `useGitLabMrStatusStore.ts`
 - `useFilesViewTabsStore.ts`
 
 These stores act like centralized keyed caches. UI should consume narrow slices from them instead of re-fetching the same data in multiple places.
@@ -50,7 +50,7 @@ Examples:
 
 These stores coordinate persistent project/session metadata across multiple views.
 
-## Git / PR Stores
+## Git / MR Stores
 
 The Git and PR stores are the most important stores to understand before editing this directory.
 
@@ -79,9 +79,9 @@ Important properties:
 - in-flight dedupe exists for status and `ensureAll()`
 - diff data is separately cached and capped with size + count limits
 
-### `useGitHubPrStatusStore.ts`
+### `useGitLabMrStatusStore.ts`
 
-`useGitHubPrStatusStore` is a centralized PR cache keyed by `directory::branch`.
+`useGitLabMrStatusStore` is a centralized merge request cache keyed by `directory::branch`.
 
 Core model:
 
@@ -125,12 +125,12 @@ Good:
 - `useGitBranches(directory)`
 - `useGitBranchLabel(directory)`
 - `useGitRepoStatusMap(directories)`
-- `usePrVisualSummaryByKeys(keys)`
+- `useMrVisualSummaryByKeys(keys)`
 
 Bad:
 
 - `useGitStore((state) => state.directories)` in feature components
-- `useGitHubPrStatusStore((state) => state.entries)` in feature components
+- `useGitLabMrStatusStore((state) => state.entries)` in feature components
 - render-time scans over every PR entry for a single project/group badge
 
 Why this matters:

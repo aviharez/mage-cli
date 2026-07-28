@@ -1,4 +1,4 @@
-import { resolveGitHubRepoFromDirectory } from './index.js';
+import { resolveGitLabRepoFromDirectory } from './index.js';
 
 const REPO_METADATA_TTL_MS = 5 * 60_000;
 const REPO_METADATA_CACHE_MAX_ENTRIES = 200;
@@ -21,7 +21,7 @@ const normalizeRepoKey = (owner, repo) => {
   return `${o}/${r}`;
 };
 
-const getRepoMetadata = async (octokit, repo) => {
+const getRepoMetadata = async (client, repo) => {
   const repoKey = normalizeRepoKey(repo?.owner, repo?.repo);
   if (!repoKey) return null;
 
@@ -31,7 +31,7 @@ const getRepoMetadata = async (octokit, repo) => {
   }
 
   try {
-    const response = await octokit.rest.repos.get({
+    const response = await client.rest.repos.get({
       owner: repo.owner,
       repo: repo.repo,
     });
@@ -51,17 +51,17 @@ const getRepoMetadata = async (octokit, repo) => {
  * Resolve the repo network for a directory. If the origin repo is a fork,
  * includes the parent/source (upstream) repo in the result.
  *
- * @param {import('@octokit/rest').Octokit} octokit
+ * @param {object} client
  * @param {string} directory
  * @param {string} [remoteName='origin']
  * @returns {Promise<Array<{ owner: string, repo: string, url: string, source: string }> | null>}
  *   Array of repos to query (origin first, then upstream), or null if not a fork.
  */
-export async function resolveRepoNetwork(octokit, directory, remoteName = 'origin') {
-  const { repo } = await resolveGitHubRepoFromDirectory(directory, remoteName).catch(() => ({ repo: null }));
+export async function resolveRepoNetwork(client, directory, remoteName = 'origin') {
+  const { repo } = await resolveGitLabRepoFromDirectory(directory, remoteName).catch(() => ({ repo: null }));
   if (!repo) return null;
 
-  const metadata = await getRepoMetadata(octokit, repo);
+  const metadata = await getRepoMetadata(client, repo);
   if (!metadata) return [{ ...repo, source: 'origin' }];
 
   const result = [{ ...repo, source: 'origin' }];
@@ -75,7 +75,7 @@ export async function resolveRepoNetwork(octokit, directory, remoteName = 'origi
       result.push({
         owner: parent.owner.login,
         repo: parent.name,
-        url: parent.html_url || `https://github.com/${parent.owner.login}/${parent.name}`,
+        url: parent.html_url || `https://bcagitlab/${parent.owner.login}/${parent.name}`,
         source: 'upstream',
       });
     }
@@ -89,7 +89,7 @@ export async function resolveRepoNetwork(octokit, directory, remoteName = 'origi
       result.push({
         owner: source.owner.login,
         repo: source.name,
-        url: source.html_url || `https://github.com/${source.owner.login}/${source.name}`,
+        url: source.html_url || `https://bcagitlab/${source.owner.login}/${source.name}`,
         source: 'upstream',
       });
     }

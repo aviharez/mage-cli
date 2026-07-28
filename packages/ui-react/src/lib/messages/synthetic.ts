@@ -1,7 +1,7 @@
 import type { Part } from "@mybcabisnis/mage-sdk/v2";
 
-const GITHUB_ISSUE_CONTEXT_PREFIX = 'GitHub issue context (JSON)';
-const GITHUB_PR_CONTEXT_PREFIX = 'GitHub pull request context (JSON)';
+const GITLAB_ISSUE_CONTEXT_PREFIX = 'GitLab issue context (JSON)';
+const GITLAB_MR_CONTEXT_PREFIX = 'GitLab merge request context (JSON)';
 
 export const isSyntheticPart = (part: Part | undefined): boolean => {
     if (!part || typeof part !== "object") {
@@ -45,7 +45,7 @@ export const filterSyntheticParts = (parts: Part[] | undefined): Part[] => {
         }
 
         const trimmed = text.trimStart();
-        return trimmed.startsWith(GITHUB_ISSUE_CONTEXT_PREFIX) || trimmed.startsWith(GITHUB_PR_CONTEXT_PREFIX);
+        return trimmed.startsWith(GITLAB_ISSUE_CONTEXT_PREFIX) || trimmed.startsWith(GITLAB_MR_CONTEXT_PREFIX);
     };
 
     // If there are non-synthetic parts, filter out synthetic ones

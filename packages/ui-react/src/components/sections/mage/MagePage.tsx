@@ -6,8 +6,7 @@ import { PasskeySettings } from './PasskeySettings';
 import { DefaultsSettings } from './DefaultsSettings';
 import { GitSettings } from './GitSettings';
 import { NotificationSettings } from './NotificationSettings';
-import { GitHubSettings } from './GitHubSettings';
-import { VoiceSettings } from './VoiceSettings';
+import { GitLabSettings } from './GitLabSettings';
 import { TunnelSettings } from './TunnelSettings';
 import { MageCliSettings } from './MageCliSettings';
 import { DesktopNetworkSettings } from './DesktopNetworkSettings';
@@ -92,12 +91,10 @@ export const MagePage: React.FC<MagePageProps> = ({ section }) => {
                 return <ShortcutsSectionContent />;
             case 'git':
                 return <GitSectionContent />;
-            case 'github':
-                return <GitHubSectionContent />;
+            case 'gitlab':
+                return <GitLabSectionContent />;
             case 'notifications':
                 return <NotificationSectionContent />;
-            case 'voice':
-                return <VoiceSectionContent />;
             case 'tunnel':
                 return <TunnelSectionContent />;
             default:
@@ -186,25 +183,17 @@ const GitSectionContent: React.FC = () => {
     );
 };
 
-// GitHub section: Connect account for PR/issue workflows
-const GitHubSectionContent: React.FC = () => {
+// GitLab section: Connect account for PR/issue workflows
+const GitLabSectionContent: React.FC = () => {
     if (isVSCodeRuntime()) {
         return null;
     }
-    return <GitHubSettings />;
+    return <GitLabSettings />;
 };
 
 // Notifications section: Native browser notifications
 const NotificationSectionContent: React.FC = () => {
     return <NotificationSettings />;
-};
-
-// Voice section: Language selection and continuous mode
-const VoiceSectionContent: React.FC = () => {
-    if (isVSCodeRuntime()) {
-        return null;
-    }
-    return <VoiceSettings />;
 };
 
 const TunnelSectionContent: React.FC = () => {

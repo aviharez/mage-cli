@@ -19,7 +19,7 @@ import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } 
 import { useGitIdentitiesStore, type GitIdentityProfile, type DiscoveredGitCredential } from '@/stores/useGitIdentitiesStore';
 import { useShallow } from 'zustand/react/shallow';
 import { GitSettings } from '@/components/sections/mage/GitSettings';
-import { GitHubSettings } from '@/components/sections/mage/GitHubSettings';
+import { GitLabSettings } from '@/components/sections/mage/GitLabSettings';
 import { GitIdentityEditorDialog } from './GitIdentityEditorDialog';
 import { ScrollableOverlay } from '@/components/ui/ScrollableOverlay';
 import { Icon } from "@/components/icon/Icon";
@@ -118,8 +118,8 @@ export const GitPage: React.FC = () => {
     <>
       <ScrollableOverlay outerClassName="h-full" className="w-full bg-background">
         <div className="mx-auto w-full max-w-3xl space-y-6 p-3 sm:p-6 sm:pt-8">
-          <div data-settings-item="git.github-account">
-            <GitHubSettings />
+          <div data-settings-item="git.gitlab-account">
+            <GitLabSettings />
           </div>
 
           {/* Identities Section */}

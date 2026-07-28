@@ -24,12 +24,11 @@ import { formatSessionWorktreeBadge } from '@/sync/session-worktree-contract';
 import { useAllLiveSessions, useSession, useSessionMessagesResolved } from '@/sync/sync-context';
 import { getAllSyncSessions } from '@/sync/sync-refs';
 import { useProjectsStore } from '@/stores/useProjectsStore';
-import { useQuotaAutoRefresh, useQuotaStore } from '@/stores/useQuotaStore';
 import { useGitBranchLabel } from '@/stores/useGitStore';
 import { useGlobalSessionsStore } from '@/stores/useGlobalSessionsStore';
 import { useFeatureFlagsStore } from '@/stores/useFeatureFlagsStore';
 
-import { useGitHubAuthStore } from '@/stores/useGitHubAuthStore';
+import { useGitLabAuthStore } from '@/stores/useGitLabAuthStore';
 import { useRuntimeAPIs } from '@/hooks/useRuntimeAPIs';
 import { ContextUsageDisplay } from '@/components/ui/ContextUsageDisplay';
 import { WindowsWindowControls } from '@/components/desktop/WindowsWindowControls';
@@ -40,8 +39,6 @@ import { McpDropdownContent } from '@/components/mcp/McpDropdown';
 import { McpIcon } from '@/components/icons/McpIcon';
 import { ProviderLogo } from '@/components/ui/ProviderLogo';
 import { formatQuotaValueLabel, formatQuotaResetLabel, formatWindowLabel, QUOTA_PROVIDERS, calculatePace, calculateExpectedUsagePercent } from '@/lib/quota';
-import { UsageProgressBar } from '@/components/sections/usage/UsageProgressBar';
-import { PaceIndicator } from '@/components/sections/usage/PaceIndicator';
 import { updateDesktopSettings } from '@/lib/persistence';
 import { formatTimeForPreference } from '@/lib/timeFormat';
 import { eventMatchesShortcut, formatShortcutForDisplay, getEffectiveShortcutCombo } from '@/lib/shortcuts';
@@ -59,7 +56,7 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import type { UsageWindow } from '@/types';
-import type { GitHubAuthStatus } from '@/lib/api/types';
+import type { GitLabAuthStatus } from '@/lib/api/types';
 import type { SessionContextUsage } from '@/stores/types/sessionTypes';
 import { DesktopHostSwitcherDialog } from '@/components/desktop/DesktopHostSwitcher';
 import { OpenInAppButton } from '@/components/desktop/OpenInAppButton';
@@ -128,31 +125,31 @@ const HeaderIconActionButton = React.memo(function HeaderIconActionButton({
   );
 });
 
-type DesktopGitHubControlProps = {
+type DesktopGitLabControlProps = {
   isMobile: boolean;
-  githubAuthStatus: GitHubAuthStatus | null;
-  githubAccounts: Array<NonNullable<GitHubAuthStatus['accounts']>[number]>;
-  githubAvatarUrl: string | null;
-  githubLogin: string | null;
-  isSwitchingGitHubAccount: boolean;
-  handleGitHubAccountSwitch: (accountId: string) => Promise<void>;
+  gitlabAuthStatus: GitLabAuthStatus | null;
+  gitlabAccounts: Array<NonNullable<GitLabAuthStatus['accounts']>[number]>;
+  gitlabAvatarUrl: string | null;
+  gitlabLogin: string | null;
+  isSwitchingGitLabAccount: boolean;
+  handleGitLabAccountSwitch: (accountId: string) => Promise<void>;
 };
 
-const DesktopGitHubControl = React.memo(function DesktopGitHubControl({
+const DesktopGitLabControl = React.memo(function DesktopGitLabControl({
   isMobile,
-  githubAuthStatus,
-  githubAccounts,
-  githubAvatarUrl,
-  githubLogin,
-  isSwitchingGitHubAccount,
-  handleGitHubAccountSwitch,
-}: DesktopGitHubControlProps) {
+  gitlabAuthStatus,
+  gitlabAccounts,
+  gitlabAvatarUrl,
+  gitlabLogin,
+  isSwitchingGitLabAccount,
+  handleGitLabAccountSwitch,
+}: DesktopGitLabControlProps) {
   const { t } = useI18n();
-  if (!githubAuthStatus?.connected || isMobile) {
+  if (!gitlabAuthStatus?.connected || isMobile) {
     return null;
   }
 
-  if (githubAccounts.length > 1) {
+  if (gitlabAccounts.length > 1) {
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -162,60 +159,58 @@ const DesktopGitHubControl = React.memo(function DesktopGitHubControl({
               DESKTOP_HEADER_ICON_BUTTON_CLASS,
               'h-7 w-7 overflow-hidden rounded-full border border-border/60 bg-muted/80 p-0'
             )}
-            title={githubLogin ? t('header.github.connectedWithLogin', { login: githubLogin }) : t('header.github.connected')}
-            disabled={isSwitchingGitHubAccount}
+            title={gitlabLogin ? t('header.gitlab.connectedWithLogin', { login: gitlabLogin }) : t('header.gitlab.connected')}
+            disabled={isSwitchingGitLabAccount}
           >
-            {githubAvatarUrl ? (
+            {gitlabAvatarUrl ? (
               <img
-                src={githubAvatarUrl}
-                alt={githubLogin ? t('header.github.avatarWithLogin', { login: githubLogin }) : t('header.github.avatar')}
+                src={gitlabAvatarUrl}
+                alt={gitlabLogin ? t('header.gitlab.avatarWithLogin', { login: gitlabLogin }) : t('header.gitlab.avatar')}
                 className="h-full w-full object-cover"
                 loading="lazy"
                 referrerPolicy="no-referrer"
               />
             ) : (
-              <Icon name="github-fill" className="h-3.5 w-3.5 text-foreground" />
+              <Icon name="git-branch" className="h-3.5 w-3.5 text-foreground" />
             )}
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-64">
           <DropdownMenuLabel className="typography-ui-header font-semibold text-foreground">
-            {t('header.github.accountsTitle')}
+            {t('header.gitlab.accountsTitle')}
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          {githubAccounts.map((account) => {
+          {gitlabAccounts.map((account) => {
             const accountUser = account.user;
             const isCurrent = Boolean(account.current);
-            const sourceLabel = account.source === 'gh-cli'
-              ? t('header.github.accountSource.cli')
-              : t('header.github.accountSource.oauth');
+            const sourceLabel = t('header.gitlab.accountSource.oauth');
             return (
               <DropdownMenuItem
                 key={account.id}
                 className="gap-2"
-                disabled={isSwitchingGitHubAccount}
+                disabled={isSwitchingGitLabAccount}
                 onSelect={() => {
                   if (!isCurrent) {
-                    void handleGitHubAccountSwitch(account.id);
+                    void handleGitLabAccountSwitch(account.id);
                   }
                 }}
               >
                 {accountUser?.avatarUrl ? (
                   <img
                     src={accountUser.avatarUrl}
-                    alt={accountUser.login ? t('header.github.avatarWithLogin', { login: accountUser.login }) : t('header.github.avatar')}
+                    alt={accountUser.login ? t('header.gitlab.avatarWithLogin', { login: accountUser.login }) : t('header.gitlab.avatar')}
                     className="h-6 w-6 rounded-full border border-border/60 bg-muted object-cover"
                     loading="lazy"
                     referrerPolicy="no-referrer"
                   />
                 ) : (
                   <div className="flex h-6 w-6 items-center justify-center rounded-full border border-border/60 bg-muted">
-                    <Icon name="github-fill" className="h-3 w-3 text-muted-foreground" />
+                    <Icon name="git-branch" className="h-3 w-3 text-muted-foreground" />
                   </div>
                 )}
                 <span className="flex min-w-0 flex-1 flex-col">
                   <span className="truncate typography-ui-label text-foreground">
-                    {accountUser?.name?.trim() || accountUser?.login || 'GitHub'}
+                    {accountUser?.name?.trim() || accountUser?.login || 'GitLab'}
                   </span>
                   {accountUser?.login ? (
                     <span className="truncate typography-micro text-muted-foreground">
@@ -237,18 +232,18 @@ const DesktopGitHubControl = React.memo(function DesktopGitHubControl({
   return (
     <div
       className="app-region-no-drag flex h-7 w-7 items-center justify-center overflow-hidden rounded-full border border-border/60 bg-muted/80"
-      title={githubLogin ? t('header.github.connectedWithLogin', { login: githubLogin }) : t('header.github.connected')}
+      title={gitlabLogin ? t('header.gitlab.connectedWithLogin', { login: gitlabLogin }) : t('header.gitlab.connected')}
     >
-      {githubAvatarUrl ? (
+      {gitlabAvatarUrl ? (
         <img
-          src={githubAvatarUrl}
-          alt={githubLogin ? t('header.github.avatarWithLogin', { login: githubLogin }) : t('header.github.avatar')}
+          src={gitlabAvatarUrl}
+          alt={gitlabLogin ? t('header.gitlab.avatarWithLogin', { login: gitlabLogin }) : t('header.gitlab.avatar')}
           className="h-full w-full object-cover"
           loading="lazy"
           referrerPolicy="no-referrer"
         />
       ) : (
-        <Icon name="github-fill" className="h-3.5 w-3.5 text-foreground" />
+        <Icon name="git-branch" className="h-3.5 w-3.5 text-foreground" />
       )}
     </div>
   );
@@ -524,13 +519,7 @@ const DesktopServicesMenu = React.memo(function DesktopServicesMenu({
                                   {metricLabel === '-' ? '' : metricLabel}
                                 </span>
                               </div>
-                              <UsageProgressBar
-                                percent={displayPercent}
-                                tonePercent={window.usedPercent}
-                                className="h-1.5"
-                                expectedMarkerPercent={expectedMarker}
-                              />
-                              {paceInfo && showPredValues ? <PaceIndicator paceInfo={paceInfo} compact /> : null}
+                              <div className="h-1.5 rounded-full bg-muted" />
                             </div>
                           );
                         })}
@@ -568,13 +557,7 @@ const DesktopServicesMenu = React.memo(function DesktopServicesMenu({
                                                 {metricLabel === '-' ? '' : metricLabel}
                                               </span>
                                             </div>
-                                            <UsageProgressBar
-                                              percent={displayPercent}
-                                              tonePercent={window.usedPercent}
-                                              className="h-1.5"
-                                              expectedMarkerPercent={expectedMarker}
-                                            />
-                                            {paceInfo && showPredValues ? <PaceIndicator paceInfo={paceInfo} compact /> : null}
+                                            <div className="h-1.5 rounded-full bg-muted" />
                                           </div>
                                         );
                                       })}
@@ -758,19 +741,23 @@ export const Header: React.FC<HeaderProps> = ({
     const pathSegments = activeProject.path.split(/[\\/]/).filter(Boolean);
     return pathSegments[pathSegments.length - 1] ?? null;
   }, [activeProject]);
-  const quotaResults = useQuotaStore((state) => state.results);
-  const fetchAllQuotas = useQuotaStore((state) => state.fetchAllQuotas);
-  const isQuotaLoading = useQuotaStore((state) => state.isLoading);
-  const quotaLastUpdated = useQuotaStore((state) => state.lastUpdated);
-  const quotaDisplayMode = useQuotaStore((state) => state.displayMode);
-  const showPredValues = useQuotaStore((state) => state.showPredValues);
-  const dropdownProviderIds = useQuotaStore((state) => state.dropdownProviderIds);
-  const loadQuotaSettings = useQuotaStore((state) => state.loadSettings);
-  const setQuotaDisplayMode = useQuotaStore((state) => state.setDisplayMode);
+  const quotaResults: never[] = [];
+  const fetchAllQuotas = React.useCallback(async () => {}, []);
+  const isQuotaLoading = false;
+  const quotaLastUpdated = null;
+  const quotaDisplayMode = 'usage' as 'usage' | 'remaining';
+  const showPredValues = false;
+  const dropdownProviderIds: string[] = [];
+  const loadQuotaSettings = React.useCallback(async () => {}, []);
+  const setQuotaDisplayMode = React.useCallback((_mode: 'usage' | 'remaining') => {}, []);
+  const quotaDisplayTabItems: SortableTabsStripItem[] = [];
+  const isUsageRefreshSpinning = false;
+  const expandedFamilies: Record<string, string[]> = {};
+  const toggleFamilyExpanded = React.useCallback((_providerId: string, _familyId: string) => {}, []);
 
   const { isMobile } = useDeviceInfo();
-  const githubAuthStatus = useGitHubAuthStore((state) => state.status);
-  const setGitHubAuthStatus = useGitHubAuthStore((state) => state.setStatus);
+  const gitlabAuthStatus = useGitLabAuthStore((state) => state.status);
+  const setGitLabAuthStatus = useGitLabAuthStore((state) => state.setStatus);
 
   const headerRef = React.useRef<HTMLElement | null>(null);
 
@@ -858,13 +845,12 @@ export const Header: React.FC<HeaderProps> = ({
   }, [contextUsage, currentSessionId, isContextUsageResolvedForSession]);
 
   const isSessionSwitcherOpen = useUIStore((state) => state.isSessionSwitcherOpen);
-  const githubAvatarUrl = githubAuthStatus?.connected ? (githubAuthStatus.user?.avatarUrl ?? null) : null;
-  const githubLogin = githubAuthStatus?.connected ? (githubAuthStatus.user?.login ?? null) : null;
-  const githubAccounts = githubAuthStatus?.accounts ?? [];
-  const [isSwitchingGitHubAccount, setIsSwitchingGitHubAccount] = React.useState(false);
+  const gitlabAvatarUrl = gitlabAuthStatus?.connected ? (gitlabAuthStatus.user?.avatarUrl ?? null) : null;
+  const gitlabLogin = gitlabAuthStatus?.connected ? (gitlabAuthStatus.user?.login ?? null) : null;
+  const gitlabAccounts = gitlabAuthStatus?.accounts ?? [];
+  const [isSwitchingGitLabAccount, setIsSwitchingGitLabAccount] = React.useState(false);
   const [isMobileRateLimitsOpen, setIsMobileRateLimitsOpen] = React.useState(false);
   const [isDesktopServicesOpen, setIsDesktopServicesOpen] = React.useState(false);
-  const [isUsageRefreshSpinning, setIsUsageRefreshSpinning] = React.useState(false);
   const [currentInstanceLabel, setCurrentInstanceLabel] = React.useState('Local');
   const [currentInstanceIsLocal, setCurrentInstanceIsLocal] = React.useState(true);
   const [remoteUpdateDialogOpen, setRemoteUpdateDialogOpen] = React.useState(false);
@@ -873,12 +859,12 @@ export const Header: React.FC<HeaderProps> = ({
   const [remoteUpdateError, setRemoteUpdateError] = React.useState<string | null>(null);
   const compactCurrentInstanceLabel = React.useMemo(() => formatCompactHeaderLabel(currentInstanceLabel), [currentInstanceLabel]);
   const [desktopServicesTab, setDesktopServicesTab] = React.useState<'instance' | 'usage' | 'mcp'>(
-    isDesktopApp ? 'instance' : 'usage'
+    isDesktopApp ? 'instance' : 'mcp'
   );
-  const [mobileServicesTab, setMobileServicesTab] = React.useState<'usage' | 'mcp'>('usage');
+  const [mobileServicesTab, setMobileServicesTab] = React.useState<'usage' | 'mcp'>('mcp');
   useEffect(() => {
     if (!isDesktopApp && desktopServicesTab === 'instance') {
-      setDesktopServicesTab('usage');
+      setDesktopServicesTab('mcp');
     }
   }, [desktopServicesTab, isDesktopApp]);
 
@@ -1015,107 +1001,8 @@ export const Header: React.FC<HeaderProps> = ({
     void checkRemoteInstanceUpdate();
   }, [checkRemoteInstanceUpdate, remoteUpdateInfo?.available]);
 
-  useQuotaAutoRefresh();
-  const selectedModels = useQuotaStore((state) => state.selectedModels);
-  const expandedFamilies = useQuotaStore((state) => state.expandedFamilies);
-  const toggleFamilyExpanded = useQuotaStore((state) => state.toggleFamilyExpanded);
-
-  const rateLimitGroups = React.useMemo(() => {
-    const groups: RateLimitGroup[] = [];
-
-    for (const provider of QUOTA_PROVIDERS) {
-      if (!dropdownProviderIds.includes(provider.id)) {
-        continue;
-      }
-      const result = quotaResults.find((entry) => entry.providerId === provider.id);
-      const windows = (result?.usage?.windows ?? {}) as Record<string, UsageWindow>;
-      const models = result?.usage?.models;
-      const entries = Object.entries(windows);
-
-      const group: RateLimitGroup = {
-        providerId: provider.id,
-        providerName: provider.name,
-        entries,
-        error: (result && !result.ok && result.configured) ? result.error : undefined,
-      };
-
-      // Add model families if provider has per-model quotas
-      if (models && Object.keys(models).length > 0) {
-        const providerSelectedModels = selectedModels[provider.id] ?? [];
-        // hasExplicitSelection = true means user has selected specific models to show
-        // If the array exists but is empty, treat as "show all" (user cleared selection)
-        const hasExplicitSelection = providerSelectedModels.length > 0;
-        const modelGroups = groupModelsByFamily(models, provider.id);
-        const families = getAllModelFamilies(provider.id);
-        const sortedFamilies = sortModelFamilies(families);
-
-        group.modelFamilies = [];
-
-        // Add predefined families first
-        for (const family of sortedFamilies) {
-          const modelNames = modelGroups.get(family.id) ?? [];
-          if (modelNames.length === 0) continue;
-
-          // Filter to selected models only, OR show all if nothing selected
-          const selectedModelNames = hasExplicitSelection
-            ? modelNames.filter((m: string) => providerSelectedModels.includes(m))
-            : modelNames;
-          if (selectedModelNames.length === 0) continue;
-
-          const familyModels: Array<[string, UsageWindow]> = [];
-          for (const modelName of selectedModelNames) {
-            const modelUsage = models[modelName] as { windows?: Record<string, UsageWindow> } | undefined;
-            if (modelUsage?.windows) {
-              const windowEntries = Object.entries(modelUsage.windows);
-              if (windowEntries.length > 0) {
-                familyModels.push([modelName, windowEntries[0][1]]);
-              }
-            }
-          }
-
-          if (familyModels.length > 0) {
-            group.modelFamilies.push({
-              familyId: family.id,
-              familyLabel: family.label,
-              models: familyModels,
-            });
-          }
-        }
-
-        // Add "Other" family for remaining models
-        const otherModelNames = modelGroups.get(null) ?? [];
-        const selectedOtherModels = hasExplicitSelection
-          ? otherModelNames.filter((m: string) => providerSelectedModels.includes(m))
-          : otherModelNames;
-        if (selectedOtherModels.length > 0) {
-          const otherModels: Array<[string, UsageWindow]> = [];
-          for (const modelName of selectedOtherModels) {
-            const modelUsage = models[modelName] as { windows?: Record<string, UsageWindow> } | undefined;
-            if (modelUsage?.windows) {
-              const windowEntries = Object.entries(modelUsage.windows);
-              if (windowEntries.length > 0) {
-                otherModels.push([modelName, windowEntries[0][1]]);
-              }
-            }
-          }
-          if (otherModels.length > 0) {
-            group.modelFamilies.push({
-              familyId: null,
-              familyLabel: t('header.services.modelFamily.other'),
-              models: otherModels,
-            });
-          }
-        }
-      }
-
-      if (entries.length > 0 || (group.modelFamilies && group.modelFamilies.length > 0) || group.error) {
-        groups.push(group);
-      }
-    }
-
-    return groups;
-  }, [dropdownProviderIds, quotaResults, selectedModels, t]);
-  const hasRateLimits = rateLimitGroups.length > 0;
+  const rateLimitGroups: RateLimitGroup[] = [];
+  const hasRateLimits = false;
   React.useEffect(() => {
     void loadQuotaSettings();
   }, [loadQuotaSettings]);
@@ -1128,14 +1015,7 @@ export const Header: React.FC<HeaderProps> = ({
     }
   }, [setQuotaDisplayMode]);
 
-  const handleUsageRefresh = React.useCallback(() => {
-    if (isUsageRefreshSpinning) return;
-    setIsUsageRefreshSpinning(true);
-    const minSpinPromise = new Promise(resolve => setTimeout(resolve, 500));
-    Promise.all([fetchAllQuotas(), minSpinPromise]).finally(() => {
-      setIsUsageRefreshSpinning(false);
-    });
-  }, [fetchAllQuotas, isUsageRefreshSpinning]);
+  const handleUsageRefresh = React.useCallback(() => {}, []);
 
   const currentSessionLive = React.useMemo(() => {
     if (!currentSessionId) return null;
@@ -1361,14 +1241,14 @@ export const Header: React.FC<HeaderProps> = ({
     sessionDirectory,
   ]);
 
-  const handleGitHubAccountSwitch = React.useCallback(async (accountId: string) => {
-    if (!accountId || isSwitchingGitHubAccount) return;
-    setIsSwitchingGitHubAccount(true);
+  const handleGitLabAccountSwitch = React.useCallback(async (accountId: string) => {
+    if (!accountId || isSwitchingGitLabAccount) return;
+    setIsSwitchingGitLabAccount(true);
     try {
-      const payload = runtimeApis.github
-        ? await runtimeApis.github.authActivate(accountId)
+      const payload = runtimeApis.gitlab
+        ? await runtimeApis.gitlab.authActivate(accountId)
         : await (async () => {
-          const response = await runtimeFetch('/api/github/auth/activate', {
+          const response = await runtimeFetch('/api/gitlab/auth/activate', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -1377,7 +1257,7 @@ export const Header: React.FC<HeaderProps> = ({
             body: JSON.stringify({ accountId }),
           });
           const body = (await response.json().catch(() => null)) as
-            | (GitHubAuthStatus & { error?: string })
+            | (GitLabAuthStatus & { error?: string })
             | null;
           if (!response.ok || !body) {
             throw new Error(body?.error || response.statusText);
@@ -1385,13 +1265,13 @@ export const Header: React.FC<HeaderProps> = ({
           return body;
         })();
 
-      setGitHubAuthStatus(payload);
+      setGitLabAuthStatus(payload);
     } catch (error) {
-      console.error('Failed to switch GitHub account:', error);
+      console.error('Failed to switch GitLab account:', error);
     } finally {
-      setIsSwitchingGitHubAccount(false);
+      setIsSwitchingGitLabAccount(false);
     }
-  }, [isSwitchingGitHubAccount, runtimeApis.github, setGitHubAuthStatus]);
+  }, [isSwitchingGitLabAccount, runtimeApis.gitlab, setGitLabAuthStatus]);
 
   const blurActiveElement = React.useCallback(() => {
     if (typeof document === 'undefined') {
@@ -1790,14 +1670,11 @@ export const Header: React.FC<HeaderProps> = ({
   }, [activeMainTab, isMobile, setActiveMainTab]);
 
   const servicesTabs = React.useMemo(() => {
-    const base: Array<{ value: 'instance' | 'usage' | 'mcp'; label: string; icon: React.ReactNode }> = [];
+    const base: Array<{ value: 'instance' | 'mcp'; label: string; icon: React.ReactNode }> = [];
     if (isDesktopApp) {
       base.push({ value: 'instance', label: t('layout.services.instance'), icon: <Icon name="server" className="h-3.5 w-3.5" /> });
     }
-    base.push(
-      { value: 'usage', label: t('layout.services.usage'), icon: <Icon name="timer" className="h-3.5 w-3.5" /> },
-      { value: 'mcp', label: 'MCP', icon: <McpIcon className="h-3.5 w-3.5" /> }
-    );
+    base.push({ value: 'mcp', label: 'MCP', icon: <McpIcon className="h-3.5 w-3.5" /> });
     return base;
   }, [isDesktopApp, t]);
 
@@ -1866,22 +1743,8 @@ export const Header: React.FC<HeaderProps> = ({
     }
   }, [isDevShutdownInFlight, setIsDesktopServicesOpen]);
 
-  const quotaDisplayTabs = React.useMemo(() => {
-    return [
-      { value: 'usage' as const, label: t('header.services.used') },
-      { value: 'remaining' as const, label: t('header.services.remaining') },
-    ];
-  }, [t]);
-
-  const quotaDisplayTabItems = React.useMemo(() => {
-    return quotaDisplayTabs.map((tab) => ({ id: tab.value, label: tab.label }));
-  }, [quotaDisplayTabs]);
-
   const mobileServicesTabItems = React.useMemo<SortableTabsStripItem[]>(() => {
-    return [
-      { id: 'usage', label: t('layout.services.usage'), icon: <Icon name="timer" className="h-3.5 w-3.5" /> },
-      { id: 'mcp', label: 'MCP', icon: <McpIcon className="h-3.5 w-3.5" /> },
-    ];
+    return [{ id: 'mcp', label: 'MCP', icon: <McpIcon className="h-3.5 w-3.5" /> }];
   }, [t]);
 
   useEffect(() => {
@@ -2109,14 +1972,14 @@ export const Header: React.FC<HeaderProps> = ({
         onClick={toggleRightSidebar}
         Icon={'layout-right'}
       />
-      <DesktopGitHubControl
+      <DesktopGitLabControl
         isMobile={isMobile}
-        githubAuthStatus={githubAuthStatus}
-        githubAccounts={githubAccounts}
-        githubAvatarUrl={githubAvatarUrl}
-        githubLogin={githubLogin}
-        isSwitchingGitHubAccount={isSwitchingGitHubAccount}
-        handleGitHubAccountSwitch={handleGitHubAccountSwitch}
+        gitlabAuthStatus={gitlabAuthStatus}
+        gitlabAccounts={gitlabAccounts}
+        gitlabAvatarUrl={gitlabAvatarUrl}
+        gitlabLogin={gitlabLogin}
+        isSwitchingGitLabAccount={isSwitchingGitLabAccount}
+        handleGitLabAccountSwitch={handleGitLabAccountSwitch}
       />
     </>
   );
@@ -2343,8 +2206,7 @@ export const Header: React.FC<HeaderProps> = ({
               />
             )}
 
-            {/* Mobile Services Menu (Usage + MCP) */}
-            <DropdownMenu
+            {false && <DropdownMenu
               open={isMobileRateLimitsOpen}
               onOpenChange={(open) => {
                 if (open) {
@@ -2534,15 +2396,7 @@ export const Header: React.FC<HeaderProps> = ({
                                           {metricLabel === '-' ? '' : metricLabel}
                                         </span>
                                       </div>
-                                      <UsageProgressBar
-                                        percent={displayPercent}
-                                        tonePercent={window.usedPercent}
-                                        className="h-1.5"
-                                        expectedMarkerPercent={expectedMarker}
-                                      />
-                                      {paceInfo && showPredValues ? (
-                                        <PaceIndicator paceInfo={paceInfo} compact />
-                                      ) : null}
+                                      <div className="h-1.5 rounded-full bg-muted" />
                                     </div>
                                   );
                                 })}
@@ -2591,15 +2445,7 @@ export const Header: React.FC<HeaderProps> = ({
                                                         {metricLabel === '-' ? '' : metricLabel}
                                                       </span>
                                                     </div>
-                                                    <UsageProgressBar
-                                                      percent={displayPercent}
-                                                      tonePercent={window.usedPercent}
-                                                      className="h-1.5"
-                                                      expectedMarkerPercent={expectedMarker}
-                                                    />
-                                                    {paceInfo && showPredValues ? (
-                                                      <PaceIndicator paceInfo={paceInfo} compact />
-                                                    ) : null}
+                                                    <div className="h-1.5 rounded-full bg-muted" />
                                                   </div>
                                                 );
                                               })}
@@ -2619,7 +2465,7 @@ export const Header: React.FC<HeaderProps> = ({
                   )}
                 </div>
               </DropdownMenuContent>
-            </DropdownMenu>
+            </DropdownMenu>}
 
             {onToggleRightDrawer ? (
               <Tooltip>

@@ -787,7 +787,7 @@ export interface PushAPI {
   unregisterApnsToken(payload: ApnsTokenPayload): Promise<{ ok: true } | null>;
 }
 
-export type GitHubUserSummary = {
+export type GitLabUserSummary = {
   login: string;
   id?: number;
   avatarUrl?: string;
@@ -795,13 +795,16 @@ export type GitHubUserSummary = {
   email?: string;
 };
 
-type GitHubRepoRef = {
-  owner: string;
-  repo: string;
-  url: string;
+export type GitLabRepoRef = {
+  projectId: number | string | null;
+  pathWithNamespace: string;
+  webUrl: string;
+  owner?: string;
+  repo?: string;
+  url?: string;
 };
 
-type GitHubChecksSummary = {
+type GitLabChecksSummary = {
   state: 'success' | 'failure' | 'pending' | 'unknown';
   total: number;
   success: number;
@@ -809,7 +812,7 @@ type GitHubChecksSummary = {
   pending: number;
 };
 
-export type GitHubCheckRun = {
+export type GitLabCheckRun = {
   id?: number;
   name: string;
   app?: {
@@ -850,7 +853,8 @@ export type GitHubCheckRun = {
   }>;
 };
 
-export type GitHubPullRequest = {
+export type GitLabMergeRequest = {
+  iid: number;
   number: number;
   title: string;
   body?: string;
@@ -864,7 +868,7 @@ export type GitHubPullRequest = {
   mergeableState?: string | null;
 };
 
-type GitHubPullRequestHeadRepo = {
+type GitLabMergeRequestHeadRepo = {
   owner: string;
   repo: string;
   url: string;
@@ -872,17 +876,17 @@ type GitHubPullRequestHeadRepo = {
   sshUrl?: string;
 };
 
-export type GitHubPullRequestSummary = GitHubPullRequest & {
-  author?: GitHubUserSummary | null;
+export type GitLabMergeRequestSummary = GitLabMergeRequest & {
+  author?: GitLabUserSummary | null;
   body?: string;
   createdAt?: string;
   updatedAt?: string;
   headLabel?: string;
-  headRepo?: GitHubPullRequestHeadRepo | null;
-  sourceRepo?: (GitHubRepoSelector & { source: string }) | null;
+  headRepo?: GitLabMergeRequestHeadRepo | null;
+  sourceRepo?: (GitLabRepoSelector & { source: string }) | null;
 };
 
-type GitHubPullRequestFile = {
+type GitLabMergeRequestFile = {
   filename: string;
   status?: string;
   additions?: number;
@@ -891,11 +895,11 @@ type GitHubPullRequestFile = {
   patch?: string;
 };
 
-type GitHubPullRequestReviewComment = {
+type GitLabMergeRequestReviewComment = {
   id: number;
   url: string;
   body: string;
-  author?: GitHubUserSummary | null;
+  author?: GitLabUserSummary | null;
   path?: string;
   line?: number | null;
   position?: number | null;
@@ -903,38 +907,38 @@ type GitHubPullRequestReviewComment = {
   updatedAt?: string;
 };
 
-export type GitHubPullRequestsListResult = {
+export type GitLabMergeRequestsListResult = {
   connected: boolean;
-  repo?: GitHubRepoRef | null;
-  prs?: GitHubPullRequestSummary[];
+  repo?: GitLabRepoRef | null;
+  mrs?: GitLabMergeRequestSummary[];
   page?: number;
   hasMore?: boolean;
 };
 
-export type GitHubPullRequestContextResult = {
+export type GitLabMergeRequestContextResult = {
   connected: boolean;
-  repo?: GitHubRepoRef | null;
-  pr?: GitHubPullRequestSummary | null;
-  issueComments?: GitHubIssueComment[];
-  reviewComments?: GitHubPullRequestReviewComment[];
-  files?: GitHubPullRequestFile[];
+  repo?: GitLabRepoRef | null;
+  mr?: GitLabMergeRequestSummary | null;
+  issueComments?: GitLabIssueComment[];
+  reviewComments?: GitLabMergeRequestReviewComment[];
+  files?: GitLabMergeRequestFile[];
   diff?: string;
-  checks?: GitHubChecksSummary | null;
-  checkRuns?: GitHubCheckRun[];
+  checks?: GitLabChecksSummary | null;
+  checkRuns?: GitLabCheckRun[];
 };
 
-export type GitHubPullRequestStatus = {
+export type GitLabMergeRequestStatus = {
   connected: boolean;
-  repo?: GitHubRepoRef | null;
+  repo?: GitLabRepoRef | null;
   branch?: string;
-  pr?: GitHubPullRequest | null;
-  checks?: GitHubChecksSummary | null;
+  mr?: GitLabMergeRequest | null;
+  checks?: GitLabChecksSummary | null;
   canMerge?: boolean;
   defaultBranch?: string | null;
   resolvedRemoteName?: string | null;
 };
 
-export type GitHubPullRequestCreateInput = {
+export type GitLabMergeRequestCreateInput = {
   directory: string;
   title: string;
   head: string;
@@ -946,120 +950,126 @@ export type GitHubPullRequestCreateInput = {
   /** Remote where the head branch lives (source repo, e.g., 'origin' for forks) */
   headRemote?: string;
   /** Explicit target repo (alternative to remote, for auto-detected upstream) */
-  targetRepo?: { owner: string; repo: string };
+  targetRepo?: GitLabRepoSelector;
 };
 
-export type GitHubPullRequestUpdateInput = {
+export type GitLabMergeRequestUpdateInput = {
   directory: string;
   number: number;
   title: string;
   body?: string;
 };
 
-export type GitHubPullRequestMergeInput = {
+export type GitLabMergeRequestMergeInput = {
   directory: string;
   number: number;
   method: 'merge' | 'squash' | 'rebase';
 };
 
-export type GitHubPullRequestReadyInput = {
+export type GitLabMergeRequestReadyInput = {
   directory: string;
   number: number;
 };
 
-export type GitHubPullRequestReadyResult = {
+export type GitLabMergeRequestReadyResult = {
   ready: boolean;
 };
 
-export type GitHubPullRequestMergeResult = {
+export type GitLabMergeRequestMergeResult = {
   merged: boolean;
   message?: string;
 };
 
-type GitHubIssueLabel = {
+type GitLabIssueLabel = {
   name: string;
   color?: string;
 };
 
-export type GitHubRepoSelector = {
-  owner: string;
-  repo: string;
+export type GitLabRepoSelector = {
+  projectId?: number | string | null;
+  pathWithNamespace?: string;
+  webUrl?: string;
+  owner?: string;
+  repo?: string;
 };
 
-export type GitHubIssueSummary = {
+export type GitLabIssueSummary = {
+  iid: number;
   number: number;
   title: string;
   url: string;
   state: 'open' | 'closed';
-  author?: GitHubUserSummary | null;
-  labels?: GitHubIssueLabel[];
-  sourceRepo?: (GitHubRepoSelector & { source: string }) | null;
+  author?: GitLabUserSummary | null;
+  labels?: GitLabIssueLabel[];
+  sourceRepo?: (GitLabRepoSelector & { source: string }) | null;
 };
 
-export type GitHubIssue = GitHubIssueSummary & {
+export type GitLabIssue = GitLabIssueSummary & {
   body?: string;
-  assignees?: GitHubUserSummary[];
+  assignees?: GitLabUserSummary[];
   createdAt?: string;
   updatedAt?: string;
 };
 
-export type GitHubIssueComment = {
+export type GitLabIssueComment = {
   id: number;
   url: string;
   body: string;
-  author?: GitHubUserSummary | null;
+  author?: GitLabUserSummary | null;
   createdAt?: string;
   updatedAt?: string;
 };
 
-export type GitHubIssuesListResult = {
+export type GitLabIssuesListResult = {
   connected: boolean;
-  repo?: GitHubRepoRef | null;
-  issues?: GitHubIssueSummary[];
+  repo?: GitLabRepoRef | null;
+  issues?: GitLabIssueSummary[];
   page?: number;
   hasMore?: boolean;
 };
 
-export type GitHubRepoUpstreamResult = {
+export type GitLabRepoUpstreamResult = {
   connected: boolean;
   isFork: boolean;
-  upstream: { owner: string; repo: string; url: string; defaultBranch: string; defaultBranchSha: string | null; remoteName: string | null } | null;
-};
-
-export type GitHubIssueGetResult = {
-  connected: boolean;
-  repo?: GitHubRepoRef | null;
-  issue?: GitHubIssue | null;
-};
-
-export type GitHubIssueCommentsResult = {
-  connected: boolean;
-  repo?: GitHubRepoRef | null;
-  comments?: GitHubIssueComment[];
-};
-
-export type GitHubAuthStatus = {
-  connected: boolean;
-  user?: GitHubUserSummary | null;
-  scope?: string;
-  accounts?: GitHubAuthAccount[];
-  ghCli?: {
-    available: boolean;
-    disabled: boolean;
-    active: boolean;
-    user?: GitHubUserSummary | null;
+  upstream: {
+    projectId: number;
+    pathWithNamespace: string;
+    webUrl: string;
+    defaultBranch: string;
+    defaultBranchSha: string | null;
+    remoteName: string | null;
   } | null;
 };
 
-type GitHubAuthAccount = {
-  id: string;
-  user: GitHubUserSummary;
-  scope?: string;
-  current?: boolean;
-  source?: 'oauth' | 'gh-cli';
+export type GitLabIssueGetResult = {
+  connected: boolean;
+  repo?: GitLabRepoRef | null;
+  issue?: GitLabIssue | null;
 };
 
-export type GitHubDeviceFlowStart = {
+export type GitLabIssueCommentsResult = {
+  connected: boolean;
+  repo?: GitLabRepoRef | null;
+  comments?: GitLabIssueComment[];
+};
+
+export type GitLabAuthStatus = {
+  configured?: boolean;
+  connected: boolean;
+  user?: GitLabUserSummary | null;
+  scope?: string;
+  accounts?: GitLabAuthAccount[];
+};
+
+type GitLabAuthAccount = {
+  id: string;
+  user: GitLabUserSummary;
+  scope?: string;
+  current?: boolean;
+  source?: 'oauth';
+};
+
+export type GitLabDeviceFlowStart = {
   deviceCode: string;
   userCode: string;
   verificationUri: string;
@@ -1069,37 +1079,36 @@ export type GitHubDeviceFlowStart = {
   scope?: string;
 };
 
-export type GitHubDeviceFlowComplete =
-  | { connected: true; user: GitHubUserSummary; scope?: string }
+export type GitLabDeviceFlowComplete =
+  | { connected: true; user: GitLabUserSummary; scope?: string }
   | { connected: false; status?: string; error?: string };
 
-export interface GitHubAPI {
-  authStatus(): Promise<GitHubAuthStatus>;
-  authStart(): Promise<GitHubDeviceFlowStart>;
-  authComplete(deviceCode: string): Promise<GitHubDeviceFlowComplete>;
+export interface GitLabAPI {
+  authStatus(): Promise<GitLabAuthStatus>;
+  authStart(): Promise<GitLabDeviceFlowStart>;
+  authComplete(deviceCode: string): Promise<GitLabDeviceFlowComplete>;
   authDisconnect(): Promise<{ removed: boolean }>;
-  authActivate(accountId: string): Promise<GitHubAuthStatus>;
-  authSetGhCliDisabled(disabled: boolean): Promise<{ disabled: boolean }>;
-  me?(): Promise<GitHubUserSummary>;
+  authActivate(accountId: string): Promise<GitLabAuthStatus>;
+  me?(): Promise<GitLabUserSummary>;
 
-  prStatus(directory: string, branch: string, remote?: string, options?: { force?: boolean }): Promise<GitHubPullRequestStatus>;
-  prCreate(payload: GitHubPullRequestCreateInput): Promise<GitHubPullRequest>;
-  prUpdate(payload: GitHubPullRequestUpdateInput): Promise<GitHubPullRequest>;
-  prMerge(payload: GitHubPullRequestMergeInput): Promise<GitHubPullRequestMergeResult>;
-  prReady(payload: GitHubPullRequestReadyInput): Promise<GitHubPullRequestReadyResult>;
+  mrStatus(directory: string, branch: string, remote?: string, options?: { force?: boolean }): Promise<GitLabMergeRequestStatus>;
+  mrCreate(payload: GitLabMergeRequestCreateInput): Promise<GitLabMergeRequest>;
+  mrUpdate(payload: GitLabMergeRequestUpdateInput): Promise<GitLabMergeRequest>;
+  mrMerge(payload: GitLabMergeRequestMergeInput): Promise<GitLabMergeRequestMergeResult>;
+  mrReady(payload: GitLabMergeRequestReadyInput): Promise<GitLabMergeRequestReadyResult>;
 
-  prsList(directory: string, options?: { page?: number; query?: string }): Promise<GitHubPullRequestsListResult>;
-  prContext(
+  mrsList(directory: string, options?: { page?: number; query?: string }): Promise<GitLabMergeRequestsListResult>;
+  mrContext(
     directory: string,
     number: number,
-    options?: { includeDiff?: boolean; includeCheckDetails?: boolean; sourceRepo?: GitHubRepoSelector | null }
-  ): Promise<GitHubPullRequestContextResult>;
+    options?: { includeDiff?: boolean; includeCheckDetails?: boolean; sourceRepo?: GitLabRepoSelector | null }
+  ): Promise<GitLabMergeRequestContextResult>;
 
-  issuesList(directory: string, options?: { page?: number; query?: string }): Promise<GitHubIssuesListResult>;
-  issueGet(directory: string, number: number, options?: { sourceRepo?: GitHubRepoSelector | null }): Promise<GitHubIssueGetResult>;
-  issueComments(directory: string, number: number, options?: { sourceRepo?: GitHubRepoSelector | null }): Promise<GitHubIssueCommentsResult>;
-  repoUpstream(directory: string): Promise<GitHubRepoUpstreamResult>;
-  repoBranches(owner: string, repo: string): Promise<string[]>;
+  issuesList(directory: string, options?: { page?: number; query?: string }): Promise<GitLabIssuesListResult>;
+  issueGet(directory: string, number: number, options?: { sourceRepo?: GitLabRepoSelector | null }): Promise<GitLabIssueGetResult>;
+  issueComments(directory: string, number: number, options?: { sourceRepo?: GitLabRepoSelector | null }): Promise<GitLabIssueCommentsResult>;
+  repoUpstream(directory: string): Promise<GitLabRepoUpstreamResult>;
+  repoBranches(projectId: number | string, pathWithNamespace?: string): Promise<string[]>;
 }
 
 export interface RemoteClientRecord {
@@ -1196,7 +1205,7 @@ export interface RuntimeAPIs {
   settings: SettingsAPI;
   permissions: PermissionsAPI;
   notifications: NotificationsAPI;
-  github?: GitHubAPI;
+  gitlab?: GitLabAPI;
   push?: PushAPI;
   diagnostics?: DiagnosticsAPI;
   clientAuth?: ClientAuthAPI;

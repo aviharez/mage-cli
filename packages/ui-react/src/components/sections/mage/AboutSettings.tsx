@@ -10,8 +10,11 @@ import { MageLogo } from '@/components/ui/MageLogo';
 import { useI18n } from '@/lib/i18n';
 import { runtimeFetch } from '@/lib/runtime-fetch';
 import { hasElectronCapability, isElectronShell } from '@/lib/desktop';
+import { getDesktopAppVersion } from '@/lib/desktopNative';
+import { openExternalUrl } from '@/lib/url';
 
 const MIN_CHECKING_DURATION = 800; // ms
+const DOCUMENTATION_URL = 'https://mage.apps.ocpdevgra.dti.co.id/';
 
 type AboutSettingsProps = {
   initialUpdateDialogOpen?: boolean;
@@ -22,7 +25,6 @@ export const AboutSettings: React.FC<AboutSettingsProps> = ({ initialUpdateDialo
   const [updateDialogOpen, setUpdateDialogOpen] = React.useState(initialUpdateDialogOpen);
   const [showChecking, setShowChecking] = React.useState(false);
   const [mageAppVersion, setMageAppVersion] = React.useState<string | null>(null);
-  const [mageCliVersion, setMageCliVersion] = React.useState<string | null>(null);
   const updateStore = useUpdateStore(useShallow((s) => ({
     info: s.info,
     checking: s.checking,
@@ -46,6 +48,10 @@ export const AboutSettings: React.FC<AboutSettingsProps> = ({ initialUpdateDialo
 
     const loadMageAppVersion = async () => {
       try {
+        if (isElectronShell()) {
+          if (!cancelled) setMageAppVersion(await getDesktopAppVersion());
+          return;
+        }
         const response = await runtimeFetch('/api/system/info', {
           method: 'GET',
           headers: { Accept: 'application/json' },
@@ -68,32 +74,6 @@ export const AboutSettings: React.FC<AboutSettingsProps> = ({ initialUpdateDialo
     };
   }, []);
 
-  React.useEffect(() => {
-    let cancelled = false;
-
-    const loadMageCliVersion = async () => {
-      try {
-        const response = await runtimeFetch('/api/mage/upgrade-status', {
-          method: 'GET',
-          headers: { Accept: 'application/json' },
-        });
-        if (!response.ok) return;
-        const data = await response.json().catch(() => null) as { currentVersion?: unknown } | null;
-        const version = typeof data?.currentVersion === 'string' && data.currentVersion.trim().length > 0
-          ? data.currentVersion.trim()
-          : null;
-        if (!cancelled) setMageCliVersion(version);
-      } catch {
-        if (!cancelled) setMageCliVersion(null);
-      }
-    };
-
-    void loadMageCliVersion();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   // Track if we initiated a check to show toast on completion
   const didInitiateCheck = React.useRef(false);
@@ -126,7 +106,6 @@ export const AboutSettings: React.FC<AboutSettingsProps> = ({ initialUpdateDialo
           <h2 className="mt-4 typography-ui-header font-semibold text-foreground">Mage</h2>
           <div className="mt-2 space-y-1 typography-ui text-muted-foreground">
             <p>{t('aboutDialog.mageAppVersionLabel', { version: currentVersion })}</p>
-            <p>{t('aboutDialog.mageCliVersionLabel', { version: mageCliVersion || t('settings.mage.about.state.unknown') })}</p>
           </div>
         </div>
 
@@ -165,9 +144,10 @@ export const AboutSettings: React.FC<AboutSettingsProps> = ({ initialUpdateDialo
           </p>
         )}
 
-        <p className="text-center typography-ui text-muted-foreground/60">
-          {t('aboutDialog.footerNote')}
-        </p>
+        <a href={DOCUMENTATION_URL} onClick={(event) => { event.preventDefault(); void openExternalUrl(DOCUMENTATION_URL); }} className="block text-center typography-ui text-[var(--primary-base)] hover:underline">
+          Mage Documentation
+        </a>
+        <p className="text-center typography-ui text-muted-foreground/60">{t('aboutDialog.footerNote')}</p>
 
         {updatesAvailable && <UpdateDialog
           open={updateDialogOpen}
@@ -200,11 +180,6 @@ export const AboutSettings: React.FC<AboutSettingsProps> = ({ initialUpdateDialo
             <span className="typography-ui-label text-foreground">{t('settings.mage.about.field.version')}</span>
             <span className="typography-meta text-muted-foreground font-mono">{currentVersion}</span>
           </div>
-          <div className="flex min-w-0 flex-col">
-            <span className="typography-ui-label text-foreground">{t('settings.mage.about.field.mageCliVersion')}</span>
-            <span className="typography-meta text-muted-foreground font-mono">{mageCliVersion || t('settings.mage.about.state.unknown')}</span>
-          </div>
-          
           {updatesAvailable && <div className="flex items-center gap-3">
             {updateStore.checking && (
               <div className="flex items-center gap-2 text-muted-foreground">
@@ -244,6 +219,10 @@ export const AboutSettings: React.FC<AboutSettingsProps> = ({ initialUpdateDialo
         )}
 
       </div>
+
+      <a href={DOCUMENTATION_URL} onClick={(event) => { event.preventDefault(); void openExternalUrl(DOCUMENTATION_URL); }} className="mt-4 block px-1 typography-ui text-[var(--primary-base)] hover:underline">
+        Mage Documentation
+      </a>
 
       {updatesAvailable && <UpdateDialog
         open={updateDialogOpen}

@@ -83,44 +83,18 @@ export const registerMageRoutes = (app, dependencies) => {
     return 0;
   };
 
-  const fetchLatestMageVersionFromGithub = async () => {
-    const response = await fetch('https://api.github.com/repos/anomalyco/opencode/releases/latest', {
-      headers: { Accept: 'application/json' },
-      signal: AbortSignal.timeout(10_000),
-    });
-    if (!response.ok) {
-      throw new Error(`Mage releases responded with ${response.status}`);
-    }
-    const payload = await response.json();
-    const tag = typeof payload?.tag_name === 'string' ? payload.tag_name.trim() : '';
-    return tag.replace(/^v/, '');
-  };
-
-  const fetchLatestMageVersionFromNpm = async () => {
-    const response = await fetch('https://registry.npmjs.org/mage-ai/latest', {
-      headers: { Accept: 'application/json' },
-      signal: AbortSignal.timeout(10_000),
-    });
-    if (!response.ok) {
-      throw new Error(`Mage npm registry responded with ${response.status}`);
-    }
-    const payload = await response.json();
-    return typeof payload?.version === 'string' ? payload.version.trim().replace(/^v/, '') : '';
-  };
-
   const fetchLatestMageVersion = async () => {
-    const results = await Promise.allSettled([
-      fetchLatestMageVersionFromNpm(),
-      fetchLatestMageVersionFromGithub(),
-    ]);
-    const versions = results
-      .filter((result) => result.status === 'fulfilled' && result.value)
-      .map((result) => result.value);
-    if (versions.length === 0) {
-      const failure = results.find((result) => result.status === 'rejected');
-      throw failure?.reason instanceof Error ? failure.reason : new Error('Failed to resolve latest Mage version');
+    const response = await fetch('https://mage.apps.ocpdevgra.dti.co.id/update.json', {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!response.ok) {
+      throw new Error(`Mage update metadata responded with ${response.status}`);
     }
-    return versions.sort((left, right) => compareVersions(right, left))[0];
+    const payload = await response.json();
+    const version = typeof payload?.version === 'string' ? payload.version.trim().replace(/^v/, '') : '';
+    if (!version) throw new Error('Mage update metadata has no version');
+    return version;
   };
 
   const pruneExpiredPendingMcpAuthContexts = () => {

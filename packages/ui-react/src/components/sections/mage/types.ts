@@ -4,7 +4,6 @@ export type MageSection =
   | 'shortcuts'
   | 'sessions'
   | 'git'
-  | 'github'
+  | 'gitlab'
   | 'notifications'
-  | 'voice'
   | 'tunnel';

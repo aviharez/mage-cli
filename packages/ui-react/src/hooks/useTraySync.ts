@@ -14,8 +14,6 @@ import {
   refreshGlobalSessions,
   resolveGlobalSessionDirectory,
 } from '@/stores/useGlobalSessionsStore';
-import { useQuotaStore } from '@/stores/useQuotaStore';
-import { QUOTA_PROVIDERS, formatWindowLabel, formatQuotaValueLabel } from '@/lib/quota';
 import { useProjectsStore } from '@/stores/useProjectsStore';
 import { useSessionUIStore } from '@/sync/session-ui-store';
 import { useGitStore } from '@/stores/useGitStore';
@@ -67,20 +65,12 @@ type TrayApproval = {
   directory: string;
 };
 
-type TrayUsageRow = { label: string; value: string };
-type TrayUsageGroup = { provider: string; rows: TrayUsageRow[]; status: string | null };
-type TrayUsage = { mode: 'usage' | 'remaining'; groups: TrayUsageGroup[] };
-
 type TraySnapshot = {
   sessions: TraySession[];
   approvals: TrayApproval[];
   // Active instance label (e.g. "Local Mage" or a remote host name) so
   // the tray header makes clear which instance/window it reflects.
   instanceName: string;
-  // Provider rate-limit usage, only for providers the user enabled for the
-  // dropdown (same "configured to show" rule as the header/mobile). Empty
-  // groups → the tray omits the Usage submenu entirely.
-  usage: TrayUsage;
   // Number of chats (root sessions) with unseen activity, for the macOS dock
   // badge. 0 when the user disabled the badge — the main process clears it.
   dockBadgeCount: number;
@@ -159,37 +149,6 @@ const resolveSessionSubtitle = (
   }
 
   return branch ? `${projectName} · ${branch}` : projectName;
-};
-
-// Build the usage groups exactly like the header/mobile: only providers the
-// user enabled for the dropdown AND that report as configured. Window rows only
-// (the headline limits) — model breakdowns stay in the full UI.
-const buildUsage = (): TrayUsage => {
-  const { results, dropdownProviderIds, displayMode } = useQuotaStore.getState();
-  const mode: TrayUsage['mode'] = displayMode === 'remaining' ? 'remaining' : 'usage';
-  if (!dropdownProviderIds.length) return { mode, groups: [] };
-
-  const byProvider = new Map(results.map((result) => [result.providerId, result]));
-  const groups: TrayUsageGroup[] = [];
-  for (const meta of QUOTA_PROVIDERS) {
-    if (!dropdownProviderIds.includes(meta.id)) continue;
-    const result = byProvider.get(meta.id);
-    if (!result || result.configured !== true) continue;
-
-    const rows: TrayUsageRow[] = [];
-    for (const [label, window] of Object.entries(result.usage?.windows ?? {})) {
-      const percent = mode === 'remaining' ? window.remainingPercent : window.usedPercent;
-      rows.push({ label: formatWindowLabel(label), value: formatQuotaValueLabel(window.valueLabel, percent) });
-    }
-
-    const status = !result.ok && result.error
-      ? result.error
-      : rows.length === 0
-        ? 'No rate limits reported'
-        : null;
-    groups.push({ provider: meta.name, rows, status });
-  }
-  return { mode, groups };
 };
 
 // Mirrors the header's instance resolution (Header.refreshCurrentInstanceLabel):
@@ -413,7 +372,7 @@ const buildSnapshot = (instanceName: string): TraySnapshot => {
     }
   }
 
-  return { sessions, approvals, instanceName, usage: buildUsage(), dockBadgeCount };
+  return { sessions, approvals, instanceName, dockBadgeCount };
 };
 
 export const useTraySync = (): void => {
@@ -533,23 +492,6 @@ export const useTraySync = (): void => {
     void refreshGlobalStatus();
     const globalStatusInterval = window.setInterval(() => { void refreshGlobalStatus(); }, POLL_INTERVAL_MS);
 
-    // Usage: push to the tray whenever the quota store changes, and do one
-    // initial fetch for enabled providers so the submenu isn't empty on launch.
-    const unsubscribeQuota = useQuotaStore.subscribe(() => scheduleFlush());
-    void useQuotaStore.getState().loadSettings().then(() => {
-      if (disposed) return;
-      const { dropdownProviderIds, results } = useQuotaStore.getState();
-      const needsFetch = dropdownProviderIds.length > 0
-        && dropdownProviderIds.some((id) => !results.some((r) => r.providerId === id));
-      if (needsFetch) void useQuotaStore.getState().fetchAllQuotas();
-    });
-    // Keep the Usage submenu current per the user's auto-refresh setting
-    // (desktop-only; checked each tick so toggling it mid-session applies).
-    const usageRefreshTick = window.setInterval(() => {
-      const quota = useQuotaStore.getState();
-      if (quota.autoRefresh && quota.dropdownProviderIds.length > 0) void quota.fetchAllQuotas();
-    }, Math.max(30000, useQuotaStore.getState().refreshIntervalMs || 60000));
-
     // Safety net: catches anything the event subscriptions miss (e.g. a store
     // that existed before the registry subscription was attached).
     const interval = window.setInterval(() => { rebindStores(); flushNow(); }, POLL_INTERVAL_MS);
@@ -562,7 +504,6 @@ export const useTraySync = (): void => {
       window.clearInterval(interval);
       window.clearInterval(refreshInterval);
       window.clearInterval(globalStatusInterval);
-      window.clearInterval(usageRefreshTick);
       unsubscribeNotif();
       unsubscribeGlobal();
       unsubscribeProjects();
@@ -570,7 +511,6 @@ export const useTraySync = (): void => {
       unsubscribeGit();
       unsubscribeUI();
       unsubscribeGlobalStatus();
-      unsubscribeQuota();
       unsubscribeRegistry?.();
       for (const unsub of storeUnsubs.values()) unsub();
       storeUnsubs.clear();

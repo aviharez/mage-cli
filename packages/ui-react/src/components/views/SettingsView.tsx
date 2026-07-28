@@ -8,7 +8,6 @@ import { useMcpConfigStore } from '@/stores/useMcpConfigStore';
 import { useSnippetsStore } from '@/stores/useSnippetsStore';
 import { useSkillsStore } from '@/stores/useSkillsStore';
 import { useSkillsCatalogStore } from '@/stores/useSkillsCatalogStore';
-import { useConfigStore } from '@/stores/useConfigStore';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { AgentsSidebar } from '@/components/sections/agents/AgentsSidebar';
@@ -25,10 +24,6 @@ import { SkillsPage } from '@/components/sections/skills/SkillsPage';
 import { ProjectsSidebar } from '@/components/sections/projects/ProjectsSidebar';
 import { ProjectsPage } from '@/components/sections/projects/ProjectsPage';
 import { RemoteInstancesPage } from '@/components/sections/remote-instances/RemoteInstancesPage';
-import { ProvidersSidebar } from '@/components/sections/providers/ProvidersSidebar';
-import { ProvidersPage } from '@/components/sections/providers/ProvidersPage';
-import { UsageSidebar } from '@/components/sections/usage/UsageSidebar';
-import { UsagePage } from '@/components/sections/usage/UsagePage';
 import { MagicPromptsSidebar } from '@/components/sections/magic-prompts/MagicPromptsSidebar';
 import { MagicPromptsPage } from '@/components/sections/magic-prompts/MagicPromptsPage';
 import { SnippetsSidebar } from '@/components/sections/snippets/SnippetsSidebar';
@@ -37,6 +32,7 @@ import { GitPage } from '@/components/sections/git-identities/GitPage';
 import type { MageSection } from '@/components/sections/mage/types';
 import { MagePage } from '@/components/sections/mage/MagePage';
 import { AboutSettings } from '@/components/sections/mage/AboutSettings';
+import { ProxySettings } from '@/components/sections/mage/ProxySettings';
 import { useDeviceInfo } from '@/lib/device';
 import { isDesktopLocalOriginActive, isDesktopShell, isVSCodeRuntime, isWebRuntime } from '@/lib/desktop';
 import { useI18n } from '@/lib/i18n';
@@ -88,6 +84,7 @@ const pageOrder: SettingsPageSlug[] = [
   'sessions',
   'shortcuts',
   'git',
+  'gitlab',
   'magic-prompts',
   'snippets',
   'projects',
@@ -97,16 +94,14 @@ const pageOrder: SettingsPageSlug[] = [
   'commands',
   'mcp',
   'plugins',
-  'usage',
   'skills.installed',
   'skills.catalog',
-  'voice',
+  'proxy',
   'tunnel',
   'about',
 ];
 
 const SNIPPETS_SETTINGS_ICON = { icon: 'chat-thread' } as const;
-const ADD_PROVIDER_SETTINGS_ID = '__add_provider__';
 
 function buildRuntimeContext(isDesktop: boolean, isMobile: boolean): SettingsRuntimeContext {
   const isVSCode = isVSCodeRuntime();
@@ -185,8 +180,6 @@ export function getSettingsNavIcon(slug: SettingsPageSlug): IconName | null {
     case 'sessions':
       return 'chat-history';
 
-    case 'providers':
-      return 'cloud';
     case 'agents':
       return 'ai-agent';
     case 'behavior':
@@ -206,10 +199,8 @@ export function getSettingsNavIcon(slug: SettingsPageSlug): IconName | null {
     case 'git':
       return 'git-branch';
 
-    case 'usage':
-      return 'bar-chart-2';
-    case 'voice':
-      return 'mic';
+    case 'proxy':
+      return 'global';
     case 'tunnel':
       return 'global';
     case 'about':
@@ -232,18 +223,6 @@ const SettingsHome: React.FC<{ onOpen: (slug: SettingsPageSlug) => void }> = ({ 
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <button
-            type="button"
-            onClick={() => onOpen('providers')}
-            className={cn(
-              'rounded-lg border border-border bg-[var(--surface-elevated)] p-4 text-left',
-              'hover:bg-[var(--interactive-hover)] transition-colors'
-            )}
-          >
-            <div className="typography-ui-label text-foreground">{t('settings.view.home.cards.providers.title')}</div>
-            <div className="typography-micro text-muted-foreground/70">{t('settings.view.home.cards.providers.description')}</div>
-          </button>
-
           <button
             type="button"
             onClick={() => onOpen('agents')}
@@ -280,17 +259,6 @@ const SettingsHome: React.FC<{ onOpen: (slug: SettingsPageSlug) => void }> = ({ 
             <div className="typography-micro text-muted-foreground/70">{t('settings.view.home.cards.mcp.description')}</div>
           </button>
 
-          <button
-            type="button"
-            onClick={() => onOpen('usage')}
-            className={cn(
-              'rounded-lg border border-border bg-[var(--surface-elevated)] p-4 text-left',
-              'hover:bg-[var(--interactive-hover)] transition-colors'
-            )}
-          >
-            <div className="typography-ui-label text-foreground">{t('settings.view.home.cards.usage.title')}</div>
-            <div className="typography-micro text-muted-foreground/70">{t('settings.view.home.cards.usage.description')}</div>
-          </button>
         </div>
       </div>
     </div>
@@ -479,8 +447,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile
     chat: 'chat',
     shortcuts: 'shortcuts',
     sessions: 'sessions',
+    gitlab: 'gitlab',
     notifications: 'notifications',
-    voice: 'voice',
     tunnel: 'tunnel',
   }), []);
 
@@ -490,10 +458,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile
         return t('settings.page.projects.title');
       case 'remote-instances':
         return t('settings.page.remoteInstances.title');
-      case 'providers':
-        return t('settings.page.providers.title');
-      case 'usage':
-        return t('settings.page.usage.title');
       case 'agents':
         return t('settings.page.agents.title');
       case 'behavior':
@@ -524,8 +488,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile
         return t('settings.page.snippets.title');
       case 'notifications':
         return t('settings.page.notifications.title');
-      case 'voice':
-        return t('settings.page.voice.title');
+      case 'proxy':
+        return 'Proxy';
       case 'tunnel':
         return t('settings.page.tunnel.title');
       case 'about':
@@ -600,10 +564,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile
       store.setSkillDraft({ name, scope: 'user', source: 'mage', description: '', instructions: '' });
       store.setSelectedSkill(name);
       return result.id === 'skills.create' ? 'skills.basic-information' : result.id;
-    }
-
-    if (result.id === 'providers.connect') {
-      useConfigStore.getState().setSelectedProvider(ADD_PROVIDER_SETTINGS_ID);
     }
 
     if (result.id === 'plugins.create') {
@@ -759,10 +719,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile
         return <PluginsSidebar onItemSelect={opts.onItemSelect} />;
       case 'skills.installed':
         return <SkillsSidebar onItemSelect={opts.onItemSelect} />;
-      case 'providers':
-        return <ProvidersSidebar onItemSelect={opts.onItemSelect} />;
-      case 'usage':
-        return <UsageSidebar onItemSelect={opts.onItemSelect} />;
       case 'magic-prompts':
         return <MagicPromptsSidebar onItemSelect={opts.onItemSelect} />;
       case 'snippets':
@@ -799,10 +755,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile
         return <SkillsPage view="installed" />;
       case 'skills.catalog':
         return <SkillsPage view="catalog" />;
-      case 'providers':
-        return <ProvidersPage />;
-      case 'usage':
-        return <UsagePage />;
+      case 'proxy':
+        return <div className="h-full overflow-auto px-5 py-6"><ProxySettings /></div>;
       case 'about':
         return <div className="h-full overflow-auto px-5 py-6"><AboutSettings /></div>;
       case 'magic-prompts':
@@ -816,7 +770,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile
       case 'shortcuts':
       case 'sessions':
       case 'notifications':
-      case 'voice':
       case 'tunnel': {
         const section = mageSectionBySlug[slug] ?? 'visual';
         return <MagePage section={section} />;

@@ -220,6 +220,8 @@ export const useUpdateStore = create<UpdateStore>()((set, get) => ({
     } catch (error) {
       set({
         checking: false,
+        available: false,
+        info: null,
         error: error instanceof Error ? error.message : 'Failed to check for updates',
       });
       return null;
@@ -230,7 +232,7 @@ export const useUpdateStore = create<UpdateStore>()((set, get) => ({
     const { available, runtimeType } = get();
 
     // For web runtime, there's no download - user uses in-app update or CLI
-    if (runtimeType !== 'desktop' || !available) {
+    if (runtimeType !== 'desktop' || !available || get().info?.installMode === 'external') {
       return;
     }
 
@@ -274,7 +276,7 @@ export const useUpdateStore = create<UpdateStore>()((set, get) => ({
   restartToUpdate: async () => {
     const { downloaded, runtimeType } = get();
 
-    if (runtimeType !== 'desktop' || !downloaded) {
+    if (runtimeType !== 'desktop' || !downloaded || get().info?.installMode === 'external') {
       return;
     }
 

@@ -1,48 +1,48 @@
 import { create } from 'zustand';
-import type { GitHubAuthStatus, RuntimeAPIs } from '@/lib/api/types';
+import type { GitLabAuthStatus, RuntimeAPIs } from '@/lib/api/types';
 import { runtimeFetch } from '@/lib/runtime-fetch';
 
-type GitHubAuthStatusWithError = GitHubAuthStatus & { error?: string };
+type GitLabAuthStatusWithError = GitLabAuthStatus & { error?: string };
 
-type GitHubAuthStore = {
-  status: GitHubAuthStatusWithError | null;
+type GitLabAuthStore = {
+  status: GitLabAuthStatusWithError | null;
   isLoading: boolean;
   hasChecked: boolean;
-  setStatus: (status: GitHubAuthStatusWithError | null) => void;
+  setStatus: (status: GitLabAuthStatusWithError | null) => void;
   refreshStatus: (
-    runtimeGitHub?: RuntimeAPIs['github'],
+    runtimeGitLab?: RuntimeAPIs['gitlab'],
     options?: { force?: boolean }
-  ) => Promise<GitHubAuthStatusWithError | null>;
+  ) => Promise<GitLabAuthStatusWithError | null>;
 };
 
 const fetchStatus = async (
-  runtimeGitHub?: RuntimeAPIs['github']
-): Promise<GitHubAuthStatusWithError> => {
-  if (runtimeGitHub) {
-    const payload = await runtimeGitHub.authStatus();
-    return payload as GitHubAuthStatus;
+  runtimeGitLab?: RuntimeAPIs['gitlab']
+): Promise<GitLabAuthStatusWithError> => {
+  if (runtimeGitLab) {
+    const payload = await runtimeGitLab.authStatus();
+    return payload as GitLabAuthStatus;
   }
 
-  const response = await runtimeFetch('/api/github/auth/status', {
+  const response = await runtimeFetch('/api/gitlab/auth/status', {
     method: 'GET',
     headers: { Accept: 'application/json' },
   });
-  const payload = (await response.json().catch(() => null)) as GitHubAuthStatusWithError | null;
+  const payload = (await response.json().catch(() => null)) as GitLabAuthStatusWithError | null;
   if (!response.ok || !payload) {
-    throw new Error(payload?.error || response.statusText || 'Failed to load GitHub status');
+    throw new Error(payload?.error || response.statusText || 'Failed to load GitLab status');
   }
   return payload;
 };
 
 // In-flight dedup for refreshStatus
-let _inFlightAuthRefresh: Promise<GitHubAuthStatusWithError | null> | null = null;
+let _inFlightAuthRefresh: Promise<GitLabAuthStatusWithError | null> | null = null;
 
-export const useGitHubAuthStore = create<GitHubAuthStore>((set, get) => ({
+export const useGitLabAuthStore = create<GitLabAuthStore>((set, get) => ({
   status: null,
   isLoading: false,
   hasChecked: false,
   setStatus: (status) => set({ status, hasChecked: true }),
-  refreshStatus: async (runtimeGitHub, options) => {
+  refreshStatus: async (runtimeGitLab, options) => {
     const { hasChecked, status } = get();
     if (hasChecked && !options?.force) {
       return status;
@@ -53,7 +53,7 @@ export const useGitHubAuthStore = create<GitHubAuthStore>((set, get) => ({
     set({ isLoading: true });
     _inFlightAuthRefresh = (async () => {
       try {
-        const payload = await fetchStatus(runtimeGitHub);
+        const payload = await fetchStatus(runtimeGitLab);
         set({ status: payload, isLoading: false, hasChecked: true });
         return payload;
       } catch (error) {

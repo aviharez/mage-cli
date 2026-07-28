@@ -15,7 +15,7 @@ import { mageClient } from '@/lib/mage/client';
 import type { RuntimeAPIs } from '@/lib/api/types';
 import { runtimeFetch } from '@/lib/runtime-fetch';
 import { useFeatureFlagsStore } from '@/stores/useFeatureFlagsStore';
-import { useGitHubAuthStore } from '@/stores/useGitHubAuthStore';
+import { useGitLabAuthStore } from '@/stores/useGitLabAuthStore';
 import { useDirectoryStore } from '@/stores/useDirectoryStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { useSessionUIStore } from '@/sync/session-ui-store';
@@ -40,7 +40,7 @@ export function VSCodeApp({ apis }: VSCodeAppProps) {
   const error = useSessionUIStore((state) => state.error);
   const clearError = useSessionUIStore((state) => state.clearError);
   const wideChatLayoutEnabled = useUIStore((state) => state.wideChatLayoutEnabled);
-  const refreshGitHubAuthStatus = useGitHubAuthStore((state) => state.refreshStatus);
+  const refreshGitLabAuthStatus = useGitLabAuthStore((state) => state.refreshStatus);
   const setPlanModeEnabled = useFeatureFlagsStore((state) => state.setPlanModeEnabled);
   const panelType = typeof window !== 'undefined'
     ? window.__MAGE_PANEL_TYPE__
@@ -64,8 +64,8 @@ export function VSCodeApp({ apis }: VSCodeAppProps) {
   }, [wideChatLayoutEnabled]);
 
   React.useEffect(() => {
-    void refreshGitHubAuthStatus(apis.github, { force: true });
-  }, [apis.github, refreshGitHubAuthStatus]);
+    void refreshGitLabAuthStatus(apis.gitlab, { force: true });
+  }, [apis.gitlab, refreshGitLabAuthStatus]);
 
   React.useEffect(() => {
     let cancelled = false;

@@ -57,8 +57,8 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSepa
 import { Input } from '@/components/ui/input';
 import { MobileOverlayPanel } from '@/components/ui/MobileOverlayPanel';
 import { useThemeSystem } from '@/contexts/useThemeSystem';
-import { GitHubIssuePickerDialog } from '@/components/session/GitHubIssuePickerDialog';
-import { GitHubPrPickerDialog } from '@/components/session/GitHubPrPickerDialog';
+import { GitLabIssuePickerDialog } from '@/components/session/GitLabIssuePickerDialog';
+import { GitLabMrPickerDialog } from '@/components/session/GitLabMrPickerDialog';
 import { Icon } from "@/components/icon/Icon";
 import { DraftPresetChips } from './DraftPresetChips';
 import { useChatSearchDirectory } from '@/hooks/useChatSearchDirectory';
@@ -608,8 +608,8 @@ const ComposerAttachmentControls = React.memo(function ComposerAttachmentControl
                                     requestAnimationFrame(openIssuePicker);
                                 }}
                             >
-                                <Icon name="github"/>
-                                {t('chat.chatInput.actions.linkGithubIssue')}
+                                <Icon name="git-branch"/>
+                                {t('chat.chatInput.actions.linkGitlabIssue')}
                             </DropdownMenuItem>
                             <DropdownMenuItem
                                 onSelect={() => {
@@ -617,7 +617,7 @@ const ComposerAttachmentControls = React.memo(function ComposerAttachmentControl
                                 }}
                             >
                                 <Icon name="git-pull-request"/>
-                                {t('chat.chatInput.actions.linkGithubPr')}
+                                {t('chat.chatInput.actions.linkGitlabMr')}
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
@@ -4177,7 +4177,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({ onOpenSettings, scrollTo
 
     // If the keyboard was open (or closed just moments ago by the overlay's own
     // blur) when an overlay appeared, bring it back once every overlay is gone.
-    // The attach dropdown and the GitHub issue/PR pickers join the same chain,
+    // The attach dropdown and the GitLab issue/MR pickers join the same chain,
     // so menu → picker → close restores the keyboard at the end of the flow.
     const mobileOverlayOpen = mobileOverlayHostBusy
         || Boolean(mobileControlsPanel)
@@ -4189,7 +4189,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({ onOpenSettings, scrollTo
     // in-browser is lenient). MobileOverlayPanel dispatches
     // 'oc:mobile-overlay-closed' synchronously from the same React flush as
     // the click that closed it — refocus right there, while the gesture is
-    // still live. Chained flows (attach menu → GitHub picker) set the skip ref
+    // still live. Chained flows (attach menu → GitLab picker) set the skip ref
     // so the keyboard doesn't flash open under the next overlay.
     const mobilePickerDialogsOpenRef = React.useRef(false);
     mobilePickerDialogsOpenRef.current = issuePickerOpen || prPickerOpen;
@@ -5503,7 +5503,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({ onOpenSettings, scrollTo
         </form>
 
         {/* Issue Picker Dialog */}
-        <GitHubIssuePickerDialog
+        <GitLabIssuePickerDialog
             open={issuePickerOpen}
             onOpenChange={setIssuePickerOpen}
             mode="select"
@@ -5512,7 +5512,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({ onOpenSettings, scrollTo
                 setLinkedPr(null);
             }}
         />
-        <GitHubPrPickerDialog
+        <GitLabMrPickerDialog
             open={prPickerOpen}
             onOpenChange={setPrPickerOpen}
             onSelect={(pr) => {
@@ -5582,8 +5582,8 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({ onOpenSettings, scrollTo
                             requestAnimationFrame(openIssuePicker);
                         }}
                     >
-                        <Icon name="github" className="h-[18px] w-[18px] flex-shrink-0 text-muted-foreground" />
-                        {t('chat.chatInput.actions.linkGithubIssue')}
+                        <Icon name="git-branch" className="h-[18px] w-[18px] flex-shrink-0 text-muted-foreground" />
+                        {t('chat.chatInput.actions.linkGitlabIssue')}
                     </button>
                     <button
                         type="button"
@@ -5595,7 +5595,7 @@ const ChatInputComponent: React.FC<ChatInputProps> = ({ onOpenSettings, scrollTo
                         }}
                     >
                         <Icon name="git-pull-request" className="h-[18px] w-[18px] flex-shrink-0 text-muted-foreground" />
-                        {t('chat.chatInput.actions.linkGithubPr')}
+                        {t('chat.chatInput.actions.linkGitlabMr')}
                     </button>
                 </div>
             </MobileOverlayPanel>

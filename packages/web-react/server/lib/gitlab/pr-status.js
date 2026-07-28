@@ -1,7 +1,7 @@
 import { stat } from 'node:fs/promises';
 import { getRemotes, getStatus } from '../git/index.js';
-import { resolveGitHubRepoFromDirectory } from './repo/index.js';
-import { noteIfGitHubRateLimit } from './rate-limit.js';
+import { resolveGitLabRepoFromDirectory } from './repo/index.js';
+import { noteIfGitLabRateLimit } from './rate-limit.js';
 
 const directoryExists = async (dir) => {
   if (!dir) return false;
@@ -161,7 +161,7 @@ const buildSourceMatcher = (sourceCandidates) => {
   return { matches, compare };
 };
 
-const getRepoDefaultBranch = async (octokit, repo) => {
+const getRepoDefaultBranch = async (client, repo) => {
   const repoKey = normalizeRepoKey(repo?.owner, repo?.repo);
   if (!repoKey) {
     return null;
@@ -174,8 +174,8 @@ const getRepoDefaultBranch = async (octokit, repo) => {
 
   // Reuse the full repo metadata if it was already fetched (expandRepoNetwork
   // calls getRepoMetadata for every candidate before the default-branch loop).
-  // This avoids a redundant repos.get per repo — fewer serial GitHub calls means
-  // less exposure to secondary-rate-limiting that makes PR status slow.
+  // This avoids a redundant repos.get per repo — fewer serial GitLab calls means
+  // less exposure to secondary-rate-limiting that makes MR status slow.
   const metaCached = repoMetadataCache.get(repoKey);
   if (metaCached && Date.now() - metaCached.fetchedAt < REPO_DEFAULT_BRANCH_TTL_MS) {
     const defaultBranch = normalizeText(metaCached.data?.default_branch) || null;
@@ -184,7 +184,7 @@ const getRepoDefaultBranch = async (octokit, repo) => {
   }
 
   try {
-    const response = await octokit.rest.repos.get({
+    const response = await client.rest.repos.get({
       owner: repo.owner,
       repo: repo.repo,
     });
@@ -195,12 +195,12 @@ const getRepoDefaultBranch = async (octokit, repo) => {
     });
     return defaultBranch;
   } catch (error) {
-    noteIfGitHubRateLimit(error);
+    noteIfGitLabRateLimit(error);
     return null;
   }
 };
 
-const getRepoMetadata = async (octokit, repo) => {
+const getRepoMetadata = async (client, repo) => {
   const repoKey = normalizeRepoKey(repo?.owner, repo?.repo);
   if (!repoKey) {
     return null;
@@ -212,7 +212,7 @@ const getRepoMetadata = async (octokit, repo) => {
   }
 
   try {
-    const response = await octokit.rest.repos.get({
+    const response = await client.rest.repos.get({
       owner: repo.owner,
       repo: repo.repo,
     });
@@ -223,7 +223,7 @@ const getRepoMetadata = async (octokit, repo) => {
     });
     return data;
   } catch (error) {
-    noteIfGitHubRateLimit(error);
+    noteIfGitLabRateLimit(error);
     if (error?.status === 403 || error?.status === 404) {
       repoMetadataCache.set(repoKey, {
         data: null,
@@ -241,7 +241,7 @@ const resolveRemoteCandidates = async (directory, rankedRemoteNames) => {
   // sequential pass, just without paying each lookup's latency back-to-back.
   const resolvedRemotes = await Promise.all(
     rankedRemoteNames.map((remoteName) =>
-      resolveGitHubRepoFromDirectory(directory, remoteName)
+      resolveGitLabRepoFromDirectory(directory, remoteName)
         .then((resolved) => ({ remoteName, repo: resolved?.repo || null }))
         .catch(() => ({ remoteName, repo: null })),
     ),
@@ -261,7 +261,7 @@ const resolveRemoteCandidates = async (directory, rankedRemoteNames) => {
   return results;
 };
 
-const expandRepoNetwork = async (octokit, candidates) => {
+const expandRepoNetwork = async (client, candidates) => {
   const expanded = [];
   const seenRepoKeys = new Set();
 
@@ -279,7 +279,7 @@ const expandRepoNetwork = async (octokit, candidates) => {
   // unchanged from the sequential version.
   const metadatas = await Promise.all(
     candidates.map((candidate) =>
-      getRepoMetadata(octokit, candidate.repo).then((metadata) => ({ candidate, metadata })),
+      getRepoMetadata(client, candidate.repo).then((metadata) => ({ candidate, metadata })),
     ),
   );
 
@@ -295,7 +295,7 @@ const expandRepoNetwork = async (octokit, candidates) => {
       pushCandidate({
         owner: parent.owner.login,
         repo: parent.name,
-        url: parent.html_url || `https://github.com/${parent.owner.login}/${parent.name}`,
+        url: parent.html_url || `https://bcagitlab/${parent.owner.login}/${parent.name}`,
       }, candidate.remoteName, candidate.priority + 0.1);
     }
 
@@ -304,7 +304,7 @@ const expandRepoNetwork = async (octokit, candidates) => {
       pushCandidate({
         owner: source.owner.login,
         repo: source.name,
-        url: source.html_url || `https://github.com/${source.owner.login}/${source.name}`,
+        url: source.html_url || `https://bcagitlab/${source.owner.login}/${source.name}`,
       }, candidate.remoteName, candidate.priority + 0.2);
     }
   }
@@ -312,12 +312,12 @@ const expandRepoNetwork = async (octokit, candidates) => {
   return expanded.sort((left, right) => left.priority - right.priority);
 };
 
-const safeListPulls = async (octokit, options) => {
+const safeListPulls = async (client, options) => {
   try {
-    const response = await octokit.rest.pulls.list(options);
+    const response = await client.rest.pulls.list(options);
     return Array.isArray(response?.data) ? response.data : [];
   } catch (error) {
-    noteIfGitHubRateLimit(error);
+    noteIfGitLabRateLimit(error);
     if (error?.status === 404 || error?.status === 403) {
       return [];
     }
@@ -347,11 +347,11 @@ const parseRepoFromApiUrl = (value) => {
   }
 };
 
-// Track repos where the GitHub Search API returned 403 (token lacks scope for that org)
+// Track repos where the GitLab Search API returned 403 (token lacks scope for that org)
 const _searchApiDisabledRepos = new Map();
 const SEARCH_API_RETRY_MS = 5 * 60 * 1000; // retry after 5 minutes
 
-const searchFallbackPr = async ({ octokit, branch, repoNames }) => {
+const searchFallbackPr = async ({ client, branch, repoNames }) => {
   // Build a repo key to check/store 403 status per-repo
   const repoKey = [...repoNames].sort().join(',').toLowerCase();
 
@@ -366,14 +366,14 @@ const searchFallbackPr = async ({ octokit, branch, repoNames }) => {
   for (const state of ['open', 'closed']) {
     let response;
     try {
-      response = await octokit.rest.search.issuesAndPullRequests({
+      response = await client.rest.search.issuesAndPullRequests({
         q: `is:pr state:${state} head:${branch}`,
         per_page: 20,
       });
       // If we get here, search API works for this repo — clear the disabled flag
       _searchApiDisabledRepos.delete(repoKey);
     } catch (error) {
-      noteIfGitHubRateLimit(error);
+      noteIfGitLabRateLimit(error);
       if (error?.status === 403) {
         _searchApiDisabledRepos.set(repoKey, Date.now());
         return null;
@@ -394,7 +394,7 @@ const searchFallbackPr = async ({ octokit, branch, repoNames }) => {
         continue;
       }
       try {
-        const prResponse = await octokit.rest.pulls.get({
+        const prResponse = await client.rest.pulls.get({
           owner: repo.owner,
           repo: repo.repo,
           pull_number: item.number,
@@ -407,7 +407,7 @@ const searchFallbackPr = async ({ octokit, branch, repoNames }) => {
           repo: {
             owner: repo.owner,
             repo: repo.repo,
-            url: `https://github.com/${repo.owner}/${repo.repo}`,
+            url: `https://bcagitlab/${repo.owner}/${repo.repo}`,
           },
           pr,
         };
@@ -423,7 +423,7 @@ const searchFallbackPr = async ({ octokit, branch, repoNames }) => {
   return null;
 };
 
-const findFirstMatchingPr = async ({ octokit, target, branch, sourceCandidates }) => {
+const findFirstMatchingPr = async ({ client, target, branch, sourceCandidates }) => {
   const matcher = buildSourceMatcher(sourceCandidates);
   const sourceOwners = [];
   sourceCandidates.forEach((candidate) => pushUnique(sourceOwners, candidate.repo?.owner));
@@ -435,7 +435,7 @@ const findFirstMatchingPr = async ({ octokit, target, branch, sourceCandidates }
 
   for (const state of ['open', 'closed']) {
     for (const owner of sourceOwners) {
-      const directCandidates = await safeListPulls(octokit, {
+      const directCandidates = await safeListPulls(client, {
         owner: target.repo.owner,
         repo: target.repo.repo,
         state,
@@ -448,7 +448,7 @@ const findFirstMatchingPr = async ({ octokit, target, branch, sourceCandidates }
       }
     }
 
-    const fallbackCandidates = await safeListPulls(octokit, {
+    const fallbackCandidates = await safeListPulls(client, {
       owner: target.repo.owner,
       repo: target.repo.repo,
       state,
@@ -463,13 +463,13 @@ const findFirstMatchingPr = async ({ octokit, target, branch, sourceCandidates }
   return null;
 };
 
-export async function resolveGitHubPrStatus({ octokit, directory, branch, remoteName }) {
+export async function resolveGitLabMrStatus({ client, directory, branch, remoteName }) {
   // A deleted worktree can still have a session in the sidebar that keeps
-  // requesting its PR status. Bail before touching git or GitHub for a
+  // requesting its MR status. Bail before touching git or GitLab for a
   // directory that no longer exists — otherwise every poll spends a git call
   // (and the remote/repo resolution that follows) on a path that's gone.
   if (!(await directoryExists(directory))) {
-    return { repo: null, pr: null, defaultBranch: null, resolvedRemoteName: null };
+    return { repo: null, mr: null, defaultBranch: null, resolvedRemoteName: null };
   }
 
   const normalizedBranch = normalizeText(branch);
@@ -493,13 +493,13 @@ export async function resolveGitHubPrStatus({ octokit, directory, branch, remote
 
   const resolvedRemoteTargets = await resolveRemoteCandidates(directory, rankedRemoteNames);
   const resolvedTargets = await expandRepoNetwork(
-    octokit,
+    client,
     resolvedRemoteTargets.map((target, index) => ({ ...target, priority: index })),
   );
   if (resolvedTargets.length === 0) {
     return {
       repo: null,
-      pr: null,
+      mr: null,
       defaultBranch: null,
       resolvedRemoteName: null,
     };
@@ -509,10 +509,10 @@ export async function resolveGitHubPrStatus({ octokit, directory, branch, remote
 
   let fallbackRepo = resolvedTargets[0].repo;
   let fallbackRemoteName = resolvedTargets[0].remoteName;
-  let fallbackDefaultBranch = await getRepoDefaultBranch(octokit, fallbackRepo);
+  let fallbackDefaultBranch = await getRepoDefaultBranch(client, fallbackRepo);
 
   for (const target of resolvedTargets) {
-    const defaultBranch = await getRepoDefaultBranch(octokit, target.repo);
+    const defaultBranch = await getRepoDefaultBranch(client, target.repo);
     if (!fallbackRepo) {
       fallbackRepo = target.repo;
       fallbackRemoteName = target.remoteName;
@@ -526,7 +526,7 @@ export async function resolveGitHubPrStatus({ octokit, directory, branch, remote
       }
 
       const pr = await findFirstMatchingPr({
-        octokit,
+        client,
         target,
         branch: candidateBranch,
         sourceCandidates,
@@ -534,7 +534,7 @@ export async function resolveGitHubPrStatus({ octokit, directory, branch, remote
       if (pr) {
         return {
           repo: target.repo,
-          pr,
+          mr: pr,
           defaultBranch,
           resolvedRemoteName: target.remoteName,
         };
@@ -544,15 +544,15 @@ export async function resolveGitHubPrStatus({ octokit, directory, branch, remote
 
   for (const candidateBranch of branchCandidates) {
     const fallbackSearch = await searchFallbackPr({
-      octokit,
+      client,
       branch: candidateBranch,
       repoNames: resolvedTargets.map((target) => target.repo.repo),
     });
     if (fallbackSearch) {
       return {
         repo: fallbackSearch.repo,
-        pr: fallbackSearch.pr,
-        defaultBranch: await getRepoDefaultBranch(octokit, fallbackSearch.repo),
+        mr: fallbackSearch.pr,
+        defaultBranch: await getRepoDefaultBranch(client, fallbackSearch.repo),
         resolvedRemoteName: null,
       };
     }
@@ -560,7 +560,7 @@ export async function resolveGitHubPrStatus({ octokit, directory, branch, remote
 
   return {
     repo: fallbackRepo,
-    pr: null,
+    mr: null,
     defaultBranch: fallbackDefaultBranch,
     resolvedRemoteName: fallbackRemoteName,
   };

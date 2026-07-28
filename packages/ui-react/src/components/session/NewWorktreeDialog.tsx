@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { useProjectsStore } from '@/stores/useProjectsStore';
-import { useGitHubAuthStore } from '@/stores/useGitHubAuthStore';
+import { useGitLabAuthStore } from '@/stores/useGitLabAuthStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { useSessionUIStore } from '@/sync/session-ui-store';
 import { useSelectionStore } from '@/sync/selection-store';
@@ -47,16 +47,16 @@ import {
 } from '@/lib/worktrees/worktreeSourceBranchPreference';
 import { useRuntimeAPIs } from '@/hooks/useRuntimeAPIs';
 import { useGitBranches, useGitStore, useGitLoadingBranches } from '@/stores/useGitStore';
-import { GitHubIntegrationDialog } from './GitHubIntegrationDialog';
+import { GitLabIntegrationDialog } from './GitLabIntegrationDialog';
 import { SortableTabsStrip } from '@/components/ui/sortable-tabs-strip';
 import { MobileOverlayPanel } from '@/components/ui/MobileOverlayPanel';
 import { Icon } from "@/components/icon/Icon";
 import type {
-  GitHubIssue,
-  GitHubIssueComment,
-  GitHubIssuesListResult,
-  GitHubPullRequestContextResult,
-  GitHubPullRequestSummary,
+  GitLabIssue,
+  GitLabIssueComment,
+  GitLabIssuesListResult,
+  GitLabMergeRequestContextResult,
+  GitLabMergeRequestSummary,
 } from '@/lib/api/types';
 import type { ProjectRef } from '@/lib/worktrees/worktreeManager';
 import { useI18n } from '@/lib/i18n';
@@ -76,8 +76,8 @@ interface NewBranchState {
   worktreeName: string;
   isSyncingWorktreeName: boolean;
   sourceBranch: string;
-  linkedIssue: GitHubIssue | null;
-  linkedPr: GitHubPullRequestSummary | null;
+  linkedIssue: GitLabIssue | null;
+  linkedPr: GitLabMergeRequestSummary | null;
   includePrDiff: boolean;
 }
 
@@ -120,7 +120,7 @@ const sanitizeRemoteName = (value: string): string => {
   return normalized || 'pr-head';
 };
 
-const resolvePrWorktreeConfig = (pr: GitHubPullRequestSummary, localBranches: string[], remoteBranches: string[]) => {
+const resolvePrWorktreeConfig = (pr: GitLabMergeRequestSummary, localBranches: string[], remoteBranches: string[]) => {
   const headBranch = normalizeBranchName(pr.head || '');
   if (!headBranch) {
     throw new Error('PR head branch is missing');
@@ -187,20 +187,20 @@ interface NewWorktreeDialogProps {
 }
 
 const buildIssueContextText = (args: {
-  repo: GitHubIssuesListResult['repo'] | undefined;
-  issue: GitHubIssue;
-  comments: GitHubIssueComment[];
+  repo: GitLabIssuesListResult['repo'] | undefined;
+  issue: GitLabIssue;
+  comments: GitLabIssueComment[];
 }) => {
   const payload = {
     repo: args.repo ?? null,
     issue: args.issue,
     comments: args.comments,
   };
-  return `GitHub issue context (JSON)\n${JSON.stringify(payload, null, 2)}`;
+  return `GitLab issue context (JSON)\n${JSON.stringify(payload, null, 2)}`;
 };
 
-const buildPullRequestContextText = (payload: GitHubPullRequestContextResult) => {
-  return `GitHub pull request context (JSON)\n${JSON.stringify(payload, null, 2)}`;
+const buildPullRequestContextText = (payload: GitLabMergeRequestContextResult) => {
+  return `GitLab merge request context (JSON)\n${JSON.stringify(payload, null, 2)}`;
 };
 
 export function NewWorktreeDialog({
@@ -209,10 +209,10 @@ export function NewWorktreeDialog({
   onWorktreeCreated,
 }: NewWorktreeDialogProps) {
   const { t } = useI18n();
-  const { github, git } = useRuntimeAPIs();
+  const { gitlab, git } = useRuntimeAPIs();
   const isMobile = useUIStore((state) => state.isMobile);
-  const githubAuthStatus = useGitHubAuthStore((state) => state.status);
-  const githubAuthChecked = useGitHubAuthStore((state) => state.hasChecked);
+  const gitlabAuthStatus = useGitLabAuthStore((state) => state.status);
+  const gitlabAuthChecked = useGitLabAuthStore((state) => state.hasChecked);
   const activeProject = useProjectsStore((state) => state.getActiveProject());
   
   const projectDirectory = activeProject?.path ?? null;
@@ -283,7 +283,7 @@ export function NewWorktreeDialog({
     return `${generateBranchSlug()}-${Date.now().toString(36).slice(-4)}`;
   }, [existingWorktreeNames]);
   
-  const [githubDialogOpen, setGithubDialogOpen] = React.useState(false);
+  const [gitlabDialogOpen, setGitlabDialogOpen] = React.useState(false);
   
   // Desktop branch picker states
   const [existingBranchDropdownOpen, setExistingBranchDropdownOpen] = React.useState(false);
@@ -472,11 +472,11 @@ export function NewWorktreeDialog({
   const sendLinkedContextMessage = React.useCallback(async (args: {
     sessionId: string;
     directory: string;
-    issue: GitHubIssue | null;
-    pr: GitHubPullRequestSummary | null;
+    issue: GitLabIssue | null;
+    pr: GitLabMergeRequestSummary | null;
     includeDiff: boolean;
   }) => {
-    if (!projectDirectory || !github) {
+    if (!projectDirectory || !gitlab) {
       return;
     }
 
@@ -495,24 +495,24 @@ export function NewWorktreeDialog({
     const variant = resolveDefaultVariant(providerID, modelID);
 
     if (args.issue) {
-      if (!github.issueGet || !github.issueComments) {
+      if (!gitlab.issueGet || !gitlab.issueComments) {
         return;
       }
 
-      const issueRes = await github.issueGet(projectDirectory, args.issue.number, { sourceRepo: args.issue.sourceRepo ?? null });
+      const issueRes = await gitlab.issueGet(projectDirectory, args.issue.number, { sourceRepo: args.issue.sourceRepo ?? null });
       if (issueRes.connected === false || !issueRes.repo || !issueRes.issue) {
         throw new Error('Failed to load issue context');
       }
 
-      const commentsRes = await github.issueComments(projectDirectory, args.issue.number, { sourceRepo: args.issue.sourceRepo ?? null });
+      const commentsRes = await gitlab.issueComments(projectDirectory, args.issue.number, { sourceRepo: args.issue.sourceRepo ?? null });
       if (commentsRes.connected === false) {
         throw new Error('Failed to load issue comments');
       }
 
-      const visiblePromptText = await renderMagicPrompt('github.issue.review.visible', {
+      const visiblePromptText = await renderMagicPrompt('gitlab.issue.review.visible', {
         issue_number: String(args.issue.number),
       });
-      const instructionsText = await renderMagicPrompt('github.issue.review.instructions');
+      const instructionsText = await renderMagicPrompt('gitlab.issue.review.instructions');
       const contextText = buildIssueContextText({
         repo: issueRes.repo,
         issue: issueRes.issue,
@@ -540,24 +540,24 @@ export function NewWorktreeDialog({
     }
 
     if (args.pr) {
-      if (!github.prContext) {
+      if (!gitlab.mrContext) {
         return;
       }
 
-      const prContext = await github.prContext(projectDirectory, args.pr.number, {
+      const mrContext = await gitlab.mrContext(projectDirectory, args.pr.number, {
         sourceRepo: args.pr.sourceRepo ?? null,
         includeDiff: args.includeDiff,
         includeCheckDetails: false,
       });
-      if (prContext.connected === false || !prContext.repo || !prContext.pr) {
+      if (mrContext.connected === false || !mrContext.repo || !mrContext.mr) {
         throw new Error('Failed to load PR context');
       }
 
-      const visiblePromptText = await renderMagicPrompt('github.pr.review.visible', {
-        pr_number: String(args.pr.number),
+      const visiblePromptText = await renderMagicPrompt('gitlab.mr.review.visible', {
+        mr_iid: String(args.pr.number),
       });
-      const instructionsText = await renderMagicPrompt('github.pr.review.instructions');
-      const contextText = buildPullRequestContextText(prContext);
+      const instructionsText = await renderMagicPrompt('gitlab.mr.review.instructions');
+      const contextText = buildPullRequestContextText(mrContext);
 
       await useSessionUIStore.getState().sendMessage(
         visiblePromptText,
@@ -578,7 +578,7 @@ export function NewWorktreeDialog({
       toast.success(t('session.newWorktree.toast.sessionFromPr'));
     }
   }, [
-    github,
+    gitlab,
     projectDirectory,
     resolveDefaultAgentName,
     resolveDefaultModelSelection,
@@ -932,8 +932,8 @@ export function NewWorktreeDialog({
           pr: linkedPrState,
           includeDiff: includePrDiff,
         }).catch((error) => {
-          const message = error instanceof Error ? error.message : t('session.newWorktree.error.sendGitHubContextFailed');
-          toast.error(t('session.newWorktree.error.sendGitHubContextFailed'), { description: message });
+          const message = error instanceof Error ? error.message : t('session.newWorktree.error.sendGitLabContextFailed');
+          toast.error(t('session.newWorktree.error.sendGitLabContextFailed'), { description: message });
         });
       } else {
         onWorktreeCreated?.(metadata.path);
@@ -952,10 +952,10 @@ export function NewWorktreeDialog({
     setValidation(prev => ({ ...prev, touched: false, branchError: null, worktreeError: null }));
   };
 
-  // Handle GitHub selection
-  const handleGitHubSelect = (result: {
+  // Handle GitLab selection
+  const handleGitLabSelect = (result: {
     type: 'issue' | 'pr';
-    item: GitHubIssue | GitHubPullRequestSummary;
+    item: GitLabIssue | GitLabMergeRequestSummary;
     includeDiff?: boolean;
   } | null) => {
     if (!result) {
@@ -970,7 +970,7 @@ export function NewWorktreeDialog({
     }
 
     if (result.type === 'issue') {
-      const issue = result.item as GitHubIssue;
+      const issue = result.item as GitLabIssue;
       const newBranchName = `issue-${issue.number}-${generateBranchSlug()}`;
       setNewBranchState(prev => ({
         ...prev,
@@ -982,7 +982,7 @@ export function NewWorktreeDialog({
         isSyncingWorktreeName: true,
       }));
     } else if (result.type === 'pr') {
-      const pr = result.item as GitHubPullRequestSummary;
+      const pr = result.item as GitLabMergeRequestSummary;
       setNewBranchState(prev => ({
         ...prev,
         linkedPr: pr,
@@ -995,8 +995,8 @@ export function NewWorktreeDialog({
     }
   };
 
-  // GitHub connection check
-  const isGitHubConnected = githubAuthChecked && githubAuthStatus?.connected === true;
+  // GitLab connection check
+  const isGitLabConnected = gitlabAuthChecked && gitlabAuthStatus?.connected === true;
 
   // Check if form is valid for submission
   const isFormValid = mode === 'existing-branch'
@@ -1245,15 +1245,15 @@ export function NewWorktreeDialog({
                   <label className="typography-ui-label text-foreground block font-semibold">
                     {t('session.newWorktree.branchName')}
                   </label>
-                  {mode === 'new-branch' && isGitHubConnected && (
+                  {mode === 'new-branch' && isGitLabConnected && (
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setGithubDialogOpen(true)}
+                      onClick={() => setGitlabDialogOpen(true)}
                       className="gap-1.5 h-7"
                     >
-                      <Icon name="github" className="size-4 text-status-success" />
-                        {newBranchState.linkedIssue || newBranchState.linkedPr ? t('session.newWorktree.actions.change') : t('session.newWorktree.actions.startFromGitHubIssuePr')}
+                      <Icon name="git-branch" className="size-4 text-status-success" />
+                        {newBranchState.linkedIssue || newBranchState.linkedPr ? t('session.newWorktree.actions.change') : t('session.newWorktree.actions.startFromGitLabIssuePr')}
                     </Button>
                   )}
                 </div>
@@ -1495,7 +1495,7 @@ export function NewWorktreeDialog({
               <div className="mt-2 px-2 py-1.5 rounded bg-muted/30">
                 {/* Row 1: Type, number, title, actions */}
                 <div className="flex items-center gap-2">
-                  <Icon name="github" className="h-3.5 w-3.5 text-status-success shrink-0" />
+                  <Icon name="git-branch" className="h-3.5 w-3.5 text-status-success shrink-0" />
                   
                     {newBranchState.linkedIssue && (
                       <span className="typography-micro text-muted-foreground shrink-0">
@@ -1711,15 +1711,15 @@ export function NewWorktreeDialog({
                     <label className="typography-ui-label text-foreground block font-semibold">
                       {t('session.newWorktree.branchName')}
                     </label>
-                    {mode === 'new-branch' && isGitHubConnected && (
+                    {mode === 'new-branch' && isGitLabConnected && (
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setGithubDialogOpen(true)}
+                        onClick={() => setGitlabDialogOpen(true)}
                         className="gap-1.5 h-7"
                       >
-                        <Icon name="github" className="size-4 text-status-success" />
-                      {newBranchState.linkedIssue || newBranchState.linkedPr ? t('session.newWorktree.actions.change') : t('session.newWorktree.actions.startFromGitHubIssuePr')}
+                        <Icon name="git-branch" className="size-4 text-status-success" />
+                      {newBranchState.linkedIssue || newBranchState.linkedPr ? t('session.newWorktree.actions.change') : t('session.newWorktree.actions.startFromGitLabIssuePr')}
                       </Button>
                     )}
                   </div>
@@ -1932,7 +1932,7 @@ export function NewWorktreeDialog({
                 <div className="mt-2 px-2 py-1.5 rounded bg-muted/30">
                   {/* Row 1: Type, number, title, actions */}
                   <div className="flex items-center gap-2">
-                    <Icon name="github" className="h-3.5 w-3.5 text-status-success shrink-0" />
+                    <Icon name="git-branch" className="h-3.5 w-3.5 text-status-success shrink-0" />
                     
                     {newBranchState.linkedIssue && (
                       <span className="typography-micro text-muted-foreground shrink-0">
@@ -2022,10 +2022,10 @@ export function NewWorktreeDialog({
         </Dialog>
       )}
 
-      <GitHubIntegrationDialog
-        open={githubDialogOpen}
-        onOpenChange={setGithubDialogOpen}
-        onSelect={handleGitHubSelect}
+      <GitLabIntegrationDialog
+        open={gitlabDialogOpen}
+        onOpenChange={setGitlabDialogOpen}
+        onSelect={handleGitLabSelect}
       />
     </>
   );

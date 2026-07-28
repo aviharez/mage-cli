@@ -19,6 +19,7 @@ export type UpdateInfo = {
   date?: string;
   releaseUrl?: string;
   downloadUrl?: string;
+  installMode?: 'external' | 'download' | 'command';
   nextSuggestedCheckInSec?: number;
   // Web-specific fields
   packageManager?: string;
@@ -221,7 +222,9 @@ export type MageDesktopCapability =
   | 'open-in-app'
   | 'launch-at-login'
   | 'vibrancy'
-  | 'deep-links';
+  | 'deep-links'
+  | 'proxy'
+  | 'updates';
 
 type ElectronRuntimeGlobal = {
   runtime?: string;
@@ -630,6 +633,31 @@ export const stopAccessingDirectory = async (
   return { success: true };
 };
 
+export type DesktopProxySettings = {
+  enabled: boolean;
+  url: string;
+  username: string;
+  passwordConfigured: boolean;
+};
+
+export type DesktopProxySaveRequest = {
+  enabled: boolean;
+  url: string;
+  username: string;
+  password?: string;
+  clearPassword?: boolean;
+};
+
+export const getDesktopProxySettings = async (): Promise<DesktopProxySettings | null> => {
+  if (!hasElectronCapability('proxy') || !hasDesktopInvoke()) return null;
+  return invokeDesktop<DesktopProxySettings>('desktop_get_proxy_settings') as Promise<DesktopProxySettings>;
+};
+
+export const setDesktopProxySettings = async (settings: DesktopProxySaveRequest): Promise<{ saved: boolean; requiresRestart: boolean }> => {
+  if (!hasElectronCapability('proxy') || !hasDesktopInvoke()) throw new Error('Desktop proxy settings are unavailable');
+  return invokeDesktop<{ saved: boolean; requiresRestart: boolean }>('desktop_set_proxy_settings', settings) as Promise<{ saved: boolean; requiresRestart: boolean }>;
+};
+
 export const checkForDesktopUpdates = async (): Promise<UpdateInfo | null> => {
   if (!hasElectronCapability('updates') || !hasDesktopInvoke()) {
     return null;
@@ -640,7 +668,7 @@ export const checkForDesktopUpdates = async (): Promise<UpdateInfo | null> => {
     return info as UpdateInfo;
   } catch (error) {
     console.warn('Failed to check for updates', error);
-    return null;
+    throw error;
   }
 };
 

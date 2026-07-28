@@ -32,7 +32,7 @@ import { useProjectRepoStatus } from './sidebar/hooks/useProjectRepoStatus';
 import { useProjectSessionLists } from './sidebar/hooks/useProjectSessionLists';
 import { useSessionFolderCleanup } from './sidebar/hooks/useSessionFolderCleanup';
 import { useStickyProjectHeaders } from './sidebar/hooks/useStickyProjectHeaders';
-import { getGitHubPrStatusKey, usePrVisualSummaryByKeys, useGitHubPrStatusStore } from '@/stores/useGitHubPrStatusStore';
+import { getGitLabMrStatusKey, usePrVisualSummaryByKeys, useGitLabMrStatusStore } from '@/stores/useGitLabMrStatusStore';
 import { ProjectEditDialog } from '@/components/layout/ProjectEditDialog';
 import { UpdateDialog } from '@/components/ui/UpdateDialog';
 import { ShareOpinionDialog } from '@/components/feedback/ShareOpinionDialog';
@@ -78,7 +78,7 @@ import {
   useGlobalSessionsStore,
 } from '@/stores/useGlobalSessionsStore';
 import { useRuntimeAPIs } from '@/hooks/useRuntimeAPIs';
-import { useGitHubAuthStore } from '@/stores/useGitHubAuthStore';
+import { useGitLabAuthStore } from '@/stores/useGitLabAuthStore';
 import { subscribeMageEvents } from '@/lib/mageEvents';
 
 const SHARE_OPINION_TOAST_STORAGE_KEY = 'mage.shareOpinionToast.dismissed.v2';
@@ -978,13 +978,13 @@ export const SessionSidebar: React.FC<SessionSidebarProps> = ({
     void refreshGlobalSessionsForDirectories(addedDirectories, syncSessionsSnapshotRef.current);
   }, [isVSCode, projectSessionDirectories]);
 
-  const { github } = useRuntimeAPIs();
-  const githubAuthStatus = useGitHubAuthStore((state) => state.status);
-  const githubAuthChecked = useGitHubAuthStore((state) => state.hasChecked);
+  const { gitlab } = useRuntimeAPIs();
+  const gitlabAuthStatus = useGitLabAuthStore((state) => state.status);
+  const gitlabAuthChecked = useGitLabAuthStore((state) => state.hasChecked);
   const gitRepoStatus = useGitRepoStatusMap(normalizedProjectPaths);
-  const ensurePrStatusEntry = useGitHubPrStatusStore((state) => state.ensureEntry);
-  const setPrStatusParams = useGitHubPrStatusStore((state) => state.setParams);
-  const refreshPrStatusTargets = useGitHubPrStatusStore((state) => state.refreshTargets);
+  const ensurePrStatusEntry = useGitLabMrStatusStore((state) => state.ensureEntry);
+  const setPrStatusParams = useGitLabMrStatusStore((state) => state.setParams);
+  const refreshPrStatusTargets = useGitLabMrStatusStore((state) => state.refreshTargets);
 
   useProjectRepoStatus({
     normalizedProjects,
@@ -1279,7 +1279,7 @@ export const SessionSidebar: React.FC<SessionSidebarProps> = ({
         if (!directory || !branch) {
           return;
         }
-        keys.add(getGitHubPrStatusKey(directory, branch));
+        keys.add(getGitLabMrStatusKey(directory, branch));
       });
     });
     return [...keys];
@@ -1288,7 +1288,7 @@ export const SessionSidebar: React.FC<SessionSidebarProps> = ({
   const prVisualSummaryMap = usePrVisualSummaryByKeys(prLookupKeys);
 
   React.useEffect(() => {
-    if (!githubAuthChecked || !githubAuthStatus?.connected || !github) {
+    if (!gitlabAuthChecked || !gitlabAuthStatus?.connected || !gitlab) {
       return;
     }
 
@@ -1306,9 +1306,9 @@ export const SessionSidebar: React.FC<SessionSidebarProps> = ({
         if (!directory || !branch) {
           return;
         }
-        const key = getGitHubPrStatusKey(directory, branch);
-        const entry = useGitHubPrStatusStore.getState().entries[key];
-        const hasPr = Boolean(entry?.status?.pr);
+        const key = getGitLabMrStatusKey(directory, branch);
+        const entry = useGitLabMrStatusStore.getState().entries[key];
+        const hasPr = Boolean(entry?.status?.mr);
         const retryKey = `${directory}::${branch}`;
         const noPrLastCheckedAt = Math.max(entry?.lastRefreshAt ?? 0, entry?.lastDiscoveryPollAt ?? 0);
         const shouldRetryNoPr = Boolean(
@@ -1335,7 +1335,7 @@ export const SessionSidebar: React.FC<SessionSidebarProps> = ({
 
     const uniqueTargets = new Map<string, { directory: string; branch: string; remoteName?: string | null }>();
     missingTargets.forEach((target) => {
-      const key = getGitHubPrStatusKey(target.directory, target.branch, target.remoteName ?? null);
+      const key = getGitLabMrStatusKey(target.directory, target.branch, target.remoteName ?? null);
       if (!uniqueTargets.has(key)) {
         uniqueTargets.set(key, target);
       }
@@ -1348,9 +1348,9 @@ export const SessionSidebar: React.FC<SessionSidebarProps> = ({
         branch: target.branch,
         remoteName: target.remoteName ?? null,
         canShow: true,
-        github,
-        githubAuthChecked,
-        githubConnected: githubAuthStatus.connected,
+        gitlab,
+        gitlabAuthChecked,
+        gitlabConnected: gitlabAuthStatus.connected,
       });
     });
 
@@ -1361,9 +1361,9 @@ export const SessionSidebar: React.FC<SessionSidebarProps> = ({
   }, [
     collapsedProjects,
     ensurePrStatusEntry,
-    github,
-    githubAuthChecked,
-    githubAuthStatus?.connected,
+    gitlab,
+    gitlabAuthChecked,
+    gitlabAuthStatus?.connected,
     gitBranches,
     refreshPrStatusTargets,
     sectionsForSidebarRender,

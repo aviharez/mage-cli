@@ -19,6 +19,8 @@ contextBridge.exposeInMainWorld('__MAGE_ELECTRON__', {
     'launch-at-login',
     'vibrancy',
     'deep-links',
+    'proxy',
+    'updates',
   ],
   macVibrancy,
   macVibrancySupported,
@@ -26,6 +28,9 @@ contextBridge.exposeInMainWorld('__MAGE_ELECTRON__', {
 contextBridge.exposeInMainWorld('__MAGE_PLATFORM__', process.platform);
 if (localOrigin) contextBridge.exposeInMainWorld('__MAGE_LOCAL_ORIGIN__', localOrigin);
 if (apiBaseUrl) contextBridge.exposeInMainWorld('__MAGE_API_BASE_URL__', apiBaseUrl);
+if (readArg('--mage-desktop-boot-outcome') === 'local-ok') {
+  contextBridge.exposeInMainWorld('__MAGE_DESKTOP_BOOT_OUTCOME__', { target: 'local', status: 'ok' });
+}
 if (Number.isFinite(macosMajor) && macosMajor > 0) contextBridge.exposeInMainWorld('__MAGE_MACOS_MAJOR__', macosMajor);
 if (readArg('--mage-home')) contextBridge.exposeInMainWorld('__MAGE_HOME__', readArg('--mage-home'));
 

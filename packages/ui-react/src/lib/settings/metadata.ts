@@ -4,8 +4,6 @@ export type SettingsPageSlug =
   | 'home'
   | 'projects'
   | 'remote-instances'
-  | 'providers'
-  | 'usage'
   | 'agents'
   | 'behavior'
   | 'commands'
@@ -14,6 +12,7 @@ export type SettingsPageSlug =
   | 'skills.installed'
   | 'skills.catalog'
   | 'git'
+  | 'gitlab'
   | 'appearance'
   | 'chat'
   | 'shortcuts'
@@ -21,7 +20,7 @@ export type SettingsPageSlug =
   | 'magic-prompts'
   | 'snippets'
   | 'notifications'
-  | 'voice'
+  | 'proxy'
   | 'tunnel'
   | 'about';
 
@@ -32,7 +31,6 @@ type SettingsPageGroup =
   | 'mage'
   | 'git'
   | 'skills'
-  | 'usage'
   | 'advanced';
 
 export interface SettingsRuntimeContext {
@@ -52,6 +50,7 @@ export interface SettingsPageMeta {
   isAvailable?: (ctx: SettingsRuntimeContext) => boolean;
 }
 
+// Voice settings are intentionally hidden for this Mage distribution.
 export const SETTINGS_PAGE_METADATA: readonly SettingsPageMeta[] = [
   {
     slug: 'home',
@@ -75,20 +74,6 @@ export const SETTINGS_PAGE_METADATA: readonly SettingsPageMeta[] = [
     kind: 'single',
     keywords: ['ssh', 'remote', 'instances', 'tunnels', 'forwarding', 'connection'],
     isAvailable: (ctx) => !ctx.isVSCode && !ctx.isDesktop,
-  },
-  {
-    slug: 'providers',
-    title: 'Providers',
-    group: 'mage',
-    kind: 'split',
-    keywords: ['provider', 'providers', 'models', 'model', 'api key', 'api keys', 'openai', 'anthropic', 'ollama', 'credentials'],
-  },
-  {
-    slug: 'usage',
-    title: 'Usage',
-    group: 'usage',
-    kind: 'split',
-    keywords: ['quota', 'billing', 'tokens', 'usage', 'limits'],
   },
   {
     slug: 'agents',
@@ -144,7 +129,15 @@ export const SETTINGS_PAGE_METADATA: readonly SettingsPageMeta[] = [
     title: 'Git',
     group: 'git',
     kind: 'single',
-    keywords: ['git', 'github', 'identity', 'identities', 'ssh', 'profiles', 'credentials', 'keys', 'commit', 'gitmoji', 'oauth', 'prs', 'issues'],
+    keywords: ['git', 'gitlab', 'identity', 'identities', 'ssh', 'profiles', 'credentials', 'keys', 'commit', 'gitmoji', 'oauth', 'merge requests', 'issues'],
+    isAvailable: (ctx) => !ctx.isVSCode,
+  },
+  {
+    slug: 'gitlab',
+    title: 'GitLab',
+    group: 'git',
+    kind: 'single',
+    keywords: ['gitlab', 'merge requests', 'issues', 'oauth', 'account'],
     isAvailable: (ctx) => !ctx.isVSCode,
   },
   {
@@ -181,7 +174,7 @@ export const SETTINGS_PAGE_METADATA: readonly SettingsPageMeta[] = [
     title: 'Magic Prompts',
     group: 'general',
     kind: 'split',
-    keywords: ['prompts', 'templates', 'git', 'github', 'review', 'commit', 'pull request'],
+    keywords: ['prompts', 'templates', 'git', 'gitlab', 'review', 'commit', 'merge request'],
     isAvailable: (ctx) => !ctx.isVSCode,
   },
   {
@@ -193,19 +186,17 @@ export const SETTINGS_PAGE_METADATA: readonly SettingsPageMeta[] = [
   },
 
   { slug: 'notifications', title: 'Notifications', group: 'general', kind: 'single', keywords: ['alerts', 'native', 'summary', 'summarization'], },
-  { slug: 'voice', title: 'Voice', group: 'advanced', kind: 'single', keywords: ['tts', 'speech', 'voice'], isAvailable: (ctx) => !ctx.isVSCode },
+  { slug: 'proxy', title: 'Proxy', group: 'advanced', kind: 'single', keywords: ['proxy', 'http', 'https', 'network', 'password'], isAvailable: (ctx) => ctx.isDesktop },
   { slug: 'tunnel', title: 'Remote Tunnel', group: 'advanced', kind: 'single', keywords: ['tunnel', 'cloudflare', 'qr', 'remote', 'mobile', 'share'], isAvailable: (ctx) => !ctx.isVSCode && !ctx.isDesktop },
   { slug: 'about', title: 'About', group: 'advanced', kind: 'single', keywords: ['about', 'version', 'updates', 'release', 'changelog'], isAvailable: (ctx) => ctx.isMobile },
 ] as const;
 
-const LEGACY_SIDEBAR_SECTION_TO_SETTINGS_SLUG: Record<SidebarSection, SettingsPageSlug> = {
+const LEGACY_SIDEBAR_SECTION_TO_SETTINGS_SLUG: Partial<Record<SidebarSection, SettingsPageSlug>> = {
   sessions: 'sessions',
   agents: 'agents',
   commands: 'commands',
   mcp: 'mcp',
   skills: 'skills.installed',
-  providers: 'providers',
-  usage: 'usage',
   'git-identities': 'git',
   settings: 'home',
 };

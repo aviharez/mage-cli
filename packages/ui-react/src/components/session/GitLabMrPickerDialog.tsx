@@ -16,18 +16,18 @@ import { cn } from '@/lib/utils';
 import { useRuntimeAPIs } from '@/hooks/useRuntimeAPIs';
 import { useProjectsStore } from '@/stores/useProjectsStore';
 import { useUIStore } from '@/stores/useUIStore';
-import { useGitHubAuthStore } from '@/stores/useGitHubAuthStore';
+import { useGitLabAuthStore } from '@/stores/useGitLabAuthStore';
 import { renderMagicPrompt } from '@/lib/magicPrompts';
 import { useDeviceInfo } from '@/lib/device';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
-import type { GitHubPullRequestContextResult, GitHubPullRequestSummary, GitHubPullRequestsListResult, GitHubRepoSelector } from '@/lib/api/types';
+import type { GitLabMergeRequestContextResult, GitLabMergeRequestSummary, GitLabMergeRequestsListResult, GitLabRepoSelector } from '@/lib/api/types';
 import { useI18n } from '@/lib/i18n';
 
-const parsePrNumber = (value: string): number | null => {
+const parseMrIid = (value: string): number | null => {
   const trimmed = value.trim();
   if (!trimmed) return null;
 
-  const urlMatch = trimmed.match(/\/pull\/(\d+)(?:\b|\/|$)/i);
+  const urlMatch = trimmed.match(/\/merge_requests\/(\d+)(?:\b|\/|$)/i);
   if (urlMatch) {
     const parsed = Number(urlMatch[1]);
     return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
@@ -42,11 +42,11 @@ const parsePrNumber = (value: string): number | null => {
   return null;
 };
 
-const buildPullRequestContextText = (payload: GitHubPullRequestContextResult) => {
-  return `GitHub pull request context (JSON)\n${JSON.stringify(payload, null, 2)}`;
+const buildPullRequestContextText = (payload: GitLabMergeRequestContextResult) => {
+  return `GitLab merge request context (JSON)\n${JSON.stringify(payload, null, 2)}`;
 };
 
-export function GitHubPrPickerDialog({
+export function GitLabMrPickerDialog({
   open,
   onOpenChange,
   onSelect,
@@ -66,9 +66,9 @@ export function GitHubPrPickerDialog({
   }) => void;
 }) {
   const { t } = useI18n();
-  const { github } = useRuntimeAPIs();
-  const githubAuthStatus = useGitHubAuthStore((state) => state.status);
-  const githubAuthChecked = useGitHubAuthStore((state) => state.hasChecked);
+  const { gitlab } = useRuntimeAPIs();
+  const gitlabAuthStatus = useGitLabAuthStore((state) => state.status);
+  const gitlabAuthChecked = useGitLabAuthStore((state) => state.hasChecked);
   const setSettingsDialogOpen = useUIStore((state) => state.setSettingsDialogOpen);
   const setSettingsPage = useUIStore((state) => state.setSettingsPage);
   const isMobile = useUIStore((state) => state.isMobile);
@@ -80,8 +80,8 @@ export function GitHubPrPickerDialog({
 
   const [query, setQuery] = React.useState('');
   const [includeDiff, setIncludeDiff] = React.useState(false);
-  const [result, setResult] = React.useState<GitHubPullRequestsListResult | null>(null);
-  const [prs, setPrs] = React.useState<GitHubPullRequestSummary[]>([]);
+  const [result, setResult] = React.useState<GitLabMergeRequestsListResult | null>(null);
+  const [mrs, setMrs] = React.useState<GitLabMergeRequestSummary[]>([]);
   const [page, setPage] = React.useState(1);
   const [hasMore, setHasMore] = React.useState(false);
   const [loadingPrNumber, setLoadingPrNumber] = React.useState<number | null>(null);
@@ -89,36 +89,36 @@ export function GitHubPrPickerDialog({
   const [isLoadingMore, setIsLoadingMore] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  const directNumber = React.useMemo(() => parsePrNumber(query), [query]);
+  const directNumber = React.useMemo(() => parseMrIid(query), [query]);
   const debouncedQuery = useDebouncedValue(query, 350);
   const isTextSearch = debouncedQuery.trim().length > 0 && !directNumber;
 
   const refresh = React.useCallback(async () => {
     if (!projectDirectory) {
       setResult(null);
-      setError(t('session.githubPrPicker.error.noActiveProject'));
+      setError(t('session.gitlabMrPicker.error.noActiveProject'));
       return;
     }
-    if (githubAuthChecked && githubAuthStatus?.connected === false) {
+    if (gitlabAuthChecked && gitlabAuthStatus?.connected === false) {
       setResult({ connected: false });
-      setPrs([]);
+      setMrs([]);
       setHasMore(false);
       setPage(1);
       setError(null);
       return;
     }
-    if (!github?.prsList) {
+    if (!gitlab?.mrsList) {
       setResult(null);
-      setError(t('session.githubPrPicker.error.runtimeUnavailable'));
+      setError(t('session.gitlabMrPicker.error.runtimeUnavailable'));
       return;
     }
 
     setIsLoading(true);
     setError(null);
     try {
-      const next = await github.prsList(projectDirectory, { page: 1 });
+      const next = await gitlab.mrsList(projectDirectory, { page: 1 });
       setResult(next);
-      setPrs(next.prs ?? []);
+      setMrs(next.mrs ?? []);
       setPage(next.page ?? 1);
       setHasMore(Boolean(next.hasMore));
       if (next.connected === false) {
@@ -129,12 +129,12 @@ export function GitHubPrPickerDialog({
     } finally {
       setIsLoading(false);
     }
-  }, [github, githubAuthChecked, githubAuthStatus, projectDirectory, t]);
+  }, [gitlab, gitlabAuthChecked, gitlabAuthStatus, projectDirectory, t]);
 
   React.useEffect(() => {
     if (!open || !projectDirectory) return;
-    if (githubAuthChecked && githubAuthStatus?.connected === false) return;
-    if (!github?.prsList) return;
+    if (gitlabAuthChecked && gitlabAuthStatus?.connected === false) return;
+    if (!gitlab?.mrsList) return;
     if (!debouncedQuery.trim() || directNumber) {
       void refresh();
       return;
@@ -144,11 +144,11 @@ export function GitHubPrPickerDialog({
     setIsLoading(true);
     setError(null);
 
-    github.prsList(projectDirectory, { page: 1, query: debouncedQuery.trim() })
+    gitlab.mrsList(projectDirectory, { page: 1, query: debouncedQuery.trim() })
       .then((next) => {
         if (controller.signal.aborted) return;
         setResult(next);
-        setPrs(next.prs ?? []);
+        setMrs(next.mrs ?? []);
         setPage(next.page ?? 1);
         setHasMore(Boolean(next.hasMore));
       })
@@ -161,11 +161,11 @@ export function GitHubPrPickerDialog({
       });
 
     return () => controller.abort();
-  }, [open, projectDirectory, github, githubAuthChecked, githubAuthStatus, debouncedQuery, directNumber, refresh, t]);
+  }, [open, projectDirectory, gitlab, gitlabAuthChecked, gitlabAuthStatus, debouncedQuery, directNumber, refresh, t]);
 
   const loadMore = React.useCallback(async () => {
     if (!projectDirectory) return;
-    if (!github?.prsList) return;
+    if (!gitlab?.mrsList) return;
     if (isLoadingMore || isLoading) return;
     if (!hasMore) return;
 
@@ -173,19 +173,19 @@ export function GitHubPrPickerDialog({
     try {
       const nextPage = page + 1;
       const next = isTextSearch
-        ? await github.prsList(projectDirectory, { page: nextPage, query: debouncedQuery.trim() })
-        : await github.prsList(projectDirectory, { page: nextPage });
+        ? await gitlab.mrsList(projectDirectory, { page: nextPage, query: debouncedQuery.trim() })
+        : await gitlab.mrsList(projectDirectory, { page: nextPage });
       setResult(next);
-      setPrs((prev) => [...prev, ...(next.prs ?? [])]);
+      setMrs((prev) => [...prev, ...(next.mrs ?? [])]);
       setPage(next.page ?? nextPage);
       setHasMore(Boolean(next.hasMore));
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
-      toast.error(t('session.githubPrPicker.toast.loadMoreFailed'), { description: message });
+      toast.error(t('session.gitlabMrPicker.toast.loadMoreFailed'), { description: message });
     } finally {
       setIsLoadingMore(false);
     }
-  }, [github, hasMore, isLoading, isLoadingMore, isTextSearch, debouncedQuery, page, projectDirectory, t]);
+  }, [gitlab, hasMore, isLoading, isLoadingMore, isTextSearch, debouncedQuery, page, projectDirectory, t]);
 
   React.useEffect(() => {
     if (!open) {
@@ -194,7 +194,7 @@ export function GitHubPrPickerDialog({
       setLoadingPrNumber(null);
       setError(null);
       setResult(null);
-      setPrs([]);
+      setMrs([]);
       setPage(1);
       setHasMore(false);
       setIsLoading(false);
@@ -205,73 +205,73 @@ export function GitHubPrPickerDialog({
 
   React.useEffect(() => {
     if (!open) return;
-    if (githubAuthChecked && githubAuthStatus?.connected === false) {
+    if (gitlabAuthChecked && gitlabAuthStatus?.connected === false) {
       setResult({ connected: false });
-      setPrs([]);
+      setMrs([]);
       setHasMore(false);
       setPage(1);
       setError(null);
     }
-  }, [githubAuthChecked, githubAuthStatus, open]);
+  }, [gitlabAuthChecked, gitlabAuthStatus, open]);
 
-  const connected = githubAuthChecked ? result?.connected !== false : true;
+  const connected = gitlabAuthChecked ? result?.connected !== false : true;
 
-  const openGitHubSettings = React.useCallback(() => {
-    setSettingsPage('github');
+  const openGitLabSettings = React.useCallback(() => {
+    setSettingsPage('gitlab');
     setSettingsDialogOpen(true);
   }, [setSettingsDialogOpen, setSettingsPage]);
 
-  const attachPr = React.useCallback(async (prNumber: number, sourceRepo?: GitHubRepoSelector | null) => {
+  const attachPr = React.useCallback(async (prNumber: number, sourceRepo?: GitLabRepoSelector | null) => {
     if (!projectDirectory) {
-      toast.error(t('session.githubPrPicker.error.noActiveProject'));
+      toast.error(t('session.gitlabMrPicker.error.noActiveProject'));
       return;
     }
-    if (!github?.prContext) {
-      toast.error(t('session.githubPrPicker.error.runtimeUnavailable'));
+    if (!gitlab?.mrContext) {
+      toast.error(t('session.gitlabMrPicker.error.runtimeUnavailable'));
       return;
     }
     if (loadingPrNumber) return;
 
     setLoadingPrNumber(prNumber);
     try {
-      const context = await github.prContext(projectDirectory, prNumber, {
+      const context = await gitlab.mrContext(projectDirectory, prNumber, {
         includeDiff,
         includeCheckDetails: false,
         sourceRepo,
       });
 
       if (context.connected === false) {
-        toast.error(t('session.githubPrPicker.error.notConnected'));
+        toast.error(t('session.gitlabMrPicker.error.notConnected'));
         return;
       }
 
-      if (!context.pr) {
-        toast.error(t('session.githubPrPicker.error.prNotFound'));
+      if (!context.mr) {
+        toast.error(t('session.gitlabMrPicker.error.prNotFound'));
         return;
       }
 
       if (!context.repo) {
-        toast.error(t('session.githubPrPicker.error.repoNotResolvable'), {
-          description: t('session.githubPrPicker.error.repoMustBeGithub'),
+        toast.error(t('session.gitlabMrPicker.error.repoNotResolvable'), {
+          description: t('session.gitlabMrPicker.error.repoMustBeGitLab'),
         });
         return;
       }
 
       if (onSelect) {
-        const instructionsText = await renderMagicPrompt('github.pr.review.instructions');
+        const instructionsText = await renderMagicPrompt('gitlab.mr.review.instructions');
         onSelect({
-          number: context.pr.number,
-          title: context.pr.title,
-          url: context.pr.url,
-          head: context.pr.head,
-          base: context.pr.base,
+          number: context.mr.number,
+          title: context.mr.title,
+          url: context.mr.url,
+          head: context.mr.head,
+          base: context.mr.base,
           includeDiff,
           instructionsText,
           contextText: buildPullRequestContextText(context),
-          author: context.pr.author
+          author: context.mr.author
             ? {
-              login: context.pr.author.login,
-              avatarUrl: context.pr.author.avatarUrl,
+              login: context.mr.author.login,
+              avatarUrl: context.mr.author.avatarUrl,
             }
             : undefined,
         });
@@ -279,14 +279,14 @@ export function GitHubPrPickerDialog({
       onOpenChange(false);
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
-      toast.error(t('session.githubPrPicker.toast.loadDetailsFailed'), { description: message });
+      toast.error(t('session.gitlabMrPicker.toast.loadDetailsFailed'), { description: message });
     } finally {
       setLoadingPrNumber(null);
     }
-  }, [github, includeDiff, loadingPrNumber, onOpenChange, onSelect, projectDirectory, t]);
+  }, [gitlab, includeDiff, loadingPrNumber, onOpenChange, onSelect, projectDirectory, t]);
 
-  const title = t('session.githubPrPicker.title');
-  const description = t('session.githubPrPicker.description');
+  const title = t('session.gitlabMrPicker.title');
+  const description = t('session.gitlabMrPicker.description');
 
   const content = (
     <>
@@ -294,7 +294,7 @@ export function GitHubPrPickerDialog({
         <div className="relative flex-1 min-w-0">
           <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder={t('session.githubPrPicker.searchPlaceholder')}
+            placeholder={t('session.gitlabMrPicker.searchPlaceholder')}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="pl-9 w-full"
@@ -305,41 +305,41 @@ export function GitHubPrPickerDialog({
           onClick={() => setIncludeDiff((prev) => !prev)}
           className="h-9 shrink-0 flex items-center gap-2 text-left"
           aria-pressed={includeDiff}
-          aria-label={t('session.githubPrPicker.includeDiffAria')}
+          aria-label={t('session.gitlabMrPicker.includeDiffAria')}
         >
           <span onClick={(e) => e.stopPropagation()}>
             <Checkbox
               checked={includeDiff}
               onChange={(checked) => setIncludeDiff(checked)}
-              ariaLabel={t('session.githubPrPicker.includeDiffAria')}
+              ariaLabel={t('session.gitlabMrPicker.includeDiffAria')}
             />
           </span>
-          <span className="typography-small text-muted-foreground whitespace-nowrap">{t('session.githubPrPicker.includeDiff')}</span>
+          <span className="typography-small text-muted-foreground whitespace-nowrap">{t('session.gitlabMrPicker.includeDiff')}</span>
         </button>
       </div>
 
       <div className={cn(isMobile ? 'min-h-0' : 'flex-1 overflow-y-auto')}>
           {!projectDirectory ? (
-            <div className="text-center text-muted-foreground py-8">{t('session.githubPrPicker.empty.noActiveProject')}</div>
+            <div className="text-center text-muted-foreground py-8">{t('session.gitlabMrPicker.empty.noActiveProject')}</div>
           ) : null}
 
-          {!github ? (
-            <div className="text-center text-muted-foreground py-8">{t('session.githubPrPicker.empty.runtimeUnavailable')}</div>
+          {!gitlab ? (
+            <div className="text-center text-muted-foreground py-8">{t('session.gitlabMrPicker.empty.runtimeUnavailable')}</div>
           ) : null}
 
           {isLoading ? (
             <div className="text-center text-muted-foreground py-8 flex items-center justify-center gap-2">
               <Icon name="loader-4" className="h-4 w-4 animate-spin" />
-              {t('session.githubPrPicker.loading.pullRequests')}
+              {t('session.gitlabMrPicker.loading.pullRequests')}
             </div>
           ) : null}
 
           {connected === false ? (
             <div className="text-center text-muted-foreground py-8 space-y-3">
-              <div>{t('session.githubPrPicker.empty.notConnected')}</div>
+              <div>{t('session.gitlabMrPicker.empty.notConnected')}</div>
               <div className="flex justify-center">
-                <Button variant="outline" size="sm" onClick={openGitHubSettings}>
-                  {t('session.githubPrPicker.actions.openSettings')}
+                <Button variant="outline" size="sm" onClick={openGitLabSettings}>
+                  {t('session.gitlabMrPicker.actions.openSettings')}
                 </Button>
               </div>
             </div>
@@ -349,7 +349,7 @@ export function GitHubPrPickerDialog({
             <div className="text-center text-muted-foreground py-8 break-words">{error}</div>
           ) : null}
 
-          {directNumber && projectDirectory && github && connected ? (
+          {directNumber && projectDirectory && gitlab && connected ? (
             <div
               className={cn(
                 'group flex items-center gap-2 py-1.5 hover:bg-interactive-hover/30 rounded transition-colors cursor-pointer',
@@ -359,7 +359,7 @@ export function GitHubPrPickerDialog({
             >
               <span className="typography-meta text-muted-foreground w-5 text-right flex-shrink-0">#</span>
               <p className="flex-1 min-w-0 typography-small text-foreground truncate ml-0.5">
-                {t('session.githubPrPicker.actions.usePullRequest', { number: directNumber })}
+                {t('session.gitlabMrPicker.actions.usePullRequest', { number: directNumber })}
               </p>
               <div className="flex-shrink-0 h-5 flex items-center mr-2">
                 {loadingPrNumber === directNumber ? (
@@ -369,11 +369,11 @@ export function GitHubPrPickerDialog({
             </div>
           ) : null}
 
-          {prs.length === 0 && !isLoading && connected && github && projectDirectory ? (
-            <div className="text-center text-muted-foreground py-8">{debouncedQuery.trim() ? t('session.githubPrPicker.empty.noPullRequestsFound') : t('session.githubPrPicker.empty.noOpenPullRequestsFound')}</div>
+          {mrs.length === 0 && !isLoading && connected && gitlab && projectDirectory ? (
+            <div className="text-center text-muted-foreground py-8">{debouncedQuery.trim() ? t('session.gitlabMrPicker.empty.noPullRequestsFound') : t('session.gitlabMrPicker.empty.noOpenPullRequestsFound')}</div>
           ) : null}
 
-          {prs.map((pr) => (
+          {mrs.map((pr) => (
             <div
               key={`${pr.sourceRepo?.owner ?? ''}-${pr.sourceRepo?.repo ?? ''}-${pr.number}`}
               className={cn(
@@ -408,7 +408,7 @@ export function GitHubPrPickerDialog({
                       alwaysShowActions ? "flex" : "hidden group-hover:flex"
                     )}
                     onClick={(e) => e.stopPropagation()}
-                    aria-label={t('session.githubPrPicker.actions.openInGitHubAria')}
+                    aria-label={t('session.gitlabMrPicker.actions.openInGitLabAria')}
                   >
                     <Icon name="external-link" className="h-4 w-4" />
                   </a>
@@ -417,7 +417,7 @@ export function GitHubPrPickerDialog({
             </div>
           ))}
 
-          {hasMore && connected && projectDirectory && github ? (
+          {hasMore && connected && projectDirectory && gitlab ? (
             <div className="py-2 flex justify-center">
               <button
                 type="button"
@@ -431,10 +431,10 @@ export function GitHubPrPickerDialog({
                 {isLoadingMore ? (
                   <span className="inline-flex items-center gap-2">
                     <Icon name="loader-4" className="h-4 w-4 animate-spin" />
-                    {t('session.githubPrPicker.loading.more')}
+                    {t('session.gitlabMrPicker.loading.more')}
                   </span>
                 ) : (
-                  t('session.githubPrPicker.actions.loadMore')
+                  t('session.gitlabMrPicker.actions.loadMore')
                 )}
               </button>
             </div>
@@ -469,7 +469,7 @@ export function GitHubPrPickerDialog({
       <DialogContent className="max-w-2xl max-h-[70vh] flex flex-col">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
-            <Icon name="github" className="h-5 w-5" />
+            <Icon name="git-branch" className="h-5 w-5" />
             {title}
           </DialogTitle>
           <DialogDescription>

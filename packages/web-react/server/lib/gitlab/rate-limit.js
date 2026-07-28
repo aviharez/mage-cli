@@ -1,10 +1,10 @@
-// Lightweight, process-global GitHub rate-limit gate.
+// Lightweight, process-global GitLab rate-limit gate.
 //
-// Octokit is configured without the throttling plugin, so a primary or
-// secondary rate limit surfaces as a thrown 403/429. Resolving PR status for
-// many worktrees fans out dozens of calls; once GitHub starts limiting, every
+// The native GitLab client has no throttling plugin, so a primary or
+// secondary rate limit surfaces as a thrown 403/429. Resolving MR status for
+// many worktrees fans out dozens of calls; once GitLab starts limiting, every
 // further call wastes a round-trip and the cache masks the failure. When we
-// detect a rate-limit response we record a cooldown and skip GitHub work until
+// detect a rate-limit response we record a cooldown and skip GitLab work until
 // it passes, so the burst stops and the reason is visible in the logs.
 
 const MAX_COOLDOWN_MS = 15 * 60 * 1000;
@@ -14,7 +14,7 @@ let rateLimitedUntil = 0;
 
 const headerValue = (headers, name) => {
   if (!headers) return undefined;
-  // Octokit/fetch headers can be a plain object or a Headers instance.
+  // Fetch headers can be a plain object or a Headers instance.
   if (typeof headers.get === 'function') return headers.get(name);
   return headers[name];
 };
@@ -34,8 +34,8 @@ const parseRetryAfterMs = (error) => {
   return null;
 };
 
-/** True when an Octokit error represents a primary or secondary rate limit. */
-export const isGitHubRateLimitError = (error) => {
+/** True when a GitLab error represents a primary or secondary rate limit. */
+export const isGitLabRateLimitError = (error) => {
   const status = error?.status ?? error?.response?.status;
   if (status === 429) return true;
   if (status !== 403) return false;
@@ -47,20 +47,20 @@ export const isGitHubRateLimitError = (error) => {
 };
 
 /** Record a cooldown after a detected rate-limit response. */
-export const noteGitHubRateLimit = (error) => {
+export const noteGitLabRateLimit = (error) => {
   const retryMs = Math.min(parseRetryAfterMs(error) ?? DEFAULT_COOLDOWN_MS, MAX_COOLDOWN_MS);
   const until = Date.now() + retryMs;
   if (until > rateLimitedUntil) {
     rateLimitedUntil = until;
-    console.warn(`[github] rate limited — pausing GitHub PR status calls for ~${Math.round(retryMs / 1000)}s`);
+    console.warn(`[gitlab] rate limited — pausing GitLab MR status calls for ~${Math.round(retryMs / 1000)}s`);
   }
 };
 
 /** Convenience: note the error if it is a rate-limit error. Returns whether it was. */
-export const noteIfGitHubRateLimit = (error) => {
-  if (!isGitHubRateLimitError(error)) return false;
-  noteGitHubRateLimit(error);
+export const noteIfGitLabRateLimit = (error) => {
+  if (!isGitLabRateLimitError(error)) return false;
+  noteGitLabRateLimit(error);
   return true;
 };
 
-export const isGitHubRateLimited = () => Date.now() < rateLimitedUntil;
+export const isGitLabRateLimited = () => Date.now() < rateLimitedUntil;

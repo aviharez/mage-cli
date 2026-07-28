@@ -13,28 +13,28 @@ import { cn } from '@/lib/utils';
 import { useRuntimeAPIs } from '@/hooks/useRuntimeAPIs';
 import { useProjectsStore } from '@/stores/useProjectsStore';
 import { useUIStore } from '@/stores/useUIStore';
-import { useGitHubAuthStore } from '@/stores/useGitHubAuthStore';
+import { useGitLabAuthStore } from '@/stores/useGitLabAuthStore';
 import { validateWorktreeCreate } from '@/lib/worktrees/worktreeManager';
 import { SortableTabsStrip } from '@/components/ui/sortable-tabs-strip';
 import { MobileOverlayPanel } from '@/components/ui/MobileOverlayPanel';
 import { Icon } from "@/components/icon/Icon";
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import type {
-  GitHubIssue,
-  GitHubIssueSummary,
-  GitHubPullRequestSummary,
+  GitLabIssue,
+  GitLabIssueSummary,
+  GitLabMergeRequestSummary,
 } from '@/lib/api/types';
 import type { ProjectRef } from '@/lib/worktrees/worktreeManager';
 import { useI18n } from '@/lib/i18n';
 
-type GitHubTab = 'issues' | 'prs';
+type GitLabTab = 'issues' | 'mrs';
 
-interface GitHubIntegrationDialogProps {
+interface GitLabIntegrationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSelect: (result: {
     type: 'issue' | 'pr';
-    item: GitHubIssue | GitHubPullRequestSummary;
+    item: GitLabIssue | GitLabMergeRequestSummary;
     includeDiff?: boolean;
   } | null) => void;
 }
@@ -44,16 +44,16 @@ interface ValidationResult {
   error: string | null;
 }
 
-export function GitHubIntegrationDialog({
+export function GitLabIntegrationDialog({
   open,
   onOpenChange,
   onSelect,
-}: GitHubIntegrationDialogProps) {
+}: GitLabIntegrationDialogProps) {
   const { t } = useI18n();
   const isMobile = useUIStore((state) => state.isMobile);
-  const { github } = useRuntimeAPIs();
-  const githubAuthStatus = useGitHubAuthStore((state) => state.status);
-  const githubAuthChecked = useGitHubAuthStore((state) => state.hasChecked);
+  const { gitlab } = useRuntimeAPIs();
+  const gitlabAuthStatus = useGitLabAuthStore((state) => state.status);
+  const gitlabAuthChecked = useGitLabAuthStore((state) => state.hasChecked);
   const setSettingsDialogOpen = useUIStore((state) => state.setSettingsDialogOpen);
   const setSettingsPage = useUIStore((state) => state.setSettingsPage);
   const activeProject = useProjectsStore((state) => state.getActiveProject());
@@ -67,15 +67,15 @@ export function GitHubIntegrationDialog({
   }, [activeProject, projectDirectory]);
 
   // State
-  const [activeTab, setActiveTab] = React.useState<GitHubTab>('issues');
+  const [activeTab, setActiveTab] = React.useState<GitLabTab>('issues');
   const [searchQuery, setSearchQuery] = React.useState('');
-  const [issues, setIssues] = React.useState<GitHubIssueSummary[]>([]);
-  const [prs, setPrs] = React.useState<GitHubPullRequestSummary[]>([]);
+  const [issues, setIssues] = React.useState<GitLabIssueSummary[]>([]);
+  const [mrs, setMrs] = React.useState<GitLabMergeRequestSummary[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [loadingMore, setLoadingMore] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [selectedIssue, setSelectedIssue] = React.useState<GitHubIssue | null>(null);
-  const [selectedPr, setSelectedPr] = React.useState<GitHubPullRequestSummary | null>(null);
+  const [selectedIssue, setSelectedIssue] = React.useState<GitLabIssue | null>(null);
+  const [selectedMr, setSelectedPr] = React.useState<GitLabMergeRequestSummary | null>(null);
   const [includeDiff, setIncludeDiff] = React.useState(false);
   const [validations, setValidations] = React.useState<Map<string, ValidationResult>>(new Map());
   const [page, setPage] = React.useState(1);
@@ -84,8 +84,8 @@ export function GitHubIntegrationDialog({
   const debouncedSearchQuery = useDebouncedValue(searchQuery, 350);
 
   const loadData = React.useCallback(async (query?: string) => {
-    if (!projectDirectory || !github) return;
-    if (githubAuthChecked && githubAuthStatus?.connected === false) return;
+    if (!projectDirectory || !gitlab) return;
+    if (gitlabAuthChecked && gitlabAuthStatus?.connected === false) return;
     
     setLoading(true);
     setError(null);
@@ -93,38 +93,38 @@ export function GitHubIntegrationDialog({
     setHasMore(false);
     
     try {
-      if (activeTab === 'issues' && github.issuesList) {
-        const result = await github.issuesList(projectDirectory, { page: 1, query });
+      if (activeTab === 'issues' && gitlab.issuesList) {
+        const result = await gitlab.issuesList(projectDirectory, { page: 1, query });
         if (result.connected === false) {
-          setError(t('session.githubIntegration.error.notConnected'));
+          setError(t('session.gitlabIntegration.error.notConnected'));
           setIssues([]);
         } else {
           setIssues(result.issues ?? []);
           setPage(result.page ?? 1);
           setHasMore(Boolean(result.hasMore));
         }
-      } else if (activeTab === 'prs' && github.prsList) {
-        const result = await github.prsList(projectDirectory, { page: 1, query });
+      } else if (activeTab === 'mrs' && gitlab.mrsList) {
+        const result = await gitlab.mrsList(projectDirectory, { page: 1, query });
         if (result.connected === false) {
-          setError(t('session.githubIntegration.error.notConnected'));
-          setPrs([]);
+          setError(t('session.gitlabIntegration.error.notConnected'));
+          setMrs([]);
         } else {
-          setPrs(result.prs ?? []);
+          setMrs(result.mrs ?? []);
           setPage(result.page ?? 1);
           setHasMore(Boolean(result.hasMore));
         }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('session.githubIntegration.error.loadDataFailed'));
+      setError(err instanceof Error ? err.message : t('session.gitlabIntegration.error.loadDataFailed'));
     } finally {
       setLoading(false);
     }
-  }, [projectDirectory, github, githubAuthChecked, githubAuthStatus, activeTab, t]);
+  }, [projectDirectory, gitlab, gitlabAuthChecked, gitlabAuthStatus, activeTab, t]);
 
   React.useEffect(() => {
     if (!open || !projectDirectory) return;
-    if (githubAuthChecked && githubAuthStatus?.connected === false) return;
-    if (!github) return;
+    if (gitlabAuthChecked && gitlabAuthStatus?.connected === false) return;
+    if (!gitlab) return;
     if (!debouncedSearchQuery.trim()) {
       void loadData();
       return;
@@ -136,10 +136,10 @@ export function GitHubIntegrationDialog({
     setPage(1);
     setHasMore(false);
 
-    const apiCall = activeTab === 'issues' && github.issuesList
-      ? github.issuesList(projectDirectory, { page: 1, query: debouncedSearchQuery.trim() })
-      : activeTab === 'prs' && github.prsList
-        ? github.prsList(projectDirectory, { page: 1, query: debouncedSearchQuery.trim() })
+    const apiCall = activeTab === 'issues' && gitlab.issuesList
+      ? gitlab.issuesList(projectDirectory, { page: 1, query: debouncedSearchQuery.trim() })
+      : activeTab === 'mrs' && gitlab.mrsList
+        ? gitlab.mrsList(projectDirectory, { page: 1, query: debouncedSearchQuery.trim() })
         : null;
 
     if (!apiCall) {
@@ -152,19 +152,19 @@ export function GitHubIntegrationDialog({
         if (controller.signal.aborted) return;
         if ('issues' in result) {
           if (result.connected === false) {
-            setError(t('session.githubIntegration.error.notConnected'));
+            setError(t('session.gitlabIntegration.error.notConnected'));
             setIssues([]);
           } else {
             setIssues(result.issues ?? []);
             setPage(result.page ?? 1);
             setHasMore(Boolean(result.hasMore));
           }
-        } else if ('prs' in result) {
+        } else if ('mrs' in result) {
           if (result.connected === false) {
-            setError(t('session.githubIntegration.error.notConnected'));
-            setPrs([]);
+            setError(t('session.gitlabIntegration.error.notConnected'));
+            setMrs([]);
           } else {
-            setPrs(result.prs ?? []);
+            setMrs(result.mrs ?? []);
             setPage(result.page ?? 1);
             setHasMore(Boolean(result.hasMore));
           }
@@ -172,17 +172,17 @@ export function GitHubIntegrationDialog({
       })
       .catch((err) => {
         if (controller.signal.aborted) return;
-        setError(err instanceof Error ? err.message : t('session.githubIntegration.error.loadDataFailed'));
+        setError(err instanceof Error ? err.message : t('session.gitlabIntegration.error.loadDataFailed'));
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
       });
 
     return () => controller.abort();
-  }, [open, projectDirectory, github, githubAuthChecked, githubAuthStatus, activeTab, debouncedSearchQuery, loadData, t]);
+  }, [open, projectDirectory, gitlab, gitlabAuthChecked, gitlabAuthStatus, activeTab, debouncedSearchQuery, loadData, t]);
 
   const loadMore = React.useCallback(async () => {
-    if (!projectDirectory || !github) return;
+    if (!projectDirectory || !gitlab) return;
     if (loading || loadingMore) return;
     if (!hasMore) return;
     
@@ -191,21 +191,21 @@ export function GitHubIntegrationDialog({
     try {
       const nextPage = page + 1;
       
-      if (activeTab === 'issues' && github.issuesList) {
+      if (activeTab === 'issues' && gitlab.issuesList) {
         const result = debouncedSearchQuery.trim()
-          ? await github.issuesList(projectDirectory, { page: nextPage, query: debouncedSearchQuery.trim() })
-          : await github.issuesList(projectDirectory, { page: nextPage });
+          ? await gitlab.issuesList(projectDirectory, { page: nextPage, query: debouncedSearchQuery.trim() })
+          : await gitlab.issuesList(projectDirectory, { page: nextPage });
         if (result.connected !== false) {
           setIssues(prev => [...prev, ...(result.issues ?? [])]);
           setPage(result.page ?? nextPage);
           setHasMore(Boolean(result.hasMore));
         }
-      } else if (activeTab === 'prs' && github.prsList) {
+      } else if (activeTab === 'mrs' && gitlab.mrsList) {
         const result = debouncedSearchQuery.trim()
-          ? await github.prsList(projectDirectory, { page: nextPage, query: debouncedSearchQuery.trim() })
-          : await github.prsList(projectDirectory, { page: nextPage });
+          ? await gitlab.mrsList(projectDirectory, { page: nextPage, query: debouncedSearchQuery.trim() })
+          : await gitlab.mrsList(projectDirectory, { page: nextPage });
         if (result.connected !== false) {
-          setPrs(prev => [...prev, ...(result.prs ?? [])]);
+          setMrs(prev => [...prev, ...(result.mrs ?? [])]);
           setPage(result.page ?? nextPage);
           setHasMore(Boolean(result.hasMore));
         }
@@ -215,7 +215,7 @@ export function GitHubIntegrationDialog({
     } finally {
       setLoadingMore(false);
     }
-  }, [projectDirectory, github, activeTab, page, hasMore, loading, loadingMore, debouncedSearchQuery]);
+  }, [projectDirectory, gitlab, activeTab, page, hasMore, loading, loadingMore, debouncedSearchQuery]);
 
   // Reset state when dialog opens/closes
   React.useEffect(() => {
@@ -223,7 +223,7 @@ export function GitHubIntegrationDialog({
       setActiveTab('issues');
       setSearchQuery('');
       setIssues([]);
-      setPrs([]);
+      setMrs([]);
       setSelectedIssue(null);
       setSelectedPr(null);
       setIncludeDiff(false);
@@ -257,44 +257,44 @@ export function GitHubIntegrationDialog({
         isValid: !blockingError,
         error: blockingError
           ? t(blockingError.code === 'branch_exists'
-            ? 'session.githubIntegration.validation.branchAlreadyExists'
-            : 'session.githubIntegration.validation.branchAlreadyCheckedOut')
+            ? 'session.gitlabIntegration.validation.branchAlreadyExists'
+            : 'session.gitlabIntegration.validation.branchAlreadyCheckedOut')
           : null,
       }));
     } catch {
       setValidations(prev => new Map(prev).set(branchName, {
         isValid: false,
-        error: t('session.githubIntegration.validation.failed'),
+        error: t('session.gitlabIntegration.validation.failed'),
       }));
     }
   }, [projectRef, validations, t]);
 
-  // Validate PR branches when loaded
+  // Validate MR branches when loaded
   React.useEffect(() => {
-    if (!open || activeTab !== 'prs') return;
+    if (!open || activeTab !== 'mrs') return;
     
-    prs.forEach(pr => {
+    mrs.forEach(pr => {
       if (pr.head) {
         void validateBranch(pr.head);
       }
     });
-  }, [open, activeTab, prs, validateBranch]);
+  }, [open, activeTab, mrs, validateBranch]);
 
-  // GitHub connection check
-  const isGitHubConnected = githubAuthChecked && githubAuthStatus?.connected === true;
+  // GitLab connection check
+  const isGitLabConnected = gitlabAuthChecked && gitlabAuthStatus?.connected === true;
 
-  const openGitHubSettings = () => {
-    setSettingsPage('github');
+  const openGitLabSettings = () => {
+    setSettingsPage('gitlab');
     setSettingsDialogOpen(true);
   };
 
   // Handle selection
-  const handleSelectIssue = (issue: GitHubIssueSummary) => {
-    setSelectedIssue(issue as GitHubIssue);
+  const handleSelectIssue = (issue: GitLabIssueSummary) => {
+    setSelectedIssue(issue as GitLabIssue);
     setSelectedPr(null);
   };
 
-  const handleSelectPr = (pr: GitHubPullRequestSummary) => {
+  const handleSelectMr = (pr: GitLabMergeRequestSummary) => {
     setSelectedPr(pr);
     setSelectedIssue(null);
   };
@@ -305,10 +305,10 @@ export function GitHubIntegrationDialog({
         type: 'issue',
         item: selectedIssue,
       });
-    } else if (selectedPr) {
+    } else if (selectedMr) {
       onSelect({
         type: 'pr',
-        item: selectedPr,
+        item: selectedMr,
         includeDiff,
       });
     }
@@ -322,10 +322,10 @@ export function GitHubIntegrationDialog({
   };
 
   // Check if selection is valid
-  const canConfirm = selectedIssue || (selectedPr && validations.get(selectedPr.head ?? '')?.isValid !== false);
+  const canConfirm = selectedIssue || (selectedMr && validations.get(selectedMr.head ?? '')?.isValid !== false);
 
-  // Check if PR is blocked
-  const isPrBlocked = (pr: GitHubPullRequestSummary): boolean => {
+  // Check if MR is blocked
+  const isMrBlocked = (pr: GitLabMergeRequestSummary): boolean => {
     if (!pr.head) return true;
     const validation = validations.get(pr.head);
     return validation?.isValid === false;
@@ -334,16 +334,16 @@ export function GitHubIntegrationDialog({
   // Content for the dialog (shared between mobile and desktop)
   const dialogContent = (
     <>
-      {!isGitHubConnected ? (
+      {!isGitLabConnected ? (
         <div className="flex-1 flex flex-col items-center justify-center p-8 gap-4">
-          <Icon name="github" className="h-12 w-12 text-muted-foreground" />
+          <Icon name="git-branch" className="h-12 w-12 text-muted-foreground" />
           <div className="text-center">
-            <p className="typography-ui-label text-foreground">{t('session.githubIntegration.connect.title')}</p>
+            <p className="typography-ui-label text-foreground">{t('session.gitlabIntegration.connect.title')}</p>
             <p className="typography-small text-muted-foreground mt-1">
-              {t('session.githubIntegration.connect.description')}
+              {t('session.gitlabIntegration.connect.description')}
             </p>
           </div>
-          <Button onClick={openGitHubSettings} size="sm">{t('session.githubIntegration.connect.action')}</Button>
+          <Button onClick={openGitLabSettings} size="sm">{t('session.gitlabIntegration.connect.action')}</Button>
         </div>
       ) : (
         <>
@@ -354,8 +354,8 @@ export function GitHubIntegrationDialog({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={activeTab === 'issues'
-                ? t('session.githubIntegration.search.issuesPlaceholder')
-                : t('session.githubIntegration.search.prsPlaceholder')}
+                ? t('session.gitlabIntegration.search.issuesPlaceholder')
+                : t('session.gitlabIntegration.search.prsPlaceholder')}
               className="h-8 pl-9"
             />
           </div>
@@ -410,7 +410,7 @@ export function GitHubIntegrationDialog({
                     ))
                   ) : (
                     <div className="flex items-center justify-center h-[300px] text-center typography-small text-muted-foreground">
-                      {t('session.githubIntegration.empty.noIssuesFound')}
+                      {t('session.gitlabIntegration.empty.noIssuesFound')}
                     </div>
                   )}
                   
@@ -422,7 +422,7 @@ export function GitHubIntegrationDialog({
                         onClick={() => void loadMore()}
                         className="h-7 text-xs"
                       >
-                        {t('session.githubIntegration.actions.loadMore')}
+                        {t('session.gitlabIntegration.actions.loadMore')}
                       </Button>
                     </div>
                   )}
@@ -435,21 +435,21 @@ export function GitHubIntegrationDialog({
               )}
 
               {/* PRs List */}
-              {!loading && !error && activeTab === 'prs' && (
+              {!loading && !error && activeTab === 'mrs' && (
                 <div className="space-y-0.5 min-h-full">
-                  {prs.length > 0 ? (
-                    prs.map(pr => {
-                      const blocked = isPrBlocked(pr);
+                  {mrs.length > 0 ? (
+                    mrs.map(pr => {
+                      const blocked = isMrBlocked(pr);
                       const validation = pr.head ? validations.get(pr.head) : undefined;
                       
                       return (
                         <button
                           key={`${pr.sourceRepo?.owner ?? ''}-${pr.sourceRepo?.repo ?? ''}-${pr.number}`}
-                          onClick={() => !blocked && handleSelectPr(pr)}
+                          onClick={() => !blocked && handleSelectMr(pr)}
                           disabled={blocked}
                           className={cn(
                             'w-full text-left px-2 py-1.5 rounded transition-colors',
-                            selectedPr?.number === pr.number
+                            selectedMr?.number === pr.number
                               ? 'bg-interactive-selection text-interactive-selection-foreground'
                               : blocked
                                 ? 'opacity-50 cursor-not-allowed'
@@ -482,7 +482,7 @@ export function GitHubIntegrationDialog({
                     })
                   ) : (
                     <div className="flex items-center justify-center h-[300px] text-center typography-small text-muted-foreground">
-                      {t('session.githubIntegration.empty.noPullRequestsFound')}
+                      {t('session.gitlabIntegration.empty.noPullRequestsFound')}
                     </div>
                   )}
                   
@@ -494,7 +494,7 @@ export function GitHubIntegrationDialog({
                         onClick={() => void loadMore()}
                         className="h-7 text-xs"
                       >
-                        {t('session.githubIntegration.actions.loadMore')}
+                        {t('session.gitlabIntegration.actions.loadMore')}
                       </Button>
                     </div>
                   )}
@@ -523,14 +523,14 @@ export function GitHubIntegrationDialog({
         'flex items-center gap-4',
         isMobile ? 'w-full justify-center order-1' : 'flex-1'
       )}>
-        {/* Selected Issue/PR display - hidden on mobile (shown in header instead) */}
-        {!isMobile && (selectedIssue || selectedPr) && (
+        {/* Selected Issue/MR display - hidden on mobile (shown in header instead) */}
+        {!isMobile && (selectedIssue || selectedMr) && (
           <div className="flex items-center gap-2 px-2 h-8 rounded-md bg-muted/50 border border-border/50">
             <Icon name="check" className="h-3.5 w-3.5 text-status-success shrink-0" />
             <span className="typography-small truncate max-w-[150px]">
               {selectedIssue
-                ? t('session.githubIntegration.selected.issueNumber', { number: selectedIssue.number })
-                : t('session.githubIntegration.selected.prNumber', { number: selectedPr?.number ?? '' })}
+                ? t('session.gitlabIntegration.selected.issueNumber', { number: selectedIssue.number })
+                : t('session.gitlabIntegration.selected.prNumber', { number: selectedMr?.number ?? '' })}
             </span>
             <button
               onClick={handleClear}
@@ -541,16 +541,16 @@ export function GitHubIntegrationDialog({
           </div>
         )}
         
-        {/* Include Diff Checkbox - only show when PR tab is active and PR is selected */}
-        {activeTab === 'prs' && selectedPr && (
+        {/* Include Diff Checkbox - only show when MR tab is active and MR is selected */}
+        {activeTab === 'mrs' && selectedMr && (
           <label className="flex items-center gap-2 cursor-pointer h-8">
             <Checkbox
               checked={includeDiff}
               onChange={(checked) => setIncludeDiff(checked)}
-              ariaLabel={t('session.githubIntegration.includeDiffAria')}
+              ariaLabel={t('session.gitlabIntegration.includeDiffAria')}
             />
             <span className="typography-small text-foreground">
-              {t('session.githubIntegration.includeDiff')}
+              {t('session.gitlabIntegration.includeDiff')}
             </span>
           </label>
         )}
@@ -567,7 +567,7 @@ export function GitHubIntegrationDialog({
           onClick={() => onOpenChange(false)}
           className={cn(isMobile && 'flex-1')}
         >
-          {t('session.githubIntegration.actions.cancel')}
+          {t('session.gitlabIntegration.actions.cancel')}
         </Button>
         <Button
           size="sm"
@@ -575,7 +575,7 @@ export function GitHubIntegrationDialog({
           disabled={!canConfirm}
           className={cn(isMobile && 'flex-1')}
         >
-          {t('session.githubIntegration.actions.select')}
+          {t('session.gitlabIntegration.actions.select')}
         </Button>
       </div>
     </div>
@@ -586,25 +586,25 @@ export function GitHubIntegrationDialog({
       {isMobile ? (
         <MobileOverlayPanel
           open={open}
-          title={t('session.githubIntegration.title')}
+          title={t('session.gitlabIntegration.title')}
           onClose={() => onOpenChange(false)}
-          footer={!isGitHubConnected ? undefined : footerContent}
+          footer={!isGitLabConnected ? undefined : footerContent}
           renderHeader={(closeButton) => (
             <div className="flex flex-col gap-2 px-3 py-2 border-b border-border/40">
               <div className="flex items-center justify-between">
-                <h2 className="typography-ui-label font-semibold text-foreground">{t('session.githubIntegration.title')}</h2>
+                <h2 className="typography-ui-label font-semibold text-foreground">{t('session.gitlabIntegration.title')}</h2>
                 {closeButton}
               </div>
               {/* Tabs - using SortableTabsStrip */}
               <div className="w-full">
                 <SortableTabsStrip
                   items={[
-                    { id: 'issues', label: t('session.githubIntegration.tabs.issues'), icon: <Icon name="git-branch" className="h-3.5 w-3.5" /> },
-                    { id: 'prs', label: t('session.githubIntegration.tabs.pullRequests'), icon: <Icon name="git-pull-request" className="h-3.5 w-3.5" /> },
+                    { id: 'issues', label: t('session.gitlabIntegration.tabs.issues'), icon: <Icon name="git-branch" className="h-3.5 w-3.5" /> },
+                    { id: 'mrs', label: t('session.gitlabIntegration.tabs.pullRequests'), icon: <Icon name="git-pull-request" className="h-3.5 w-3.5" /> },
                   ]}
                   activeId={activeTab}
                   onSelect={(id) => {
-                    setActiveTab(id as GitHubTab);
+                    setActiveTab(id as GitLabTab);
                     setSearchQuery('');
                   }}
                   variant="active-pill"
@@ -613,13 +613,13 @@ export function GitHubIntegrationDialog({
               </div>
               
               {/* Selected Item Inline Display */}
-              {(selectedIssue || selectedPr) && (
+              {(selectedIssue || selectedMr) && (
                 <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-muted/50 border border-border/50">
                   <Icon name="check" className="h-3.5 w-3.5 text-status-success shrink-0" />
                   <span className="typography-small truncate flex-1">
                     {selectedIssue
-                      ? t('session.githubIntegration.selected.issueNumber', { number: selectedIssue.number })
-                      : t('session.githubIntegration.selected.prNumber', { number: selectedPr?.number ?? '' })}
+                      ? t('session.gitlabIntegration.selected.issueNumber', { number: selectedIssue.number })
+                      : t('session.gitlabIntegration.selected.prNumber', { number: selectedMr?.number ?? '' })}
                   </span>
                   <button
                     onClick={handleClear}
@@ -640,20 +640,20 @@ export function GitHubIntegrationDialog({
             <DialogHeader className="flex flex-row items-center justify-between">
               <div className="flex items-center gap-3">
                 <DialogTitle className="flex items-center gap-2 shrink-0">
-                  <Icon name="github" className="h-5 w-5" />
-                  {t('session.githubIntegration.title')}
+                  <Icon name="git-branch" className="h-5 w-5" />
+                  {t('session.gitlabIntegration.title')}
                 </DialogTitle>
                 
                 {/* Tabs - using SortableTabsStrip */}
                 <div className="w-[220px]">
                   <SortableTabsStrip
                     items={[
-                      { id: 'issues', label: t('session.githubIntegration.tabs.issues'), icon: <Icon name="git-branch" className="h-3.5 w-3.5" /> },
-                      { id: 'prs', label: t('session.githubIntegration.tabs.pullRequests'), icon: <Icon name="git-pull-request" className="h-3.5 w-3.5" /> },
+                      { id: 'issues', label: t('session.gitlabIntegration.tabs.issues'), icon: <Icon name="git-branch" className="h-3.5 w-3.5" /> },
+                      { id: 'mrs', label: t('session.gitlabIntegration.tabs.pullRequests'), icon: <Icon name="git-pull-request" className="h-3.5 w-3.5" /> },
                     ]}
                     activeId={activeTab}
                     onSelect={(id) => {
-                      setActiveTab(id as GitHubTab);
+                      setActiveTab(id as GitLabTab);
                       setSearchQuery('');
                     }}
                     variant="active-pill"

@@ -381,10 +381,10 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     isAvailable: (ctx) => !ctx.isVSCode,
   },
   {
-    id: 'git.github-account',
+    id: 'git.gitlab-account',
     page: 'git',
-    titleKey: 'settings.github.page.actions.connect',
-    keywords: ['github', 'account', 'oauth', 'prs', 'issues'],
+    titleKey: 'settings.gitIdentities.page.section.title',
+    keywords: ['gitlab', 'account', 'oauth', 'merge requests', 'issues'],
   },
   {
     id: 'git.identities',
@@ -410,19 +410,6 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     page: 'git',
     titleKey: 'settings.mage.git.showGitignored',
     keywords: ['ignored', 'files', 'gitignore'],
-  },
-  {
-    id: 'usage.header-menu',
-    page: 'usage',
-    titleKey: 'settings.usage.page.options.showInHeader',
-    descriptionKey: 'settings.usage.page.options.showInHeaderTooltip',
-    keywords: ['quota', 'header', 'dropdown'],
-  },
-  {
-    id: 'usage.model-quotas',
-    page: 'usage',
-    titleKey: 'settings.usage.page.section.modelQuotas',
-    keywords: ['models', 'quota', 'limits', 'tokens'],
   },
   {
     id: 'projects.name',
@@ -639,30 +626,6 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     keywords: ['markdown', 'prompt', 'template'],
   },
   {
-    id: 'providers.connect',
-    page: 'providers',
-    titleKey: 'settings.providers.page.connect.title',
-    keywords: ['add provider', 'connect provider', 'credentials'],
-  },
-  {
-    id: 'providers.auth',
-    page: 'providers',
-    titleKey: 'settings.providers.page.auth.title',
-    keywords: ['api key', 'oauth', 'credentials'],
-  },
-  {
-    id: 'providers.connection-details',
-    page: 'providers',
-    titleKey: 'settings.providers.page.connectionDetails.title',
-    keywords: ['config', 'source', 'disconnect'],
-  },
-  {
-    id: 'providers.models',
-    page: 'providers',
-    titleKey: 'settings.providers.page.models.title',
-    keywords: ['models', 'hide', 'show'],
-  },
-  {
     id: 'skills.create',
     page: 'skills.installed',
     titleKey: 'settings.skills.page.title.newSkill',
@@ -731,18 +694,6 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     titleKey: 'settings.mage.keyboardShortcuts.title',
     descriptionKey: 'settings.mage.keyboardShortcuts.tooltip',
     keywords: ['keyboard', 'hotkeys', 'bindings'],
-  },
-  {
-    id: 'voice.playback',
-    page: 'voice',
-    titleKey: 'settings.voice.page.section.playbackAndSummary',
-    keywords: ['tts', 'read aloud', 'voice', 'provider', 'speech rate', 'speech pitch', 'speech volume', 'tts input mode', 'markdown'],
-  },
-  {
-    id: 'voice.speech-recognition',
-    page: 'voice',
-    titleKey: 'settings.voice.page.section.speechRecognition',
-    keywords: ['stt', 'dictation', 'voice input', 'transcribe', 'whisper', 'parakeet', 'microphone'],
   },
   {
     id: 'tunnel.provider',

@@ -20,14 +20,14 @@ import { useSelectionStore } from '@/sync/selection-store';
 import * as sessionActions from '@/sync/session-actions';
 import { useConfigStore } from '@/stores/useConfigStore';
 import { useUIStore } from '@/stores/useUIStore';
-import { useGitHubAuthStore } from '@/stores/useGitHubAuthStore';
+import { useGitLabAuthStore } from '@/stores/useGitLabAuthStore';
 import { renderMagicPrompt } from '@/lib/magicPrompts';
 import { parseModelIdentifier } from '@/lib/modelIdentifier';
 import { useDeviceInfo } from '@/lib/device';
 import { createWorktreeSessionForNewBranch } from '@/lib/worktreeSessionCreator';
 import { generateBranchSlug } from '@/lib/git/branchNameGenerator';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
-import type { GitHubIssue, GitHubIssueComment, GitHubIssuesListResult, GitHubIssueSummary, GitHubRepoSelector } from '@/lib/api/types';
+import type { GitLabIssue, GitLabIssueComment, GitLabIssuesListResult, GitLabIssueSummary, GitLabRepoSelector } from '@/lib/api/types';
 import { useI18n } from '@/lib/i18n';
 
 const parseIssueNumber = (value: string): number | null => {
@@ -50,19 +50,19 @@ const parseIssueNumber = (value: string): number | null => {
 };
 
 const buildIssueContextText = (args: {
-  repo: GitHubIssuesListResult['repo'] | undefined;
-  issue: GitHubIssue;
-  comments: GitHubIssueComment[];
+  repo: GitLabIssuesListResult['repo'] | undefined;
+  issue: GitLabIssue;
+  comments: GitLabIssueComment[];
 }) => {
   const payload = {
     repo: args.repo ?? null,
     issue: args.issue,
     comments: args.comments,
   };
-  return `GitHub issue context (JSON)\n${JSON.stringify(payload, null, 2)}`;
+  return `GitLab issue context (JSON)\n${JSON.stringify(payload, null, 2)}`;
 };
 
-export function GitHubIssuePickerDialog({
+export function GitLabIssuePickerDialog({
   open,
   onOpenChange,
   mode = 'createSession',
@@ -74,9 +74,9 @@ export function GitHubIssuePickerDialog({
   onSelect?: (issue: { number: number; title: string; url: string; contextText: string; author?: { login: string; avatarUrl?: string } }) => void;
 }) {
   const { t } = useI18n();
-  const { github } = useRuntimeAPIs();
-  const githubAuthStatus = useGitHubAuthStore((state) => state.status);
-  const githubAuthChecked = useGitHubAuthStore((state) => state.hasChecked);
+  const { gitlab } = useRuntimeAPIs();
+  const gitlabAuthStatus = useGitLabAuthStore((state) => state.status);
+  const gitlabAuthChecked = useGitLabAuthStore((state) => state.hasChecked);
   const setSettingsDialogOpen = useUIStore((state) => state.setSettingsDialogOpen);
   const setSettingsPage = useUIStore((state) => state.setSettingsPage);
   const isMobile = useUIStore((state) => state.isMobile);
@@ -91,8 +91,8 @@ export function GitHubIssuePickerDialog({
 
   const [query, setQuery] = React.useState('');
   const [createInWorktree, setCreateInWorktree] = React.useState(false);
-  const [result, setResult] = React.useState<GitHubIssuesListResult | null>(null);
-  const [issues, setIssues] = React.useState<GitHubIssueSummary[]>([]);
+  const [result, setResult] = React.useState<GitLabIssuesListResult | null>(null);
+  const [issues, setIssues] = React.useState<GitLabIssueSummary[]>([]);
   const [page, setPage] = React.useState(1);
   const [hasMore, setHasMore] = React.useState(false);
   const [startingIssueNumber, setStartingIssueNumber] = React.useState<number | null>(null);
@@ -107,10 +107,10 @@ export function GitHubIssuePickerDialog({
   const refresh = React.useCallback(async () => {
     if (!projectDirectory) {
       setResult(null);
-      setError(t('session.githubIssuePicker.error.noActiveProject'));
+      setError(t('session.gitlabIssuePicker.error.noActiveProject'));
       return;
     }
-    if (githubAuthChecked && githubAuthStatus?.connected === false) {
+    if (gitlabAuthChecked && gitlabAuthStatus?.connected === false) {
       setResult({ connected: false });
       setIssues([]);
       setHasMore(false);
@@ -118,16 +118,16 @@ export function GitHubIssuePickerDialog({
       setError(null);
       return;
     }
-    if (!github?.issuesList) {
+    if (!gitlab?.issuesList) {
       setResult(null);
-      setError(t('session.githubIssuePicker.error.runtimeUnavailable'));
+      setError(t('session.gitlabIssuePicker.error.runtimeUnavailable'));
       return;
     }
 
     setIsLoading(true);
     setError(null);
     try {
-      const next = await github.issuesList(projectDirectory, { page: 1 });
+      const next = await gitlab.issuesList(projectDirectory, { page: 1 });
       setResult(next);
       setIssues(next.issues ?? []);
       setPage(next.page ?? 1);
@@ -140,12 +140,12 @@ export function GitHubIssuePickerDialog({
     } finally {
       setIsLoading(false);
     }
-  }, [github, githubAuthChecked, githubAuthStatus, projectDirectory, t]);
+  }, [gitlab, gitlabAuthChecked, gitlabAuthStatus, projectDirectory, t]);
 
   React.useEffect(() => {
     if (!open || !projectDirectory) return;
-    if (githubAuthChecked && githubAuthStatus?.connected === false) return;
-    if (!github?.issuesList) return;
+    if (gitlabAuthChecked && gitlabAuthStatus?.connected === false) return;
+    if (!gitlab?.issuesList) return;
     if (!debouncedQuery.trim() || directNumber) {
       void refresh();
       return;
@@ -155,7 +155,7 @@ export function GitHubIssuePickerDialog({
     setIsLoading(true);
     setError(null);
 
-    github.issuesList(projectDirectory, { page: 1, query: debouncedQuery.trim() })
+    gitlab.issuesList(projectDirectory, { page: 1, query: debouncedQuery.trim() })
       .then((next) => {
         if (controller.signal.aborted) return;
         setResult(next);
@@ -172,11 +172,11 @@ export function GitHubIssuePickerDialog({
       });
 
     return () => controller.abort();
-  }, [open, projectDirectory, github, githubAuthChecked, githubAuthStatus, debouncedQuery, directNumber, refresh, t]);
+  }, [open, projectDirectory, gitlab, gitlabAuthChecked, gitlabAuthStatus, debouncedQuery, directNumber, refresh, t]);
 
   const loadMore = React.useCallback(async () => {
     if (!projectDirectory) return;
-    if (!github?.issuesList) return;
+    if (!gitlab?.issuesList) return;
     if (isLoadingMore || isLoading) return;
     if (!hasMore) return;
 
@@ -184,19 +184,19 @@ export function GitHubIssuePickerDialog({
     try {
       const nextPage = page + 1;
       const next = isTextSearch
-        ? await github.issuesList(projectDirectory, { page: nextPage, query: debouncedQuery.trim() })
-        : await github.issuesList(projectDirectory, { page: nextPage });
+        ? await gitlab.issuesList(projectDirectory, { page: nextPage, query: debouncedQuery.trim() })
+        : await gitlab.issuesList(projectDirectory, { page: nextPage });
       setResult(next);
       setIssues((prev) => [...prev, ...(next.issues ?? [])]);
       setPage(next.page ?? nextPage);
       setHasMore(Boolean(next.hasMore));
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
-      toast.error(t('session.githubIssuePicker.toast.loadMoreFailed'), { description: message });
+      toast.error(t('session.gitlabIssuePicker.toast.loadMoreFailed'), { description: message });
     } finally {
       setIsLoadingMore(false);
     }
-  }, [github, hasMore, isLoading, isLoadingMore, isTextSearch, debouncedQuery, page, projectDirectory, t]);
+  }, [gitlab, hasMore, isLoading, isLoadingMore, isTextSearch, debouncedQuery, page, projectDirectory, t]);
 
   React.useEffect(() => {
     if (!open) {
@@ -216,20 +216,20 @@ export function GitHubIssuePickerDialog({
 
   React.useEffect(() => {
     if (!open) return;
-    if (githubAuthChecked && githubAuthStatus?.connected === false) {
+    if (gitlabAuthChecked && gitlabAuthStatus?.connected === false) {
       setResult({ connected: false });
       setIssues([]);
       setHasMore(false);
       setPage(1);
       setError(null);
     }
-  }, [githubAuthChecked, githubAuthStatus, open]);
+  }, [gitlabAuthChecked, gitlabAuthStatus, open]);
 
-  const connected = githubAuthChecked ? result?.connected !== false : true;
+  const connected = gitlabAuthChecked ? result?.connected !== false : true;
   const repoUrl = result?.repo?.url ?? null;
 
-  const openGitHubSettings = React.useCallback(() => {
-    setSettingsPage('github');
+  const openGitLabSettings = React.useCallback(() => {
+    setSettingsPage('gitlab');
     setSettingsDialogOpen(true);
   }, [setSettingsDialogOpen, setSettingsPage]);
 
@@ -295,40 +295,40 @@ export function GitHubIssuePickerDialog({
     return undefined;
   }, []);
 
-  const startSession = React.useCallback(async (issueNumber: number, sourceRepo?: GitHubRepoSelector | null) => {
+  const startSession = React.useCallback(async (issueNumber: number, sourceRepo?: GitLabRepoSelector | null) => {
     if (mode === 'select') {
       // In select mode, fetch full issue details and return via onSelect
       if (!projectDirectory) {
-        toast.error(t('session.githubIssuePicker.error.noActiveProject'));
+        toast.error(t('session.gitlabIssuePicker.error.noActiveProject'));
         return;
       }
-      if (!github?.issueGet || !github?.issueComments) {
-        toast.error(t('session.githubIssuePicker.error.runtimeUnavailable'));
+      if (!gitlab?.issueGet || !gitlab?.issueComments) {
+        toast.error(t('session.gitlabIssuePicker.error.runtimeUnavailable'));
         return;
       }
       if (startingIssueNumber) return;
       setStartingIssueNumber(issueNumber);
       try {
-        const issueRes = await github.issueGet(projectDirectory, issueNumber, { sourceRepo });
+        const issueRes = await gitlab.issueGet(projectDirectory, issueNumber, { sourceRepo });
         if (issueRes.connected === false) {
-          toast.error(t('session.githubIssuePicker.error.notConnected'));
+          toast.error(t('session.gitlabIssuePicker.error.notConnected'));
           return;
         }
         if (!issueRes.repo) {
-          toast.error(t('session.githubIssuePicker.error.repoNotResolvable'), {
-            description: t('session.githubIssuePicker.error.repoMustBeGithub'),
+          toast.error(t('session.gitlabIssuePicker.error.repoNotResolvable'), {
+            description: t('session.gitlabIssuePicker.error.repoMustBeGitLab'),
           });
           return;
         }
         const issue = issueRes.issue;
         if (!issue) {
-          toast.error(t('session.githubIssuePicker.error.issueNotFound'));
+          toast.error(t('session.gitlabIssuePicker.error.issueNotFound'));
           return;
         }
 
-        const commentsRes = await github.issueComments(projectDirectory, issueNumber, { sourceRepo });
+        const commentsRes = await gitlab.issueComments(projectDirectory, issueNumber, { sourceRepo });
         if (commentsRes.connected === false) {
-          toast.error(t('session.githubIssuePicker.error.notConnected'));
+          toast.error(t('session.gitlabIssuePicker.error.notConnected'));
           return;
         }
         const comments = commentsRes.comments ?? [];
@@ -351,7 +351,7 @@ export function GitHubIssuePickerDialog({
         onOpenChange(false);
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e);
-        toast.error(t('session.githubIssuePicker.toast.loadIssueDetailsFailed'), { description: message });
+        toast.error(t('session.gitlabIssuePicker.toast.loadIssueDetailsFailed'), { description: message });
       } finally {
         setStartingIssueNumber(null);
       }
@@ -359,36 +359,36 @@ export function GitHubIssuePickerDialog({
     }
 
     if (!projectDirectory) {
-      toast.error(t('session.githubIssuePicker.error.noActiveProject'));
+      toast.error(t('session.gitlabIssuePicker.error.noActiveProject'));
       return;
     }
-    if (!github?.issueGet || !github?.issueComments) {
-      toast.error(t('session.githubIssuePicker.error.runtimeUnavailable'));
+    if (!gitlab?.issueGet || !gitlab?.issueComments) {
+      toast.error(t('session.gitlabIssuePicker.error.runtimeUnavailable'));
       return;
     }
     if (startingIssueNumber) return;
     setStartingIssueNumber(issueNumber);
     try {
-      const issueRes = await github.issueGet(projectDirectory, issueNumber, { sourceRepo });
+      const issueRes = await gitlab.issueGet(projectDirectory, issueNumber, { sourceRepo });
       if (issueRes.connected === false) {
-        toast.error(t('session.githubIssuePicker.error.notConnected'));
+        toast.error(t('session.gitlabIssuePicker.error.notConnected'));
         return;
       }
       if (!issueRes.repo) {
-        toast.error(t('session.githubIssuePicker.error.repoNotResolvable'), {
-          description: t('session.githubIssuePicker.error.repoMustBeGithub'),
+        toast.error(t('session.gitlabIssuePicker.error.repoNotResolvable'), {
+          description: t('session.gitlabIssuePicker.error.repoMustBeGitLab'),
         });
         return;
       }
       const issue = issueRes.issue;
       if (!issue) {
-        toast.error(t('session.githubIssuePicker.error.issueNotFound'));
+        toast.error(t('session.gitlabIssuePicker.error.issueNotFound'));
         return;
       }
 
-      const commentsRes = await github.issueComments(projectDirectory, issueNumber, { sourceRepo });
+      const commentsRes = await gitlab.issueComments(projectDirectory, issueNumber, { sourceRepo });
       if (commentsRes.connected === false) {
-        toast.error(t('session.githubIssuePicker.error.notConnected'));
+        toast.error(t('session.gitlabIssuePicker.error.notConnected'));
         return;
       }
       const comments = commentsRes.comments ?? [];
@@ -437,16 +437,16 @@ export function GitHubIssuePickerDialog({
       const modelID = defaultModel?.modelID || configState.currentModelId || lastUsedProvider?.modelID;
       const agentName = resolveDefaultAgentName() || configState.currentAgentName || undefined;
       if (!providerID || !modelID) {
-        toast.error(t('session.githubIssuePicker.error.noModelSelected'));
+        toast.error(t('session.gitlabIssuePicker.error.noModelSelected'));
         return;
       }
 
       const variant = resolveDefaultVariant(providerID, modelID);
 
-      const visiblePromptText = await renderMagicPrompt('github.issue.review.visible', {
+      const visiblePromptText = await renderMagicPrompt('gitlab.issue.review.visible', {
         issue_number: String(issue.number),
       });
-      const instructionsText = await renderMagicPrompt('github.issue.review.instructions');
+      const instructionsText = await renderMagicPrompt('gitlab.issue.review.instructions');
       const contextText = buildIssueContextText({ repo: issueRes.repo, issue, comments });
 
       void useSessionUIStore.getState().sendMessage(
@@ -465,31 +465,31 @@ export function GitHubIssuePickerDialog({
         { sessionId },
       ).catch((e) => {
         const message = e instanceof Error ? e.message : String(e);
-        toast.error(t('session.githubIssuePicker.toast.sendContextFailed'), {
+        toast.error(t('session.gitlabIssuePicker.toast.sendContextFailed'), {
           description: message,
         });
       });
 
-      toast.success(t('session.githubIssuePicker.toast.sessionCreated'));
+      toast.success(t('session.gitlabIssuePicker.toast.sessionCreated'));
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
-      toast.error(t('session.githubIssuePicker.toast.startSessionFailed'), { description: message });
+      toast.error(t('session.gitlabIssuePicker.toast.startSessionFailed'), { description: message });
     } finally {
       setStartingIssueNumber(null);
     }
-  }, [createInWorktree, github, mode, onOpenChange, onSelect, projectDirectory, resolveDefaultAgentName, resolveDefaultModelSelection, resolveDefaultVariant, startingIssueNumber, t]);
+  }, [createInWorktree, gitlab, mode, onOpenChange, onSelect, projectDirectory, resolveDefaultAgentName, resolveDefaultModelSelection, resolveDefaultVariant, startingIssueNumber, t]);
 
-  const title = mode === 'select' ? t('session.githubIssuePicker.title.select') : t('session.githubIssuePicker.title.createSession');
+  const title = mode === 'select' ? t('session.gitlabIssuePicker.title.select') : t('session.gitlabIssuePicker.title.createSession');
   const description = mode === 'select'
-    ? t('session.githubIssuePicker.description.select')
-    : t('session.githubIssuePicker.description.createSession');
+    ? t('session.gitlabIssuePicker.description.select')
+    : t('session.gitlabIssuePicker.description.createSession');
 
   const content = (
     <>
       <div className="relative mt-2">
         <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder={t('session.githubIssuePicker.searchPlaceholder')}
+          placeholder={t('session.gitlabIssuePicker.searchPlaceholder')}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="pl-9 w-full"
@@ -498,26 +498,26 @@ export function GitHubIssuePickerDialog({
 
       <div className={cn(isMobile ? 'min-h-0 mt-2' : 'flex-1 overflow-y-auto mt-2')}>
           {!projectDirectory ? (
-            <div className="text-center text-muted-foreground py-8">{t('session.githubIssuePicker.empty.noActiveProject')}</div>
+            <div className="text-center text-muted-foreground py-8">{t('session.gitlabIssuePicker.empty.noActiveProject')}</div>
           ) : null}
 
-          {!github ? (
-            <div className="text-center text-muted-foreground py-8">{t('session.githubIssuePicker.empty.runtimeUnavailable')}</div>
+          {!gitlab ? (
+            <div className="text-center text-muted-foreground py-8">{t('session.gitlabIssuePicker.empty.runtimeUnavailable')}</div>
           ) : null}
 
           {isLoading ? (
             <div className="text-center text-muted-foreground py-8 flex items-center justify-center gap-2">
               <Icon name="loader-4" className="h-4 w-4 animate-spin" />
-              {t('session.githubIssuePicker.loading.issues')}
+              {t('session.gitlabIssuePicker.loading.issues')}
             </div>
           ) : null}
 
           {connected === false ? (
             <div className="text-center text-muted-foreground py-8 space-y-3">
-              <div>{t('session.githubIssuePicker.empty.notConnected')}</div>
+              <div>{t('session.gitlabIssuePicker.empty.notConnected')}</div>
               <div className="flex justify-center">
-                <Button variant="outline" size="sm" onClick={openGitHubSettings}>
-                  {t('session.githubIssuePicker.actions.openSettings')}
+                <Button variant="outline" size="sm" onClick={openGitLabSettings}>
+                  {t('session.gitlabIssuePicker.actions.openSettings')}
                 </Button>
               </div>
             </div>
@@ -527,7 +527,7 @@ export function GitHubIssuePickerDialog({
             <div className="text-center text-muted-foreground py-8 break-words">{error}</div>
           ) : null}
 
-          {directNumber && projectDirectory && github && connected ? (
+          {directNumber && projectDirectory && gitlab && connected ? (
             <div
               className={cn(
                 'group flex items-center gap-2 py-1.5 hover:bg-interactive-hover/30 rounded transition-colors cursor-pointer',
@@ -537,7 +537,7 @@ export function GitHubIssuePickerDialog({
             >
               <span className="typography-meta text-muted-foreground w-5 text-right flex-shrink-0">#</span>
               <p className="flex-1 min-w-0 typography-small text-foreground truncate ml-0.5">
-                {t('session.githubIssuePicker.actions.useIssue', { number: directNumber })}
+                {t('session.gitlabIssuePicker.actions.useIssue', { number: directNumber })}
               </p>
               <div className="flex-shrink-0 h-5 flex items-center mr-2">
                 {startingIssueNumber === directNumber ? (
@@ -547,8 +547,8 @@ export function GitHubIssuePickerDialog({
             </div>
           ) : null}
 
-          {issues.length === 0 && !isLoading && connected && github && projectDirectory ? (
-            <div className="text-center text-muted-foreground py-8">{debouncedQuery.trim() ? t('session.githubIssuePicker.empty.noIssuesFound') : t('session.githubIssuePicker.empty.noOpenIssuesFound')}</div>
+          {issues.length === 0 && !isLoading && connected && gitlab && projectDirectory ? (
+            <div className="text-center text-muted-foreground py-8">{debouncedQuery.trim() ? t('session.gitlabIssuePicker.empty.noIssuesFound') : t('session.gitlabIssuePicker.empty.noOpenIssuesFound')}</div>
           ) : null}
 
           {issues.map((issue) => (
@@ -587,7 +587,7 @@ export function GitHubIssuePickerDialog({
                       alwaysShowActions ? "flex" : "hidden group-hover:flex"
                     )}
                     onClick={(e) => e.stopPropagation()}
-                    aria-label={t('session.githubIssuePicker.actions.openInGitHubAria')}
+                    aria-label={t('session.gitlabIssuePicker.actions.openInGitLabAria')}
                   >
                     <Icon name="external-link" className="h-4 w-4" />
                   </a>
@@ -596,7 +596,7 @@ export function GitHubIssuePickerDialog({
             </div>
           ))}
 
-          {hasMore && connected && projectDirectory && github ? (
+          {hasMore && connected && projectDirectory && gitlab ? (
             <div className="py-2 flex justify-center">
               <button
                 type="button"
@@ -610,10 +610,10 @@ export function GitHubIssuePickerDialog({
                 {isLoadingMore ? (
                   <span className="inline-flex items-center gap-2">
                     <Icon name="loader-4" className="h-4 w-4 animate-spin" />
-                    {t('session.githubIssuePicker.loading.more')}
+                    {t('session.gitlabIssuePicker.loading.more')}
                   </span>
                 ) : (
-                  t('session.githubIssuePicker.actions.loadMore')
+                  t('session.gitlabIssuePicker.actions.loadMore')
                 )}
               </button>
             </div>
@@ -622,7 +622,7 @@ export function GitHubIssuePickerDialog({
 
       {mode !== 'select' && (
         <div className="mt-4 p-3 bg-muted/30 rounded-lg">
-          <p className="typography-meta text-muted-foreground font-medium mb-2">{t('session.githubIssuePicker.actions.sectionTitle')}</p>
+          <p className="typography-meta text-muted-foreground font-medium mb-2">{t('session.gitlabIssuePicker.actions.sectionTitle')}</p>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-2">
             <div
               className="flex items-center gap-2 cursor-pointer"
@@ -644,7 +644,7 @@ export function GitHubIssuePickerDialog({
                   e.stopPropagation();
                   setCreateInWorktree((v) => !v);
                 }}
-                aria-label={t('session.githubIssuePicker.actions.toggleWorktreeAria')}
+                aria-label={t('session.gitlabIssuePicker.actions.toggleWorktreeAria')}
                 className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 {createInWorktree ? (
@@ -653,7 +653,7 @@ export function GitHubIssuePickerDialog({
                   <Icon name="checkbox-blank" className="h-4 w-4" />
                 )}
               </button>
-              <span className="typography-meta text-muted-foreground">{t('session.githubIssuePicker.actions.createInWorktree')}</span>
+              <span className="typography-meta text-muted-foreground">{t('session.gitlabIssuePicker.actions.createInWorktree')}</span>
               <span className="typography-meta text-muted-foreground/70 hidden sm:inline">(issue-&lt;number&gt;-&lt;slug&gt;)</span>
             </div>
             <div className="hidden sm:block sm:flex-1" />
@@ -662,12 +662,12 @@ export function GitHubIssuePickerDialog({
                 <Button variant="outline" size="sm" asChild>
                   <a href={repoUrl} target="_blank" rel="noopener noreferrer">
                     <Icon name="external-link" className="size-4" />
-                    {t('session.githubIssuePicker.actions.openRepo')}
+                    {t('session.gitlabIssuePicker.actions.openRepo')}
                   </a>
                 </Button>
               ) : null}
               <Button variant="outline" size="sm" onClick={refresh} disabled={isLoading || Boolean(startingIssueNumber)}>
-                {t('session.githubIssuePicker.actions.refresh')}
+                {t('session.gitlabIssuePicker.actions.refresh')}
               </Button>
             </div>
           </div>
@@ -702,7 +702,7 @@ export function GitHubIssuePickerDialog({
       <DialogContent className="max-w-2xl max-h-[70vh] flex flex-col">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
-            <Icon name="github" className="h-5 w-5" />
+            <Icon name="git-branch" className="h-5 w-5" />
             {title}
           </DialogTitle>
           <DialogDescription>
