@@ -407,7 +407,6 @@ class MerlinLanguageModel implements LanguageModelV3 {
       temperature: 0.3,
       max_completion_tokens: 128000,
       priority: 1,
-      chat_template_kwargs: { enable_thinking: false },
       ...(this.sendServiceId ? { service_id: resolveServiceId(options) } : {}),
       ...(tools.length > 0 ? { tools, tool_choice: "auto" as const } : {}),
       stream: false,

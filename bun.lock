@@ -445,7 +445,7 @@
     },
     "packages/ui-react": {
       "name": "@mybcabisnis/mage-ui-react",
-      "version": "1.15.0",
+      "version": "1.2.12",
       "dependencies": {
         "@aparajita/capacitor-secure-storage": "^8.0.0",
         "@base-ui/react": "^1.4.0",
@@ -600,7 +600,7 @@
     },
     "packages/vscode-react": {
       "name": "mage-vscode",
-      "version": "1.15.0",
+      "version": "1.2.12",
       "dependencies": {
         "@mybcabisnis/mage-sdk": "workspace:*",
         "@mybcabisnis/mage-ui-react": "workspace:*",
@@ -623,7 +623,7 @@
     },
     "packages/web-react": {
       "name": "@mybcabisnis/mage-web-react",
-      "version": "1.15.0",
+      "version": "1.2.12",
       "bin": {
         "mage": "./bin/cli.js",
       },
