@@ -1,21 +1,26 @@
 import path from "path"
 import fs from "fs/promises"
-import { xdgData, xdgCache, xdgConfig, xdgState } from "xdg-basedir"
+import { xdgData, xdgCache, xdgState } from "xdg-basedir"
 import os from "os"
 import { Context, Effect, Layer } from "effect"
 import { Flock } from "./util/flock"
 import { Flag } from "./flag/flag"
+import { makeGlobalNode } from "./effect/app-node"
 
-const app = "opencode"
+const app = "mage"
 const data = path.join(xdgData!, app)
 const cache = path.join(xdgCache!, app)
-const config = path.join(xdgConfig!, app)
+// The global config directory is `~/.mage` (not the XDG config dir) — this is
+// the canonical location for `mage.json` and is what `mage init`/first-run
+// writes to. Kept as a plain const (evaluated once at import), matching how
+// `data`/`cache`/`state` above are derived from xdg-basedir.
+const config = path.join(process.env.MAGE_TEST_HOME ?? os.homedir(), ".mage")
 const state = path.join(xdgState!, app)
 const tmp = path.join(os.tmpdir(), app)
 
 const paths = {
   get home() {
-    return process.env.OPENCODE_TEST_HOME ?? os.homedir()
+    return process.env.MAGE_TEST_HOME ?? os.homedir()
   },
   data,
   bin: path.join(cache, "bin"),
@@ -41,7 +46,7 @@ await Promise.all([
   fs.mkdir(Path.repos, { recursive: true }),
 ])
 
-export class Service extends Context.Service<Service, Interface>()("@opencode/Global") {}
+export class Service extends Context.Service<Service, Interface>()("@mage/Global") {}
 
 export interface Interface {
   readonly home: string
@@ -60,7 +65,7 @@ export function make(input: Partial<Interface> = {}): Interface {
     home: Path.home,
     data: Path.data,
     cache: Path.cache,
-    config: Flag.OPENCODE_CONFIG_DIR ?? Path.config,
+    config: Flag.MAGE_CONFIG_DIR ?? Path.config,
     state: Path.state,
     tmp: Path.tmp,
     bin: Path.bin,
@@ -70,12 +75,12 @@ export function make(input: Partial<Interface> = {}): Interface {
   }
 }
 
-export const layer = Layer.effect(
+const layer = Layer.effect(
   Service,
   Effect.sync(() => Service.of(make())),
 )
 
-export const defaultLayer = layer
+export const node = makeGlobalNode({ service: Service, layer: layer, deps: [] })
 
 export const layerWith = (input: Partial<Interface>) =>
   Layer.effect(

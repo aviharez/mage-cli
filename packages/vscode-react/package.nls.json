@@ -1,0 +1,20 @@
+{
+  "extension.description": "AI coding assistant powered by Mage",
+  "views.chat.name": "Chat",
+  "command.openSidebar.title": "Open Sidebar",
+  "command.focusChat.title": "Focus Chat",
+  "command.restartApi.title": "Restart API Connection",
+  "command.showMageStatus.title": "Show Mage Status",
+  "command.openAgentManager.title": "Open Agent Manager",
+  "command.openActiveSessionInEditor.title": "Open Active Session in Editor",
+  "command.openNewSessionInEditor.title": "Open New Session in Editor",
+  "command.openCurrentOrNewSessionInEditor.title": "Open Session in Editor",
+  "command.addToContext.title": "Add to Context",
+  "command.explain.title": "Explain",
+  "command.improveCode.title": "Improve Code",
+  "command.newSession.title": "New Session",
+  "command.showSettings.title": "Settings",
+  "command.attachExplorerToChat.title": "Attach to Mage Chat",
+  "configuration.apiUrl.description": "URL of an external Mage API server. Leave empty to auto-start a local instance.",
+  "configuration.mageBinary.description": "Optional absolute path to the mage CLI binary. Useful if PATH lookup fails. Requires window reload or API restart to apply."
+}

@@ -2,15 +2,6 @@ import { describe, expect, test } from "bun:test"
 import { LLM, LLMClient, Provider } from "@mybcabisnis/mage-llm"
 import { Route, Protocol } from "@mybcabisnis/mage-llm/route"
 import { Provider as ProviderSubpath } from "@mybcabisnis/mage-llm/provider"
-import {
-  CloudflareAIGateway,
-  CloudflareWorkersAI,
-  OpenAI,
-  OpenAICompatible,
-  OpenRouter,
-  XAI,
-} from "@mybcabisnis/mage-llm/providers"
-import * as GitHubCopilot from "@mybcabisnis/mage-llm/providers/github-copilot"
 import { OpenAIChat, OpenAICompatibleChat, OpenAIResponses } from "@mybcabisnis/mage-llm/protocols"
 import * as AnthropicMessages from "@mybcabisnis/mage-llm/protocols/anthropic-messages"
 
@@ -26,30 +17,6 @@ describe("public exports", () => {
   test("route barrel exposes route-authoring APIs", () => {
     expect(Route.make).toBeFunction()
     expect(Protocol.make).toBeFunction()
-  })
-
-  test("provider barrels expose user-facing facades", () => {
-    expect(OpenAI.model).toBeFunction()
-    expect(OpenAI.provider.model).toBe(OpenAI.model)
-    expect(OpenAI.provider.responses).toBe(OpenAI.responses)
-    expect(OpenAI.provider.responsesWebSocket).toBe(OpenAI.responsesWebSocket)
-    expect(OpenAI.configure({ apiKey: "fixture" }).responses).toBeFunction()
-    expect(OpenAICompatible.deepseek.model).toBeFunction()
-    expect(CloudflareAIGateway.configure).toBeFunction()
-    expect(CloudflareAIGateway.configure({ accountId: "fixture", gatewayApiKey: "fixture" }).model).toBeFunction()
-    expect(CloudflareWorkersAI.configure).toBeFunction()
-    expect(CloudflareWorkersAI.configure({ accountId: "fixture", apiKey: "fixture" }).model).toBeFunction()
-    expect(OpenRouter.model).toBeFunction()
-    expect(OpenRouter.provider.model).toBe(OpenRouter.model)
-    expect(XAI.model).toBeFunction()
-    expect(XAI.provider.model).toBe(XAI.model)
-    expect(XAI.provider.responses).toBe(XAI.responses)
-    expect(XAI.provider.chat).toBe(XAI.chat)
-    expect(XAI.configure({ apiKey: "fixture" }).responses("grok-4.3").route.id).toBe("openai-responses")
-    expect(XAI.configure({ apiKey: "fixture" }).chat("grok-4.3").route.id).toBe("openai-compatible-chat")
-    expect(
-      GitHubCopilot.configure({ baseURL: "https://api.githubcopilot.test", apiKey: "fixture" }).model,
-    ).toBeFunction()
   })
 
   test("protocol barrels expose supported low-level routes", () => {

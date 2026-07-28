@@ -1,0 +1,23 @@
+{
+  "Mage: Failed to open sidebar - {0}": "Mage: Failed to open sidebar - {0}",
+  "Mage: Chat sidebar is not ready": "Mage: Chat sidebar is not ready",
+  "Mage: No active session": "Mage: No active session",
+  "Mage: API connection restarted": "Mage: API connection restarted",
+  "Mage: Failed to restart API - {0}": "Mage: Failed to restart API - {0}",
+  "Mage [Add to Context]: No active editor": "Mage [Add to Context]: No active editor",
+  "Mage [Add to Context]: No text selected": "Mage [Add to Context]: No text selected",
+  "Mage: No file selected to mention": "Mage: No file selected to mention",
+  "Mage: Some selected entries were skipped (folders or unsupported resources)": "Mage: Some selected entries were skipped (folders or unsupported resources)",
+  "Mage [Explain]: No active editor": "Mage [Explain]: No active editor",
+  "Explain the following Code / Text:": "Explain the following Code / Text:",
+  "Mage [Improve Code]: No active editor": "Mage [Improve Code]: No active editor",
+  "Mage [Improve Code]: No text selected": "Mage [Improve Code]: No text selected",
+  "Improve the following Code:": "Improve the following Code:",
+  "Mage CLI not found. Install it and ensure it's in PATH.": "Mage CLI not found. Install it and ensure it's in PATH.",
+  "Mage CLI not found. Please install it and ensure it's in PATH.": "Mage CLI not found. Please install it and ensure it's in PATH.",
+  "More Info": "More Info",
+  "Failed to start Mage: {0}": "Failed to start Mage: {0}",
+  "New Session": "New Session",
+  "Session": "Session",
+  "Agent Manager": "Agent Manager"
+}

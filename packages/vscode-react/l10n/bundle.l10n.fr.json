@@ -1,0 +1,23 @@
+{
+  "Mage: Failed to open sidebar - {0}": "Mage : impossible d’ouvrir la barre latérale — {0}",
+  "Mage: Chat sidebar is not ready": "Mage : la barre latérale du chat n’est pas prête",
+  "Mage: No active session": "Mage : aucune session active",
+  "Mage: API connection restarted": "Mage : la connexion API a été redémarrée",
+  "Mage: Failed to restart API - {0}": "Mage : impossible de redémarrer l’API — {0}",
+  "Mage [Add to Context]: No active editor": "Mage [Ajouter au contexte] : aucun éditeur actif",
+  "Mage [Add to Context]: No text selected": "Mage [Ajouter au contexte] : aucun texte sélectionné",
+  "Mage: No file selected to mention": "Mage : aucun fichier sélectionné à mentionner",
+  "Mage: Some selected entries were skipped (folders or unsupported resources)": "Mage : certaines entrées sélectionnées ont été ignorées (dossiers ou ressources non prises en charge)",
+  "Mage [Explain]: No active editor": "Mage [Expliquer] : aucun éditeur actif",
+  "Explain the following Code / Text:": "Expliquez le code / texte suivant :",
+  "Mage [Improve Code]: No active editor": "Mage [Améliorer le code] : aucun éditeur actif",
+  "Mage [Improve Code]: No text selected": "Mage [Améliorer le code] : aucun texte sélectionné",
+  "Improve the following Code:": "Améliorez le code suivant :",
+  "Mage CLI not found. Install it and ensure it's in PATH.": "Mage CLI introuvable. Installez-le et assurez-vous qu’il est dans le PATH.",
+  "Mage CLI not found. Please install it and ensure it's in PATH.": "Mage CLI introuvable. Veuillez l’installer et vérifier qu’il est dans le PATH.",
+  "More Info": "Plus d’informations",
+  "Failed to start Mage: {0}": "Impossible de démarrer Mage : {0}",
+  "New Session": "Nouvelle session",
+  "Session": "Session",
+  "Agent Manager": "Gestionnaire d’agents"
+}

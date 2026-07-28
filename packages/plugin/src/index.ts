@@ -1,6 +1,6 @@
 import type {
   Event,
-  createOpencodeClient,
+  createMageClient,
   Project,
   Model,
   Provider,
@@ -8,10 +8,9 @@ import type {
   UserMessage,
   Message,
   Part,
-  Auth,
   Config as SDKConfig,
 } from "@mybcabisnis/mage-sdk"
-import type { Provider as ProviderV2, Model as ModelV2 } from "@mybcabisnis/mage-sdk/v2"
+import type { Provider as ProviderV2, Model as ModelV2, Auth } from "@mybcabisnis/mage-sdk/v2"
 
 import type { BunShell } from "./shell.js"
 import { type ToolDefinition } from "./tool.js"
@@ -36,16 +35,16 @@ export type WorkspaceInfo = {
 
 export type WorkspaceTarget =
   | {
-    type: "local"
-    directory: string
-  }
+      type: "local"
+      directory: string
+    }
   | {
-    type: "remote"
-    url: string | URL
-    headers?: HeadersInit
-  }
+      type: "remote"
+      url: string | URL
+      headers?: HeadersInit
+    }
 
-export type WorkspaceAdaptor = {
+export type WorkspaceAdapter = {
   name: string
   description: string
   configure(config: WorkspaceInfo): WorkspaceInfo | Promise<WorkspaceInfo>
@@ -55,12 +54,12 @@ export type WorkspaceAdaptor = {
 }
 
 export type PluginInput = {
-  client: ReturnType<typeof createOpencodeClient>
+  client: ReturnType<typeof createMageClient>
   project: Project
   directory: string
   worktree: string
   experimental_workspace: {
-    register(type: string, adaptor: WorkspaceAdaptor): void
+    register(type: string, adapter: WorkspaceAdapter): void
   }
   serverUrl: URL
   $: BunShell
@@ -91,120 +90,121 @@ export type AuthHook = {
   loader?: (auth: () => Promise<Auth>, provider: Provider) => Promise<Record<string, any>>
   methods: (
     | {
-      type: "oauth"
-      label: string
-      prompts?: Array<
-        | {
-          type: "text"
-          key: string
-          message: string
-          placeholder?: string
-          validate?: (value: string) => string | undefined
-          /** @deprecated Use `when` instead */
-          condition?: (inputs: Record<string, string>) => boolean
-          when?: Rule
-        }
-        | {
-          type: "select"
-          key: string
-          message: string
-          options: Array<{
-            label: string
-            value: string
-            hint?: string
-          }>
-          /** @deprecated Use `when` instead */
-          condition?: (inputs: Record<string, string>) => boolean
-          when?: Rule
-        }
-      >
-      authorize(inputs?: Record<string, string>): Promise<AuthOAuthResult>
-    }
+        type: "oauth"
+        label: string
+        prompts?: Array<
+          | {
+              type: "text"
+              key: string
+              message: string
+              placeholder?: string
+              validate?: (value: string) => string | undefined
+              /** @deprecated Use `when` instead */
+              condition?: (inputs: Record<string, string>) => boolean
+              when?: Rule
+            }
+          | {
+              type: "select"
+              key: string
+              message: string
+              options: Array<{
+                label: string
+                value: string
+                hint?: string
+              }>
+              /** @deprecated Use `when` instead */
+              condition?: (inputs: Record<string, string>) => boolean
+              when?: Rule
+            }
+        >
+        authorize(inputs?: Record<string, string>): Promise<AuthOAuthResult>
+      }
     | {
-      type: "api"
-      label: string
-      prompts?: Array<
-        | {
-          type: "text"
-          key: string
-          message: string
-          placeholder?: string
-          validate?: (value: string) => string | undefined
-          /** @deprecated Use `when` instead */
-          condition?: (inputs: Record<string, string>) => boolean
-          when?: Rule
-        }
-        | {
-          type: "select"
-          key: string
-          message: string
-          options: Array<{
-            label: string
-            value: string
-            hint?: string
-          }>
-          /** @deprecated Use `when` instead */
-          condition?: (inputs: Record<string, string>) => boolean
-          when?: Rule
-        }
-      >
-      authorize?(inputs?: Record<string, string>): Promise<
-        | {
-          type: "success"
-          key: string
-          provider?: string
-        }
-        | {
-          type: "failed"
-        }
-      >
-    }
+        type: "api"
+        label: string
+        prompts?: Array<
+          | {
+              type: "text"
+              key: string
+              message: string
+              placeholder?: string
+              validate?: (value: string) => string | undefined
+              /** @deprecated Use `when` instead */
+              condition?: (inputs: Record<string, string>) => boolean
+              when?: Rule
+            }
+          | {
+              type: "select"
+              key: string
+              message: string
+              options: Array<{
+                label: string
+                value: string
+                hint?: string
+              }>
+              /** @deprecated Use `when` instead */
+              condition?: (inputs: Record<string, string>) => boolean
+              when?: Rule
+            }
+        >
+        authorize?(inputs?: Record<string, string>): Promise<
+          | {
+              type: "success"
+              key: string
+              provider?: string
+              metadata?: Record<string, string>
+            }
+          | {
+              type: "failed"
+            }
+        >
+      }
   )[]
 }
 
 export type AuthOAuthResult = { url: string; instructions: string } & (
   | {
-    method: "auto"
-    callback(): Promise<
-      | ({
-        type: "success"
-        provider?: string
-      } & (
-          | {
-            refresh: string
-            access: string
-            expires: number
-            accountId?: string
-            enterpriseUrl?: string
+      method: "auto"
+      callback(): Promise<
+        | ({
+            type: "success"
+            provider?: string
+          } & (
+            | {
+                refresh: string
+                access: string
+                expires: number
+                accountId?: string
+                enterpriseUrl?: string
+              }
+            | { key: string; metadata?: Record<string, string> }
+          ))
+        | {
+            type: "failed"
           }
-          | { key: string }
-        ))
-      | {
-        type: "failed"
-      }
-    >
-  }
+      >
+    }
   | {
-    method: "code"
-    callback(code: string): Promise<
-      | ({
-        type: "success"
-        provider?: string
-      } & (
-          | {
-            refresh: string
-            access: string
-            expires: number
-            accountId?: string
-            enterpriseUrl?: string
+      method: "code"
+      callback(code: string): Promise<
+        | ({
+            type: "success"
+            provider?: string
+          } & (
+            | {
+                refresh: string
+                access: string
+                expires: number
+                accountId?: string
+                enterpriseUrl?: string
+              }
+            | { key: string; metadata?: Record<string, string> }
+          ))
+        | {
+            type: "failed"
           }
-          | { key: string }
-        ))
-      | {
-        type: "failed"
-      }
-    >
-  }
+      >
+    }
 )
 
 export type ProviderHookContext = {
@@ -220,6 +220,7 @@ export type ProviderHook = {
 export type AuthOuathResult = AuthOAuthResult
 
 export interface Hooks {
+  dispose?: () => Promise<void>
   event?: (input: { event: Event }) => Promise<void>
   config?: (input: Config) => Promise<void>
   tool?: {
@@ -293,6 +294,7 @@ export interface Hooks {
       system: string[]
     },
   ) => Promise<void>
+  "experimental.provider.small_model"?: (input: { provider: ProviderV2 }, output: { model?: ModelV2 }) => Promise<void>
   /**
    * Called before session compaction starts. Allows plugins to customize
    * the compaction prompt.

@@ -1,49 +1,56 @@
 {
   "$schema": "https://v2-8-13.turborepo.dev/schema.json",
-  "globalEnv": ["CI", "OPENCODE_DISABLE_SHARE"],
-  "globalPassThroughEnv": ["CI", "OPENCODE_DISABLE_SHARE"],
+  "globalEnv": [
+    "CI",
+    "MAGE_DISABLE_SHARE"
+  ],
+  "globalPassThroughEnv": [
+    "CI",
+    "MAGE_DISABLE_SHARE"
+  ],
   "tasks": {
     "typecheck": {},
     "build": {
       "dependsOn": [],
-      "outputs": ["dist/**"]
+      "outputs": [
+        "dist/**"
+      ]
     },
-    "opencode#test": {
-      "dependsOn": ["^build"],
+    "mage#test": {
+      "dependsOn": [
+        "^build"
+      ],
       "outputs": [],
-      "passThroughEnv": ["*"]
+      "passThroughEnv": [
+        "*"
+      ]
     },
-    "opencode#test:ci": {
-      "dependsOn": ["^build"],
-      "outputs": [".artifacts/unit/junit.xml"],
-      "passThroughEnv": ["*"]
+    "mage#test:ci": {
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        ".artifacts/unit/junit.xml"
+      ],
+      "passThroughEnv": [
+        "*"
+      ]
     },
-    "@mybcabisnis/mage-app#test": {
-      "dependsOn": ["^build"],
-      "outputs": []
+    "@mybcabisnis/mage-web-react#build": {
+      "dependsOn": [
+        "@mybcabisnis/mage-ui-react#build"
+      ],
+      "outputs": [
+        "dist/**"
+      ]
     },
-    "@mybcabisnis/mage-app#test:ci": {
-      "dependsOn": ["^build"],
-      "outputs": [".artifacts/unit/junit.xml"],
-      "passThroughEnv": ["*"]
-    },
-    "@mybcabisnis/mage-ui#test": {
-      "dependsOn": ["^build"],
-      "outputs": [".artifacts/unit/junit.xml"],
-      "passThroughEnv": ["*"]
-    },
-    "@mybcabisnis/mage-ui#test:ci": {
-      "dependsOn": ["^build"],
-      "outputs": [".artifacts/unit/junit.xml"],
-      "passThroughEnv": ["*"]
-    },
-    "@mybcabisnis/mage-desktop#build": {
-      "dependsOn": ["@mybcabisnis/mage-app#build", "@mybcabisnis/mage-ui#build"],
-      "outputs": ["out/**"]
-    },
-    "@mybcabisnis/mage-web#build": {
-      "dependsOn": ["@mybcabisnis/mage#build"],
-      "outputs": ["dist/**"]
+    "mage-vscode#build": {
+      "dependsOn": [
+        "@mybcabisnis/mage-ui-react#build"
+      ],
+      "outputs": [
+        "dist/**"
+      ]
     }
   }
 }

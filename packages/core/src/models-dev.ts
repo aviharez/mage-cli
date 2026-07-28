@@ -1,18 +1,9 @@
-import path from "path"
-import { Context, Duration, Effect, Layer, Option, Schedule, Schema } from "effect"
-import { FetchHttpClient, HttpClient, HttpClientRequest } from "effect/unstable/http"
-import { Global } from "./global"
-import { Flag } from "./flag/flag"
-import { Flock } from "./util/flock"
-import { Hash } from "./util/hash"
-import { AppFileSystem } from "./filesystem"
-import { InstallationChannel, InstallationVersion } from "./installation/version"
-import { EventV2 } from "./event"
+import { Context, Effect, Layer, Schema } from "effect"
+import { ModelsDev } from "@mybcabisnis/mage-schema/models-dev"
+import { makeGlobalNode } from "./effect/app-node"
 
 export const CatalogModelStatus = Schema.Literals(["alpha", "beta", "deprecated"])
 export type CatalogModelStatus = typeof CatalogModelStatus.Type
-
-const USER_AGENT = `opencode/${InstallationChannel}/${InstallationVersion}/${Flag.OPENCODE_CLIENT}`
 
 const CostTier = Schema.Struct({
   input: Schema.Finite,
@@ -54,7 +45,7 @@ export const Model = Schema.Struct({
     Schema.Union([
       Schema.Literal(true),
       Schema.Struct({
-        field: Schema.Literals(["reasoning_content", "reasoning_details"]),
+        field: Schema.Literals(["reasoning", "reasoning_content", "reasoning_details"]),
       }),
     ]),
   ),
@@ -106,129 +97,28 @@ export const Provider = Schema.Struct({
 
 export type Provider = Schema.Schema.Type<typeof Provider>
 
-export const Event = {
-  Refreshed: EventV2.define({
-    type: "models-dev.refreshed",
-    schema: {},
-  }),
-}
-
-declare const OPENCODE_MODELS_DEV: Record<string, Provider> | undefined
+export const Event = ModelsDev.Event
 
 export interface Interface {
   readonly get: () => Effect.Effect<Record<string, Provider>>
   readonly refresh: (force?: boolean) => Effect.Effect<void>
 }
 
-export class Service extends Context.Service<Service, Interface>()("@opencode/ModelsDev") {}
+export class Service extends Context.Service<Service, Interface>()("@mage/ModelsDev") {}
 
-export const layer = Layer.effect(
+// Mage is locked to the Merlin/GAIA provider only — the models.dev catalog is
+// never fetched. Merlin is injected directly in Provider.Service, and every
+// provider/model picker reads from that single entry.
+const layer = Layer.effect(
   Service,
-  Effect.gen(function* () {
-    const fs = yield* AppFileSystem.Service
-    const events = yield* EventV2.Service
-    const http = HttpClient.filterStatusOk(
-      (yield* HttpClient.HttpClient).pipe(
-        HttpClient.retryTransient({
-          retryOn: "errors-and-responses",
-          times: 2,
-          schedule: Schedule.exponential(200).pipe(Schedule.jittered),
-        }),
-      ),
-    )
-
-    const source = Flag.OPENCODE_MODELS_URL || "https://models.dev"
-    const filepath = path.join(
-      Global.Path.cache,
-      source === "https://models.dev" ? "models.json" : `models-${Hash.fast(source)}.json`,
-    )
-    const ttl = Duration.minutes(5)
-    const lockKey = `models-dev:${filepath}`
-
-    const fresh = Effect.fnUntraced(function* () {
-      const stat = yield* fs.stat(filepath).pipe(Effect.catch(() => Effect.succeed(undefined)))
-      if (!stat) return false
-      const mtime = Option.getOrElse(stat.mtime, () => new Date(0)).getTime()
-      return Date.now() - mtime < Duration.toMillis(ttl)
-    })
-
-    const fetchApi = Effect.fn("ModelsDev.fetchApi")(function* () {
-      return yield* HttpClientRequest.get(`${source}/api.json`).pipe(
-        HttpClientRequest.setHeader("User-Agent", USER_AGENT),
-        http.execute,
-        Effect.flatMap((res) => res.text),
-        Effect.timeout("10 seconds"),
-      )
-    })
-
-    const loadFromDisk = fs.readJson(Flag.OPENCODE_MODELS_PATH ?? filepath).pipe(
-      Effect.catch(() => Effect.succeed(undefined)),
-      Effect.map((v) => v as Record<string, Provider> | undefined),
-    )
-
-    const loadSnapshot = Effect.sync(() =>
-      typeof OPENCODE_MODELS_DEV === "undefined" ? undefined : OPENCODE_MODELS_DEV,
-    )
-
-    const fetchAndWrite = Effect.fn("ModelsDev.fetchAndWrite")(function* () {
-      const text = yield* fetchApi()
-      yield* fs.writeWithDirs(filepath, text)
-      return text
-    })
-
-    const populate = Effect.gen(function* () {
-      const fromDisk = yield* loadFromDisk
-      if (fromDisk) return fromDisk
-      const snapshot = yield* loadSnapshot
-      if (snapshot) return snapshot
-      if (Flag.OPENCODE_DISABLE_MODELS_FETCH) return {}
-      // Flock is cross-process: concurrent opencode CLIs can race on this cache file.
-      const text = yield* Effect.scoped(
-        Effect.gen(function* () {
-          yield* Flock.effect(lockKey)
-          return yield* fetchAndWrite()
-        }),
-      )
-      return JSON.parse(text) as Record<string, Provider>
-    }).pipe(Effect.withSpan("ModelsDev.populate"), Effect.orDie)
-
-    const [cachedGet, invalidate] = yield* Effect.cachedInvalidateWithTTL(populate, Duration.infinity)
-
-    const get = (): Effect.Effect<Record<string, Provider>> => cachedGet
-
-    const refresh = Effect.fn("ModelsDev.refresh")(function* (force = false) {
-      if (!force && (yield* fresh())) return
-      yield* Effect.scoped(
-        Effect.gen(function* () {
-          yield* Flock.effect(lockKey)
-          // Re-check under the lock: another process may have refreshed between
-          // our outer check and lock acquisition.
-          if (!force && (yield* fresh())) return
-          yield* fetchAndWrite()
-          yield* invalidate
-          yield* events.publish(Event.Refreshed, {})
-        }),
-      ).pipe(
-        Effect.tapCause((cause) =>
-          Effect.logError("Failed to fetch models.dev").pipe(Effect.annotateLogs("cause", cause)),
-        ),
-        Effect.ignore,
-      )
-    })
-
-    if (!Flag.OPENCODE_DISABLE_MODELS_FETCH && !process.argv.includes("--get-yargs-completions")) {
-      // Schedule.spaced runs the effect once, then waits between completions.
-      yield* Effect.forkScoped(refresh().pipe(Effect.repeat(Schedule.spaced("60 minutes")), Effect.ignore))
-    }
-
-    return Service.of({ get, refresh })
-  }),
+  Effect.sync(() =>
+    Service.of({
+      get: () => Effect.succeed({}),
+      refresh: () => Effect.void,
+    }),
+  ),
 )
 
-export const defaultLayer = layer.pipe(
-  Layer.provide(FetchHttpClient.layer),
-  Layer.provide(AppFileSystem.defaultLayer),
-  Layer.provide(EventV2.defaultLayer),
-)
+export const node = makeGlobalNode({ service: Service, layer: layer, deps: [] })
 
 export * as ModelsDev from "./models-dev"

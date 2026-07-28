@@ -10,10 +10,6 @@
 //
 // Updates:
 //   - All packages/[pkg]/package.json (and packages/sdk/js/package.json) with a "version" field
-//   - packages/web/config.mjs              → version: "..."
-//   - packages/web/src/content/i18n/id.json  → app.lander.eyebrow (vX.Y.Z)
-//   - packages/web/src/components/Lander.astro → TERM_SCRIPT sys line
-//   - README.md                            → Current version: **vX.Y.Z**
 
 // @ts-ignore — semver types live in packages/script; script runs fine via bun
 import semver from "semver"
@@ -21,10 +17,10 @@ import path from "path"
 
 const root = path.resolve(import.meta.dir, "..")
 
-// ── Read current version from opencode (source of truth) ─────────────────────
-const opencodePkgPath = path.join(root, "packages/opencode/package.json")
-const opencodePkg = await Bun.file(opencodePkgPath).json()
-const currentVersion: string = opencodePkg.version
+// ── Read current version from mage (source of truth) ─────────────────────
+const magePkgPath = path.join(root, "packages/mage/package.json")
+const magePkg = await Bun.file(magePkgPath).json()
+const currentVersion: string = magePkg.version
 
 // ── Resolve target version ────────────────────────────────────────────────────
 const arg = process.argv[2]
@@ -80,78 +76,11 @@ function escapeRegex(s: string) {
 }
 
 // ── 1. Update all packages/*/package.json ────────────────────────────────────
-const glob = new Bun.Glob("packages/*/package.json")
-const pkgPaths = [
-  ...(await Array.fromAsync(glob.scan({ cwd: root, absolute: true }))),
-  path.join(root, "packages/sdk/js/package.json"),
-]
+const glob = new Bun.Glob("packages/**/package.json")
+const pkgPaths = await Array.fromAsync(glob.scan({ cwd: root, absolute: true })) as string[]
 
 for (const p of pkgPaths.sort()) {
   await bumpPackageJson(p)
-}
-
-// ── 2. packages/web/config.mjs → version: "..." ──────────────────────────────
-const configPath = path.join(root, "packages/web/config.mjs")
-const configText = await Bun.file(configPath).text()
-const oldConfigMatch = configText.match(/version:\s*"(\d+\.\d+\.\d+[^"]*)"/)
-if (oldConfigMatch) {
-  const updated = configText.replace(
-    /version:\s*"(\d+\.\d+\.\d+[^"]*)"/,
-    `version: "${targetVersion}"`,
-  )
-  await Bun.write(configPath, updated)
-  console.log(`  ✓ packages/web/config.mjs  ${oldConfigMatch[1]} → ${targetVersion}`)
-} else {
-  console.warn(`  ⚠ packages/web/config.mjs — version field not found, skipped`)
-}
-
-// ── 3. id.json → app.lander.eyebrow ──────────────────────────────────────────
-const i18nPath = path.join(root, "packages/web/src/content/i18n/id.json")
-const i18nText = await Bun.file(i18nPath).text()
-const oldEyebrowMatch = i18nText.match(/"app\.lander\.eyebrow"\s*:\s*"v(\d+\.\d+\.\d+)/)
-if (oldEyebrowMatch) {
-  const oldFull = `v${oldEyebrowMatch[1]}`
-  // Replace only the version token; preserve any trailing text (e.g. " — Now Available")
-  const updated = i18nText.replace(
-    /("app\.lander\.eyebrow"\s*:\s*")v\d+\.\d+\.\d+/,
-    `$1v${targetVersion}`,
-  )
-  await Bun.write(i18nPath, updated)
-  console.log(`  ✓ packages/web/src/content/i18n/id.json  ${oldFull} → v${targetVersion}`)
-} else {
-  console.warn(`  ⚠ packages/web/src/content/i18n/id.json — app.lander.eyebrow not found, skipped`)
-}
-
-// ── 4. Lander.astro → TERM_SCRIPT sys line ───────────────────────────────────
-const landerPath = path.join(root, "packages/web/src/components/Lander.astro")
-const landerText = await Bun.file(landerPath).text()
-const oldLanderMatch = landerText.match(/mage v(\d+\.\d+\.\d+[^\s']*)/)
-if (oldLanderMatch) {
-  const oldFull = `mage v${oldLanderMatch[1]}`
-  const updated = landerText.replace(
-    /mage v\d+\.\d+\.\d+[^\s']*/,
-    `mage v${targetVersion}`,
-  )
-  await Bun.write(landerPath, updated)
-  console.log(`  ✓ packages/web/src/components/Lander.astro  ${oldFull} → mage v${targetVersion}`)
-} else {
-  console.warn(`  ⚠ packages/web/src/components/Lander.astro — version pattern not found, skipped`)
-}
-
-// ── 5. README.md → Current version: **vX.Y.Z** ───────────────────────────────
-const readmePath = path.join(root, "README.md")
-const readmeText = await Bun.file(readmePath).text()
-const oldReadmeMatch = readmeText.match(/Current version:\s*\*\*v(\d+\.\d+\.\d+[^*]*)\*\*/)
-if (oldReadmeMatch) {
-  const oldFull = `v${oldReadmeMatch[1]}`
-  const updated = readmeText.replace(
-    /Current version:\s*\*\*v\d+\.\d+\.\d+[^*]*\*\*/,
-    `Current version: **v${targetVersion}**`,
-  )
-  await Bun.write(readmePath, updated)
-  console.log(`  ✓ README.md  ${oldFull} → v${targetVersion}`)
-} else {
-  console.warn(`  ⚠ README.md — "Current version" badge not found, skipped`)
 }
 
 console.log(`\nDone. New version: ${targetVersion}`)
