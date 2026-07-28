@@ -88,7 +88,6 @@ const pageOrder: SettingsPageSlug[] = [
   'magic-prompts',
   'snippets',
   'projects',
-  'remote-instances',
   'agents',
   'behavior',
   'commands',
@@ -97,7 +96,6 @@ const pageOrder: SettingsPageSlug[] = [
   'skills.installed',
   'skills.catalog',
   'proxy',
-  'tunnel',
   'about',
 ];
 
@@ -205,65 +203,10 @@ export function getSettingsNavIcon(slug: SettingsPageSlug): IconName | null {
       return 'global';
     case 'about':
       return 'information';
-    case 'home':
-      return null;
     default:
       return 'robot-2';
   }
 }
-
-const SettingsHome: React.FC<{ onOpen: (slug: SettingsPageSlug) => void }> = ({ onOpen }) => {
-  const { t } = useI18n();
-  return (
-    <div className="h-full overflow-auto">
-      <div className="mx-auto w-full max-w-3xl px-6 py-6 space-y-6">
-        <div className="space-y-1">
-          <h1 className="typography-ui-header font-semibold text-foreground">{t('settings.view.home.title')}</h1>
-          <p className="typography-ui text-muted-foreground">{t('settings.view.home.description')}</p>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2">
-          <button
-            type="button"
-            onClick={() => onOpen('agents')}
-            className={cn(
-              'rounded-lg border border-border bg-[var(--surface-elevated)] p-4 text-left',
-              'hover:bg-[var(--interactive-hover)] transition-colors'
-            )}
-          >
-            <div className="typography-ui-label text-foreground">{t('settings.view.home.cards.agents.title')}</div>
-            <div className="typography-micro text-muted-foreground/70">{t('settings.view.home.cards.agents.description')}</div>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onOpen('skills.catalog')}
-            className={cn(
-              'rounded-lg border border-border bg-[var(--surface-elevated)] p-4 text-left',
-              'hover:bg-[var(--interactive-hover)] transition-colors'
-            )}
-          >
-            <div className="typography-ui-label text-foreground">{t('settings.view.home.cards.skillsCatalog.title')}</div>
-            <div className="typography-micro text-muted-foreground/70">{t('settings.view.home.cards.skillsCatalog.description')}</div>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onOpen('mcp')}
-            className={cn(
-              'rounded-lg border border-border bg-[var(--surface-elevated)] p-4 text-left',
-              'hover:bg-[var(--interactive-hover)] transition-colors'
-            )}
-          >
-            <div className="typography-ui-label text-foreground">{t('settings.view.home.cards.mcp.title')}</div>
-            <div className="typography-micro text-muted-foreground/70">{t('settings.view.home.cards.mcp.description')}</div>
-          </button>
-
-        </div>
-      </div>
-    </div>
-  );
-};
 
 export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile, isWindowed, visiblePageSlugs, initialMobileStage = 'nav' }) => {
   const { t } = useI18n();
@@ -313,7 +256,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile
   const visiblePages = React.useMemo(() => {
     const allowedPages = visiblePageSlugs ? new Set<SettingsPageSlug>(visiblePageSlugs) : null;
     return SETTINGS_PAGE_METADATA
-      .filter((page) => page.slug !== 'home')
       .filter((page) => !allowedPages || allowedPages.has(page.slug))
       .filter((page) => isPageAvailable(page, runtimeCtx))
       .filter((page) => !(runtimeCtx.isVSCode && page.slug === 'projects'))
@@ -429,7 +371,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile
       return;
     }
     const def = getSettingsPageMeta(slug);
-    if (!def || def.slug === 'home') {
+    if (!def) {
       setMobileStage('nav');
       return;
     }
@@ -494,9 +436,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile
         return t('settings.page.tunnel.title');
       case 'about':
         return t('settings.page.about.title');
-      case 'home':
       default:
-        return t('settings.view.home.title');
+        return t('settings.page.appearance.title');
     }
   }, [t]);
 
@@ -735,8 +676,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile
     }
 
     switch (slug) {
-      case 'home':
-        return <SettingsHome onOpen={openPage} />;
       case 'projects':
         return <ProjectsPage />;
       case 'remote-instances':
@@ -775,11 +714,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile
         return <MagePage section={section} />;
       }
       default:
-        return <SettingsHome onOpen={openPage} />;
+        return <MagePage section="visual" />;
     }
-  }, [mageSectionBySlug, openPage, renderUnavailable, runtimeCtx]);
+  }, [mageSectionBySlug, renderUnavailable, runtimeCtx]);
 
-  // Mobile: if opened via deep-link / palette to a non-home page, jump into it once.
+  // Mobile: if opened via deep-link / palette to a page, jump into it once.
   React.useEffect(() => {
     if (!isMobile) {
       return;
@@ -787,14 +726,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile
     if (mobileStage !== 'nav') {
       return;
     }
-    if (settingsSlug === 'home') {
-      return;
-    }
     if (autoNavSlugRef.current === settingsSlug) {
       return;
     }
     const def = getSettingsPageMeta(settingsSlug);
-    if (!def || def.slug === 'home') {
+    if (!def) {
       return;
     }
     autoNavSlugRef.current = settingsSlug;
@@ -1076,8 +1012,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile
   };
 
   const renderDesktopContent = () => {
-    if (!activePageMeta || settingsSlug === 'home') {
-      return <SettingsHome onOpen={openPage} />;
+    if (!activePageMeta) {
+      return <div className="h-full bg-background" />;
     }
 
     if (activePageMeta.kind === 'split') {
@@ -1123,8 +1059,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile
 
           <div className="min-w-0 flex-1 px-2 typography-ui-label font-medium text-foreground truncate">
             {mobileStage === 'nav'
-              ? t('settings.view.home.title')
-              : (activePageMeta ? getPageTitle(activePageMeta.slug) : t('settings.view.home.title'))}
+              ? getPageTitle('appearance')
+              : (activePageMeta ? getPageTitle(activePageMeta.slug) : getPageTitle('appearance'))}
           </div>
 
           {showOpenPageSidebarButton && (

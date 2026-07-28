@@ -1,7 +1,5 @@
 import { spawnSync } from 'child_process';
-import crypto from 'crypto';
 import fs from 'fs';
-import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -19,38 +17,6 @@ function getSpawnSyncBaseOptions() {
   return process.platform === 'win32' ? { windowsHide: true } : {};
 }
 const UPDATE_CHECK_URL = process.env.MAGE_UPDATE_API_URL || 'https://api.mage.dev/v1/update/check';
-
-function getMageConfigDir() {
-  if (process.platform === 'win32') {
-    const appData = process.env.APPDATA;
-    if (appData) return path.join(appData, 'mage');
-  }
-
-  return path.join(os.homedir(), '.config', 'mage');
-}
-
-function sanitizeInstallScope(scope) {
-  if (scope === 'desktop-electron' || scope === 'vscode' || scope === 'web' || scope === 'mobile-capacitor') return scope;
-  return 'web';
-}
-
-function getOrCreateInstallId(scope = 'web') {
-  const configDir = getMageConfigDir();
-  const normalizedScope = sanitizeInstallScope(scope);
-  const idPath = path.join(configDir, `install-id-${normalizedScope}`);
-
-  try {
-    const existing = fs.readFileSync(idPath, 'utf8').trim();
-    if (existing) return existing;
-  } catch {
-    // Generate new id.
-  }
-
-  const installId = crypto.randomUUID();
-  fs.mkdirSync(configDir, { recursive: true });
-  fs.writeFileSync(idPath, `${installId}\n`, { encoding: 'utf8', mode: 0o600 });
-  return installId;
-}
 
 function mapPlatform(value) {
   if (value === 'darwin') return 'macos';
@@ -100,9 +66,7 @@ async function checkForUpdatesFromApi(currentVersion, options = {}) {
       arch,
       channel: 'stable',
       currentVersion,
-      installId: getOrCreateInstallId(appType),
       instanceMode: options.instanceMode || 'unknown',
-      reportUsage: options.reportUsage !== false,
     };
 
     const response = await fetch(UPDATE_CHECK_URL, {

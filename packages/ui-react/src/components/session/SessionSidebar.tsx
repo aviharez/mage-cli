@@ -327,8 +327,6 @@ export const SessionSidebar: React.FC<SessionSidebarProps> = ({
   const newSessionDraftOpen = useSessionUIStore((state) => Boolean(state.newSessionDraft?.open));
   const setCurrentSession = useSessionUIStore((state) => state.setCurrentSession);
   const updateSessionTitle = useSessionUIStore((state) => state.updateSessionTitle);
-  const shareSession = useSessionUIStore((state) => state.shareSession);
-  const unshareSession = useSessionUIStore((state) => state.unshareSession);
   // sessionAttentionStates removed — now using notification-store directly in SessionNodeItem
   const worktreeMetadata = useSessionUIStore((state) => state.worktreeMetadata);
   const availableWorktreesByProject = useSessionUIStore((state) => state.availableWorktreesByProject);
@@ -706,14 +704,10 @@ export const SessionSidebar: React.FC<SessionSidebarProps> = ({
   const archiveSessions = useSessionUIStore((state) => state.archiveSessions);
 
   const {
-    copiedSessionId,
     handleSessionSelect,
     handleSessionDoubleClick,
     handleSaveEdit,
     handleCancelEdit,
-    handleShareSession,
-    handleCopyShareUrl,
-    handleUnshareSession,
     handleDeleteSession,
     confirmDeleteSession,
   } = useSessionActions({
@@ -733,8 +727,6 @@ export const SessionSidebar: React.FC<SessionSidebarProps> = ({
     setSessionSwitcherOpen,
     setCurrentSession,
     updateSessionTitle,
-    shareSession,
-    unshareSession,
     deleteSession,
     deleteSessions,
     archiveSession,
@@ -823,9 +815,6 @@ export const SessionSidebar: React.FC<SessionSidebarProps> = ({
   const stableHandleSessionDoubleClick = useStableRenderCallback(handleSessionDoubleClick);
   const stableHandleSaveEdit = useStableRenderCallback(handleSaveEdit);
   const stableHandleCancelEdit = useStableRenderCallback(handleCancelEdit);
-  const stableHandleShareSession = useStableRenderCallback(handleShareSession);
-  const stableHandleCopyShareUrl = useStableRenderCallback(handleCopyShareUrl);
-  const stableHandleUnshareSession = useStableRenderCallback(handleUnshareSession);
   const stableHandleDeleteSession = useStableRenderCallback(handleDeleteSession);
   const stableCreateFolderAndStartRename = useStableRenderCallback(createFolderAndStartRename);
 
@@ -1415,10 +1404,6 @@ export const SessionSidebar: React.FC<SessionSidebarProps> = ({
         handleSessionSelect={stableHandleSessionSelect}
         handleSessionDoubleClick={stableHandleSessionDoubleClick}
         togglePinnedSession={togglePinnedSession}
-        handleShareSession={stableHandleShareSession}
-        copiedSessionId={copiedSessionId}
-        handleCopyShareUrl={stableHandleCopyShareUrl}
-        handleUnshareSession={stableHandleUnshareSession}
         openSidebarMenuKey={openSidebarMenuKey}
         setOpenSidebarMenuKey={setOpenSidebarMenuKey}
         renamingFolderId={renamingFolderId}

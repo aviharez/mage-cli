@@ -1,7 +1,6 @@
 import type { SidebarSection } from '@/constants/sidebar';
 
 export type SettingsPageSlug =
-  | 'home'
   | 'projects'
   | 'remote-instances'
   | 'agents'
@@ -52,14 +51,6 @@ export interface SettingsPageMeta {
 
 // Voice settings are intentionally hidden for this Mage distribution.
 export const SETTINGS_PAGE_METADATA: readonly SettingsPageMeta[] = [
-  {
-    slug: 'home',
-    title: 'Settings',
-    group: 'general',
-    kind: 'single',
-    description: 'Search and jump to common pages.',
-    keywords: ['search', 'settings'],
-  },
   {
     slug: 'projects',
     title: 'Projects',
@@ -198,7 +189,7 @@ const LEGACY_SIDEBAR_SECTION_TO_SETTINGS_SLUG: Partial<Record<SidebarSection, Se
   mcp: 'mcp',
   skills: 'skills.installed',
   'git-identities': 'git',
-  settings: 'home',
+  settings: 'appearance',
 };
 
 export function getSettingsPageMeta(slug: string): SettingsPageMeta | null {
@@ -209,7 +200,7 @@ export function getSettingsPageMeta(slug: string): SettingsPageMeta | null {
 export function resolveSettingsSlug(value: string | null | undefined): SettingsPageSlug {
   const normalized = (value ?? '').trim().toLowerCase();
   if (!normalized) {
-    return 'home';
+    return 'appearance';
   }
 
   const legacy = (LEGACY_SIDEBAR_SECTION_TO_SETTINGS_SLUG as Record<string, SettingsPageSlug>)[normalized];
@@ -222,5 +213,5 @@ export function resolveSettingsSlug(value: string | null | undefined): SettingsP
     return direct.slug;
   }
 
-  return 'home';
+  return 'appearance';
 }

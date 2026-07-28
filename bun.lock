@@ -459,7 +459,7 @@
     },
     "packages/ui-react": {
       "name": "@mybcabisnis/mage-ui-react",
-      "version": "1.15.0",
+      "version": "1.3.0",
       "dependencies": {
         "@aparajita/capacitor-secure-storage": "^8.0.0",
         "@base-ui/react": "^1.4.0",
@@ -637,7 +637,7 @@
     },
     "packages/web-react": {
       "name": "@mybcabisnis/mage-web-react",
-      "version": "1.15.0",
+      "version": "1.3.0",
       "bin": {
         "mage": "./bin/cli.js",
       },

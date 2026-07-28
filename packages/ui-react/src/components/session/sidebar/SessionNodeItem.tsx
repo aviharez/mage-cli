@@ -72,10 +72,6 @@ type Props = {
   handleSessionSelect: (sessionId: string, sessionDirectory: string | null, projectId?: string | null) => void;
   handleSessionDoubleClick: (sessionId: string, sessionTitle: string) => void;
   togglePinnedSession: (sessionId: string) => void;
-  handleShareSession: (session: Session) => void;
-  copiedSessionId: string | null;
-  handleCopyShareUrl: (url: string, sessionId: string) => void;
-  handleUnshareSession: (sessionId: string) => void;
   openSidebarMenuKey: string | null;
   setOpenSidebarMenuKey: (key: string | null) => void;
   renamingFolderId: string | null;
@@ -228,10 +224,6 @@ function SessionNodeItemComponent(props: Props): React.ReactNode {
     handleSessionSelect,
     handleSessionDoubleClick,
     togglePinnedSession,
-    handleShareSession,
-    copiedSessionId,
-    handleCopyShareUrl,
-    handleUnshareSession,
     openSidebarMenuKey,
     setOpenSidebarMenuKey,
     renamingFolderId,
@@ -817,24 +809,6 @@ function SessionNodeItemComponent(props: Props): React.ReactNode {
         {isPinnedSession ? <Icon name="unpin" className="mr-1 h-4 w-4" /> : <Icon name="pushpin" className="mr-1 h-4 w-4" />}
         {isPinnedSession ? t('sessions.sidebar.session.menu.unpin') : t('sessions.sidebar.session.menu.pin')}
       </Item>
-      {!resolvedSession.share ? (
-        <Item onClick={() => handleShareSession(resolvedSession)} className="[&>svg]:mr-1">
-          <Icon name="share-2" className="mr-1 h-4 w-4" />
-          {t('sessions.sidebar.session.menu.share')}
-        </Item>
-      ) : (
-        <>
-          <Item onClick={() => { if (resolvedSession.share?.url) handleCopyShareUrl(resolvedSession.share.url, session.id); }} className="[&>svg]:mr-1">
-            {copiedSessionId === session.id
-              ? <><Icon name="check" className="mr-1 h-4 w-4"  style={{ color: 'var(--status-success)' }}/>{t('sessions.sidebar.session.menu.copied')}</>
-              : <><Icon name="file-copy" className="mr-1 h-4 w-4" />{t('sessions.sidebar.session.menu.copyLink')}</>}
-          </Item>
-          <Item onClick={() => handleUnshareSession(session.id)} className="[&>svg]:mr-1">
-            <Icon name="link-unlink-m" className="mr-1 h-4 w-4" />
-            {t('sessions.sidebar.session.menu.unshare')}
-          </Item>
-        </>
-      )}
       <Item onClick={() => { void handleExportSession(); }} className="[&>svg]:mr-1">
         <Icon name="download" className="mr-1 h-4 w-4" />
         {t('sessions.sidebar.session.menu.exportMarkdown')}
@@ -1429,14 +1403,6 @@ const areSessionNodeItemPropsEqual = (prev: Props, next: Props): boolean => {
     return false;
   }
 
-  if (prev.copiedSessionId !== next.copiedSessionId
-    && (
-      nodeContainsSessionId(prev.node, prev.copiedSessionId)
-      || nodeContainsSessionId(next.node, next.copiedSessionId)
-    )) {
-    return false;
-  }
-
   if (prev.openSidebarMenuKey !== next.openSidebarMenuKey) {
     const prevMenuSessionId = getRelevantMenuSessionId(prev);
     const nextMenuSessionId = getRelevantMenuSessionId(next);
@@ -1461,9 +1427,6 @@ const areSessionNodeItemPropsEqual = (prev: Props, next: Props): boolean => {
     && prev.handleSessionSelect === next.handleSessionSelect
     && prev.handleSessionDoubleClick === next.handleSessionDoubleClick
     && prev.togglePinnedSession === next.togglePinnedSession
-    && prev.handleShareSession === next.handleShareSession
-    && prev.handleCopyShareUrl === next.handleCopyShareUrl
-    && prev.handleUnshareSession === next.handleUnshareSession
     && prev.setOpenSidebarMenuKey === next.setOpenSidebarMenuKey
     && prev.getFoldersForScope === next.getFoldersForScope
     && prev.getSessionFolderId === next.getSessionFolderId

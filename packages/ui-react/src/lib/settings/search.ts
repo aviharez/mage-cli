@@ -156,13 +156,6 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     isAvailable: (ctx) => !ctx.isMobile && !ctx.isVSCode,
   },
   {
-    id: 'appearance.usage-reports',
-    page: 'appearance',
-    titleKey: 'settings.mage.visual.field.sendAnonymousUsageReports',
-    descriptionKey: 'settings.mage.visual.field.sendAnonymousUsageReportsHint',
-    keywords: ['telemetry', 'analytics'],
-  },
-  {
     id: 'chat.render-mode',
     page: 'chat',
     titleKey: 'settings.mage.visual.section.chatRenderMode',

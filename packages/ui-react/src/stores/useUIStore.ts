@@ -659,7 +659,6 @@ interface UIStore {
   mobileSessionPanelOpen: boolean;
   mobileSessionFilterProjectId: string | null;
   isExpandedInput: boolean;
-  reportUsage: boolean;
   shortcutOverrides: Record<string, ShortcutCombo>;
   fileEditorKeymap: FileEditorKeymap;
 
@@ -817,7 +816,6 @@ interface UIStore {
   setExpandedInput: (value: boolean) => void;
   openMultiRunLauncher: () => void;
   openMultiRunLauncherWithPrompt: (prompt: string) => void;
-  setReportUsage: (value: boolean) => void;
   setShortcutOverride: (actionId: string, combo: ShortcutCombo) => void;
   clearShortcutOverride: (actionId: string) => void;
   resetAllShortcutOverrides: () => void;
@@ -870,7 +868,7 @@ export const useUIStore = create<UIStore>()(
         isNewWorktreeDialogOpen: false,
         isModelSelectorOpen: false,
         sidebarSection: 'sessions',
-        settingsPage: 'home',
+        settingsPage: 'appearance',
         settingsHasOpenedOnce: false,
         settingsProjectsSelectedId: null,
         settingsRemoteInstancesSelectedId: null,
@@ -958,7 +956,6 @@ export const useUIStore = create<UIStore>()(
         mobileSessionPanelOpen: false,
         mobileSessionFilterProjectId: null,
         isExpandedInput: false,
-        reportUsage: true,
         shortcutOverrides: {},
         fileEditorKeymap: 'default',
 
@@ -2123,9 +2120,6 @@ export const useUIStore = create<UIStore>()(
         },
         setMobileSessionFilterProjectId: (value) => {
           set({ mobileSessionFilterProjectId: value });
-        },
-        setReportUsage: (value) => {
-          set({ reportUsage: value });
         },
         viewPagerPage: 'center',
         setViewPagerPage: (page: 'left' | 'center' | 'right') => {

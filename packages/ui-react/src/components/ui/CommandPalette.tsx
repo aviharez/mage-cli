@@ -272,7 +272,6 @@ export const CommandPalette: React.FC = () => {
 
   const settingsEntries = React.useMemo<CommandEntry[]>(() => {
     return SETTINGS_PAGE_METADATA
-      .filter((p) => p.slug !== 'home')
       .filter((p) => (p.isAvailable ? p.isAvailable(settingsRuntimeCtx) : true))
       .map((page) => {
         const iconName = getSettingsNavIcon(page.slug) ?? 'settings-3';
