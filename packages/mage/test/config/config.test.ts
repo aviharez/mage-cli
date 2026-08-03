@@ -1057,6 +1057,56 @@ it.effect("deduplicates duplicate plugins from global and local configs", () =>
   ),
 )
 
+it.effect("imports only shared OpenCode plugins and lets Mage config win duplicates", () =>
+  Effect.gen(function* () {
+    const xdg = yield* tmpdirScoped()
+    const openCode = path.join(xdg, "opencode")
+    const discovered = path.join(openCode, "plugins", "rtk.ts")
+    yield* FSUtil.use.writeWithDirs(discovered, "export default async () => ({})\n")
+    yield* FSUtil.use.writeWithDirs(
+      path.join(openCode, "opencode.jsonc"),
+      [
+        "{",
+        '  "model": "ignored/provider",',
+        '  "plugin": ["shared-plugin", "duplicate-plugin", "./plugins/from-config.ts"],',
+        "}",
+        "",
+      ].join("\n"),
+    )
+    yield* FSUtil.use.writeWithDirs(
+      path.join(openCode, "plugins", "from-config.ts"),
+      "export default async () => ({})\n",
+    )
+
+    yield* withProcessEnv(
+      "XDG_CONFIG_HOME",
+      xdg,
+      withConfigTree(
+        {
+          global: { plugin: ["duplicate-plugin", "mage-global-plugin"] },
+          local: { plugin: ["mage-local-plugin"] },
+        },
+        Effect.gen(function* () {
+          const config = yield* Config.use.get()
+          const specs = (config.plugin_origins ?? []).map((item) => ConfigPlugin.pluginSpecifier(item.spec))
+
+          expect(config.model).not.toBe("ignored/provider")
+          expect(specs).toContain("shared-plugin")
+          expect(specs).toContain("mage-global-plugin")
+          expect(specs).toContain("mage-local-plugin")
+          expect(specs).toContain(pathToFileURL(path.join(openCode, "plugins", "from-config.ts")).href)
+          expect(specs).toContain(pathToFileURL(discovered).href)
+          expect(specs.filter((spec) => spec === "duplicate-plugin")).toHaveLength(1)
+          expect(
+            config.plugin_origins?.find((item) => ConfigPlugin.pluginSpecifier(item.spec) === "duplicate-plugin")
+              ?.source,
+          ).toContain("mage")
+        }),
+      ),
+    )
+  }),
+)
+
 it.effect("keeps plugin origins aligned with merged plugin list", () =>
   withConfigTree(
     {

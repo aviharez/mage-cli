@@ -22,7 +22,9 @@
     "test": "echo 'do not run tests from root' && exit 1",
     "build:plugin": "bun run --cwd packages/plugin build",
     "build:mage": "bun run --cwd packages/mage build",
+    "build:release": "bun script/build-release.ts",
     "publish:mage": "bun run --cwd packages/mage publish",
+    "publish:release": "bun script/publish.ts",
     "version:set": "bun script/version.ts"
   },
   "workspaces": {
