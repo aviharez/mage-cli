@@ -108,7 +108,15 @@ describe("Merlin provider — /chat/completions request shape", () => {
       return sseResponse(['{"choices":[{"delta":{"content":"hi"},"finish_reason":"stop"}]}'])
     })
 
-    const model = createMerlin({ baseURL: "https://gaia.example", username: "U073030" }).languageModel("default")
+    const model = createMerlin({
+      baseURL: "https://gaia.example",
+      credential: {
+        udomain: "U073030",
+        display_name: "Test User",
+        access_token: "access-token",
+        refresh_token: "refresh-token",
+      },
+    }).languageModel("default")
     await model.doStream({
       prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
       tools: [{ type: "function", name: "Read", description: "read a file", inputSchema: { type: "object", properties: {} } }],

@@ -371,7 +371,7 @@ class MerlinLanguageModel implements LanguageModelV3 {
   constructor(
     private readonly endpoint: string,
     private readonly clientId: string,
-    private readonly username: string,
+    private readonly credential: MerlinCredential | undefined,
     private readonly timeoutMs: number,
     /** Whether to send service_id at all (MAGE_USE_SERVICE_ID can disable it). */
     private readonly sendServiceId: boolean,
@@ -380,7 +380,7 @@ class MerlinLanguageModel implements LanguageModelV3 {
   ) {}
 
   private get url(): string {
-    return buildChatCompletionsUrl(this.endpoint, this.clientId, this.username)
+    return buildChatCompletionsUrl(this.endpoint, this.clientId, this.credential?.udomain ?? "")
   }
 
   /**
@@ -409,8 +409,8 @@ class MerlinLanguageModel implements LanguageModelV3 {
       priority: 1,
       ...(this.sendServiceId ? { service_id: resolveServiceId(options) } : {}),
       ...(tools.length > 0 ? { tools, tool_choice: "auto" as const } : {}),
-      stream: false,
-      // stream_options: { include_usage: true },
+      stream,
+      ...(stream ? { stream_options: { include_usage: true as const } } : {}),
     }
 
     const { messages: _messages, ...loggableBody } = body
@@ -741,10 +741,17 @@ class MerlinLanguageModel implements LanguageModelV3 {
 export interface MerlinProviderOptions {
   /** Override GAIA gateway origin (defaults to the hardcoded UAT origin) */
   baseURL?: string
-  /** User's domain username sent as the domain_id URL segment in every request */
-  username?: string
+  /** Authenticated Mage credential; its udomain is sent as the domain_id URL segment. */
+  credential?: MerlinCredential
   /** Request timeout in milliseconds (defaults to 600 000 ms) */
   timeoutMs?: number
+}
+
+export interface MerlinCredential {
+  udomain: string
+  display_name: string
+  access_token: string
+  refresh_token: string
 }
 
 export interface MerlinProvider {
@@ -762,9 +769,8 @@ function isEnvFalsy(key: string): boolean {
  * All options are optional — origin, client_id, and model are hardcoded
  * for the BCA GAIA gateway and require no external configuration.
  *
- * Optionally set `username` to populate the domain_id URL segment for gateway
- * user tracking. Can be configured via provider.merlin.options.username
- * in mage.jsonc if needed.
+ * Set `credential` to populate the domain_id URL segment for gateway user
+ * tracking. Mage injects the top-level credential from mage.json.
  *
  * Four env vars intercept/augment the request at runtime, for deployments
  * pointed at a different GAIA gateway or tenant:
@@ -779,7 +785,7 @@ function isEnvFalsy(key: string): boolean {
 export function createMerlin(options: MerlinProviderOptions = {}): MerlinProvider {
   const {
     baseURL = MERLIN_ORIGIN,
-    username = "",
+    credential,
     timeoutMs = 600_000,
   } = options
   // MAGE_GAIA_ENDPOINT/MAGE_CLIENT_ID intercept even an explicitly-passed
@@ -791,7 +797,7 @@ export function createMerlin(options: MerlinProviderOptions = {}): MerlinProvide
 
   return {
     languageModel(_modelId: string): LanguageModelV3 {
-      return new MerlinLanguageModel(endpoint, clientId, username, timeoutMs, sendServiceId, modelName)
+      return new MerlinLanguageModel(endpoint, clientId, credential, timeoutMs, sendServiceId, modelName)
     },
   }
 }

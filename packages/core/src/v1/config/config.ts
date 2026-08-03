@@ -84,22 +84,14 @@ export const Info = Schema.Struct({
   username: Schema.optional(Schema.String).annotate({
     description: "Custom username to display in conversations instead of system username",
   }),
-  login: Schema.optional(
+  credential: Schema.optional(
     Schema.Struct({
-      oauth: Schema.optional(
-        Schema.Struct({
-          access: Schema.String,
-          refresh: Schema.optional(Schema.String),
-          expires: Schema.optional(NonNegativeInt).annotate({
-            description: "Access token expiry as a Unix epoch (seconds)",
-          }),
-          username: Schema.optional(Schema.String).annotate({
-            description: "Identity claim used to derive provider.merlin.options.username",
-          }),
-        }),
-      ).annotate({ description: "Tokens from the MAGE_LOGIN_LDAP=1 first-run OAuth login" }),
+      udomain: Schema.String,
+      display_name: Schema.String,
+      access_token: Schema.String,
+      refresh_token: Schema.String,
     }),
-  ).annotate({ description: "Login state written by `mage init`" }),
+  ).annotate({ description: "Credential returned by Rune after `mage init` login" }),
   mode: Schema.optional(
     Schema.StructWithRest(
       Schema.Struct({ build: Schema.optional(ConfigAgentV1.Info), plan: Schema.optional(ConfigAgentV1.Info) }),
