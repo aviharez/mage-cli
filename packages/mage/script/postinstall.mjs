@@ -41,6 +41,8 @@ const sourceBinary = platform === "windows" ? "mage.exe" : "mage"
 const targetBinary = path.join(__dirname, "bin", "mage.exe")
 const rgBinary = platform === "windows" ? "rg.exe" : "rg"
 const targetRg = path.join(process.env.XDG_CACHE_HOME || path.join(os.homedir(), ".cache"), "mage", "bin", rgBinary)
+const rtkBinary = platform === "windows" ? "rtk.exe" : "rtk"
+const targetRtk = path.join(process.env.XDG_CACHE_HOME || path.join(os.homedir(), ".cache"), "mage", "bin", rtkBinary)
 
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -212,6 +214,8 @@ function copyPackage(packageDir) {
   copyBinary(path.join(packageDir, "bin", sourceBinary), targetBinary)
   const sourceRg = path.join(packageDir, "bin", rgBinary)
   if (fs.existsSync(sourceRg)) copyBinary(sourceRg, targetRg)
+  const sourceRtk = path.join(packageDir, "bin", rtkBinary)
+  if (fs.existsSync(sourceRtk)) copyBinary(sourceRtk, targetRtk)
 }
 
 function verifyBinary() {

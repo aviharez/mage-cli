@@ -12,6 +12,7 @@ tmp
 dist
 ts-dist
 .rg-cache
+.rtk-cache
 .turbo
 **/.serena
 .serena/

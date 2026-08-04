@@ -3,6 +3,7 @@ import path from "path"
 import os from "os"
 import { Filesystem } from "../util/filesystem"
 import { Flock } from "@mybcabisnis/mage-shared/util/flock"
+import { Global as CoreGlobal } from "@mybcabisnis/mage-core/global"
 
 const getHomeDir = () => process.env.MAGE_TEST_HOME || os.homedir()
 
@@ -47,6 +48,13 @@ await Promise.all([
   fs.mkdir(Path.log, { recursive: true }),
   fs.mkdir(Path.cache, { recursive: true }),
 ])
+
+// Expose embedded tools (rg, rtk) to spawned shells and plugins: the bash tool
+// executes rtk-rewritten commands (`rtk git status`) with process.env verbatim.
+const coreBin = CoreGlobal.Path.bin
+if (!process.env.PATH?.split(path.delimiter).includes(coreBin)) {
+  process.env.PATH = `${coreBin}${path.delimiter}${process.env.PATH ?? ""}`
+}
 
 if (typeof MAGE_AGENTS_MD === "string") {
   const agentsMdPath = path.join(Path.config, "AGENTS.md")
