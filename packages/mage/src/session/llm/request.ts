@@ -52,6 +52,29 @@ export type Prepared = {
 const mergeOptions = (target: Record<string, any>, source: Record<string, any> | undefined): Record<string, any> =>
   mergeDeep(target, source ?? {}) as Record<string, any>
 
+export const splitSystemPrompt = (system: readonly string[], base: string | undefined) => {
+  if (base === undefined) return { system: [], injected: [] }
+
+  // Hooks may append a new entry or mutate the original prompt in place.
+  const baseIndex = system.indexOf(base)
+  if (baseIndex !== -1) {
+    return {
+      system: [base],
+      injected: system.filter((_, index) => index !== baseIndex),
+    }
+  }
+
+  const modifiedBaseIndex = system.findIndex((item) => item.startsWith(base))
+  return {
+    system: [base],
+    injected: system.flatMap((item, index) => {
+      if (index !== modifiedBaseIndex) return [item]
+      const suffix = item.slice(base.length)
+      return suffix.length > 0 ? [suffix] : []
+    }),
+  }
+}
+
 export const prepare = Effect.fn("LLMRequestPrep.prepare")(function* (input: PrepareInput) {
   const isOpenaiOauth = input.provider.id === "openai" && input.auth?.type === "oauth"
   const system = [
@@ -63,18 +86,14 @@ export const prepare = Effect.fn("LLMRequestPrep.prepare")(function* (input: Pre
       .filter((x) => x)
       .join("\n"),
   ]
+  const baseSystem = system[0]
 
-  const header = system[0]
   yield* input.plugin.trigger(
     "experimental.chat.system.transform",
     { sessionID: input.sessionID, model: input.model },
     { system },
   )
-  if (system.length > 2 && system[0] === header) {
-    const rest = system.slice(1)
-    system.length = 0
-    system.push(header, rest.join("\n"))
-  }
+  const transformed = splitSystemPrompt(system, baseSystem)
 
   const variant =
     !input.small && input.model.variants && input.user.model.variant
@@ -95,20 +114,28 @@ export const prepare = Effect.fn("LLMRequestPrep.prepare")(function* (input: Pre
     delete options.reasoningSummary
     delete options.include
   }
-  if (isOpenaiOauth) options.instructions = system.join("\n")
+  if (isOpenaiOauth) options.instructions = transformed.system.join("\n")
 
   const messages =
-    isOpenaiOauth
-      ? input.messages
-      : [
-          ...system.map(
+    [
+      ...(isOpenaiOauth
+        ? []
+        : transformed.system.map(
             (x): ModelMessage => ({
               role: "system",
               content: x,
             }),
-          ),
-          ...input.messages,
-        ]
+          )),
+      ...transformed.injected
+        .filter((x) => x.length > 0)
+        .map(
+          (x): ModelMessage => ({
+            role: "user",
+            content: x,
+          }),
+        ),
+      ...input.messages,
+    ]
 
   const params = yield* input.plugin.trigger(
     "chat.params",
@@ -178,7 +205,7 @@ export const prepare = Effect.fn("LLMRequestPrep.prepare")(function* (input: Pre
     : undefined
 
   return {
-    system,
+    system: transformed.system,
     messages,
     tools: Object.fromEntries(Object.entries(tools).toSorted(([a], [b]) => a.localeCompare(b))),
     params,

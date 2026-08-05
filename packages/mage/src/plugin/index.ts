@@ -16,6 +16,7 @@ import { EffectBridge } from "@/effect/bridge"
 import { InstanceState } from "@/effect/instance-state"
 import { errorMessage } from "@/util/error"
 import { PluginLoader } from "./loader"
+import { RtkPlugin } from "./rtk"
 import { parsePluginSpecifier, readPluginId, readV1Plugin, resolvePluginId } from "./shared"
 import { registerAdapter } from "@/control-plane/adapters"
 import type { WorkspaceAdapter } from "@/control-plane/types"
@@ -51,7 +52,7 @@ export class Service extends Context.Service<Service, Interface>()("@mage/Plugin
 // Mage is locked to the Merlin/GAIA provider, which is autoloaded directly by
 // the Provider service — no provider-specific auth plugins are registered here.
 function internalPlugins(_flags: RuntimeFlags.Info): PluginInstance[] {
-  return []
+  return [RtkPlugin]
 }
 
 function isServerPlugin(value: unknown): value is PluginInstance {
@@ -69,14 +70,18 @@ function getLegacyPlugins(mod: Record<string, unknown>) {
   const seen = new Set<unknown>()
   const result: PluginInstance[] = []
 
-  for (const entry of Object.values(mod)) {
+  const named = Object.entries(mod)
+    .filter(([name]) => name === "server" || name.toLowerCase().includes("plugin"))
+    .map(([, entry]) => entry)
+
+  for (const entry of [mod.default, ...named]) {
     if (seen.has(entry)) continue
     seen.add(entry)
     const plugin = getServerPlugin(entry)
-    if (!plugin) throw new TypeError("Plugin export is not a function")
-    result.push(plugin)
+    if (plugin) result.push(plugin)
   }
 
+  if (!result.length) throw new TypeError("Plugin export is not a function")
   return result
 }
 

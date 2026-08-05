@@ -31,6 +31,7 @@ import { LocationServiceMap, locationServiceMapLayer } from "@mybcabisnis/mage-c
 import { Reference } from "@mybcabisnis/mage-core/reference"
 import { Location } from "@mybcabisnis/mage-core/location"
 import { PluginV2 } from "@mybcabisnis/mage-core/plugin"
+import { LLMRequestPrep } from "../session/llm/request"
 
 export const Info = Schema.Struct({
   name: Schema.String,
@@ -378,7 +379,9 @@ const layer = Layer.effect(
           : undefined
 
         const system = [PROMPT_GENERATE]
+        const base = system[0]
         yield* plugin.trigger("experimental.chat.system.transform", { model: resolved }, { system })
+        const transformed = LLMRequestPrep.splitSystemPrompt(system, base)
         const existing = yield* InstanceState.useEffect(state, (s) => s.list())
 
         // TODO: clean this up so provider specific logic doesnt bleed over
@@ -397,12 +400,20 @@ const layer = Layer.effect(
           messages: [
             ...(isOpenaiOauth
               ? []
-              : system.map(
+              : transformed.system.map(
                   (item): ModelMessage => ({
                     role: "system",
                     content: item,
                   }),
                 )),
+            ...transformed.injected
+              .filter((item) => item.length > 0)
+              .map(
+                (item): ModelMessage => ({
+                  role: "user",
+                  content: item,
+                }),
+              ),
             {
               role: "user",
               content: `Create an agent configuration based on this request: "${input.description}".\n\nIMPORTANT: The following identifiers already exist and must NOT be used: ${existing.map((i) => i.name).join(", ")}\n  Return ONLY the JSON object, no other text, do not wrap in backticks`,
@@ -420,7 +431,7 @@ const layer = Layer.effect(
             const result = streamObject({
               ...params,
               providerOptions: ProviderTransform.providerOptions(resolved, {
-                instructions: system.join("\n"),
+                instructions: transformed.system.join("\n"),
                 store: false,
               }),
               onError: () => {},

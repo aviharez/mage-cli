@@ -232,7 +232,7 @@ const layer = Layer.effect(
     const npm = yield* Npm.Service
     const data = yield* loadState({ directory })
     const deps = yield* Effect.forEach(
-      data.dirs,
+      data.dirs.filter((dir) => !ConfigPlugin.hasMagePluginDependency(dir)),
       (dir) =>
         npm
           .install(dir, {

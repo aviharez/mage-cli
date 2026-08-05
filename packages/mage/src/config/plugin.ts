@@ -29,6 +29,15 @@ export async function load(dir: string) {
   return plugins
 }
 
+export function hasMagePluginDependency(dir: string) {
+  try {
+    import.meta.resolve("@mybcabisnis/mage-plugin", pathToFileURL(path.resolve(dir) + path.sep).href)
+    return true
+  } catch {
+    return false
+  }
+}
+
 export function pluginSpecifier(plugin: ConfigPluginV1.Spec): string {
   return Array.isArray(plugin) ? plugin[0] : plugin
 }

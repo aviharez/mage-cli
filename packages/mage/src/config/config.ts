@@ -14,7 +14,7 @@ import { existsSync } from "fs"
 import { isRecord } from "@/util/record"
 import { FSUtil } from "@mybcabisnis/mage-core/fs-util"
 import { InstanceState } from "@/effect/instance-state"
-import { Context, Duration, Effect, Layer, Schema } from "effect"
+import { Context, Duration, Effect, Fiber, Layer, Schema } from "effect"
 import { HttpClient, HttpClientRequest } from "effect/unstable/http"
 import { containsPath, type InstanceContext } from "../project/instance-context"
 import { ConfigV1 } from "@mybcabisnis/mage-core/v1/config/config"
@@ -29,6 +29,8 @@ import { ConfigPaths } from "./paths"
 import { ConfigPlugin } from "./plugin"
 import { ConfigVariable } from "./variable"
 import { withTransientReadRetry } from "@/util/effect-http-client"
+import { Npm } from "@mybcabisnis/mage-core/npm"
+import { InstallationLocal, InstallationVersion } from "@mybcabisnis/mage-core/installation/version"
 
 // Custom merge function that concatenates array fields instead of replacing them
 // Keep remeda's deep conditional merge type out of hot config-loading paths; TS profiling showed it dominates here.
@@ -102,6 +104,24 @@ async function resolveLoadedPlugins<T extends { plugin?: ConfigPluginV1.Spec[] }
   return config
 }
 
+async function loadSharedOpenCodePlugins(directory: string) {
+  const files = [path.join(directory, "opencode.json"), path.join(directory, "opencode.jsonc")]
+  const plugins: ConfigPluginV1.Spec[] = []
+
+  for (const filepath of files) {
+    const text = await fsNode.readFile(filepath, "utf8").catch(() => undefined)
+    if (text === undefined) continue
+
+    const data = ConfigParse.jsonc(text, filepath)
+    if (!isRecord(data) || !("plugin" in data)) continue
+    const list = ConfigParse.schema(Schema.Array(ConfigPluginV1.Spec), data.plugin, filepath)
+    for (const plugin of list) plugins.push(await ConfigPlugin.resolvePluginSpec(plugin, filepath))
+  }
+
+  const discovered = await ConfigPlugin.load(directory)
+  return [...plugins, ...discovered]
+}
+
 type Info = ConfigV1.Info & {
   // plugin_origins is derived state, not a persisted config field. It keeps each winning plugin spec together
   // with the file and scope it came from so later runtime code can make location-sensitive decisions.
@@ -111,6 +131,7 @@ type Info = ConfigV1.Info & {
 type State = {
   config: Info
   directories: string[]
+  deps: Fiber.Fiber<void>[]
 }
 
 export interface Interface {
@@ -128,9 +149,7 @@ export class Service extends Context.Service<Service, Interface>()("@mage/Config
 export const use = serviceUse(Service)
 
 function globalConfigFile() {
-  const candidates = ["mage.jsonc", "mage.json", "config.json"].map((file) =>
-    path.join(Global.Path.config, file),
-  )
+  const candidates = ["mage.jsonc", "mage.json", "config.json"].map((file) => path.join(Global.Path.config, file))
   for (const file of candidates) {
     if (existsSync(file)) return file
   }
@@ -169,6 +188,7 @@ const layer = Layer.effect(
     const fs = yield* FSUtil.Service
     const authSvc = yield* Auth.Service
     const http = yield* HttpClient.HttpClient
+    const npm = yield* Npm.Service
 
     const readConfigFile = (filepath: string) => fs.readFileStringSafe(filepath).pipe(Effect.orDie)
 
@@ -381,6 +401,23 @@ const layer = Layer.effect(
           }
         }
 
+        const sharedOpenCodeDir = path.join(
+          process.env.XDG_CONFIG_HOME ?? path.join(Global.Path.home, ".config"),
+          "opencode",
+        )
+        if (existsSync(sharedOpenCodeDir)) {
+          yield* Effect.promise(() => loadSharedOpenCodePlugins(sharedOpenCodeDir)).pipe(
+            Effect.tap((plugins) => mergePluginOrigins(sharedOpenCodeDir, plugins, "global")),
+            Effect.tapError((error) =>
+              Effect.logWarning("failed to load shared OpenCode plugins", {
+                directory: sharedOpenCodeDir,
+                error: String(error),
+              }),
+            ),
+            Effect.ignore,
+          )
+        }
+
         const global = Object.keys(authEnv).length ? yield* loadGlobal(authEnv) : yield* getGlobal()
         yield* merge(Global.Path.config, global, "global")
 
@@ -405,6 +442,7 @@ const layer = Layer.effect(
           yield* Effect.logDebug("loading config from MAGE_CONFIG_DIR", { path: Flag.MAGE_CONFIG_DIR })
         }
 
+        const deps: Fiber.Fiber<void>[] = []
         for (const dir of directories) {
           if (dir.endsWith(".mage") || dir === Flag.MAGE_CONFIG_DIR) {
             for (const file of ["mage.json", "mage.jsonc"]) {
@@ -426,6 +464,36 @@ const layer = Layer.effect(
           // returns normalized Specs and we only need to attach origin metadata here.
           const list = yield* Effect.promise(() => ConfigPlugin.load(dir))
           yield* mergePluginOrigins(dir, list)
+
+          const hasLocalFilePlugin = (result.plugin_origins ?? []).some(({ spec, source }) => {
+            const plugin = ConfigPlugin.pluginSpecifier(spec)
+            return plugin.startsWith("file://") && (source === dir || source.startsWith(dir + path.sep))
+          })
+          if ((list.length || hasLocalFilePlugin) && !ConfigPlugin.hasMagePluginDependency(dir)) {
+            const dep = yield* npm
+              .install(dir, {
+                add: [
+                  {
+                    name: "@mybcabisnis/mage-plugin",
+                    version: InstallationLocal ? undefined : InstallationVersion,
+                  },
+                ],
+              })
+              .pipe(
+                Effect.exit,
+                Effect.tap((exit) =>
+                  exit._tag === "Failure"
+                    ? Effect.logWarning("background plugin dependency install failed", {
+                        directory: dir,
+                        error: String(exit.cause),
+                      })
+                    : Effect.void,
+                ),
+                Effect.asVoid,
+                Effect.forkScoped,
+              )
+            deps.push(dep)
+          }
         }
 
         if (process.env.MAGE_CONFIG_CONTENT) {
@@ -511,6 +579,7 @@ const layer = Layer.effect(
         return {
           config: result,
           directories,
+          deps,
         }
       },
       Effect.provideService(FSUtil.Service, fs),
@@ -530,8 +599,9 @@ const layer = Layer.effect(
       return yield* InstanceState.use(state, (s) => s.directories)
     })
 
-    // No-op: config loading no longer forks any background dependency work to wait on.
-    const waitForDependencies = Effect.fn("Config.waitForDependencies")(function* () {})
+    const waitForDependencies = Effect.fn("Config.waitForDependencies")(function* () {
+      yield* InstanceState.useEffect(state, (s) => Effect.forEach(s.deps, Fiber.join, { concurrency: "unbounded" }))
+    })
 
     const update = Effect.fn("Config.update")(function* (config: Info) {
       const dir = yield* InstanceState.directory
@@ -586,7 +656,7 @@ const layer = Layer.effect(
 export const node = LayerNode.make({
   service: Service,
   layer: layer,
-  deps: [FSUtil.node, Auth.node, httpClient],
+  deps: [FSUtil.node, Auth.node, Npm.node, httpClient],
 })
 
 export * as Config from "./config"
