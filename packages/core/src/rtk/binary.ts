@@ -47,9 +47,28 @@ function extract(archive: string, extension: string, target: string) {
 }
 
 async function resolve() {
-  const system = which(binary)
+  const system = which(
+    binary,
+    {
+      PATH: (process.env.PATH ?? process.env.Path ?? "")
+        .split(path.delimiter)
+        .filter((item) =>
+          process.platform === "win32"
+            ? path.resolve(item).toLowerCase() !== path.resolve(Global.Path.bin).toLowerCase()
+            : path.resolve(item) !== path.resolve(Global.Path.bin),
+        )
+        .join(path.delimiter),
+      PATHEXT: process.env.PATHEXT ?? process.env.PathExt,
+    },
+    { includeGlobalBin: false },
+  )
   if (system && fs.existsSync(system)) {
     return system
+  }
+
+  const adjacent = path.join(path.dirname(process.execPath), binary)
+  if (fs.existsSync(adjacent)) {
+    return adjacent
   }
 
   const cached = path.join(Global.Path.bin, binary)

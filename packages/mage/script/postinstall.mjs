@@ -43,6 +43,7 @@ const rgBinary = platform === "windows" ? "rg.exe" : "rg"
 const targetRg = path.join(process.env.XDG_CACHE_HOME || path.join(os.homedir(), ".cache"), "mage", "bin", rgBinary)
 const rtkBinary = platform === "windows" ? "rtk.exe" : "rtk"
 const targetRtk = path.join(process.env.XDG_CACHE_HOME || path.join(os.homedir(), ".cache"), "mage", "bin", rtkBinary)
+const npmExecutable = platform === "windows" ? "npm.cmd" : "npm"
 
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -60,6 +61,18 @@ export function mergeDefaults(target, source = DEFAULT_CONFIG) {
     },
     { ...target },
   )
+}
+
+export function tryPackages(names, installed, download) {
+  for (const name of names) {
+    try {
+      if (installed(name)) return true
+    } catch {}
+    try {
+      if (download(name)) return true
+    } catch {}
+  }
+  return false
 }
 
 function ensureGlobalConfig() {
@@ -185,7 +198,7 @@ function installPackage(name) {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), "mage-install-"))
   try {
     const result = childProcess.spawnSync(
-      "npm",
+      npmExecutable,
       ["install", "--ignore-scripts", "--no-save", "--loglevel=error", "--prefix", temp, `${name}@${version}`],
       { stdio: "inherit", windowsHide: true },
     )
@@ -215,7 +228,7 @@ function copyPackage(packageDir) {
   const sourceRg = path.join(packageDir, "bin", rgBinary)
   if (fs.existsSync(sourceRg)) copyBinary(sourceRg, targetRg)
   const sourceRtk = path.join(packageDir, "bin", rtkBinary)
-  if (fs.existsSync(sourceRtk)) copyBinary(sourceRtk, targetRtk)
+  copyBinary(sourceRtk, targetRtk)
 }
 
 function verifyBinary() {
@@ -227,19 +240,36 @@ function verifyBinary() {
   return result.status === 0
 }
 
+function verifyRtk() {
+  const version = childProcess.spawnSync(targetRtk, ["--version"], {
+    encoding: "utf8",
+    windowsHide: true,
+  })
+  if (version.status !== 0) return false
+
+  const result = childProcess.spawnSync(targetRtk, ["rewrite", "git status"], {
+    encoding: "utf8",
+    windowsHide: true,
+  })
+  return (result.stdout || "").trim() === "rtk git status"
+}
+
 function main() {
   ensureGlobalConfig()
-  for (const name of packageNames()) {
-    try {
-      copyPackage(resolvePackage(name))
-      if (verifyBinary()) return
-    } catch {
-      if (installPackage(name) && verifyBinary()) return
-    }
-  }
+  if (
+    tryPackages(
+      packageNames(),
+      (name) => {
+        copyPackage(resolvePackage(name))
+        return verifyBinary() && verifyRtk()
+      },
+      (name) => Boolean(installPackage(name) && verifyBinary() && verifyRtk()),
+    )
+  )
+    return
 
   throw new Error(
-    `It seems your package manager failed to install the right mage CLI package. Try manually installing ${packageNames()
+    `It seems your package manager failed to install the right Mage CLI and RTK package. Try manually installing ${packageNames()
       .map((name) => JSON.stringify(name))
       .join(" or ")}.`,
   )

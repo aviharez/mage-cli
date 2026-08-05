@@ -5,6 +5,37 @@ import { useDialog } from "../ui/dialog"
 import { useSync } from "../context/sync"
 import { For, Match, Switch, Show, createMemo } from "solid-js"
 
+type PluginSpec = string | readonly [string, Record<string, unknown>]
+type PluginStatus = { name: string; version?: string; builtin?: boolean }
+
+export function statusPlugins(list: ReadonlyArray<PluginSpec>): PluginStatus[] {
+  const result = list.map((item) => {
+    const value = typeof item === "string" ? item : item[0]
+    if (value.startsWith("file://")) {
+      const path = fileURLToPath(value)
+      const parts = path.split("/")
+      const filename = parts.pop() || path
+      if (!filename.includes(".")) return { name: filename }
+      const basename = filename.split(".")[0]
+      if (basename === "index") {
+        const dirname = parts.pop()
+        const name = dirname || basename
+        return { name }
+      }
+      return { name: basename }
+    }
+    const index = value.lastIndexOf("@")
+    if (index <= 0) return { name: value, version: "latest" }
+    const name = value.substring(0, index)
+    const version = value.substring(index + 1)
+    return { name, version }
+  })
+
+  return [{ name: "rtk", builtin: true }, ...result.filter((item) => item.name !== "rtk")].toSorted((a, b) =>
+    a.name.localeCompare(b.name),
+  )
+}
+
 export type DialogStatusProps = {}
 
 export function DialogStatus() {
@@ -14,31 +45,7 @@ export function DialogStatus() {
 
   const enabledFormatters = createMemo(() => sync.data.formatter.filter((f) => f.enabled))
 
-  const plugins = createMemo(() => {
-    const list = sync.data.config.plugin ?? []
-    const result = list.map((item) => {
-      const value = typeof item === "string" ? item : item[0]
-      if (value.startsWith("file://")) {
-        const path = fileURLToPath(value)
-        const parts = path.split("/")
-        const filename = parts.pop() || path
-        if (!filename.includes(".")) return { name: filename }
-        const basename = filename.split(".")[0]
-        if (basename === "index") {
-          const dirname = parts.pop()
-          const name = dirname || basename
-          return { name }
-        }
-        return { name: basename }
-      }
-      const index = value.lastIndexOf("@")
-      if (index <= 0) return { name: value, version: "latest" }
-      const name = value.substring(0, index)
-      const version = value.substring(index + 1)
-      return { name, version }
-    })
-    return result.toSorted((a, b) => a.name.localeCompare(b.name))
-  })
+  const plugins = createMemo(() => statusPlugins(sync.data.config.plugin ?? []))
 
   return (
     <box paddingLeft={2} paddingRight={2} gap={1} paddingBottom={1}>
@@ -149,13 +156,14 @@ export function DialogStatus() {
                 <text
                   flexShrink={0}
                   style={{
-                    fg: theme.success,
+                    fg: item.builtin ? theme.textMuted : theme.success,
                   }}
                 >
                   •
                 </text>
                 <text wrapMode="word" fg={theme.text}>
                   <b>{item.name}</b>
+                  {item.builtin && <span style={{ fg: theme.textMuted }}> Built-in</span>}
                   {item.version && <span style={{ fg: theme.textMuted }}> @{item.version}</span>}
                 </text>
               </box>
