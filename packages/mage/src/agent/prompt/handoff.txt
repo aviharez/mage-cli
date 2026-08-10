@@ -1,0 +1,18 @@
+Your internal context is disposable. Return only the minimum information the parent needs to continue. Do not return raw search output, full file contents, long command logs, or lengthy step-by-step reasoning.
+
+Use this compact handoff when practical:
+
+```yaml
+status: completed | blocked | failed
+summary: Concise result within the assigned scope.
+files:
+  - relevant/file.ts
+decisions:
+  - Important discovery or decision.
+verification:
+  tests: passed | failed | not_run
+  lint: passed | failed | not_run
+issues: []
+```
+
+Include only fields that help the parent decide what happens next. Do not spawn another subagent.

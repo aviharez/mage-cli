@@ -12,8 +12,13 @@ import { ProviderTransform } from "@/provider/transform"
 import PROMPT_GENERATE from "./generate.txt"
 import PROMPT_COMPACTION from "./prompt/compaction.txt"
 import PROMPT_EXPLORE from "./prompt/explore.txt"
+import PROMPT_HANDOFF from "./prompt/handoff.txt"
+import PROMPT_GENERAL from "./prompt/general.txt"
+import PROMPT_SCOUT from "./prompt/scout.txt"
 import PROMPT_SUMMARY from "./prompt/summary.txt"
 import PROMPT_TITLE from "./prompt/title.txt"
+import PROMPT_VERIFY from "./prompt/verify.txt"
+import PROMPT_WORKER from "./prompt/worker.txt"
 import { Permission } from "@/permission"
 import { mergeDeep, pipe, sortBy, values } from "remeda"
 import { Global } from "@mybcabisnis/mage-core/global"
@@ -81,6 +86,8 @@ export interface Interface {
 }
 
 type State = Omit<Interface, "generate">
+
+const subagentPrompt = (prompt: string) => [prompt, PROMPT_HANDOFF].join("\n\n")
 
 export class Service extends Context.Service<Service, Interface>()("@mage/Agent") {}
 
@@ -182,7 +189,7 @@ const layer = Layer.effect(
           },
           general: {
             name: "general",
-            description: `General-purpose agent for researching complex questions and executing multi-step tasks. Use this agent to execute multiple units of work in parallel.`,
+            description: `General-purpose fallback agent for researching complex questions and executing multi-step tasks when no specialized agent fits.`,
             permission: Permission.merge(
               defaults,
               Permission.fromConfig({
@@ -190,6 +197,7 @@ const layer = Layer.effect(
               }),
               user,
             ),
+            prompt: subagentPrompt(PROMPT_GENERAL),
             options: {},
             mode: "subagent",
             native: true,
@@ -212,7 +220,59 @@ const layer = Layer.effect(
               user,
             ),
             description: `Fast agent specialized for exploring codebases. Use this when you need to quickly find files by patterns (eg. "src/components/**/*.tsx"), search code for keywords (eg. "API endpoints"), or answer questions about the codebase (eg. "how do API endpoints work?"). When calling this agent, specify the desired thoroughness level: "quick" for basic searches, "medium" for moderate exploration, or "very thorough" for comprehensive analysis across multiple locations and naming conventions.`,
-            prompt: PROMPT_EXPLORE,
+            prompt: subagentPrompt(PROMPT_EXPLORE),
+            options: {},
+            mode: "subagent",
+            native: true,
+          },
+          worker: {
+            name: "worker",
+            description: `Default implementation agent for clearly bounded substantial code changes. Inspect local context, edit within scope, and run focused verification.`,
+            permission: Permission.merge(
+              defaults,
+              Permission.fromConfig({
+                todowrite: "deny",
+              }),
+              user,
+            ),
+            prompt: subagentPrompt(PROMPT_WORKER),
+            options: {},
+            mode: "subagent",
+            native: true,
+          },
+          verify: {
+            name: "verify",
+            description: `Verification agent for tests, typechecking, linting, builds, and concise diagnosis of failures. It does not edit source files by default.`,
+            permission: Permission.merge(
+              defaults,
+              Permission.fromConfig({
+                "*": "deny",
+                read: "allow",
+                grep: "allow",
+                glob: "allow",
+                bash: "allow",
+                external_directory: readonlyExternalDirectory,
+              }),
+              user,
+            ),
+            prompt: subagentPrompt(PROMPT_VERIFY),
+            options: {},
+            mode: "subagent",
+            native: true,
+          },
+          scout: {
+            name: "scout",
+            description: `External research agent for documentation, upstream source, dependency behavior, and technical references outside the repository.`,
+            permission: Permission.merge(
+              defaults,
+              Permission.fromConfig({
+                "*": "deny",
+                webfetch: "allow",
+                websearch: "allow",
+              }),
+              user,
+            ),
+            prompt: subagentPrompt(PROMPT_SCOUT),
             options: {},
             mode: "subagent",
             native: true,
