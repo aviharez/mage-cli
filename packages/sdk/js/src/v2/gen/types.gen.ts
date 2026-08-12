@@ -1929,6 +1929,14 @@ export type Config = {
   small_model?: string
   default_agent?: string
   username?: string
+  login?: {
+    oauth?: {
+      access: string
+      refresh?: string
+      expires?: number
+      username?: string
+    }
+  }
   mode?: {
     build?: AgentConfig
     plan?: AgentConfig

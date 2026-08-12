@@ -20,19 +20,10 @@ import { escapeHtml } from "@/util/html"
 
 const CLAUDE_EXTERNAL_DIR = ".claude"
 const AGENTS_EXTERNAL_DIR = ".agents"
+const AGENT_EXTERNAL_DIR = ".agent"
 const EXTERNAL_SKILL_PATTERN = "skills/**/SKILL.md"
 const MAGE_SKILL_PATTERN = "{skill,skills}/**/SKILL.md"
 const SKILL_PATTERN = "**/SKILL.md"
-
-// Built-in skill that ships with mage. The model's intuition for what a
-// mage.json should look like is often wrong, and mage hard-fails on
-// invalid config, so users hit cryptic startup errors. Loading this skill
-// when the model is asked to touch mage's own config files gives it the
-// actual schemas instead of guesses.
-const CUSTOMIZE_MAGE_SKILL_NAME = "customize-mage"
-const CUSTOMIZE_MAGE_SKILL_DESCRIPTION =
-  "Use ONLY when the user is editing or creating mage's own configuration: mage.json, mage.jsonc, files under .mage/, or files under ~/.mage/. Also use when creating or fixing mage agents, subagents, skills, plugins, MCP servers, or permission rules. Do not use for the user's own application code, or for any project that is not configuring mage itself."
-const CUSTOMIZE_MAGE_SKILL_BODY = SkillPlugin.CustomizeMageContent
 
 export const Info = Schema.Struct({
   name: Schema.String,
@@ -186,6 +177,7 @@ const discoverSkills = Effect.fnUntraced(function* (
   if (!disableExternalSkills) {
     if (!disableClaudeCodeSkills) externalDirs.push(CLAUDE_EXTERNAL_DIR)
     externalDirs.push(AGENTS_EXTERNAL_DIR)
+    externalDirs.push(AGENT_EXTERNAL_DIR)
 
     for (const dir of externalDirs) {
       const root = path.join(global.home, dir)
@@ -273,14 +265,14 @@ const layer = Layer.effect(
     const state = yield* InstanceState.make(
       Effect.fn("Skill.state")(function* () {
         const s: State = { skills: {}, dirs: new Set() }
-        // Register the built-in skill BEFORE disk discovery so a user-disk
-        // skill with the same name can override it.
-        s.skills[CUSTOMIZE_MAGE_SKILL_NAME] = {
-          name: CUSTOMIZE_MAGE_SKILL_NAME,
-          description: CUSTOMIZE_MAGE_SKILL_DESCRIPTION,
-          location: "<built-in>",
-          content: CUSTOMIZE_MAGE_SKILL_BODY,
-        }
+        // // Register the built-in skill BEFORE disk discovery so a user-disk
+        // // skill with the same name can override it.
+        // s.skills[CUSTOMIZE_MAGE_SKILL_NAME] = {
+        //   name: CUSTOMIZE_MAGE_SKILL_NAME,
+        //   description: CUSTOMIZE_MAGE_SKILL_DESCRIPTION,
+        //   location: "<built-in>",
+        //   content: CUSTOMIZE_MAGE_SKILL_BODY,
+        // }
         yield* loadSkills(s, yield* InstanceState.get(discovered), events)
         return s
       }),

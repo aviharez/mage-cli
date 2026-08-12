@@ -3,6 +3,7 @@ import path from "path"
 import os from "os"
 import { Filesystem } from "../util/filesystem"
 import { Flock } from "@mybcabisnis/mage-shared/util/flock"
+import { Global as CoreGlobal } from "@mybcabisnis/mage-core/global"
 
 const getHomeDir = () => process.env.MAGE_TEST_HOME || os.homedir()
 
@@ -11,8 +12,12 @@ declare const MAGE_AGENTS_MD: string | undefined
 const _overrides: Record<string, string | undefined> = {}
 function _path(key: string, derive: () => string) {
   return {
-    get() { return _overrides[key] ?? derive() },
-    set(v: string) { _overrides[key] = v },
+    get() {
+      return _overrides[key] ?? derive()
+    },
+    set(v: string) {
+      _overrides[key] = v
+    },
     enumerable: true,
     configurable: true,
   }
@@ -48,11 +53,17 @@ await Promise.all([
   fs.mkdir(Path.cache, { recursive: true }),
 ])
 
+// Keep bundled tools available to spawned shells without overriding system tools.
+const coreBin = CoreGlobal.Path.bin
+const pathKey = Object.keys(process.env).find((key) => key.toLowerCase() === "path") ?? "PATH"
+const currentPath = process.env[pathKey] ?? ""
+if (!currentPath.split(path.delimiter).includes(coreBin)) {
+  process.env[pathKey] = [currentPath, coreBin].filter(Boolean).join(path.delimiter)
+}
+
 if (typeof MAGE_AGENTS_MD === "string") {
   const agentsMdPath = path.join(Path.config, "AGENTS.md")
-  await fs.access(agentsMdPath).catch(() =>
-    fs.writeFile(agentsMdPath, MAGE_AGENTS_MD as string, "utf8"),
-  )
+  await fs.access(agentsMdPath).catch(() => fs.writeFile(agentsMdPath, MAGE_AGENTS_MD as string, "utf8"))
 }
 
 const CACHE_VERSION = "21"
@@ -70,7 +81,7 @@ if (version !== CACHE_VERSION) {
         }),
       ),
     )
-  } catch { }
+  } catch {}
   await Filesystem.write(path.join(Path.cache, "version"), CACHE_VERSION)
 }
 

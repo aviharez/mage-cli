@@ -2,10 +2,14 @@ Launch a new agent to handle complex, multistep tasks autonomously.
 
 When using the Task tool, you must specify a subagent_type parameter to select which agent type to use.
 
+Delegate only concrete, bounded work that can run independently. Give the child a complete prompt because a new child session does not receive the parent conversation history. Do not duplicate searches or changes already delegated. Keep concurrent implementation tasks in disjoint write scopes.
+
+Protect the primary context: use direct tools for simple targeted reads, tiny edits, and quick commands; use specialized subagents for broad exploration, substantial implementation, external research, and verbose verification. The primary agent coordinates subagents and relays their concise conclusions to the user.
+
 When NOT to use the Task tool:
-- If you want to read a specific file path, use the Read or Glob tool instead of the Task tool, to find the match more quickly
-- If you are searching for a specific class definition like "class Foo", use the Grep tool instead, to find the match more quickly
-- If you are searching for code within a specific file or set of 2-3 files, use the Read tool instead of the Task tool, to find the match more quickly
+- If you want to read a specific file path, use the `read` or `glob` tool instead of the Task tool, to find the match more quickly
+- If you are searching for a specific class definition like "class Foo", use the `grep` tool instead, to find the match more quickly
+- If you are searching for code within a specific file or set of 2-3 files, use the `read` tool instead of the Task tool, to find the match more quickly
 - If no available agent is a good fit for the task, use other tools directly
 
 
@@ -17,3 +21,5 @@ Usage notes:
 5. The agent's outputs should generally be trusted
 6. Clearly tell the agent whether you expect it to write code or just to do research (search, file reads, web fetches, etc.), since it is not aware of the user's intent. Tell it how to verify its work if possible (e.g., relevant test commands).
 7. If the agent description mentions that it should be used proactively, then you should try your best to use it without the user having to ask for it first. Use your judgement.
+
+Subagents should complete only their assigned scope and must not spawn additional subagents in Phase 1. Their internal context is disposable; return conclusions, relevant files, verification outcomes, and blockers instead of raw search output, full file contents, or long command logs.

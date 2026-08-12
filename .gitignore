@@ -12,6 +12,7 @@ tmp
 dist
 ts-dist
 .rg-cache
+.rtk-cache
 .turbo
 **/.serena
 .serena/
@@ -31,8 +32,9 @@ UPCOMING_CHANGELOG.md
 logs/
 *.bun-build
 tsconfig.tsbuildinfo
+.mage-release-metadata
 .agents/
 skills-lock.json
 memory/
 graphify-out/
-docs/snz/
+docs/

@@ -1,4 +1,5 @@
 - To regenerate the JavaScript SDK, run `./packages/sdk/js/script/build.ts`.
+- rtk (https://github.com/rtk-ai/rtk) is embedded like rg: downloaded per-platform in `packages/mage/script/build.ts` (pinned `RTK_VERSION`), seeded to `~/.cache/mage/bin` by `postinstall.mjs`, lazy-download fallback in `packages/core/src/rtk/binary.ts` (version pinned separately — bump both). The internal plugin `packages/mage/src/plugin/rtk.ts` rewrites bash tool commands through `rtk rewrite`; disable with `--disable-default-plugins`.
 - ALWAYS USE PARALLEL TOOLS WHEN APPLICABLE.
 - The default branch in this repo is `dev`.
 - Local `main` ref may not exist; use `dev` or `origin/dev` for diffs.
@@ -101,3 +102,9 @@ const table = sqliteTable("session", {
 ## Type Checking
 
 - Always run `bun typecheck` from package directories (e.g., `packages/mage`), never `tsc` directly.
+
+## Context Architecture
+
+- The primary Mage agent coordinates context-heavy work through `explore`, `worker`, `verify`, and `scout`; `general` is the fallback.
+- Built-in subagent prompts live in `packages/mage/src/agent/prompt/` and use the shared compact handoff contract in `handoff.txt`.
+- Child sessions receive fresh history and return a concise result. Built-in subagents do not receive the `task` permission, so Phase 1 delegation remains one level below the primary agent.

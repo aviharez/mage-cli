@@ -70,6 +70,31 @@ it.instance("subagent's own read-only restriction remains effective", () =>
   }),
 )
 
+it.instance("built-in subagents cannot recurse by default", () =>
+  Effect.gen(function* () {
+    const subagents = yield* Effect.all([
+      Agent.use.get("general"),
+      Agent.use.get("explore"),
+      Agent.use.get("worker"),
+      Agent.use.get("verify"),
+      Agent.use.get("scout"),
+    ])
+
+    expect(
+      subagents.map((subagent) =>
+        Permission.evaluate(
+          "task",
+          "worker",
+          Permission.merge(
+            subagent!.permission,
+            deriveSubagentSessionPermission({ parentSessionPermission: [], subagent: subagent! }),
+          ),
+        ).action,
+      ),
+    ).toEqual(["deny", "deny", "deny", "deny", "deny"])
+  }),
+)
+
 it.instance(
   "custom subagent can explicitly enable edits denied to its parent agent",
   () =>

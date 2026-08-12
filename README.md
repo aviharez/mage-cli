@@ -9,6 +9,7 @@ Current version: **v1.2.11**
 ## Installation
 
 **macOS / Linux**
+
 ```bash
 curl -fsSL https://mage.apps.ocpdevgra.dti.co.id/install | bash
 ```
@@ -37,7 +38,7 @@ Add these lines to your `~/.npmrc` (create the file if it doesn't exist):
 noproxy[]=artifactory.intra.bca.co.id
 always-auth=true
 strict-ssl=false
-//artifactory.intra.bca.co.id/artifactory/api/npm/MBB-Registry-npm/:_auth=dXNlcm1iYjpCY2FiY2ExMjM=
+# Configure authentication through JFROG_TOKEN or your local credential manager.
 ```
 
 Then install globally:
@@ -45,6 +46,7 @@ Then install globally:
 ```bash
 npm install -g @mybcabisnis/mage
 ```
+
 </details>
 
 Or run from source (requires [Bun](https://bun.sh) ≥ 1.1):
@@ -97,6 +99,8 @@ All configuration lives under `~/.mage/`:
 
 Per-project config lives in `.mage/mage.json` at the repository root.
 
+Plugin configuration and OpenCode plugin compatibility are documented in [`docs/plugins.md`](docs/plugins.md).
+
 ---
 
 ## Build and Publish
@@ -107,6 +111,12 @@ bun run build:mage
 
 # Publish to BCA Artifactory
 bun run publish:mage
+
+# Build the complete release without publishing
+bun run build:release
+
+# Publish the previously built SDK, plugin, web, binaries, and Mage artifacts
+bun run publish:release
 
 # Or run directly in packages/mage:
 cd packages/mage
@@ -137,4 +147,3 @@ bun run version:set 1.3.0
 ```
 
 This updates every `packages/*/package.json`, `packages/web/config.mjs`, the landing page eyebrow in `packages/web/src/content/i18n/id.json`, and the terminal demo in `packages/web/src/components/Lander.astro`.
-

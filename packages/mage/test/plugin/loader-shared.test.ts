@@ -85,10 +85,7 @@ describe("plugin.loader.shared", () => {
           ].join("\n"),
         )
 
-        await Bun.write(
-          path.join(dir, "mage.json"),
-          JSON.stringify({ plugin: [pathToFileURL(file).href] }, null, 2),
-        )
+        await Bun.write(path.join(dir, "mage.json"), JSON.stringify({ plugin: [pathToFileURL(file).href] }, null, 2))
 
         return { mark }
       },
@@ -120,10 +117,7 @@ describe("plugin.loader.shared", () => {
           ].join("\n"),
         )
 
-        await Bun.write(
-          path.join(dir, "mage.json"),
-          JSON.stringify({ plugin: [pathToFileURL(file).href] }, null, 2),
-        )
+        await Bun.write(path.join(dir, "mage.json"), JSON.stringify({ plugin: [pathToFileURL(file).href] }, null, 2))
 
         return { mark }
       },
@@ -158,11 +152,63 @@ describe("plugin.loader.shared", () => {
           ].join("\n"),
         )
 
+        await Bun.write(path.join(dir, "mage.json"), JSON.stringify({ plugin: [pathToFileURL(file).href] }, null, 2))
+
+        return { mark }
+      },
+      (tmp) =>
+        Effect.gen(function* () {
+          yield* load(tmp.path)
+          expect(yield* Effect.promise(() => Bun.file(tmp.extra.mark).text())).toBe("default")
+        }),
+    ),
+  )
+
+  it.live("loads legacy named server plugin exports such as RTK", () =>
+    withTmp(
+      async (dir) => {
+        const file = path.join(dir, "rtk.ts")
+        const mark = path.join(dir, "called.txt")
         await Bun.write(
-          path.join(dir, "mage.json"),
-          JSON.stringify({ plugin: [pathToFileURL(file).href] }, null, 2),
+          file,
+          [
+            "export const RtkOpenCodePlugin = async () => {",
+            `  await Bun.write(${JSON.stringify(mark)}, "named")`,
+            "  return {}",
+            "}",
+            "",
+          ].join("\n"),
         )
 
+        await Bun.write(path.join(dir, "mage.json"), JSON.stringify({ plugin: [pathToFileURL(file).href] }, null, 2))
+        return { mark }
+      },
+      (tmp) =>
+        Effect.gen(function* () {
+          yield* load(tmp.path)
+          expect(yield* Effect.promise(() => Bun.file(tmp.extra.mark).text())).toBe("named")
+        }),
+    ),
+  )
+
+  it.live("ignores named helper exports beside a legacy default plugin", () =>
+    withTmp(
+      async (dir) => {
+        const file = path.join(dir, "plugin.ts")
+        const mark = path.join(dir, "called.txt")
+        await Bun.write(
+          file,
+          [
+            "export function parseCommandFile(filePath) { return filePath }",
+            "export default async () => {",
+            `  await Bun.write(${JSON.stringify(mark)}, "default")`,
+            "  return {}",
+            "}",
+            "",
+          ].join("\n"),
+        )
+
+        await Bun.write(path.join(dir, "mage.json"), JSON.stringify({ plugin: [pathToFileURL(file).href] }, null, 2))
         return { mark }
       },
       (tmp) =>
@@ -191,10 +237,7 @@ describe("plugin.loader.shared", () => {
           ].join("\n"),
         )
 
-        await Bun.write(
-          path.join(dir, "mage.json"),
-          JSON.stringify({ plugin: [pathToFileURL(file).href] }, null, 2),
-        )
+        await Bun.write(path.join(dir, "mage.json"), JSON.stringify({ plugin: [pathToFileURL(file).href] }, null, 2))
 
         return { mark }
       },
@@ -233,10 +276,7 @@ describe("plugin.loader.shared", () => {
           ].join("\n"),
         )
 
-        await Bun.write(
-          path.join(dir, "mage.json"),
-          JSON.stringify({ plugin: [pathToFileURL(file).href] }, null, 2),
-        )
+        await Bun.write(path.join(dir, "mage.json"), JSON.stringify({ plugin: [pathToFileURL(file).href] }, null, 2))
 
         return { mark }
       },
@@ -794,10 +834,7 @@ describe("plugin.loader.shared", () => {
           ].join("\n"),
         )
 
-        await Bun.write(
-          path.join(dir, "mage.json"),
-          JSON.stringify({ plugin: [pathToFileURL(file).href] }, null, 2),
-        )
+        await Bun.write(path.join(dir, "mage.json"), JSON.stringify({ plugin: [pathToFileURL(file).href] }, null, 2))
 
         return { mark }
       },
@@ -919,10 +956,7 @@ export default {
           ].join("\n"),
         )
 
-        await Bun.write(
-          path.join(dir, "mage.json"),
-          JSON.stringify({ plugin: [pathToFileURL(file).href] }, null, 2),
-        )
+        await Bun.write(path.join(dir, "mage.json"), JSON.stringify({ plugin: [pathToFileURL(file).href] }, null, 2))
 
         return { mark }
       },
