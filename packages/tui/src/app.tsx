@@ -846,6 +846,29 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
           dialog.clear()
         },
       },
+      {
+        name: "permission.yolo",
+        title: local.permission.yolo ? "Disable YOLO mode" : "Enable YOLO mode",
+        category: "System",
+        slashName: "yolo",
+        run: async () => {
+          if (local.permission.yolo) {
+            local.permission.disableYolo()
+            toast.show({ message: "YOLO mode turned off", variant: "info" })
+            dialog.clear()
+            return
+          }
+          const ok = await DialogConfirm.show(
+            dialog,
+            "Enable YOLO mode",
+            "YOLO mode permanently bypasses all permission checks. The agent will be able to run any command and modify any file without asking for approval.",
+          )
+          if (ok !== true) return
+          local.permission.enableYolo()
+          toast.show({ message: "YOLO mode enabled", variant: "warning" })
+          dialog.clear()
+        },
+      },
     ].map((command) => ({
       namespace: "palette",
       ...command,
