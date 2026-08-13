@@ -7,8 +7,8 @@ import { OauthCallbackPage } from "@mybcabisnis/mage-core/oauth/page"
 import { Global } from "@mybcabisnis/mage-core/global"
 import { insecureFetchInit } from "@/util/network"
 
-// const DEFAULT_RUNE_ORIGIN = "https://rune.apps.ocpdevgra.dti.co.id"
-const DEFAULT_RUNE_ORIGIN = "http://localhost:3000"
+const DEFAULT_RUNE_ORIGIN = "https://rune.apps.ocpdevgra.dti.co.id"
+// const DEFAULT_RUNE_ORIGIN = "http://localhost:3000"
 const CLIENT_ID = "mage-cli"
 const SCOPES = "openid profile"
 

@@ -70,6 +70,7 @@
     "@mybcabisnis/mage-script": "workspace:*",
     "@mybcabisnis/mage-sdk": "workspace:*",
     "@mybcabisnis/mage-server": "workspace:*",
+    "@mybcabisnis/mage-shared": "workspace:*",
     "@mybcabisnis/mage-tui": "workspace:*",
     "@octokit/graphql": "9.0.2",
     "@octokit/rest": "catalog:",

@@ -66,8 +66,10 @@ import type {
   LanguageModelV3ToolResultOutput,
   LanguageModelV3Usage,
 } from "@ai-sdk/provider"
-import { mkdirSync } from "node:fs"
+import { chmodSync, mkdirSync, readFileSync } from "node:fs"
 import { homedir } from "node:os"
+import path from "node:path"
+import { credentialPath, isMageCredential } from "@/login/oauth"
 import * as Log from "../util/log"
 import * as Network from "../util/network"
 
@@ -75,7 +77,7 @@ const log = Log.create({ service: "merlin" })
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const MERLIN_ORIGIN = "https://gaia-gateway-multimodal-uat.apps.ocpuatgra.dti.co.id"
+const MERLIN_ORIGIN = "https://mage-gateway.apps.ocpdevgra.dti.co.id"
 const CLIENT_ID = "MAGEDEV"
 const DEFAULT_MODEL = "/app/models/text-2"
 const DEBUG_PAYLOADS = process.env["MAGE_GAIA_DEBUG_MODE"] === "1" || process.env["MAGE_GAIA_DEBUG_MODE"]?.toLowerCase() === "true"
@@ -328,6 +330,60 @@ function mapErrorEnvelope(data: ChatCompletionsResponse, url: string, promptToke
   })
 }
 
+// ── Credential loading & refresh (~/.mage/data/cred.json) ─────────────────────
+
+/** Read and validate the persisted credential from cred.json, if present. */
+function readCredential(): MerlinCredential | undefined {
+  try {
+    const parsed = JSON.parse(readFileSync(credentialPath(), "utf-8"))
+    return isMageCredential(parsed) ? parsed : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/** Write the credential back to cred.json (0o600, same as the login flow). */
+async function persistCredential(credential: MerlinCredential): Promise<void> {
+  const file = credentialPath()
+  mkdirSync(path.dirname(file), { recursive: true })
+  await Bun.write(file, JSON.stringify(credential, null, 2) + "\n")
+  chmodSync(file, 0o600)
+}
+
+/** Rotate an expired token pair via `POST {origin}/auth/refresh` (openapi.yaml §/auth/refresh). */
+async function refreshAccessToken(credential: MerlinCredential, origin: string): Promise<MerlinCredential> {
+  const response = await fetch(`${origin.replace(/\/+$/, "")}/auth/refresh`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refresh_token: credential.refresh_token }),
+    ...(await Network.insecureFetchInit()),
+  } as RequestInit)
+
+  if (!response.ok) {
+    throw new Error(`Mage token refresh failed: ${response.status} ${response.statusText}`.trim())
+  }
+
+  const token = (await response.json()) as {
+    access_token?: string
+    refresh_token?: string
+    expires_in?: number
+    display_name?: string
+  }
+  if (typeof token.access_token !== "string" || typeof token.refresh_token !== "string" || typeof token.expires_in !== "number") {
+    throw new Error("Mage token refresh returned an invalid token pair")
+  }
+
+  return {
+    udomain: credential.udomain,
+    display_name: token.display_name ?? credential.display_name,
+    access_token: token.access_token,
+    refresh_token: token.refresh_token,
+    // The refresh response carries a relative TTL (seconds), mirroring the
+    // login flow which stores an absolute expiry in cred.json.
+    expires_in: Date.now() + token.expires_in * 1000,
+  }
+}
+
 // ── Service ID resolution ─────────────────────────────────────────────────────
 
 const SERVICE_IDS: Record<string, string> = {
@@ -379,8 +435,20 @@ class MerlinLanguageModel implements LanguageModelV3 {
     private readonly modelName: string | undefined,
   ) {}
 
-  private get url(): string {
-    return buildChatCompletionsUrl(this.endpoint, this.clientId, this.credential?.udomain ?? "")
+  /**
+   * Load the current credential from cred.json (falling back to the one
+   * injected at construction), refreshing the token pair when `expires_in`
+   * has passed and persisting the rotated pair back to cred.json.
+   */
+  private async freshCredential(): Promise<MerlinCredential> {
+    const credential = readCredential() ?? this.credential
+    if (!credential) {
+      throw new Error("Missing Mage credential — please authenticate again.")
+    }
+    if (credential.expires_in > Date.now()) return credential
+    const refreshed = await refreshAccessToken(credential, this.endpoint)
+    await persistCredential(refreshed)
+    return refreshed
   }
 
   /**
@@ -392,8 +460,9 @@ class MerlinLanguageModel implements LanguageModelV3 {
   private async postChat(
     options: LanguageModelV3CallOptions,
     stream: boolean,
-  ): Promise<{ response: Response; promptTokenEstimate: number; payloadDir: string }> {
-    const url = this.url
+  ): Promise<{ response: Response; promptTokenEstimate: number; payloadDir: string; url: string }> {
+    const credential = await this.freshCredential()
+    const url = buildChatCompletionsUrl(this.endpoint, this.clientId, credential.udomain)
     const messages = toOpenAIMessages(options.prompt)
     const tools = toOpenAITools(options.tools)
     const promptTokenEstimate = estimatePromptTokens(messages)
@@ -436,7 +505,10 @@ class MerlinLanguageModel implements LanguageModelV3 {
     try {
       response = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${credential.access_token}`,
+        },
         body: JSON.stringify(body),
         signal: AbortSignal.any(signals),
         ...(await Network.insecureFetchInit()),
@@ -497,16 +569,16 @@ class MerlinLanguageModel implements LanguageModelV3 {
       })
     }
 
-    return { response, promptTokenEstimate, payloadDir: exchangeDir }
+    return { response, promptTokenEstimate, payloadDir: exchangeDir, url }
   }
 
   async doGenerate(options: LanguageModelV3CallOptions): Promise<LanguageModelV3GenerateResult> {
-    const { response, promptTokenEstimate, payloadDir } = await this.postChat(options, false)
+    const { response, promptTokenEstimate, payloadDir, url } = await this.postChat(options, false)
     const data = (await response.json()) as ChatCompletionsResponse
     if (DEBUG_PAYLOADS) Bun.write(`${payloadDir}/response.json`, JSON.stringify(data, null, 2))
 
     if (data.error_schema) {
-      const mapped = mapErrorEnvelope(data, this.url, promptTokenEstimate)
+      const mapped = mapErrorEnvelope(data, url, promptTokenEstimate)
       if (mapped) throw mapped
     }
 
@@ -530,8 +602,7 @@ class MerlinLanguageModel implements LanguageModelV3 {
   }
 
   async doStream(options: LanguageModelV3CallOptions): Promise<LanguageModelV3StreamResult> {
-    const { response, promptTokenEstimate, payloadDir } = await this.postChat(options, true)
-    const url = this.url
+    const { response, promptTokenEstimate, payloadDir, url } = await this.postChat(options, true)
     const contentType = response.headers.get("content-type") ?? ""
 
     // The gateway validates the request before it starts generating: a
@@ -752,6 +823,8 @@ export interface MerlinCredential {
   display_name: string
   access_token: string
   refresh_token: string
+  /** Absolute expiry in epoch ms (login/refresh both store this form in cred.json). */
+  expires_in: number
 }
 
 export interface MerlinProvider {
