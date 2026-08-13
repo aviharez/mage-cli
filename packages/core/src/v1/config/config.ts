@@ -90,6 +90,7 @@ export const Info = Schema.Struct({
       display_name: Schema.String,
       access_token: Schema.String,
       refresh_token: Schema.String,
+      expires_in: Schema.Number,
     }),
   ).annotate({ description: "Credential returned by Rune after `mage init` login" }),
   mode: Schema.optional(

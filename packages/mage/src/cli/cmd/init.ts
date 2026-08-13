@@ -1,12 +1,12 @@
 import path from "path"
 import { existsSync, readFileSync } from "fs"
-import { chmod } from "fs/promises"
+import { chmod, mkdir } from "fs/promises"
 import * as prompts from "@clack/prompts"
 import { cmd } from "./cmd"
 import { Global } from "@mybcabisnis/mage-core/global"
 import { UI } from "../ui"
 import { EOL } from "os"
-import { isMageCredential, loginRune, type MageCredential } from "@/login/oauth"
+import { credentialPath, isMageCredential, loginRune, type MageCredential } from "@/login/oauth"
 
 const CONFIG_FILE = "mage.json"
 
@@ -32,15 +32,12 @@ async function readConfig(configPath: string): Promise<Record<string, any>> {
 }
 
 export function isFirstRun(): boolean {
-  const configPath = path.join(Global.Path.config, CONFIG_FILE)
+  const credFile = credentialPath()
 
-  if (!existsSync(configPath)) return true
+  if (!existsSync(credFile)) return true
 
   try {
-    const raw = readFileSync(configPath, "utf-8")
-    const config = JSON.parse(raw)
-
-    if (isMageCredential(config?.credential)) return false
+    if (isMageCredential(JSON.parse(readFileSync(credFile, "utf-8")))) return false
   } catch {
     // unreadable or invalid — treat as first run
   }
@@ -49,8 +46,14 @@ export function isFirstRun(): boolean {
 }
 
 export async function persistCredential(configPath: string, credential: MageCredential): Promise<void> {
+  const credFile = credentialPath()
+  await mkdir(path.dirname(credFile), { recursive: true })
+  await Bun.write(credFile, JSON.stringify(credential, null, 2) + EOL)
+  await chmod(credFile, 0o600)
+
   const existing = await readConfig(configPath)
-  const merged: Record<string, any> = { ...existing, credential }
+  const merged: Record<string, any> = { ...existing }
+  delete merged.credential
 
   if (isPlainObject(existing.login)) {
     const login = { ...existing.login }
@@ -98,7 +101,7 @@ async function runRuneLoginWizard(): Promise<void> {
   await persistCredential(configPath, credential)
 
   prompts.log.success(`Hi ${credential.display_name}, lets work together with Mage! :)`)
-  prompts.outro(`Config saved → ${configPath}`)
+  prompts.outro(`Credential saved → ${credentialPath()}`)
 }
 
 export async function runInitWizard(): Promise<void> {

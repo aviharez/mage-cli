@@ -1,12 +1,14 @@
 import { createServer } from "http"
 import { randomBytes, createHash } from "crypto"
+import path from "path"
 import open from "open"
 import * as prompts from "@clack/prompts"
 import { OauthCallbackPage } from "@mybcabisnis/mage-core/oauth/page"
+import { Global } from "@mybcabisnis/mage-core/global"
 import { insecureFetchInit } from "@/util/network"
 
-const DEFAULT_RUNE_ORIGIN = "https://rune.apps.ocpdevgra.dti.co.id"
-// const DEFAULT_RUNE_ORIGIN = "http://localhost:3000"
+// const DEFAULT_RUNE_ORIGIN = "https://rune.apps.ocpdevgra.dti.co.id"
+const DEFAULT_RUNE_ORIGIN = "http://localhost:3000"
 const CLIENT_ID = "mage-cli"
 const SCOPES = "openid profile"
 
@@ -22,6 +24,7 @@ export interface MageCredential {
   display_name: string
   access_token: string
   refresh_token: string
+  expires_in: number
 }
 
 function base64url(input: Buffer): string {
@@ -49,12 +52,16 @@ export function credentialFromTokenResponse(value: unknown): MageCredential {
   if (fields.some((field) => typeof value[field] !== "string" || value[field].trim().length === 0)) {
     throw new Error("Rune token response is missing a required credential field")
   }
+  if (typeof value.expires_in !== "number" || !Number.isFinite(value.expires_in)) {
+    throw new Error("Rune token response is missing a required credential field")
+  }
 
   return {
     udomain: value.udomain as string,
     display_name: value.display_name as string,
     access_token: value.access_token as string,
     refresh_token: value.refresh_token as string,
+    expires_in: value.expires_in,
   }
 }
 
@@ -65,6 +72,10 @@ export function isMageCredential(value: unknown): value is MageCredential {
   } catch {
     return false
   }
+}
+
+export function credentialPath(): string {
+  return path.join(Global.Path.config, "data", "cred.json")
 }
 
 // Loopback callback server — same shape as mcp/oauth-callback.ts (state
@@ -157,7 +168,8 @@ export async function exchangeCode(code: string, verifier: string): Promise<Mage
     throw new Error(`Rune token exchange failed: ${response.status} ${response.statusText}`.trim())
   }
 
-  return credentialFromTokenResponse(await response.json())
+  const credential = credentialFromTokenResponse(await response.json())
+  return { ...credential, expires_in: Date.now() + credential.expires_in * 1000 }
 }
 
 /**

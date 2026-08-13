@@ -10,13 +10,14 @@ import fsNode from "fs/promises"
 import { Flag } from "@mybcabisnis/mage-core/flag/flag"
 import { Auth } from "../auth"
 import { applyEdits, modify } from "jsonc-parser"
-import { existsSync } from "fs"
+import { existsSync, readFileSync } from "fs"
 import { isRecord } from "@/util/record"
 import { FSUtil } from "@mybcabisnis/mage-core/fs-util"
 import { InstanceState } from "@/effect/instance-state"
 import { Context, Duration, Effect, Fiber, Layer, Schema } from "effect"
 import { HttpClient, HttpClientRequest } from "effect/unstable/http"
 import { containsPath, type InstanceContext } from "../project/instance-context"
+import { credentialPath, isMageCredential } from "@/login/oauth"
 import { ConfigV1 } from "@mybcabisnis/mage-core/v1/config/config"
 import { RemoteAuthError } from "@mybcabisnis/mage-core/v1/config/error"
 import { ConfigPermissionV1 } from "@mybcabisnis/mage-core/v1/config/permission"
@@ -562,6 +563,16 @@ const layer = Layer.effect(
           } catch (err) {
             yield* Effect.logWarning("failed to read system username, using fallback", { err })
             result.username = "user"
+          }
+        }
+
+        const credFile = credentialPath()
+        if (existsSync(credFile)) {
+          try {
+            const cred = JSON.parse(readFileSync(credFile, "utf8"))
+            if (isMageCredential(cred)) result.credential = cred
+          } catch {
+            // invalid or unreadable credential — leave result.credential unset
           }
         }
 

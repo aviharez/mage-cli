@@ -26,8 +26,9 @@ describe("Rune OAuth credential mapping", () => {
       display_name: "Monitoring MBB MBB",
       access_token: "access",
       refresh_token: "refresh",
+      expires_in: 3600,
     })
-    expect(isMageCredential({ udomain: "u", display_name: "User", access_token: "a", refresh_token: "r" })).toBe(true)
+    expect(isMageCredential({ udomain: "u", display_name: "User", access_token: "a", refresh_token: "r", expires_in: 3600 })).toBe(true)
     expect(isMageCredential({ udomain: "u", display_name: "User", access_token: "a" })).toBe(false)
   })
 
@@ -40,6 +41,7 @@ describe("Rune OAuth credential mapping", () => {
         JSON.stringify({
           access_token: "access",
           refresh_token: "refresh",
+          expires_in: 3600,
           udomain: "u012345",
           display_name: "User",
         }),
@@ -52,6 +54,7 @@ describe("Rune OAuth credential mapping", () => {
       display_name: "User",
       access_token: "access",
       refresh_token: "refresh",
+      expires_in: expect.any(Number),
     })
     expect(request?.url).toBe("https://rune.example/api/oauth/token")
     expect(request?.init.body as string).toContain("code=short-lived-code")
