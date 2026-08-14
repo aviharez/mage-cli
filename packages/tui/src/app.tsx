@@ -837,23 +837,14 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
         },
       },
       {
-        name: "permission.mode",
-        title:
-          local.permission.mode === "auto" ? "Disable auto-approve permissions" : "Enable auto-approve permissions",
-        category: "System",
-        run: () => {
-          local.permission.toggle()
-          dialog.clear()
-        },
-      },
-      {
         name: "permission.yolo",
-        title: local.permission.yolo ? "Disable YOLO mode" : "Enable YOLO mode",
+        title: "Toggle YOLO mode",
         category: "System",
         slashName: "yolo",
         run: async () => {
-          if (local.permission.yolo) {
-            local.permission.disableYolo()
+          const sessionID = route.data.type === "session" ? route.data.sessionID : undefined
+          if (local.permission.isYolo(sessionID)) {
+            local.permission.toggleYolo(sessionID)
             toast.show({ message: "YOLO mode turned off", variant: "info" })
             dialog.clear()
             return
@@ -861,10 +852,10 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
           const ok = await DialogConfirm.show(
             dialog,
             "Enable YOLO mode",
-            "YOLO mode permanently bypasses all permission checks. The agent will be able to run any command and modify any file without asking for approval.",
+            "YOLO mode bypasses all permission checks for the current session. The agent will be able to run any command and modify any file without asking for approval.",
           )
           if (ok !== true) return
-          local.permission.enableYolo()
+          local.permission.toggleYolo(sessionID)
           toast.show({ message: "YOLO mode enabled", variant: "warning" })
           dialog.clear()
         },
