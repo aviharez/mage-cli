@@ -4,6 +4,7 @@ import { streamText } from "ai"
 import path from "path"
 import os from "os"
 import { Global } from "@mybcabisnis/mage-core/global"
+import { credentialPath } from "@/login/oauth"
 import { createMerlin } from "@/provider/merlin"
 
 const CALL_OPTIONS: LanguageModelV3CallOptions = {
@@ -122,13 +123,13 @@ describe("Merlin provider — connection failure messaging", () => {
 })
 
 describe("Merlin provider — /chat/completions request shape", () => {
-  test("builds the positional URL and an OpenAI-shaped streaming body with tools", async () => {
+  test("builds the positional URL and an OpenAI-shaped non-streaming body with tools", async () => {
     let capturedUrl = ""
     let capturedBody: Record<string, unknown> = {}
     mockFetch((url, init) => {
       capturedUrl = String(url)
       capturedBody = JSON.parse(init.body as string)
-      return sseResponse(['{"choices":[{"delta":{"content":"hi"},"finish_reason":"stop"}]}'])
+      return jsonResponse({ choices: [{ finish_reason: "stop", message: { role: "assistant", content: "hi" } }] })
     })
 
     const model = createMerlin({
@@ -143,12 +144,66 @@ describe("Merlin provider — /chat/completions request shape", () => {
     expect(capturedUrl).toBe(
       "https://gaia.example/MAGEDEV/none/U073030/none/none/false/vllm-text-generation/chat/completions",
     )
-    expect(capturedBody["stream"]).toBe(true)
-    expect(capturedBody["stream_options"]).toEqual({ include_usage: true })
+    expect(capturedBody["stream"]).toBe(false)
+    expect(capturedBody["stream_options"]).toBeUndefined()
     expect(capturedBody["tools"]).toEqual([
       { type: "function", function: { name: "Read", description: "read a file", parameters: { type: "object", properties: {} } } },
     ])
     expect(capturedBody["tool_choice"]).toBe("auto")
+  })
+})
+
+describe("Merlin provider — token refresh", () => {
+  test("rotates an expired credential before sending the completion", async () => {
+    const requests: Array<{ url: string; init: RequestInit }> = []
+    mockFetch((url, init) => {
+      requests.push({ url: String(url), init })
+      if (String(url).endsWith("/auth/refresh")) {
+        return jsonResponse({ access_token: "new-access", refresh_token: "new-refresh", expires_in: 3600 })
+      }
+      return jsonResponse({ choices: [{ finish_reason: "stop", message: { role: "assistant", content: "hello" } }] })
+    })
+
+    const model = createMerlin({
+      baseURL: "https://gaia.example",
+      credential: { ...TEST_CREDENTIAL, expires_in: Date.now() - 1 },
+    }).languageModel("default")
+    await expect(model.doGenerate(CALL_OPTIONS)).resolves.toMatchObject({ content: [{ type: "text", text: "hello" }] })
+
+    expect(requests).toHaveLength(2)
+    expect(requests[0]?.url).toBe("https://gaia.example/auth/refresh")
+    expect(JSON.parse(requests[0]?.init.body as string)).toEqual({ refresh_token: "refresh-token" })
+    expect(new Headers(requests[1]?.init.headers).get("Authorization")).toBe("Bearer new-access")
+    expect(JSON.parse(requests[1]?.init.body as string).stream).toBe(false)
+
+    const saved = JSON.parse(await Bun.file(credentialPath()).text())
+    expect(saved).toMatchObject({ access_token: "new-access", refresh_token: "new-refresh", udomain: "U073030" })
+    expect(saved.expires_in).toBeGreaterThan(Date.now())
+  })
+
+  test("refreshes after a 401 and retries the completion once", async () => {
+    const requests: Array<{ url: string; init: RequestInit }> = []
+    let chatAttempts = 0
+    mockFetch((url, init) => {
+      requests.push({ url: String(url), init })
+      if (String(url).endsWith("/auth/refresh")) {
+        return jsonResponse({ access_token: "new-access", refresh_token: "new-refresh", expires_in: 3600 })
+      }
+      chatAttempts += 1
+      if (chatAttempts === 1) return new Response("expired", { status: 401 })
+      return jsonResponse({ choices: [{ finish_reason: "stop", message: { role: "assistant", content: "retried" } }] })
+    })
+
+    const model = createMerlin({ baseURL: "https://gaia.example", credential: TEST_CREDENTIAL }).languageModel("default")
+    await expect(model.doGenerate(CALL_OPTIONS)).resolves.toMatchObject({ content: [{ type: "text", text: "retried" }] })
+
+    expect(requests).toHaveLength(3)
+    expect(requests[0]?.url).toContain("/chat/completions")
+    expect(requests[1]?.url).toBe("https://gaia.example/auth/refresh")
+    expect(requests[2]?.url).toContain("/chat/completions")
+    expect(new Headers(requests[0]?.init.headers).get("Authorization")).toBe("Bearer access-token")
+    expect(new Headers(requests[2]?.init.headers).get("Authorization")).toBe("Bearer new-access")
+    expect(chatAttempts).toBe(2)
   })
 })
 

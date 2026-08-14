@@ -3,8 +3,10 @@
  *
  * Talks to BCA's GAIA gateway `/chat/completions` endpoint (Techdoc "LLM
  * GATEWAY API v2.4" §1.1.3), which is OpenAI-compatible: standard
- * `messages`/`tools` request body, real SSE streaming, and native
- * `message.tool_calls` — no prompt-injected XML tool-call parsing needed.
+ * `messages`/`tools` request body and native `message.tool_calls` — no
+ * prompt-injected XML tool-call parsing needed. Requests are always made as
+ * non-streaming completions; `doStream` adapts the completed response to the
+ * SDK stream interface.
  *
  * URL shape (positional path segments, §1.1.3):
  *   POST <origin>/<client_id>/<session_id>/<domain_id>/<user_name>/<divisi>/<new_session>/<task>/chat/completions
@@ -13,23 +15,19 @@
  *   "none" here makes the gateway return its canned error).
  *
  * Request body (§1.2.2): { model, messages, temperature, max_completion_tokens,
- * service_id, tools?, tool_choice?, stream }.
+ * service_id, tools?, tool_choice?, stream: false }.
  *
  * Response body:
- *   - Success (§1.3.2, streaming or not): standard OpenAI `choices[].message`
- *     (non-streaming) or `choices[].delta` (SSE) shape, with native
+ *   - Success (§1.3.2): standard OpenAI `choices[].message` shape, with native
  *     `tool_calls`. `reasoning` (§1.3.2 — the model's thinking-mode
  *     chain-of-thought) is mapped to LanguageModelV3 `reasoning` content
- *     parts, ahead of the real answer, both non-streaming and as
- *     `reasoning-start`/`reasoning-delta`/`reasoning-end` stream parts closed
- *     out the moment real `content` starts arriving. Streaming responses
- *     decode as `text/event-stream`; `application/json` from a `stream: true`
- *     request means the gateway rejected the request before generating (see
- *     below).
+ *     parts ahead of the real answer and to one-shot stream parts by
+ *     `doStream`. A legacy SSE response is still decoded defensively, but is
+ *     never requested.
  *   - Business-logic failure (§1.4): `{ error_schema: { error_code,
  *     error_message }, output_schema: { err_debug, result: { answer } } }`,
- *     always a plain JSON body (never SSE) even when `stream: true` was sent,
- *     because GAIA validates the request before it starts generating.
+ *     always a plain JSON body because GAIA validates the request before it
+ *     starts generating.
  *
  * Error scenario handling (§1.4 DPA-1xx table), see `mapErrorEnvelope`:
  *   - DPA-111 (success), DPA-120 (PII flagged, answer still returned),
@@ -105,8 +103,7 @@ interface ChatCompletionsRequest {
   service_id?: string
   tools?: Array<{ type: "function"; function: { name: string; description?: string; parameters: unknown } }>
   tool_choice?: "auto"
-  stream: boolean
-  stream_options?: { include_usage: true }
+  stream: false
   priority?: number,
   chat_template_kwargs?: { enable_thinking: boolean }
 }
@@ -369,7 +366,15 @@ async function refreshAccessToken(credential: MerlinCredential, origin: string):
     expires_in?: number
     display_name?: string
   }
-  if (typeof token.access_token !== "string" || typeof token.refresh_token !== "string" || typeof token.expires_in !== "number") {
+  if (
+    typeof token.access_token !== "string" ||
+    token.access_token.trim().length === 0 ||
+    typeof token.refresh_token !== "string" ||
+    token.refresh_token.trim().length === 0 ||
+    typeof token.expires_in !== "number" ||
+    !Number.isFinite(token.expires_in) ||
+    token.expires_in <= 0
+  ) {
     throw new Error("Mage token refresh returned an invalid token pair")
   }
 
@@ -378,6 +383,7 @@ async function refreshAccessToken(credential: MerlinCredential, origin: string):
     display_name: token.display_name ?? credential.display_name,
     access_token: token.access_token,
     refresh_token: token.refresh_token,
+    rune_access_token: credential.rune_access_token,
     // The refresh response carries a relative TTL (seconds), mirroring the
     // login flow which stores an absolute expiry in cred.json.
     expires_in: Date.now() + token.expires_in * 1000,
@@ -454,13 +460,14 @@ class MerlinLanguageModel implements LanguageModelV3 {
   /**
    * POST the OpenAI-shaped chat completion request. Handles the genuine
    * per-request timeout, connection-class failures, and raw HTTP errors the
-   * same way regardless of streaming — only the response body's shape
-   * (SSE vs JSON, success vs error_schema) differs afterward.
+   * same way for generation and SDK stream adaptation.
    */
-  private async postChat(
-    options: LanguageModelV3CallOptions,
-    stream: boolean,
-  ): Promise<{ response: Response; promptTokenEstimate: number; payloadDir: string; url: string }> {
+  private async postChat(options: LanguageModelV3CallOptions): Promise<{
+    response: Response
+    promptTokenEstimate: number
+    payloadDir: string
+    url: string
+  }> {
     const credential = await this.freshCredential()
     const url = buildChatCompletionsUrl(this.endpoint, this.clientId, credential.udomain)
     const messages = toOpenAIMessages(options.prompt)
@@ -478,8 +485,7 @@ class MerlinLanguageModel implements LanguageModelV3 {
       priority: 1,
       ...(this.sendServiceId ? { service_id: resolveServiceId(options) } : {}),
       ...(tools.length > 0 ? { tools, tool_choice: "auto" as const } : {}),
-      stream,
-      ...(stream ? { stream_options: { include_usage: true as const } } : {}),
+      stream: false,
     }
 
     const { messages: _messages, ...loggableBody } = body
@@ -501,53 +507,63 @@ class MerlinLanguageModel implements LanguageModelV3 {
 
     // Disable TLS verification for the internal self-signed GAIA endpoint. Bun
     // reads the `tls` option; Node (desktop sidecar) needs an undici dispatcher.
-    let response: Response
-    try {
-      response = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${credential.access_token}`,
-        },
-        body: JSON.stringify(body),
-        signal: AbortSignal.any(signals),
-        ...(await Network.insecureFetchInit()),
-      } as RequestInit)
-    } catch (error) {
-      // A user-initiated cancel must propagate untouched and never be retried.
-      if (options.abortSignal?.aborted) throw error
-      // Only a genuine per-request timeout (AbortSignal.timeout(this.timeoutMs)
-      // firing) is treated as transient and retried — surfaced as a retryable
-      // APICallError so the session-level retry policy (session/retry.ts) backs
-      // off and re-sends automatically.
-      if (timeoutSignal.aborted) {
-        log.warn("request_timeout", { timeoutMs: this.timeoutMs })
+    const send = async (accessToken: string) => {
+      try {
+        return await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify(body),
+          signal: AbortSignal.any(signals),
+          ...(await Network.insecureFetchInit()),
+        } as RequestInit)
+      } catch (error) {
+        // A user-initiated cancel must propagate untouched and never be retried.
+        if (options.abortSignal?.aborted) throw error
+        // Only a genuine per-request timeout (AbortSignal.timeout(this.timeoutMs)
+        // firing) is treated as transient and retried — surfaced as a retryable
+        // APICallError so the session-level retry policy (session/retry.ts) backs
+        // off and re-sends automatically.
+        if (timeoutSignal.aborted) {
+          log.warn("request_timeout", { timeoutMs: this.timeoutMs })
+          throw new APICallError({
+            message: `GAIA request timed out after ${this.timeoutMs}ms`,
+            url,
+            requestBodyValues: {},
+            statusCode: 504,
+            isRetryable: true,
+          })
+        }
+        // Any other fetch failure (connection refused, DNS, TLS, socket reset) is
+        // NOT a timeout — do not retry. isRetryable is false and statusCode is
+        // omitted (undefined) so it can't be picked up by retry.ts's `status >=
+        // 500` fallback, which retries regardless of isRetryable.
+        //
+        // Connection-class failures (e.g. GAIA unreachable off-VPN) get a clear,
+        // runtime-agnostic message instead of Bun's confusing "Was there a typo
+        // in the url or port?" (which fires on plain DNS failure, not just typos).
+        const surfaced = Network.isConnectionFailure(error)
+          ? new Error("Unable to connect. Is the computer able to access the url?")
+          : error
+        log.warn("request_failed", { error: String(surfaced) })
         throw new APICallError({
-          message: `GAIA request timed out after ${this.timeoutMs}ms`,
+          message: `GAIA request failed: ${String(surfaced)}`,
           url,
           requestBodyValues: {},
-          statusCode: 504,
-          isRetryable: true,
+          isRetryable: false,
         })
       }
-      // Any other fetch failure (connection refused, DNS, TLS, socket reset) is
-      // NOT a timeout — do not retry. isRetryable is false and statusCode is
-      // omitted (undefined) so it can't be picked up by retry.ts's `status >=
-      // 500` fallback, which retries regardless of isRetryable.
-      //
-      // Connection-class failures (e.g. GAIA unreachable off-VPN) get a clear,
-      // runtime-agnostic message instead of Bun's confusing "Was there a typo
-      // in the url or port?" (which fires on plain DNS failure, not just typos).
-      const surfaced = Network.isConnectionFailure(error)
-        ? new Error("Unable to connect. Is the computer able to access the url?")
-        : error
-      log.warn("request_failed", { error: String(surfaced) })
-      throw new APICallError({
-        message: `GAIA request failed: ${String(surfaced)}`,
-        url,
-        requestBodyValues: {},
-        isRetryable: false,
-      })
+    }
+
+    let response = await send(credential.access_token)
+    if (response.status === 401) {
+      await response.text().catch(() => "")
+      log.warn("request_unauthorized_refreshing_token", { url })
+      const refreshed = await refreshAccessToken(credential, this.endpoint)
+      await persistCredential(refreshed)
+      response = await send(refreshed.access_token)
     }
 
     if (!response.ok) {
@@ -573,7 +589,7 @@ class MerlinLanguageModel implements LanguageModelV3 {
   }
 
   async doGenerate(options: LanguageModelV3CallOptions): Promise<LanguageModelV3GenerateResult> {
-    const { response, promptTokenEstimate, payloadDir, url } = await this.postChat(options, false)
+    const { response, promptTokenEstimate, payloadDir, url } = await this.postChat(options)
     const data = (await response.json()) as ChatCompletionsResponse
     if (DEBUG_PAYLOADS) Bun.write(`${payloadDir}/response.json`, JSON.stringify(data, null, 2))
 
@@ -602,12 +618,11 @@ class MerlinLanguageModel implements LanguageModelV3 {
   }
 
   async doStream(options: LanguageModelV3CallOptions): Promise<LanguageModelV3StreamResult> {
-    const { response, promptTokenEstimate, payloadDir, url } = await this.postChat(options, true)
+    const { response, promptTokenEstimate, payloadDir, url } = await this.postChat(options)
     const contentType = response.headers.get("content-type") ?? ""
 
     // The gateway validates the request before it starts generating: a
     // business-logic failure (§1.4 DPA-1xx) comes back as one JSON body even
-    // though stream:true was requested, instead of an SSE text/event-stream
     // body. Handle that as a one-shot (non-streaming) result.
     if (contentType.includes("application/json")) {
       const data = (await response.json()) as ChatCompletionsResponse
@@ -659,8 +674,8 @@ class MerlinLanguageModel implements LanguageModelV3 {
         parts.push({ type: "tool-call", toolCallId: tc.id, toolName: tc.function.name, input: tc.function.arguments })
       }
       // Same chars/4 fallback as the real SSE path (see toUnifiedUsage) — this
-      // branch only fires when GAIA answers a `stream: true` request with a
-      // plain JSON body instead of SSE, so `data.usage` may be just as absent.
+      // branch handles the normal `stream: false` response, so `data.usage`
+      // may be absent.
       const outputChars =
         (choice.message.content?.length ?? 0) +
         (choice.message.reasoning?.length ?? 0) +
@@ -823,6 +838,7 @@ export interface MerlinCredential {
   display_name: string
   access_token: string
   refresh_token: string
+  rune_access_token?: string
   /** Absolute expiry in epoch ms (login/refresh both store this form in cred.json). */
   expires_in: number
 }

@@ -537,7 +537,7 @@ const layer = Layer.effect(
               // Lowered to a more conservative estimate so auto-compaction
               // triggers earlier; session/compaction.ts's retry-shrink loop is
               // the real safety net if this is still too high.
-              limit: { context: 500000, output: 65536 },
+              limit: { context: 128000, output: 65536 },
               headers: {},
               family: "qwen",
               release_date: "2025-07-01",
