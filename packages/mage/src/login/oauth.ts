@@ -24,6 +24,7 @@ export interface MageCredential {
   display_name: string
   access_token: string
   refresh_token: string
+  rune_access_token?: string
   expires_in: number
 }
 
@@ -37,7 +38,7 @@ function pkcePair() {
   return { verifier, challenge }
 }
 
-function runeOrigin() {
+export function runeOrigin() {
   return (process.env.MAGE_OAUTH_BASE_URL || process.env.MAGE_RUNE_OAUTH_BASE_URL || DEFAULT_RUNE_ORIGIN).replace(/\/+$/, "")
 }
 
@@ -61,6 +62,7 @@ export function credentialFromTokenResponse(value: unknown): MageCredential {
     display_name: value.display_name as string,
     access_token: value.access_token as string,
     refresh_token: value.refresh_token as string,
+    ...(typeof value.rune_access_token === "string" ? { rune_access_token: value.rune_access_token } : {}),
     expires_in: value.expires_in,
   }
 }

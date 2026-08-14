@@ -16,6 +16,7 @@ describe("Rune OAuth credential mapping", () => {
       credentialFromTokenResponse({
         access_token: "access",
         refresh_token: "refresh",
+        rune_access_token: "rune-access",
         token_type: "Bearer",
         expires_in: 3600,
         udomain: "u012345",
@@ -26,6 +27,7 @@ describe("Rune OAuth credential mapping", () => {
       display_name: "Monitoring MBB MBB",
       access_token: "access",
       refresh_token: "refresh",
+      rune_access_token: "rune-access",
       expires_in: 3600,
     })
     expect(isMageCredential({ udomain: "u", display_name: "User", access_token: "a", refresh_token: "r", expires_in: 3600 })).toBe(true)
@@ -41,6 +43,7 @@ describe("Rune OAuth credential mapping", () => {
         JSON.stringify({
           access_token: "access",
           refresh_token: "refresh",
+          rune_access_token: "rune-access",
           expires_in: 3600,
           udomain: "u012345",
           display_name: "User",
@@ -54,6 +57,7 @@ describe("Rune OAuth credential mapping", () => {
       display_name: "User",
       access_token: "access",
       refresh_token: "refresh",
+      rune_access_token: "rune-access",
       expires_in: expect.any(Number),
     })
     expect(request?.url).toBe("https://rune.example/api/oauth/token")
