@@ -12,11 +12,19 @@ import { useEditorContext } from "../context/editor"
 import { useTerminalDimensions } from "@opentui/solid"
 import { useTuiConfig } from "../config"
 import { HomeSessionDestinationProvider } from "./home/session-destination"
+import { TextAttributes } from "@opentui/core"
+import { useTheme } from "../context/theme"
+import { useProject } from "../context/project"
+import path from "path"
 
 let once = false
 const placeholder = {
   normal: ["Fix a TODO in the codebase", "What is the tech stack of this project?", "Fix broken tests"],
   shell: ["ls -la", "git status", "pwd"],
+}
+
+export function homeDisplayName(credential: { readonly display_name: string } | undefined) {
+  return credential?.display_name.trim() || "builder"
 }
 
 export function Home() {
@@ -27,9 +35,14 @@ export function Home() {
   const [ref, setRef] = createSignal<PromptRef | undefined>()
   const args = useArgs()
   const local = useLocal()
+  const project = useProject()
   const editor = useEditorContext()
   const dimensions = useTerminalDimensions()
   const tuiConfig = useTuiConfig()
+  const { theme } = useTheme()
+  const wide = createMemo(() => dimensions().width >= 88)
+  const displayName = createMemo(() => homeDisplayName(sync.data.config.credential))
+  const directory = createMemo(() => path.basename(project.instance.path().directory) || "/")
   const promptMaxWidth = createMemo(() => {
     const configured = tuiConfig.prompt?.max_width
     if (configured === "auto") return Math.max(75, Math.floor(dimensions().width * 0.7))
@@ -71,19 +84,41 @@ export function Home() {
     <HomeSessionDestinationProvider>
       <box flexGrow={1} alignItems="center" paddingLeft={2} paddingRight={2}>
         <box flexGrow={1} minHeight={0} />
-        <box height={4} minHeight={0} flexShrink={1} />
-        <box flexShrink={0}>
-          <pluginRuntime.Slot name="home_logo" mode="replace">
-            <Logo />
-          </pluginRuntime.Slot>
+        <box width="100%" maxWidth={promptMaxWidth()} flexShrink={0}>
+          <box
+            flexDirection={wide() ? "row" : "column"}
+            alignItems={wide() ? "center" : "flex-start"}
+            justifyContent={wide() ? "center" : "flex-start"}
+          >
+            <box flexShrink={0}>
+              <pluginRuntime.Slot name="home_logo" mode="replace">
+                <Logo />
+              </pluginRuntime.Slot>
+            </box>
+            <box flexDirection="row" paddingLeft={wide() ? 4 : 0} paddingTop={wide() ? 0 : 2}>
+              <box width={1} backgroundColor={theme.primary} marginRight={2} />
+              <box flexDirection="column" flexShrink={1}>
+                <text fg={theme.textMuted} attributes={TextAttributes.BOLD}>
+                  MAGE / LOCAL WORKBENCH
+                </text>
+                <text fg={theme.text} attributes={TextAttributes.BOLD} wrapMode="word">
+                  Good to see you, {displayName()}.
+                </text>
+                <text wrapMode="word">
+                  <span style={{ fg: theme.textMuted }}>Working on: </span>
+                  <span style={{ fg: theme.text, bold: true }}>{directory()}</span>
+                  <span style={{ fg: theme.textMuted }}> {sync.data.vcs?.branch ?? "no branch"}</span>
+                </text>
+              </box>
+            </box>
+          </box>
+          <box width="100%" zIndex={1000} marginTop={3} flexShrink={0}>
+            <pluginRuntime.Slot name="home_prompt" mode="replace" ref={bind}>
+              <Prompt ref={bind} right={<pluginRuntime.Slot name="home_prompt_right" />} placeholders={placeholder} />
+            </pluginRuntime.Slot>
+          </box>
+          <pluginRuntime.Slot name="home_bottom" />
         </box>
-        <box height={1} minHeight={0} flexShrink={1} />
-        <box width="100%" maxWidth={promptMaxWidth()} zIndex={1000} paddingTop={1} flexShrink={0}>
-          <pluginRuntime.Slot name="home_prompt" mode="replace" ref={bind}>
-            <Prompt ref={bind} right={<pluginRuntime.Slot name="home_prompt_right" />} placeholders={placeholder} />
-          </pluginRuntime.Slot>
-        </box>
-        <pluginRuntime.Slot name="home_bottom" />
         <box flexGrow={1} minHeight={0} />
         <Toast />
       </box>
