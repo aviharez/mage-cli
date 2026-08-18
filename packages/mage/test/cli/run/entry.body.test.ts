@@ -355,6 +355,29 @@ describe("run entry body", () => {
     })
   })
 
+  test("renders the command after an execution rewrite", () => {
+    expect(
+      entryBody(
+        toolCommit({
+          tool: "bash",
+          phase: "progress",
+          text: ["/tmp/demo", "rtk git status", "On branch demo", ""].join("\n"),
+          state: {
+            status: "completed",
+            input: { command: "git status", workdir: "/tmp/demo" },
+            output: ["/tmp/demo", "rtk git status", "On branch demo", ""].join("\n"),
+            title: "rtk git status",
+            metadata: { exitCode: 0 },
+            time: { start: 1, end: 2 },
+          },
+        }),
+      ),
+    ).toEqual({
+      type: "text",
+      content: "\nOn branch demo",
+    })
+  })
+
   test("renders command-only bash starts without the shell header", () => {
     expect(
       entryBody(

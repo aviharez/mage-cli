@@ -10,7 +10,6 @@
 //
 // Updates:
 //   - All packages/[pkg]/package.json (and packages/sdk/js/package.json) with a "version" field
-//   - README.md                            → Current version: **vX.Y.Z**
 
 // @ts-ignore — semver types live in packages/script; script runs fine via bun
 import semver from "semver"
@@ -77,30 +76,11 @@ function escapeRegex(s: string) {
 }
 
 // ── 1. Update all packages/*/package.json ────────────────────────────────────
-const glob = new Bun.Glob("packages/*/package.json")
-const pkgPaths = [
-  ...(await Array.fromAsync(glob.scan({ cwd: root, absolute: true }))),
-  path.join(root, "packages/sdk/js/package.json"),
-]
+const glob = new Bun.Glob("packages/**/package.json")
+const pkgPaths = await Array.fromAsync(glob.scan({ cwd: root, absolute: true })) as string[]
 
 for (const p of pkgPaths.sort()) {
   await bumpPackageJson(p)
-}
-
-// ── 2. README.md → Current version: **vX.Y.Z** ───────────────────────────────
-const readmePath = path.join(root, "README.md")
-const readmeText = await Bun.file(readmePath).text()
-const oldReadmeMatch = readmeText.match(/Current version:\s*\*\*v(\d+\.\d+\.\d+[^*]*)\*\*/)
-if (oldReadmeMatch) {
-  const oldFull = `v${oldReadmeMatch[1]}`
-  const updated = readmeText.replace(
-    /Current version:\s*\*\*v\d+\.\d+\.\d+[^*]*\*\*/,
-    `Current version: **v${targetVersion}**`,
-  )
-  await Bun.write(readmePath, updated)
-  console.log(`  ✓ README.md  ${oldFull} → v${targetVersion}`)
-} else {
-  console.warn(`  ⚠ README.md — "Current version" badge not found, skipped`)
 }
 
 console.log(`\nDone. New version: ${targetVersion}`)

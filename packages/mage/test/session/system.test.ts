@@ -84,10 +84,27 @@ const it = testEffect(
 )
 
 describe("session.system", () => {
-  test("selects the Meta prompt for Muse Spark model IDs", () => {
-    expect(SystemPrompt.provider({ api: { id: "meta/muse-spark-preview" } } as Provider.Model)[0]).toContain(
-      "Meta Muse Spark",
-    )
+  test("uses the Mage Qwen prompt for every model", () => {
+    const prompt = SystemPrompt.provider({ api: { id: "QWEN3-CODER" } } as Provider.Model)[0]
+    const fallbackModelPrompt = SystemPrompt.provider({ api: { id: "meta/muse-spark-preview" } } as Provider.Model)[0]
+
+    expect(fallbackModelPrompt).toBe(prompt)
+    expect(prompt).toContain("You are Mage")
+    expect(prompt).not.toContain("Qwen Code")
+    expect(prompt).not.toContain("OpenCode")
+    expect(prompt).not.toContain("Alibaba")
+    expect(prompt).not.toContain("Gemini")
+
+    for (const tool of [
+      "bash",
+      "read",
+      "edit",
+      "glob",
+      "grep",
+      "task",
+    ]) {
+      expect(prompt).toContain(`${tool} arguments:`)
+    }
   })
 
   it.effect("skills output is sorted by name and stable across calls", () =>

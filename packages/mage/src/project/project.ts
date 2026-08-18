@@ -1,5 +1,5 @@
 import { LayerNode } from "@mybcabisnis/mage-core/effect/layer-node"
-import { and, eq, sql } from "drizzle-orm"
+import { and, eq, ne, sql } from "drizzle-orm"
 import { Database } from "@mybcabisnis/mage-core/database/database"
 import { ProjectDirectoryTable, ProjectTable } from "@mybcabisnis/mage-core/project/sql"
 import { ProjectDirectories } from "@mybcabisnis/mage-core/project/directories"
@@ -218,7 +218,21 @@ const layer = Layer.effect(
 
       // Phase 2: upsert
       const projectID = ProjectV2.ID.make(data.id)
-      yield* migrateProjectId(data.previous ? ProjectV2.ID.make(data.previous) : undefined, projectID)
+      const previous = data.previous ? ProjectV2.ID.make(data.previous) : undefined
+      const sameWorktree =
+        projectID === ProjectV2.ID.global
+          ? []
+          : yield* db
+              .select({ id: ProjectTable.id })
+              .from(ProjectTable)
+              .where(and(eq(ProjectTable.worktree, AbsolutePath.make(worktree)), ne(ProjectTable.id, projectID)))
+              .all()
+              .pipe(Effect.orDie)
+      yield* Effect.forEach(
+        [...new Set([previous, ...sameWorktree.map((row) => row.id)].filter((id) => id !== undefined))],
+        (oldID) => migrateProjectId(oldID, projectID),
+        { concurrency: 1, discard: true },
+      )
       const row = yield* db.select().from(ProjectTable).where(eq(ProjectTable.id, projectID)).get().pipe(Effect.orDie)
       const existing = row
         ? fromRow(row)

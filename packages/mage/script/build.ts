@@ -96,6 +96,44 @@ const RG_PLATFORMS: Record<string, { platform: string; binary: string; extension
   "win32-x64": { platform: "x86_64-pc-windows-msvc", binary: "rg.exe", extension: "zip" },
 }
 
+const RTK_VERSION = "0.44.2"
+// rtk ships no aarch64-pc-windows-msvc build (upstream gap)
+const RTK_PLATFORMS: Record<string, { platform: string; binary: string; extension: "tar.gz" | "zip" }> = {
+  "darwin-arm64": { platform: "aarch64-apple-darwin", binary: "rtk", extension: "tar.gz" },
+  "darwin-x64": { platform: "x86_64-apple-darwin", binary: "rtk", extension: "tar.gz" },
+  "linux-arm64": { platform: "aarch64-unknown-linux-gnu", binary: "rtk", extension: "tar.gz" },
+  "linux-x64": { platform: "x86_64-unknown-linux-musl", binary: "rtk", extension: "tar.gz" },
+  "win32-x64": { platform: "x86_64-pc-windows-msvc", binary: "rtk.exe", extension: "zip" },
+}
+
+async function downloadRtk(os: string, arch: string, destDir: string) {
+  const config = RTK_PLATFORMS[`${os}-${arch}`]
+  if (!config) return
+
+  const cacheDir = path.resolve(dir, ".rtk-cache")
+  const cachedBin = path.join(cacheDir, `${config.platform}-${config.binary}`)
+  if (!fs.existsSync(cachedBin)) {
+    const filename = `rtk-${config.platform}.${config.extension}`
+    const archivePath = path.join(cacheDir, filename)
+    const extractDir = path.join(cacheDir, `extract-${config.platform}`)
+    await $`mkdir -p ${cacheDir} ${extractDir}`
+    const response = await fetch(
+      `https://github.com/rtk-ai/rtk/releases/download/v${RTK_VERSION}/${filename}`,
+    )
+    if (!response.ok) throw new Error(`Failed to download rtk for ${os}-${arch}: ${response.status}`)
+    await Bun.write(archivePath, await response.arrayBuffer())
+    if (config.extension === "tar.gz") await $`tar -xzf ${archivePath} -C ${extractDir}`
+    if (config.extension === "zip") await $`unzip -o ${archivePath} -d ${extractDir}`
+    // rtk archives contain the bare binary at the root (unlike ripgrep's nested folder)
+    fs.copyFileSync(path.join(extractDir, config.binary), cachedBin)
+    if (os !== "win32") fs.chmodSync(cachedBin, 0o755)
+  }
+
+  const dest = path.join(destDir, config.binary)
+  fs.copyFileSync(cachedBin, dest)
+  if (os !== "win32") fs.chmodSync(dest, 0o755)
+}
+
 async function downloadRg(os: string, arch: string, destDir: string) {
   const config = RG_PLATFORMS[`${os}-${arch}`]
   if (!config) return
@@ -211,6 +249,19 @@ for (const item of targets) {
 
   await $`rm -rf ./dist/${name}/bin/tui`
   await downloadRg(item.os, item.arch, `dist/${name}/bin`)
+  await downloadRtk(item.os, item.arch, `dist/${name}/bin`)
+  const binDir = path.resolve(`dist/${name}/bin`)
+  for (const binary of [item.os === "win32" ? "rg.exe" : "rg", item.os === "win32" ? "rtk.exe" : "rtk"]) {
+    if (!fs.existsSync(path.join(binDir, binary))) throw new Error(`${name} is missing bundled ${binary}`)
+  }
+  if (item.os === process.platform && item.arch === process.arch && !item.abi) {
+    const rtk = path.join(binDir, item.os === "win32" ? "rtk.exe" : "rtk")
+    const result = await $`${rtk} rewrite ${"git status"}`.quiet().nothrow()
+    const rewritten = result.stdout.toString().trim()
+    if (rewritten !== "rtk git status") {
+      throw new Error(`bundled RTK rewrite failed: expected "rtk git status", got "${rewritten}"`)
+    }
+  }
   await Bun.file(`dist/${name}/package.json`).write(
     JSON.stringify(
       {

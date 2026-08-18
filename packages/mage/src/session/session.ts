@@ -549,6 +549,8 @@ const layer: Layer.Layer<
       const ctx = yield* InstanceState.context
       return yield* listByProject(db, {
         projectID: ctx.project.id,
+        worktree: ctx.worktree,
+        sandboxes: ctx.project.sandboxes,
         experimentalWorkspaces: flags.experimentalWorkspaces,
         ...input,
       })
@@ -958,6 +960,8 @@ function listByProject(
   db: Database.Interface["db"],
   input: ListInput & {
     projectID: ProjectV2.ID
+    worktree: string
+    sandboxes: readonly string[]
     experimentalWorkspaces: boolean
   },
 ) {
@@ -979,6 +983,15 @@ function listByProject(
           : or(...conds)!,
       )
     }
+  } else if (input.scope === "project" && input.worktree !== "/") {
+    conditions.push(
+      or(
+        ...[input.worktree, ...input.sandboxes].flatMap((directory) => [
+          eq(SessionTable.directory, directory),
+          like(SessionTable.directory, sql.param(`${directory}/%`, SessionTable.directory)),
+        ]),
+      )!,
+    )
   } else if (input.scope !== "project") {
     if (input.directory) {
       conditions.push(eq(SessionTable.directory, input.directory))

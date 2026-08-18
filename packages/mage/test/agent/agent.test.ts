@@ -52,6 +52,9 @@ it.instance("returns default native agents when no config", () =>
     expect(names).toContain("plan")
     expect(names).toContain("general")
     expect(names).toContain("explore")
+    expect(names).toContain("worker")
+    expect(names).toContain("verify")
+    expect(names).toContain("scout")
     expect(names).toContain("compaction")
     expect(names).toContain("title")
     expect(names).toContain("summary")
@@ -117,6 +120,36 @@ it.instance("explore agent denies edit and write", () =>
     expect(evalPerm(explore, "edit")).toBe("deny")
     expect(evalPerm(explore, "write")).toBe("deny")
     expect(evalPerm(explore, "todowrite")).toBe("deny")
+  }),
+)
+
+it.instance("specialized subagents have focused permissions and compact handoffs", () =>
+  Effect.gen(function* () {
+    const general = yield* load((svc) => svc.get("general"))
+    const explore = yield* load((svc) => svc.get("explore"))
+    const worker = yield* load((svc) => svc.get("worker"))
+    const verify = yield* load((svc) => svc.get("verify"))
+    const scout = yield* load((svc) => svc.get("scout"))
+
+    expect(general?.prompt).toContain("disposable")
+    expect(explore?.prompt).toContain("disposable")
+    expect(worker?.mode).toBe("subagent")
+    expect(evalPerm(worker, "edit")).toBe("allow")
+    expect(worker?.prompt).toContain("disposable")
+
+    expect(verify?.mode).toBe("subagent")
+    expect(evalPerm(verify, "read")).toBe("allow")
+    expect(evalPerm(verify, "bash")).toBe("allow")
+    expect(evalPerm(verify, "edit")).toBe("deny")
+    expect(evalPerm(verify, "webfetch")).toBe("deny")
+    expect(verify?.prompt).toContain("disposable")
+
+    expect(scout?.mode).toBe("subagent")
+    expect(evalPerm(scout, "webfetch")).toBe("allow")
+    expect(evalPerm(scout, "websearch")).toBe("allow")
+    expect(evalPerm(scout, "bash")).toBe("deny")
+    expect(evalPerm(scout, "read")).toBe("deny")
+    expect(scout?.prompt).toContain("disposable")
   }),
 )
 

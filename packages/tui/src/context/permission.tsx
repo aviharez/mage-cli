@@ -2,24 +2,30 @@ import { createStore } from "solid-js/store"
 import { useArgs } from "./args"
 import { createSimpleContext } from "./helper"
 
-export type PermissionMode = "auto" | "normal"
-
 export const { use: usePermission, provider: PermissionProvider } = createSimpleContext({
   name: "Permission",
   init: () => {
     const args = useArgs()
-    const [store, setStore] = createStore<{ mode: PermissionMode }>({
-      mode: args.auto ? "auto" : "normal",
+    const [store, setStore] = createStore<{ yolo: boolean; sessionID?: string }>({
+      yolo: false,
     })
     return {
-      get mode() {
-        return store.mode
+      mode: args.auto ? ("auto" as const) : ("normal" as const),
+      isYolo(sessionID?: string) {
+        if (!store.yolo) return false
+        if (store.sessionID === undefined) return true
+        return store.sessionID === sessionID
       },
-      set(mode: PermissionMode) {
-        setStore("mode", mode)
+      toggleYolo(sessionID?: string) {
+        if (store.yolo && store.sessionID === sessionID) {
+          setStore({ yolo: false, sessionID: undefined })
+          return false
+        }
+        setStore({ yolo: true, sessionID })
+        return true
       },
-      toggle() {
-        setStore("mode", (mode) => (mode === "auto" ? "normal" : "auto"))
+      bindYolo(sessionID: string) {
+        if (store.yolo && store.sessionID === undefined) setStore("sessionID", sessionID)
       },
     }
   },

@@ -25,7 +25,7 @@ export function createDialogSessionListQuery(input: { search?: string; filter: S
   const search = input.search?.trim()
   return {
     roots: true,
-    limit: search ? 30 : 100,
+    limit: search ? 30 : 1000,
     ...(search ? { search } : {}),
     ...input.filter,
   }

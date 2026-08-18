@@ -505,14 +505,13 @@ const layer = Layer.effect(
         const database = mapValues(catalog, toPublicInfo)
 
         // Hardcoded Merlin/GAIA provider — always available, no mage.jsonc entry required.
-        // Users may optionally add provider.merlin.options.username to mage.jsonc for domain_id.
         database[ProviderV2.ID.make("merlin")] = {
           id: ProviderV2.ID.make("merlin"),
           name: "",
           source: "custom",
           env: [],
           key: undefined,
-          options: {},
+          options: cfg.credential ? { credential: cfg.credential } : {},
           models: {
             default: {
               id: ModelV2.ID.make("default"),

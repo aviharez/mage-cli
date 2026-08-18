@@ -1,13 +1,37 @@
-import { afterEach, describe, expect, test } from "bun:test"
+import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import type { LanguageModelV3CallOptions } from "@ai-sdk/provider"
 import { streamText } from "ai"
+import path from "path"
+import os from "os"
+import { Global } from "@mybcabisnis/mage-core/global"
+import { credentialPath } from "@/login/oauth"
 import { createMerlin } from "@/provider/merlin"
 
 const CALL_OPTIONS: LanguageModelV3CallOptions = {
   prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
 }
 
+const TEST_CREDENTIAL = {
+  udomain: "U073030",
+  display_name: "Test User",
+  access_token: "access-token",
+  refresh_token: "refresh-token",
+  expires_in: Date.now() + 3600_000,
+}
+
 const originalFetch = globalThis.fetch
+const originalConfigPath = Global.Path.config
+
+beforeEach(() => {
+  // Point the cred.json reader at a non-existent path so tests never pick up
+  // the developer's real ~/.mage/data/cred.json.
+  Global.Path.config = path.join(os.tmpdir(), `mage-merlin-${Math.random().toString(36).slice(2)}`)
+})
+
+afterEach(() => {
+  globalThis.fetch = originalFetch
+  Global.Path.config = originalConfigPath
+})
 
 function mockFetchRejecting(error: unknown) {
   globalThis.fetch = (() => Promise.reject(error)) as unknown as typeof fetch
@@ -67,7 +91,7 @@ describe("Merlin provider — connection failure messaging", () => {
     err.code = "ENOTFOUND"
     mockFetchRejecting(err)
 
-    const model = createMerlin({ baseURL: "https://unreachable.invalid/gaia" }).languageModel("default")
+    const model = createMerlin({ baseURL: "https://unreachable.invalid/gaia", credential: TEST_CREDENTIAL }).languageModel("default")
 
     await expect(model.doGenerate(CALL_OPTIONS)).rejects.toMatchObject({
       message: "GAIA request failed: Error: Unable to connect. Is the computer able to access the url?",
@@ -78,7 +102,7 @@ describe("Merlin provider — connection failure messaging", () => {
   test("normalizes Bun's raw 'typo in the url or port' message even without an error code", async () => {
     mockFetchRejecting(new Error("Was there a typo in the url or port?"))
 
-    const model = createMerlin({ baseURL: "https://unreachable.invalid/gaia" }).languageModel("default")
+    const model = createMerlin({ baseURL: "https://unreachable.invalid/gaia", credential: TEST_CREDENTIAL }).languageModel("default")
 
     await expect(model.doGenerate(CALL_OPTIONS)).rejects.toMatchObject({
       message: "GAIA request failed: Error: Unable to connect. Is the computer able to access the url?",
@@ -89,7 +113,7 @@ describe("Merlin provider — connection failure messaging", () => {
   test("leaves unrelated fetch failures unmodified", async () => {
     mockFetchRejecting(new Error("boom: unexpected TLS failure"))
 
-    const model = createMerlin({ baseURL: "https://unreachable.invalid/gaia" }).languageModel("default")
+    const model = createMerlin({ baseURL: "https://unreachable.invalid/gaia", credential: TEST_CREDENTIAL }).languageModel("default")
 
     await expect(model.doGenerate(CALL_OPTIONS)).rejects.toMatchObject({
       message: "GAIA request failed: Error: boom: unexpected TLS failure",
@@ -99,16 +123,19 @@ describe("Merlin provider — connection failure messaging", () => {
 })
 
 describe("Merlin provider — /chat/completions request shape", () => {
-  test("builds the positional URL and an OpenAI-shaped streaming body with tools", async () => {
+  test("builds the positional URL and an OpenAI-shaped non-streaming body with tools", async () => {
     let capturedUrl = ""
     let capturedBody: Record<string, unknown> = {}
     mockFetch((url, init) => {
       capturedUrl = String(url)
       capturedBody = JSON.parse(init.body as string)
-      return sseResponse(['{"choices":[{"delta":{"content":"hi"},"finish_reason":"stop"}]}'])
+      return jsonResponse({ choices: [{ finish_reason: "stop", message: { role: "assistant", content: "hi" } }] })
     })
 
-    const model = createMerlin({ baseURL: "https://gaia.example", username: "U073030" }).languageModel("default")
+    const model = createMerlin({
+      baseURL: "https://gaia.example",
+      credential: TEST_CREDENTIAL,
+    }).languageModel("default")
     await model.doStream({
       prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
       tools: [{ type: "function", name: "Read", description: "read a file", inputSchema: { type: "object", properties: {} } }],
@@ -117,12 +144,66 @@ describe("Merlin provider — /chat/completions request shape", () => {
     expect(capturedUrl).toBe(
       "https://gaia.example/MAGEDEV/none/U073030/none/none/false/vllm-text-generation/chat/completions",
     )
-    expect(capturedBody["stream"]).toBe(true)
-    expect(capturedBody["stream_options"]).toEqual({ include_usage: true })
+    expect(capturedBody["stream"]).toBe(false)
+    expect(capturedBody["stream_options"]).toBeUndefined()
     expect(capturedBody["tools"]).toEqual([
       { type: "function", function: { name: "Read", description: "read a file", parameters: { type: "object", properties: {} } } },
     ])
     expect(capturedBody["tool_choice"]).toBe("auto")
+  })
+})
+
+describe("Merlin provider — token refresh", () => {
+  test("rotates an expired credential before sending the completion", async () => {
+    const requests: Array<{ url: string; init: RequestInit }> = []
+    mockFetch((url, init) => {
+      requests.push({ url: String(url), init })
+      if (String(url).endsWith("/auth/refresh")) {
+        return jsonResponse({ access_token: "new-access", refresh_token: "new-refresh", expires_in: 3600 })
+      }
+      return jsonResponse({ choices: [{ finish_reason: "stop", message: { role: "assistant", content: "hello" } }] })
+    })
+
+    const model = createMerlin({
+      baseURL: "https://gaia.example",
+      credential: { ...TEST_CREDENTIAL, expires_in: Date.now() - 1 },
+    }).languageModel("default")
+    await expect(model.doGenerate(CALL_OPTIONS)).resolves.toMatchObject({ content: [{ type: "text", text: "hello" }] })
+
+    expect(requests).toHaveLength(2)
+    expect(requests[0]?.url).toBe("https://gaia.example/auth/refresh")
+    expect(JSON.parse(requests[0]?.init.body as string)).toEqual({ refresh_token: "refresh-token" })
+    expect(new Headers(requests[1]?.init.headers).get("Authorization")).toBe("Bearer new-access")
+    expect(JSON.parse(requests[1]?.init.body as string).stream).toBe(false)
+
+    const saved = JSON.parse(await Bun.file(credentialPath()).text())
+    expect(saved).toMatchObject({ access_token: "new-access", refresh_token: "new-refresh", udomain: "U073030" })
+    expect(saved.expires_in).toBeGreaterThan(Date.now())
+  })
+
+  test("refreshes after a 401 and retries the completion once", async () => {
+    const requests: Array<{ url: string; init: RequestInit }> = []
+    let chatAttempts = 0
+    mockFetch((url, init) => {
+      requests.push({ url: String(url), init })
+      if (String(url).endsWith("/auth/refresh")) {
+        return jsonResponse({ access_token: "new-access", refresh_token: "new-refresh", expires_in: 3600 })
+      }
+      chatAttempts += 1
+      if (chatAttempts === 1) return new Response("expired", { status: 401 })
+      return jsonResponse({ choices: [{ finish_reason: "stop", message: { role: "assistant", content: "retried" } }] })
+    })
+
+    const model = createMerlin({ baseURL: "https://gaia.example", credential: TEST_CREDENTIAL }).languageModel("default")
+    await expect(model.doGenerate(CALL_OPTIONS)).resolves.toMatchObject({ content: [{ type: "text", text: "retried" }] })
+
+    expect(requests).toHaveLength(3)
+    expect(requests[0]?.url).toContain("/chat/completions")
+    expect(requests[1]?.url).toBe("https://gaia.example/auth/refresh")
+    expect(requests[2]?.url).toContain("/chat/completions")
+    expect(new Headers(requests[0]?.init.headers).get("Authorization")).toBe("Bearer access-token")
+    expect(new Headers(requests[2]?.init.headers).get("Authorization")).toBe("Bearer new-access")
+    expect(chatAttempts).toBe(2)
   })
 })
 
@@ -135,7 +216,7 @@ describe("Merlin provider — SSE streaming", () => {
       ]),
     )
 
-    const model = createMerlin({ baseURL: "https://gaia.example" }).languageModel("default")
+    const model = createMerlin({ baseURL: "https://gaia.example", credential: TEST_CREDENTIAL }).languageModel("default")
     const { stream } = await model.doStream(CALL_OPTIONS)
     const parts = await collectStream(stream)
 
@@ -152,7 +233,7 @@ describe("Merlin provider — SSE streaming", () => {
       ]),
     )
 
-    const model = createMerlin({ baseURL: "https://gaia.example" }).languageModel("default")
+    const model = createMerlin({ baseURL: "https://gaia.example", credential: TEST_CREDENTIAL }).languageModel("default")
     const { stream } = await model.doStream(CALL_OPTIONS)
     const parts = await collectStream(stream)
 
@@ -173,7 +254,7 @@ describe("Merlin provider — DPA-1xx error scenario mapping (Techdoc §1.4)", (
       }),
     )
 
-    const model = createMerlin({ baseURL: "https://gaia.example" }).languageModel("default")
+    const model = createMerlin({ baseURL: "https://gaia.example", credential: TEST_CREDENTIAL }).languageModel("default")
     await expect(model.doGenerate(CALL_OPTIONS)).rejects.toMatchObject({
       message: expect.stringContaining("context_length_exceeded"),
       statusCode: 413,
@@ -189,7 +270,7 @@ describe("Merlin provider — DPA-1xx error scenario mapping (Techdoc §1.4)", (
       }),
     )
 
-    const model = createMerlin({ baseURL: "https://gaia.example" }).languageModel("default")
+    const model = createMerlin({ baseURL: "https://gaia.example", credential: TEST_CREDENTIAL }).languageModel("default")
     await expect(model.doGenerate(CALL_OPTIONS)).rejects.toMatchObject({
       message: expect.stringContaining("context_length_exceeded"),
       statusCode: 413,
@@ -205,7 +286,7 @@ describe("Merlin provider — DPA-1xx error scenario mapping (Techdoc §1.4)", (
       }),
     )
 
-    const model = createMerlin({ baseURL: "https://gaia.example" }).languageModel("default")
+    const model = createMerlin({ baseURL: "https://gaia.example", credential: TEST_CREDENTIAL }).languageModel("default")
     await expect(model.doGenerate(CALL_OPTIONS)).rejects.toMatchObject({
       message: "GAIA Error: 500 Internal Server Error\nERROR 500 Internal Server Error",
     })
@@ -219,7 +300,7 @@ describe("Merlin provider — DPA-1xx error scenario mapping (Techdoc §1.4)", (
       }),
     )
 
-    const model = createMerlin({ baseURL: "https://gaia.example" }).languageModel("default")
+    const model = createMerlin({ baseURL: "https://gaia.example", credential: TEST_CREDENTIAL }).languageModel("default")
     await expect(model.doGenerate(CALL_OPTIONS)).rejects.toMatchObject({ isRetryable: true, statusCode: 503 })
   })
 
@@ -231,7 +312,7 @@ describe("Merlin provider — DPA-1xx error scenario mapping (Techdoc §1.4)", (
       }),
     )
 
-    const model = createMerlin({ baseURL: "https://gaia.example" }).languageModel("default")
+    const model = createMerlin({ baseURL: "https://gaia.example", credential: TEST_CREDENTIAL }).languageModel("default")
     await expect(model.doGenerate(CALL_OPTIONS)).rejects.toMatchObject({ isRetryable: true, statusCode: 503 })
   })
 
@@ -248,7 +329,7 @@ describe("Merlin provider — DPA-1xx error scenario mapping (Techdoc §1.4)", (
       }),
     )
 
-    const model = createMerlin({ baseURL: "https://gaia.example" }).languageModel("default")
+    const model = createMerlin({ baseURL: "https://gaia.example", credential: TEST_CREDENTIAL }).languageModel("default")
     await expect(model.doGenerate(CALL_OPTIONS)).rejects.toMatchObject({
       message: expect.stringContaining("Maaf, saya tidak dapat memproses file dengan format tersebut"),
       isRetryable: false,
@@ -263,7 +344,7 @@ describe("Merlin provider — DPA-1xx error scenario mapping (Techdoc §1.4)", (
       }),
     )
 
-    const model = createMerlin({ baseURL: "https://gaia.example" }).languageModel("default")
+    const model = createMerlin({ baseURL: "https://gaia.example", credential: TEST_CREDENTIAL }).languageModel("default")
     const result = await model.doGenerate(CALL_OPTIONS)
     expect(result.content).toEqual([{ type: "text", text: "hello" }])
   })
@@ -287,7 +368,7 @@ describe("Merlin provider — doGenerate native tool_calls (§1.3.2)", () => {
       }),
     )
 
-    const model = createMerlin({ baseURL: "https://gaia.example" }).languageModel("default")
+    const model = createMerlin({ baseURL: "https://gaia.example", credential: TEST_CREDENTIAL }).languageModel("default")
     const result = await model.doGenerate(CALL_OPTIONS)
 
     expect(result.content).toEqual([{ type: "tool-call", toolCallId: "call_9", toolName: "Bash", input: '{"command":"ls"}' }])
@@ -310,7 +391,7 @@ describe("Merlin provider — reasoning (§1.3.2 thinking-mode chain-of-thought)
       }),
     )
 
-    const model = createMerlin({ baseURL: "https://gaia.example" }).languageModel("default")
+    const model = createMerlin({ baseURL: "https://gaia.example", credential: TEST_CREDENTIAL }).languageModel("default")
     const result = await model.doGenerate(CALL_OPTIONS)
 
     expect(result.content).toEqual([
@@ -328,7 +409,7 @@ describe("Merlin provider — reasoning (§1.3.2 thinking-mode chain-of-thought)
       ]),
     )
 
-    const model = createMerlin({ baseURL: "https://gaia.example" }).languageModel("default")
+    const model = createMerlin({ baseURL: "https://gaia.example", credential: TEST_CREDENTIAL }).languageModel("default")
     const { stream } = await model.doStream(CALL_OPTIONS)
     const parts = await collectStream(stream)
 
@@ -357,7 +438,7 @@ describe("Merlin provider — context-window usage accuracy", () => {
       ]),
     )
 
-    const model = createMerlin({ baseURL: "https://gaia.example" }).languageModel("default")
+    const model = createMerlin({ baseURL: "https://gaia.example", credential: TEST_CREDENTIAL }).languageModel("default")
     const result = streamText({ model, prompt: "hi" })
     const events = []
     for await (const event of result.fullStream) events.push(event)
@@ -375,7 +456,7 @@ describe("Merlin provider — context-window usage accuracy", () => {
       ]),
     )
 
-    const model = createMerlin({ baseURL: "https://gaia.example" }).languageModel("default")
+    const model = createMerlin({ baseURL: "https://gaia.example", credential: TEST_CREDENTIAL }).languageModel("default")
     const { stream } = await model.doStream(CALL_OPTIONS)
     const parts = await collectStream(stream)
 
@@ -391,7 +472,7 @@ describe("Merlin provider — context-window usage accuracy", () => {
       ]),
     )
 
-    const model = createMerlin({ baseURL: "https://gaia.example" }).languageModel("default")
+    const model = createMerlin({ baseURL: "https://gaia.example", credential: TEST_CREDENTIAL }).languageModel("default")
     const { stream } = await model.doStream(CALL_OPTIONS)
     const parts = await collectStream(stream)
     const finish = parts.find((p) => p.type === "finish") as {

@@ -108,6 +108,16 @@ export const resolve = Effect.fn("SessionTools.resolve")(function* (input: {
               { tool: item.id, sessionID: ctx.sessionID, callID: ctx.callID },
               { args },
             )
+            yield* input.processor.updateToolCall(options.toolCallId, (match) => {
+              if (!["pending", "running"].includes(match.state.status)) return match
+              return {
+                ...match,
+                state: {
+                  ...match.state,
+                  input: args,
+                },
+              }
+            })
             const result = yield* item.execute(args, ctx)
             const output = {
               ...result,

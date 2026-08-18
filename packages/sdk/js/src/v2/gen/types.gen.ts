@@ -1929,13 +1929,12 @@ export type Config = {
   small_model?: string
   default_agent?: string
   username?: string
-  login?: {
-    oauth?: {
-      access: string
-      refresh?: string
-      expires?: number
-      username?: string
-    }
+  credential?: {
+    udomain: string
+    display_name: string
+    access_token: string
+    refresh_token: string
+    expires_in: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
   }
   mode?: {
     build?: AgentConfig

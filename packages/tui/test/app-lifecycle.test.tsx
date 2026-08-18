@@ -60,6 +60,62 @@ test("SIGHUP clears title and disposes scoped resources once", async () => {
   }
 })
 
+test("renders home while plugins are loading", async () => {
+  const setup = await createTestRenderer({ width: 80, height: 24, useThread: false })
+  const core = await import("@opentui/core")
+  mock.module("@opentui/core", () => ({ ...core, createCliRenderer: async () => setup.renderer }))
+  const events = createEventSource()
+  const calls = createFetch()
+  let signalStart!: () => void
+  const started = new Promise<void>((resolve) => {
+    signalStart = resolve
+  })
+  let releasePlugins!: () => void
+  const pluginsReady = new Promise<void>((resolve) => {
+    releasePlugins = resolve
+  })
+  let task: Promise<unknown> | undefined
+
+  try {
+    const { run } = await import("../src/app")
+    task = Effect.runPromise(
+      run({
+        url: "http://test",
+        directory,
+        config: createTuiResolvedConfig({ plugin_enabled: {} }),
+        fetch: calls.fetch,
+        events: events.source,
+        args: {},
+        pluginHost: {
+          async start() {
+            signalStart()
+            await pluginsReady
+          },
+          async dispose() {},
+        },
+      }).pipe(Effect.provide(AppNodeBuilder.build(Global.node))),
+    )
+
+    await started
+    await setup.renderOnce()
+    expect(setup.captureCharFrame()).toContain("MAGE / LOCAL WORKBENCH")
+
+    await new Promise((resolve) => setTimeout(resolve, 550))
+    await setup.renderOnce()
+    expect(setup.captureCharFrame()).toContain("Loading plugins...")
+
+    releasePlugins()
+    await Promise.resolve()
+    process.emit("SIGHUP")
+    await task
+  } finally {
+    releasePlugins?.()
+    if (!setup.renderer.isDestroyed) setup.renderer.destroy()
+    await task?.catch(() => undefined)
+    mock.restore()
+  }
+})
+
 test("app.exit prints the session epilogue after scoped cleanup", async () => {
   const setup = await createTestRenderer({ width: 80, height: 24, useThread: false })
   const core = await import("@opentui/core")

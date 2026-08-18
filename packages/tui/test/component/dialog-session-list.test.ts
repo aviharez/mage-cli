@@ -5,7 +5,7 @@ describe("dialog session list", () => {
   test("requests root sessions for the default browse list", () => {
     expect(createDialogSessionListQuery({ filter: { path: "packages/tui" } })).toEqual({
       roots: true,
-      limit: 100,
+      limit: 1000,
       path: "packages/tui",
     })
   })

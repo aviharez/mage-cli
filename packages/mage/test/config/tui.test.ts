@@ -5,6 +5,7 @@ import { AppNodeBuilder } from "@mybcabisnis/mage-core/effect/app-node-builder"
 import { LayerNode } from "@mybcabisnis/mage-core/effect/layer-node"
 import { Effect, Layer } from "effect"
 import { FSUtil } from "@mybcabisnis/mage-core/fs-util"
+import { Npm } from "@mybcabisnis/mage-core/npm"
 import { Global } from "@mybcabisnis/mage-core/global"
 import { Config } from "@/config/config"
 import { ConfigPlugin } from "@/config/plugin"
@@ -820,6 +821,35 @@ it.instance("tracks global and local plugin metadata in merged tui config", () =
           source: path.join(test.directory, "tui.json"),
         },
       ])
+    }),
+  ),
+)
+
+it.instance("installs plugin dependencies during tui config startup", () =>
+  withCleanState(
+    Effect.gen(function* () {
+      const fs = yield* FSUtil.Service
+      const test = yield* TestInstance
+      const installs: { directory: string; packageNames: string[] }[] = []
+      const local = path.join(test.directory, ".mage")
+      yield* fs.makeDirectory(local, { recursive: true })
+      yield* fs.writeJson(path.join(local, "tui.json"), { plugin: ["local-plugin@1.0.0"] })
+
+      const npm = Layer.mock(Npm.Service)({
+        install: (directory, input) =>
+          Effect.sync(() => installs.push({ directory, packageNames: input?.add.map((item) => item.name) ?? [] })),
+      })
+      const tui = AppNodeBuilder.build(TuiConfig.node, [[Npm.node, npm]]).pipe(
+        Layer.provide(Layer.succeed(CurrentWorkingDirectory, test.directory)),
+      )
+
+      yield* TuiConfig.Service.use((svc) => svc.get().pipe(Effect.andThen(svc.waitForDependencies()))).pipe(
+        Effect.scoped,
+        Effect.provide(tui),
+      )
+      const localInstall = installs.find((install) => install.directory === local)
+      expect(localInstall?.directory).toBe(local)
+      expect(localInstall?.packageNames).toContain("@mybcabisnis/mage-plugin")
     }),
   ),
 )

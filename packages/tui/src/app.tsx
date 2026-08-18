@@ -837,12 +837,26 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
         },
       },
       {
-        name: "permission.mode",
-        title:
-          local.permission.mode === "auto" ? "Disable auto-approve permissions" : "Enable auto-approve permissions",
+        name: "permission.yolo",
+        title: "Toggle YOLO mode",
         category: "System",
-        run: () => {
-          local.permission.toggle()
+        slashName: "yolo",
+        run: async () => {
+          const sessionID = route.data.type === "session" ? route.data.sessionID : undefined
+          if (local.permission.isYolo(sessionID)) {
+            local.permission.toggleYolo(sessionID)
+            toast.show({ message: "YOLO mode turned off", variant: "info" })
+            dialog.clear()
+            return
+          }
+          const ok = await DialogConfirm.show(
+            dialog,
+            "Enable YOLO mode",
+            "YOLO mode bypasses all permission checks for the current session. The agent will be able to run any command and modify any file without asking for approval.",
+          )
+          if (ok !== true) return
+          local.permission.toggleYolo(sessionID)
+          toast.show({ message: "YOLO mode enabled", variant: "warning" })
           dialog.clear()
         },
       },
@@ -1000,11 +1014,11 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
       <Show when={Flag.MAGE_SHOW_TTFD}>
         <TimeToFirstDraw />
       </Show>
-      <Show when={ready()}>
+      <Show when={ready() || route.data.type === "home"}>
         <box flexGrow={1} minHeight={0} flexDirection="column">
           <Switch>
             <Match when={route.data.type === "home"}>
-              <Home />
+              <Home disabled={!ready()} />
             </Match>
             <Match when={route.data.type === "session"}>
               <Show when={route.data.type === "session" ? route.data.sessionID : undefined} keyed>

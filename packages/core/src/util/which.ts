@@ -2,9 +2,10 @@ import whichPkg from "which"
 import path from "path"
 import { Global } from "../global"
 
-export function which(cmd: string, env?: NodeJS.ProcessEnv) {
+export function which(cmd: string, env?: NodeJS.ProcessEnv, options?: { includeGlobalBin?: boolean }) {
   const base = env?.PATH ?? env?.Path ?? process.env.PATH ?? process.env.Path ?? ""
-  const full = base ? base + path.delimiter + Global.Path.bin : Global.Path.bin
+  const full =
+    options?.includeGlobalBin === false ? base : base ? base + path.delimiter + Global.Path.bin : Global.Path.bin
   const result = whichPkg.sync(cmd, {
     nothrow: true,
     path: full,

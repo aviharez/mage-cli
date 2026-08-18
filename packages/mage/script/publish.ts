@@ -222,7 +222,6 @@
 //   }
 // }
 
-
 import { $ } from "bun"
 import fs from "fs"
 import path from "path"
@@ -254,8 +253,28 @@ async function publish(dir: string, name: string, version: string) {
   // unpacked dist binaries directly rather than the published tarball.
   if (process.platform !== "win32") await $`chmod -R 755 .`.cwd(dir)
 
-  await $`bun pm pack`.cwd(dir)
-  await $`npm publish *.tgz --access public --tag ${Script.channel}`.cwd(dir)
+  const registry =
+    process.env.MAGE_NPM_REGISTRY ?? "https://artifactory.intra.bca.co.id/artifactory/api/npm/MBB-Registry-npm/"
+  const published =
+    process.env.MAGE_PUBLISH_DRY_RUN !== "1" &&
+    (await $`npm view ${name}@${version} version --registry ${registry}`.nothrow()).exitCode === 0
+  if (published) {
+    console.log(`already published ${name}@${version}`)
+    return
+  }
+
+  try {
+    await $`bun pm pack`.cwd(dir)
+    if (process.env.MAGE_PUBLISH_DRY_RUN === "1") {
+      console.log(`[dry-run] packed ${name}@${version}`)
+      return
+    }
+    await $`npm publish *.tgz --registry ${registry} --tag ${Script.channel}`.cwd(dir)
+  } finally {
+    for (const file of fs.readdirSync(dir)) {
+      if (file.endsWith(".tgz")) fs.rmSync(path.join(dir, file), { force: true })
+    }
+  }
 }
 
 const binaries: Record<string, string> = {}
@@ -265,7 +284,11 @@ for (const filepath of new Bun.Glob("*/*/package.json").scanSync({ cwd: "./dist"
   binaries[binary.name] = binary.version
 }
 console.log("binaries", binaries)
-const version = Object.values(binaries)[0]
+const versions = Object.values(binaries)
+const version = versions[0]
+if (!version || version !== Script.version || versions.some((item) => item !== version)) {
+  throw new Error(`Binary versions do not match Mage release ${Script.version}`)
+}
 
 await $`mkdir -p ./dist/${pkg.name}`
 await $`cp -r ./bin ./dist/${pkg.name}/bin`
@@ -299,121 +322,6 @@ if (fs.existsSync(defaultsDir)) {
   console.log(`Bundled defaults/ into dist package`)
 }
 
-// Vendor @mybcabisnis/mage-sdk and @mybcabisnis/mage-plugin so postinstall
-// can install them into ~/.mage/node_modules/ without BCA registry credentials.
-// New users won't have Artifactory auth configured, so we ship the compiled
-// dist directly inside the package and install from the local path at postinstall.
-{
-  const rootPkgData = JSON.parse(fs.readFileSync(path.resolve(dir, "../../package.json"), "utf8"))
-  const catalog: Record<string, string> =
-    (rootPkgData as any).workspaces?.catalog ?? (rootPkgData as any).catalog ?? {}
-
-  const internalPkgDirs = [
-    path.resolve(dir, "../sdk/js"),   // must come first — plugin depends on sdk
-    path.resolve(dir, "../plugin"),
-  ]
-
-  // Collect workspace package versions for resolving workspace:* references
-  const workspaceVersions: Record<string, string> = {}
-  for (const pkgDir of internalPkgDirs) {
-    const p = JSON.parse(fs.readFileSync(path.join(pkgDir, "package.json"), "utf8"))
-    workspaceVersions[p.name] = p.version
-  }
-
-  function resolveDepsForVendor(deps: Record<string, string> = {}): Record<string, string> {
-    return Object.fromEntries(
-      Object.entries(deps).map(([name, ver]) => {
-        if (ver === "catalog:" || ver === "catalog:default") return [name, catalog[name] ?? ver]
-        if (ver.startsWith("workspace:")) return [name, workspaceVersions[name] ?? ver]
-        return [name, ver]
-      }),
-    )
-  }
-
-  function transformVendorExports(exports: Record<string, unknown>): Record<string, unknown> {
-    return Object.fromEntries(
-      Object.entries(exports).map(([key, value]) => {
-        if (typeof value === "string") {
-          const file = value.replace("./src/", "./dist/").replace(/\.ts$/, "")
-          return [key, { import: file + ".js", types: file + ".d.ts" }]
-        }
-        if (typeof value === "object" && value !== null && !Array.isArray(value))
-          return [key, transformVendorExports(value as Record<string, unknown>)]
-        return [key, value]
-      }),
-    )
-  }
-
-  const vendorBaseDir = path.join("./dist", pkg.name, "vendor")
-  for (const pkgDir of internalPkgDirs) {
-    const rawPkg = JSON.parse(fs.readFileSync(path.join(pkgDir, "package.json"), "utf8"))
-    const distDir = path.join(pkgDir, "dist")
-    if (!fs.existsSync(distDir)) await $`bun run build`.cwd(pkgDir)
-    // Handle scoped names like @mybcabisnis/mage-plugin → vendor/@mybcabisnis/mage-plugin
-    const destDir = path.join(vendorBaseDir, ...rawPkg.name.split("/"))
-    fs.mkdirSync(destDir, { recursive: true })
-    copyDirExcluding(distDir, path.join(destDir, "dist"), new Set())
-    const vendorPkg: Record<string, unknown> = {
-      name: rawPkg.name,
-      version: rawPkg.version,
-      type: rawPkg.type,
-      license: rawPkg.license,
-      exports: rawPkg.exports ? transformVendorExports(rawPkg.exports) : undefined,
-      ...(rawPkg.dependencies ? { dependencies: resolveDepsForVendor(rawPkg.dependencies) } : {}),
-      ...(rawPkg.peerDependencies ? { peerDependencies: rawPkg.peerDependencies } : {}),
-      ...(rawPkg.peerDependenciesMeta ? { peerDependenciesMeta: rawPkg.peerDependenciesMeta } : {}),
-    }
-    fs.writeFileSync(path.join(destDir, "package.json"), JSON.stringify(vendorPkg, null, 2))
-    console.log(`[vendor] bundled ${rawPkg.name}@${rawPkg.version}`)
-
-    // Also publish mage-sdk to Artifactory (reusing this already-staged, exports-
-    // rewritten copy) — @mybcabisnis/mage-web-react depends on it at runtime and
-    // is installed live via `Npm.add`, not vendored, so it needs a real registry
-    // resolution. mage-plugin has no such external consumer; skip it.
-    if (rawPkg.name === "@mybcabisnis/mage-sdk") {
-      await publish(destDir, rawPkg.name, rawPkg.version)
-      console.log(`[publish] ${rawPkg.name}@${rawPkg.version}`)
-    }
-  }
-
-  // Publish @mybcabisnis/mage-web-react to Artifactory. It's never bundled into
-  // the mage binary — its native deps (better-sqlite3, node-pty, sherpa-onnx-node)
-  // can't cross-compile into a single executable — so `mage web` lazily installs
-  // it on first use (packages/mage/src/cli/cmd/web.ts). Pinned to the mage release
-  // version so that lazy install, which requests the compiled-in MAGE_VERSION,
-  // resolves to a matching build.
-  {
-    const webReactDir = path.resolve(dir, "../web-react")
-    const webReactPkg = JSON.parse(fs.readFileSync(path.join(webReactDir, "package.json"), "utf8"))
-    await $`bun run build`.cwd(webReactDir)
-
-    const webReactPublishDir = path.join("./dist", "mage-web-react-publish")
-    fs.mkdirSync(webReactPublishDir, { recursive: true })
-    for (const sub of ["dist", "server", "bin", "public"]) {
-      const src = path.join(webReactDir, sub)
-      if (fs.existsSync(src)) copyDirExcluding(src, path.join(webReactPublishDir, sub), new Set())
-    }
-    const readme = path.join(webReactDir, "README.md")
-    if (fs.existsSync(readme)) fs.copyFileSync(readme, path.join(webReactPublishDir, "README.md"))
-
-    fs.writeFileSync(
-      path.join(webReactPublishDir, "package.json"),
-      JSON.stringify(
-        {
-          ...webReactPkg,
-          version,
-          dependencies: resolveDepsForVendor(webReactPkg.dependencies),
-          devDependencies: undefined,
-        },
-        null,
-        2,
-      ),
-    )
-    await publish(webReactPublishDir, webReactPkg.name, version)
-    console.log(`[publish] ${webReactPkg.name}@${version}`)
-  }
-}
-
 await Bun.file(`./dist/${pkg.name}/package.json`).write(
   JSON.stringify(
     {
@@ -427,7 +335,7 @@ await Bun.file(`./dist/${pkg.name}/package.json`).write(
       publishConfig: (pkg as any).publishConfig,
       optionalDependencies: binaries,
       // Explicitly list files so bun pm pack includes dotfolders like .mage/
-      files: ["defaults", "bin", "postinstall.mjs", "LICENSE", "vendor"],
+      files: ["defaults", "bin", "postinstall.mjs", "LICENSE"],
     },
     null,
     2,

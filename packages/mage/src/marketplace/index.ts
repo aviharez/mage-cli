@@ -4,14 +4,9 @@ import { Filesystem } from "@/util/filesystem"
 import * as Log from "@/util/log"
 import * as Network from "@/util/network"
 import { applyEdits, modify } from "jsonc-parser"
+import { credentialPath, isMageCredential, runeOrigin } from "@/login/oauth"
 
 const log = Log.create({ service: "marketplace" })
-
-// ---------------------------------------------------------------------------
-// Build-time constants (injected by script/build.ts via Bun define)
-// In dev (bun run dev) these are undefined; fall back to runtime env or empty.
-// ---------------------------------------------------------------------------
-declare const MAGE_MARKETPLACE_COUNTER: string | undefined
 
 // ---------------------------------------------------------------------------
 // Baked-in default registry — Rune's JFrog Artifactory generic repository.
@@ -41,29 +36,8 @@ const RUNE_ARTIFACTORY_READ_TOKEN = "cmVmdGtuOjAxOjE4MTQ4NjI1NTM6aDJ6VDNpRXd3TGx
 // Default (and only) registry base URL — no override, no fallback.
 const RUNE_DEFAULT_REGISTRY = `${RUNE_ARTIFACTORY_HOST}/artifactory/${RUNE_ARTIFACTORY_REPO}/rune-catalog/`
 
-// Unlike the Artifactory constants above, this points at Rune's own Next.js
-// app (app/api/installs/route.ts there), not the Artifactory repo — Rune has
-// no other API surface, and this is the one endpoint it exposes: a
-// best-effort install counter bumped after a successful skill/mcp install.
-// TODO(rune-setup): placeholder, same caveat as the Artifactory constants
-// above — replace with Rune's real deployed URL before shipping.
-const RUNE_COUNTER_ENDPOINT = "http://localhost:3000/api/installs"
-
-/**
- * Resolve the install-counter endpoint.
- * Priority: explicit config override (config.marketplace.counter) →
- * MAGE_MARKETPLACE_COUNTER runtime env → baked build-time constant → Rune's
- * baked-in default counter endpoint.
- */
-export function resolveCounterEndpoint(configValue?: string): string {
-  return (
-    configValue ||
-    process.env.MAGE_MARKETPLACE_COUNTER ||
-    (typeof MAGE_MARKETPLACE_COUNTER !== "undefined" && MAGE_MARKETPLACE_COUNTER !== ""
-      ? MAGE_MARKETPLACE_COUNTER
-      : undefined) ||
-    RUNE_COUNTER_ENDPOINT
-  )
+export function resolveCounterEndpoint(): string {
+  return `${runeOrigin()}/api/install`
 }
 
 // ---------------------------------------------------------------------------
@@ -222,22 +196,28 @@ export async function installSkill(entry: SkillEntry, targetDir: string): Promis
  * Fire-and-forget notification to Rune that `name` was installed, so its
  * dashboard/catalog install counts (Postgres `packages.install_count`,
  * never otherwise incremented since Mage only ever talks to Artifactory
- * directly — see Rune's app/api/installs/route.ts) reflect real usage.
+ * directly — see Rune's app/api/install/route.ts) reflect real usage.
  *
  * Deliberately swallows every failure: a counter being down, unreachable,
- * returning a non-2xx status, or misconfigured (e.g. still pointing at
- * RUNE_COUNTER_ENDPOINT's placeholder) must never fail an otherwise-
+ * returning a non-2xx status, or expired OAuth credentials must never fail an otherwise-
  * successful skill/mcp install, and must never surface to the CLI/TUI caller
  * — callers invoke this as `void recordInstall(...)` specifically so it never
  * gets awaited on the install's response path. The timeout guards against a
  * hung (not merely erroring) endpoint leaving a dangling request on the
  * long-lived mage server process.
  */
-export async function recordInstall(name: string, endpoint?: string): Promise<void> {
+export async function recordInstall(name: string): Promise<void> {
+  const raw = await Bun.file(credentialPath()).json().catch(() => undefined)
+  const token = isMageCredential(raw) ? raw.rune_access_token : undefined
+  if (!token) return
+
   try {
-    await fetch(resolveCounterEndpoint(endpoint), {
+    await fetch(resolveCounterEndpoint(), {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify({ name }),
       signal: AbortSignal.timeout(5000),
       ...(await Network.insecureFetchInit()),
