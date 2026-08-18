@@ -27,7 +27,7 @@ export function homeDisplayName(credential: { readonly display_name: string } | 
   return credential?.display_name.trim() || "builder"
 }
 
-export function Home() {
+export function Home(props: { disabled?: boolean }) {
   const pluginRuntime = usePluginRuntime()
   const sync = useSync()
   const route = useRouteData("home")
@@ -73,6 +73,7 @@ export function Home() {
     const r = ref()
     if (sent) return
     if (!r) return
+    if (props.disabled) return
     if (!sync.ready || !local.model.ready) return
     if (!args.prompt) return
     if (r.current.input !== args.prompt) return
@@ -114,7 +115,12 @@ export function Home() {
           </box>
           <box width="100%" zIndex={1000} marginTop={3} flexShrink={0}>
             <pluginRuntime.Slot name="home_prompt" mode="replace" ref={bind}>
-              <Prompt ref={bind} right={<pluginRuntime.Slot name="home_prompt_right" />} placeholders={placeholder} />
+              <Prompt
+                ref={bind}
+                right={<pluginRuntime.Slot name="home_prompt_right" />}
+                placeholders={placeholder}
+                disabled={props.disabled}
+              />
             </pluginRuntime.Slot>
           </box>
           <pluginRuntime.Slot name="home_bottom" />

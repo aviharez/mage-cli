@@ -1014,11 +1014,11 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
       <Show when={Flag.MAGE_SHOW_TTFD}>
         <TimeToFirstDraw />
       </Show>
-      <Show when={ready()}>
+      <Show when={ready() || route.data.type === "home"}>
         <box flexGrow={1} minHeight={0} flexDirection="column">
           <Switch>
             <Match when={route.data.type === "home"}>
-              <Home />
+              <Home disabled={!ready()} />
             </Match>
             <Match when={route.data.type === "session"}>
               <Show when={route.data.type === "session" ? route.data.sessionID : undefined} keyed>
