@@ -360,20 +360,6 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     isAvailable: (ctx) => ctx.isDesktopLocalOrigin,
   },
   {
-    id: 'sessions.mage-binary',
-    page: 'sessions',
-    titleKey: 'settings.mage.mageCli.field.binaryPath',
-    keywords: ['mage', 'cli', 'binary', 'path'],
-    isAvailable: (ctx) => !ctx.isVSCode,
-  },
-  {
-    id: 'sessions.mage-update-notifications',
-    page: 'sessions',
-    titleKey: 'settings.mage.mageCli.field.showUpdateNotifications',
-    keywords: ['mage', 'cli', 'updates'],
-    isAvailable: (ctx) => !ctx.isVSCode,
-  },
-  {
     id: 'git.gitlab-account',
     page: 'git',
     titleKey: 'settings.gitIdentities.page.section.title',
@@ -497,20 +483,6 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     keywords: ['thinking', 'reasoning', 'variant', 'depth'],
   },
   {
-    id: 'agents.temperature',
-    page: 'agents',
-    titleKey: 'settings.agents.page.field.temperature',
-    descriptionKey: 'settings.agents.page.field.temperatureTooltip',
-    keywords: ['randomness', 'creative'],
-  },
-  {
-    id: 'agents.top-p',
-    page: 'agents',
-    titleKey: 'settings.agents.page.field.topP',
-    descriptionKey: 'settings.agents.page.field.topPTooltip',
-    keywords: ['sampling', 'nucleus'],
-  },
-  {
     id: 'agents.system-prompt',
     page: 'agents',
     titleKey: 'settings.agents.page.section.systemPrompt',
@@ -607,18 +579,6 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     keywords: ['file', 'code'],
   },
   {
-    id: 'snippets.create',
-    page: 'snippets',
-    titleKey: 'settings.snippets.sidebar.actions.create',
-    keywords: ['add', 'new snippet'],
-  },
-  {
-    id: 'snippets.content',
-    page: 'snippets',
-    titleKey: 'settings.snippets.page.field.content',
-    keywords: ['markdown', 'prompt', 'template'],
-  },
-  {
     id: 'skills.create',
     page: 'skills.installed',
     titleKey: 'settings.skills.page.title.newSkill',
@@ -641,24 +601,6 @@ const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
     page: 'skills.installed',
     titleKey: 'settings.skills.page.section.supportingFiles',
     keywords: ['files', 'resources'],
-  },
-  {
-    id: 'skills.catalog.source',
-    page: 'skills.catalog',
-    titleKey: 'settings.skills.catalog.page.section.sourceRepository',
-    keywords: ['catalog', 'repository', 'source', 'refresh'],
-  },
-  {
-    id: 'skills.catalog.search',
-    page: 'skills.catalog',
-    titleKey: 'settings.skills.catalog.shared.field.searchSkillsPlaceholder',
-    keywords: ['find skills', 'install skills', 'catalog search'],
-  },
-  {
-    id: 'skills.catalog.add-catalog',
-    page: 'skills.catalog',
-    titleKey: 'settings.skills.catalog.page.actions.addCatalog',
-    keywords: ['external repository', 'add source', 'catalog'],
   },
   {
     id: 'magic-prompts.visible-prompt',

@@ -1,14 +1,12 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { NumberInput } from '@/components/ui/number-input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/components/ui';
 import { useAgentsStore, type AgentConfig, type AgentMutationResult, type AgentScope } from '@/stores/useAgentsStore';
 import { useShallow } from 'zustand/react/shallow';
 import { useDirectorySync } from '@/sync/sync-context';
 import { useDirectoryStore } from '@/stores/useDirectoryStore';
-import { useDeviceInfo } from '@/lib/device';
 import { mageClient } from '@/lib/mage/client';
 import { cn } from '@/lib/utils';
 import { ModelSelector } from './ModelSelector';
@@ -216,7 +214,6 @@ const getVariantOptionsForModel = (
 };
 export const AgentsPage: React.FC = () => {
   const { t } = useI18n();
-  const { isMobile } = useDeviceInfo();
   const providers = useConfigStore((state) => state.providers) as AgentVariantProvider[];
   const {
     selectedAgentName,
@@ -794,107 +791,6 @@ export const AgentsPage: React.FC = () => {
                   {t('settings.agents.page.mode.all')}
                 </Button>
                 </div>
-              </div>
-            </div>
-
-          </section>
-        </div>
-
-        {/* Model & Parameters */}
-        <div className="mb-8">
-          <div className="mb-1 px-1">
-            <h3 className="typography-ui-header font-medium text-foreground">
-              {t('settings.agents.page.section.modelParameters')}
-            </h3>
-          </div>
-
-          <section className="px-2 pb-2 pt-0 space-y-0">
-
-            <div data-settings-item="agents.temperature" className={cn("py-1.5", isMobile ? "flex flex-col gap-3" : "flex items-center gap-8")}>
-              <div className={cn("flex min-w-0 flex-col", isMobile ? "w-full" : "sm:w-56 shrink-0")}>
-                <div className="flex items-center gap-1.5">
-                  <span className="typography-ui-label text-foreground">{t('settings.agents.page.field.temperature')}</span>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Icon name="information" className="h-3.5 w-3.5 text-muted-foreground/60 cursor-help" />
-                    </TooltipTrigger>
-                    <TooltipContent sideOffset={8} className="max-w-xs">
-                      {t('settings.agents.page.field.temperatureTooltip')}
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-                <span className="typography-meta text-muted-foreground">{t('settings.agents.page.field.temperatureRange')}</span>
-              </div>
-              <div className={cn("flex items-center gap-2", isMobile ? "w-full" : "w-fit")}>
-                <NumberInput
-                  value={temperature}
-                  fallbackValue={0.7}
-                  onValueChange={setTemperature}
-                  onClear={() => setTemperature(undefined)}
-                  min={0}
-                  max={2}
-                  step={0.1}
-                  inputMode="decimal"
-                  placeholder="—"
-                  emptyLabel="—"
-                  className="w-16"
-                />
-                {temperature !== undefined && (
-                  <Button size="sm"
-                    type="button"
-                    variant="ghost"
-                    onClick={() => setTemperature(undefined)}
-                    className="h-7 w-7 px-0 text-muted-foreground hover:text-foreground"
-                    aria-label={t('settings.agents.page.field.clearTemperatureAria')}
-                    title={t('settings.common.actions.clear')}
-                  >
-                    <Icon name="close" className="h-3.5 w-3.5" />
-                  </Button>
-                )}
-              </div>
-            </div>
-
-            <div data-settings-item="agents.top-p" className={cn("py-1.5", isMobile ? "flex flex-col gap-3" : "flex items-center gap-8")}>
-              <div className={cn("flex min-w-0 flex-col", isMobile ? "w-full" : "sm:w-56 shrink-0")}>
-                <div className="flex items-center gap-1.5">
-                  <span className="typography-ui-label text-foreground">{t('settings.agents.page.field.topP')}</span>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Icon name="information" className="h-3.5 w-3.5 text-muted-foreground/60 cursor-help" />
-                    </TooltipTrigger>
-                    <TooltipContent sideOffset={8} className="max-w-xs">
-                      {t('settings.agents.page.field.topPTooltip')}
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-                <span className="typography-meta text-muted-foreground">{t('settings.agents.page.field.topPRange')}</span>
-              </div>
-              <div className={cn("flex items-center gap-2", isMobile ? "w-full" : "w-fit")}>
-                <NumberInput
-                  value={topP}
-                  fallbackValue={0.9}
-                  onValueChange={setTopP}
-                  onClear={() => setTopP(undefined)}
-                  min={0}
-                  max={1}
-                  step={0.1}
-                  inputMode="decimal"
-                  placeholder="—"
-                  emptyLabel="—"
-                  className="w-16"
-                />
-                {topP !== undefined && (
-                  <Button size="sm"
-                    type="button"
-                    variant="ghost"
-                    onClick={() => setTopP(undefined)}
-                    className="h-7 w-7 px-0 text-muted-foreground hover:text-foreground"
-                    aria-label={t('settings.agents.page.field.clearTopPAria')}
-                    title={t('settings.common.actions.clear')}
-                  >
-                    <Icon name="close" className="h-3.5 w-3.5" />
-                  </Button>
-                )}
               </div>
             </div>
 

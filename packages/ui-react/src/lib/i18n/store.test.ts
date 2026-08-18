@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
-import { DEFAULT_LOCALE, type Locale } from './runtime';
+import { DEFAULT_LOCALE, normalizeLocale, type Locale } from './runtime';
 import { resetI18nDictionaryCacheForTests, useI18nStore } from './store';
 
 const defaultDictionary = useI18nStore.getState().dictionary;
@@ -26,32 +26,29 @@ const waitForLocaleLoadToSettle = async (locale: Locale) => {
 describe('i18n store', () => {
   beforeEach(resetStore);
 
-  test('retries loading the active locale when it is not cached', async () => {
+  test('loads the Indonesian dictionary', async () => {
     useI18nStore.setState({
-      locale: 'es',
+      locale: 'id',
       dictionary: defaultDictionary,
       loadingLocale: null,
     });
 
     try {
-      useI18nStore.getState().setLocale('es');
+      useI18nStore.getState().setLocale('id');
 
-      expect(useI18nStore.getState().loadingLocale).toBe('es');
-      await waitForLocaleLoadToSettle('es');
+      expect(useI18nStore.getState().loadingLocale).toBe('id');
+      await waitForLocaleLoadToSettle('id');
+      expect(useI18nStore.getState().dictionary['common.language.indonesian']).toBe('Bahasa Indonesia');
+      expect(useI18nStore.getState().dictionary['settings.appearance.language.label']).toBe('Bahasa');
     } finally {
       resetStore();
     }
   });
 
-  test('loads the french dictionary', async () => {
-    try {
-      useI18nStore.getState().setLocale('fr');
-
-      expect(useI18nStore.getState().loadingLocale).toBe('fr');
-      await waitForLocaleLoadToSettle('fr');
-      expect(useI18nStore.getState().dictionary['common.language.french']).toBe('Français');
-    } finally {
-      resetStore();
-    }
+  test('normalizes supported locales and falls back legacy locales to English', () => {
+    expect(normalizeLocale('id-ID')).toBe('id');
+    expect(normalizeLocale('id_id')).toBe('id');
+    expect(normalizeLocale('fr-FR')).toBe('en');
+    expect(normalizeLocale('zh-CN')).toBe('en');
   });
 });

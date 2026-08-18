@@ -8,7 +8,6 @@ import { GitSettings } from './GitSettings';
 import { NotificationSettings } from './NotificationSettings';
 import { GitLabSettings } from './GitLabSettings';
 import { TunnelSettings } from './TunnelSettings';
-import { MageCliSettings } from './MageCliSettings';
 import { DesktopNetworkSettings } from './DesktopNetworkSettings';
 import { KeyboardShortcutsSettings } from './KeyboardShortcutsSettings';
 import { ScrollableOverlay } from '@/components/ui/ScrollableOverlay';
@@ -55,11 +54,6 @@ export const MagePage: React.FC<MagePageProps> = ({ section }) => {
                     {showDesktopNetworkSettings && (
                         <div className="border-t border-border/40 pt-6">
                             <DesktopNetworkSettings />
-                        </div>
-                    )}
-                    {!isVSCode && (
-                        <div className="border-t border-border/40 pt-6">
-                            <MageCliSettings />
                         </div>
                     )}
                     <div className="border-t border-border/40 pt-6">
@@ -156,11 +150,6 @@ const SessionsSectionContent: React.FC = () => {
             {showDesktopNetworkSettings && (
                 <div className="border-t border-border/40 pt-6">
                     <DesktopNetworkSettings />
-                </div>
-            )}
-            {!isVSCode && (
-                <div className="border-t border-border/40 pt-6">
-                    <MageCliSettings />
                 </div>
             )}
             <div className="border-t border-border/40 pt-6">

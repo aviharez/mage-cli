@@ -9,7 +9,6 @@ type Props = {
   onOpenShortcuts: () => void;
   onOpenAbout: () => void;
   onOpenUpdate: () => void;
-  onOpenShareOpinion: () => void;
   showRuntimeButtons?: boolean;
   showUpdateButton?: boolean;
 };
@@ -21,7 +20,6 @@ export function SidebarFooter({
   onOpenShortcuts,
   onOpenAbout,
   onOpenUpdate,
-  onOpenShareOpinion,
   showRuntimeButtons = true,
   showUpdateButton = true,
 }: Props): React.ReactNode {
@@ -67,17 +65,7 @@ export function SidebarFooter({
         >
           {t('sessions.sidebar.footer.actions.update')}
         </Button>
-      ) : (
-        <Button
-          type="button"
-          variant="default"
-          size="xs"
-          className="ml-auto border-[var(--primary-base)]/15 bg-[var(--primary-base)]/5 text-[var(--primary-base)]/60 hover:bg-[var(--primary-base)]/10 hover:text-[var(--primary-base)]/75"
-          onClick={onOpenShareOpinion}
-        >
-          {t('sessions.sidebar.footer.actions.shareOpinion')}
-        </Button>
-      )}
+      ) : null}
     </div>
   );
 }
