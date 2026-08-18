@@ -75,7 +75,10 @@ type ConfigRuntimeDeps = {
   clientReloadDelayMs: number;
 };
 
-const AGENTS_MD_PATH = path.join(os.homedir(), '.config', 'mage', 'AGENTS.md');
+const AGENTS_MD_PATH = path.join(
+  process.env.MAGE_CONFIG_DIR ? path.resolve(process.env.MAGE_CONFIG_DIR) : path.join(process.env.MAGE_TEST_HOME || os.homedir(), '.mage'),
+  'AGENTS.md',
+);
 const MAX_BEHAVIOR_PROMPT_SIZE = 1024 * 1024;
 
 const resolveWorkingDirectory = (ctx: BridgeContext | undefined, directory?: string): string | undefined => (

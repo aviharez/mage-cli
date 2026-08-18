@@ -45,7 +45,7 @@ This module provides Mage server integration utilities for the web server runtim
 - `packages/web/server/lib/ui-auth/ui-passkeys.js`: UI passkey storage and WebAuthn registration/authentication helpers (outside Mage module).
 
 ## Public exports (auth.js)
-- `readAuthFile()`: Reads and parses `~/.local/share/mage/auth.json`.
+- `readAuthFile()`: Reads and parses `~/.mage/data/auth.json`.
 - `writeAuthFile(auth)`: Writes auth file with automatic backup.
 - `removeProviderAuth(providerId)`: Removes a provider's auth entry.
 - `getProviderAuth(providerId)`: Returns auth for a specific provider or null.
@@ -353,8 +353,8 @@ This module provides Mage server integration utilities for the web server runtim
   - Forwards unwrapped global event payloads into notification/session side effects.
 
 ## Storage and configuration
-- Provider auth: `~/.local/share/mage/auth.json`.
-- User config: `~/.config/mage/mage.json`.
+- Provider auth: `~/.mage/data/auth.json`.
+- User config: `~/.mage/mage.json`.
 - Project config: `<workingDirectory>/.mage/mage.json` or `mage.json`.
 - Custom config: `MAGE_CONFIG` env var path.
 - Rate limit config: `MAGE_RATE_LIMIT_MAX_ATTEMPTS`, `MAGE_RATE_LIMIT_NO_IP_MAX_ATTEMPTS` env vars.

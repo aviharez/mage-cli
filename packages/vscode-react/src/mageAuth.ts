@@ -2,7 +2,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 
-const MAGE_DATA_DIR = path.join(os.homedir(), '.local', 'share', 'mage');
+const MAGE_DATA_DIR = process.env.MAGE_DATA_DIR
+  ? path.resolve(process.env.MAGE_DATA_DIR)
+  : path.join(process.env.MAGE_TEST_HOME || os.homedir(), '.mage', 'data');
 const AUTH_FILE = path.join(MAGE_DATA_DIR, 'auth.json');
 
 type AuthEntry = Record<string, unknown>;

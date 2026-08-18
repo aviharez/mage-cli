@@ -103,7 +103,7 @@ function getIndexedUserAgentPath(agentName, cache) {
 
 /**
  * Get user-level agent path — walks subfolders to support grouped layouts.
- * e.g. ~/.config/mage/agents/business/ceo-diginno.md
+ * e.g. ~/.mage/agents/business/ceo-diginno.md
  */
 function getUserAgentPath(agentName, lookupCache = null) {
   // 1. Check flat path first (legacy / newly created agents)

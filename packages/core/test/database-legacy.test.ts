@@ -7,9 +7,7 @@ import path from "node:path"
 const root = await mkdtemp(path.join(process.env.TMPDIR ?? "/tmp", "mage-database-"))
 const home = path.join(root, "home")
 process.env.MAGE_TEST_HOME = home
-process.env.XDG_DATA_HOME = path.join(root, "data")
-process.env.XDG_CACHE_HOME = path.join(root, "cache")
-process.env.XDG_STATE_HOME = path.join(root, "state")
+process.env.MAGE_DATA_DIR = path.join(root, "current")
 process.env.MAGE_DISABLE_CHANNEL_DB = "true"
 
 const { Database } = await import("../src/database/database")

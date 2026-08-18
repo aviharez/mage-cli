@@ -46,11 +46,8 @@ const claimNotification = (key: string): boolean => {
 
 
 const getMageConfigDir = (): string => {
-  if (process.platform === 'win32') {
-    const appData = process.env.APPDATA;
-    if (appData) return path.join(appData, 'mage');
-  }
-  return path.join(os.homedir(), '.config', 'mage');
+  if (process.env.MAGE_CONFIG_DIR) return path.resolve(process.env.MAGE_CONFIG_DIR);
+  return path.join(process.env.MAGE_TEST_HOME || os.homedir(), '.mage');
 };
 
 const sanitizeInstallScope = (scope: string): 'vscode' | 'web' => {

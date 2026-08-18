@@ -105,24 +105,6 @@ async function resolveLoadedPlugins<T extends { plugin?: ConfigPluginV1.Spec[] }
   return config
 }
 
-async function loadSharedOpenCodePlugins(directory: string) {
-  const files = [path.join(directory, "opencode.json"), path.join(directory, "opencode.jsonc")]
-  const plugins: ConfigPluginV1.Spec[] = []
-
-  for (const filepath of files) {
-    const text = await fsNode.readFile(filepath, "utf8").catch(() => undefined)
-    if (text === undefined) continue
-
-    const data = ConfigParse.jsonc(text, filepath)
-    if (!isRecord(data) || !("plugin" in data)) continue
-    const list = ConfigParse.schema(Schema.Array(ConfigPluginV1.Spec), data.plugin, filepath)
-    for (const plugin of list) plugins.push(await ConfigPlugin.resolvePluginSpec(plugin, filepath))
-  }
-
-  const discovered = await ConfigPlugin.load(directory)
-  return [...plugins, ...discovered]
-}
-
 type Info = ConfigV1.Info & {
   // plugin_origins is derived state, not a persisted config field. It keeps each winning plugin spec together
   // with the file and scope it came from so later runtime code can make location-sensitive decisions.
@@ -400,23 +382,6 @@ const layer = Layer.effect(
             yield* merge(source, next, "global")
             yield* Effect.logDebug("loaded remote config from well-known", { url })
           }
-        }
-
-        const sharedOpenCodeDir = path.join(
-          process.env.XDG_CONFIG_HOME ?? path.join(Global.Path.home, ".config"),
-          "opencode",
-        )
-        if (existsSync(sharedOpenCodeDir)) {
-          yield* Effect.promise(() => loadSharedOpenCodePlugins(sharedOpenCodeDir)).pipe(
-            Effect.tap((plugins) => mergePluginOrigins(sharedOpenCodeDir, plugins, "global")),
-            Effect.tapError((error) =>
-              Effect.logWarning("failed to load shared OpenCode plugins", {
-                directory: sharedOpenCodeDir,
-                error: String(error),
-              }),
-            ),
-            Effect.ignore,
-          )
         }
 
         const global = Object.keys(authEnv).length ? yield* loadGlobal(authEnv) : yield* getGlobal()

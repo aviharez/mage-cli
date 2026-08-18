@@ -4,7 +4,7 @@ import os from 'os';
 
 const MAGE_DATA_DIR = process.env.MAGE_DATA_DIR
   ? path.resolve(process.env.MAGE_DATA_DIR)
-  : path.join(os.homedir(), '.config', 'mage');
+  : path.join(process.env.MAGE_TEST_HOME || os.homedir(), '.mage', 'data');
 const STORAGE_FILE = path.join(MAGE_DATA_DIR, 'gitlab-auth.json');
 const DEFAULT_GITLAB_CLIENT_ID = 'REPLACE_WITH_BCA_GITLAB_OAUTH_CLIENT_ID';
 const DEFAULT_GITLAB_SCOPES = 'api';

@@ -1,7 +1,7 @@
 # Small Model
 
 Server-side direct LLM calls that reuse the user's existing Mage provider
-logins (`~/.local/share/mage/auth.json`). Mage uses a "small model"
+logins (`~/.mage/data/auth.json`). Mage uses a "small model"
 internally (titles, summaries) but does not expose it through the SDK or
 plugins — this module replicates that mechanism as an Mage runtime API.
 

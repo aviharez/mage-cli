@@ -83,7 +83,10 @@ function isValidMagePassword(password: string): boolean {
 }
 
 function readMageSettings(): Record<string, unknown> {
-  const settingsPath = path.join(os.homedir(), '.config', 'mage', 'settings.json');
+  const settingsPath = path.join(
+    process.env.MAGE_DATA_DIR ? path.resolve(process.env.MAGE_DATA_DIR) : path.join(process.env.MAGE_TEST_HOME || os.homedir(), '.mage', 'data'),
+    'settings.json',
+  );
   try {
     const raw = fs.readFileSync(settingsPath, 'utf8');
     const parsed = JSON.parse(raw) as unknown;

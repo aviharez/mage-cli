@@ -70,7 +70,7 @@ The following functions are internal helpers used by exported functions:
 - `safeRm(dir)`: Safely remove directory recursively (ignores errors).
 - `ensureDir(dirPath)`: Ensure directory exists with recursive creation.
 - `copyDirectoryNoSymlinks(srcDir, dstDir)`: Copy directory contents without symlinks, with path traversal protection.
-- `normalizeUserSkillDir(userSkillDir)`: Normalize user skill directory path (handles legacy `~/.config/mage/skill` → `~/.config/mage/skills` migration).
+- `normalizeUserSkillDir(userSkillDir)`: Normalize user skill directory path (handles legacy `~/.mage/skill` → `~/.mage/skills` migration).
 
 ### Git Clone Helpers (`install.js`, `scan.js`)
 - `cloneRepo({ cloneUrl, identity, tempDir })`: Clone git repository with preferred partial clone (`--filter=blob:none`) and fallback. Uses non-interactive mode.

@@ -22,7 +22,7 @@ describe("mage mcp add (non-interactive subprocess)", () => {
         mage.expectExit(result, 0)
 
         const config = yield* Effect.promise(() =>
-          Bun.file(path.join(home, ".config", "mage", "mage.json")).json(),
+          Bun.file(path.join(home, ".mage", "mage.json")).json(),
         )
         expect(config.mcp.github).toEqual({
           type: "remote",
@@ -58,7 +58,7 @@ describe("mage mcp add (non-interactive subprocess)", () => {
         mage.expectExit(result, 0)
 
         const config = yield* Effect.promise(() =>
-          Bun.file(path.join(home, ".config", "mage", "mage.json")).json(),
+          Bun.file(path.join(home, ".mage", "mage.json")).json(),
         )
         expect(config.mcp.local).toEqual({
           type: "local",

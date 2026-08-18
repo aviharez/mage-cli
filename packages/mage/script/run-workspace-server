@@ -66,7 +66,7 @@ function startDevServer(data: any) {
     env: {
       ...process.env,
       ...env,
-      XDG_DATA_HOME: "/tmp/data",
+      MAGE_DATA_DIR: "/tmp/data",
     },
     stdin: "inherit",
     stdout: "inherit",

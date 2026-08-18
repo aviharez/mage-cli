@@ -545,8 +545,11 @@ async function copyDirectoryNoSymlinks(srcDir: string, dstDir: string) {
 }
 
 function getUserSkillBaseDir() {
-  const pluralPath = path.join(os.homedir(), '.config', 'mage', 'skills');
-  const legacyPath = path.join(os.homedir(), '.config', 'mage', 'skill');
+  const configDir = process.env.MAGE_CONFIG_DIR
+    ? path.resolve(process.env.MAGE_CONFIG_DIR)
+    : path.join(process.env.MAGE_TEST_HOME || os.homedir(), '.mage');
+  const pluralPath = path.join(configDir, 'skills');
+  const legacyPath = path.join(configDir, 'skill');
   if (fs.existsSync(legacyPath) && !fs.existsSync(pluralPath)) return legacyPath;
   return pluralPath;
 }

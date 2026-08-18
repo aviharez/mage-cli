@@ -18,7 +18,7 @@ const SESSION_ID_PATTERN = /^[A-Za-z0-9_-]{4,128}$/;
 const goalsDir = () => path.join(
   process.env.MAGE_DATA_DIR
     ? path.resolve(process.env.MAGE_DATA_DIR)
-    : path.join(os.homedir(), '.config', 'mage'),
+    : path.join(process.env.MAGE_TEST_HOME || os.homedir(), '.mage', 'data'),
   'goals',
 );
 

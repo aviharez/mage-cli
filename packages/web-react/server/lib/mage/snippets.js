@@ -3,7 +3,9 @@ import path from 'path';
 import os from 'os';
 import yaml from 'yaml';
 
-const MAGE_CONFIG_DIR = path.join(os.homedir(), '.config', 'mage');
+const MAGE_CONFIG_DIR = process.env.MAGE_CONFIG_DIR
+  ? path.resolve(process.env.MAGE_CONFIG_DIR)
+  : path.join(process.env.MAGE_TEST_HOME || os.homedir(), '.mage');
 const GLOBAL_SNIPPET_DIR = path.join(MAGE_CONFIG_DIR, 'snippet');
 const GLOBAL_SNIPPET_DIR_ALT = path.join(MAGE_CONFIG_DIR, 'snippets');
 const SNIPPET_EXTENSION = '.md';

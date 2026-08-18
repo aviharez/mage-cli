@@ -10,7 +10,7 @@ function getDataDir() {
   if (typeof process.env.MAGE_DATA_DIR === 'string' && process.env.MAGE_DATA_DIR.trim().length > 0) {
     return path.resolve(process.env.MAGE_DATA_DIR.trim());
   }
-  return path.join(os.homedir(), '.config', 'mage');
+  return path.join(process.env.MAGE_TEST_HOME || os.homedir(), '.mage', 'data');
 }
 
 function getLogsDir() {

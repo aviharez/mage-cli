@@ -70,7 +70,9 @@ function getActiveMageConfigDir() {
   if (customConfigPath) {
     return path.dirname(path.resolve(customConfigPath));
   }
-  return path.join(os.homedir(), '.config', 'mage');
+  return process.env.MAGE_CONFIG_DIR
+    ? path.resolve(process.env.MAGE_CONFIG_DIR)
+    : path.join(process.env.MAGE_TEST_HOME || os.homedir(), '.mage');
 }
 
 function getActiveUserConfigPaths() {

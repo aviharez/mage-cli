@@ -181,9 +181,9 @@ export type DesktopSettings = {
   // Message limit — controls fetch, trim, and Load More chunk size (default: 200)
   messageLimit?: number;
 
-  // User-added skills catalogs (persisted to ~/.config/mage/settings.json)
+  // User-added skills catalogs (persisted to ~/.mage/data/settings.json)
   skillCatalogs?: SkillCatalogConfig[];
-  // Global behavior prompt — synced to ~/.config/mage/AGENTS.md
+  // Global behavior prompt — synced to ~/.mage/AGENTS.md
   globalBehaviorPrompt?: string;
   responseStyleEnabled?: boolean;
   responseStylePreset?: 'concise' | 'detailed' | 'mentor' | 'pushback' | 'noFiller' | 'matchEnergy' | 'warmPeer' | 'custom';

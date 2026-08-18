@@ -33,11 +33,11 @@ export const Path: {
   state: string
 } = Object.defineProperties({} as any, {
   home: _path("home", getHomeDir),
-  data: _path("data", () => path.join(getHomeDir(), ".mage", "data")),
+  data: _path("data", () => process.env.MAGE_DATA_DIR ? path.resolve(process.env.MAGE_DATA_DIR) : path.join(getHomeDir(), ".mage", "data")),
   bin: _path("bin", () => path.join(getHomeDir(), ".mage", "bin")),
-  log: _path("log", () => path.join(getHomeDir(), ".mage", "data", "log")),
+  log: _path("log", () => path.join(process.env.MAGE_DATA_DIR ? path.resolve(process.env.MAGE_DATA_DIR) : path.join(getHomeDir(), ".mage", "data"), "log")),
   cache: _path("cache", () => path.join(getHomeDir(), ".mage", "cache")),
-  config: _path("config", () => path.join(getHomeDir(), ".mage")),
+  config: _path("config", () => process.env.MAGE_CONFIG_DIR ? path.resolve(process.env.MAGE_CONFIG_DIR) : path.join(getHomeDir(), ".mage")),
   state: _path("state", () => path.join(getHomeDir(), ".mage", "state")),
 })
 

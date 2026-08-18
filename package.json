@@ -10,6 +10,8 @@
     "dev:serve": "MAGE_CONFIG_DIR=$PWD/packages/mage/defaults bun run --cwd packages/mage --conditions=browser src/index.ts serve --port 4096",
     "dev:app": "bun --cwd packages/web-react dev",
     "dev:app:server": "MAGE_SKIP_START=true MAGE_INTERNAL_PORT=4096 bun --cwd packages/web-react dev:server:watch",
+    "build:web": "bun run --cwd packages/web-react build",
+    "start:web": "bun run --cwd packages/web-react start",
     "vscode:dev": "bun --cwd packages/vscode-react dev",
     "vscode:build": "bun --cwd packages/vscode-react build",
     "vscode:package": "bun --cwd packages/vscode-react package",

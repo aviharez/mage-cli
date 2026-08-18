@@ -137,8 +137,8 @@ export type AgentWithExtras = Agent & {
 };
 
 /** Parse the subfolder group name from an agent file path.
- *  e.g. "~/.config/mage/agents/business/ceo.md" → "business"
- *  e.g. "~/.config/mage/agents/ceo.md"          → undefined
+ *  e.g. "~/.mage/agents/business/ceo.md" → "business"
+ *  e.g. "~/.mage/agents/ceo.md"          → undefined
  */
 function parseAgentGroup(path: string | null | undefined): string | undefined {
   if (!path) return undefined;

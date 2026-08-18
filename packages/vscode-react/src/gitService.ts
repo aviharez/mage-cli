@@ -838,8 +838,9 @@ const MAGE_NOUNS = [
 const MAGE_WORKTREE_ATTEMPTS = 26;
 
 const getMageDataPath = () => {
-  const xdgDataHome = process.env.XDG_DATA_HOME || path.join(os.homedir(), '.local', 'share');
-  return path.join(xdgDataHome, 'mage');
+  return process.env.MAGE_DATA_DIR
+    ? path.resolve(process.env.MAGE_DATA_DIR)
+    : path.join(process.env.MAGE_TEST_HOME || os.homedir(), '.mage', 'data');
 };
 
 const pickRandom = (values: string[]) => values[Math.floor(Math.random() * values.length)];

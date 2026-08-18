@@ -101,8 +101,7 @@ export const registerSkillRoutes = (app, dependencies) => {
     }
 
     const userRoots = [
-      path.join(home, '.config', 'mage'),
-      path.join(home, '.mage'),
+      process.env.MAGE_CONFIG_DIR ? path.resolve(process.env.MAGE_CONFIG_DIR) : path.join(process.env.MAGE_TEST_HOME || home, '.mage'),
       path.join(home, '.claude', 'skills'),
       path.join(home, '.agents', 'skills'),
       process.env.MAGE_CONFIG_DIR ? path.resolve(process.env.MAGE_CONFIG_DIR) : null,

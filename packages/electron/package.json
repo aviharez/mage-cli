@@ -23,9 +23,10 @@
     "build:web-assets": "bun run build:sdk && node ./scripts/build-web-assets.mjs",
     "prepare:mage-cli": "node ./scripts/prepare-mage-cli.mjs",
     "verify:mage-cli": "node ./scripts/verify-mage-cli.mjs --staged",
+    "verify:mage-cli:packaged": "node ./scripts/verify-mage-cli.mjs --packaged",
     "bundle:main": "bun ./scripts/bundle-main.mjs",
     "rebuild:native": "node ./scripts/rebuild-native.mjs",
-    "package": "bun run build:web-assets && bun run prepare:mage-cli && bun run bundle:main && bun run rebuild:native && node ./scripts/package.mjs",
+    "package": "bun run build:web-assets && bun run prepare:mage-cli && bun run verify:mage-cli && bun run bundle:main && bun run rebuild:native && node ./scripts/package.mjs && bun run verify:mage-cli:packaged",
     "typecheck": "node --check ./main.mjs && node --check ./preload.mjs && node --check ./mage-cwd.mjs && node --check ./runtime-request-headers.mjs",
     "test": "bun test",
     "generate:macos-icon": "node ./scripts/generate-macos-icon-assets.cjs"

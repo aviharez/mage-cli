@@ -1,12 +1,10 @@
 // IMPORTANT: Set env vars BEFORE any imports from src/ directory
-// xdg-basedir reads env vars at import time, so we must set these first
 import os from "os"
 import path from "path"
 import fs from "fs/promises"
 import { setTimeout as sleep } from "node:timers/promises"
 import { afterAll } from "bun:test"
 
-// Set XDG env vars FIRST, before any src/ imports
 const dir = path.join(os.tmpdir(), "mage-test-data-" + process.pid)
 await fs.mkdir(dir, { recursive: true })
 afterAll(async () => {
@@ -31,10 +29,6 @@ afterAll(async () => {
   await rm(30)
 })
 
-process.env["XDG_DATA_HOME"] = path.join(dir, "share")
-process.env["XDG_CACHE_HOME"] = path.join(dir, "cache")
-process.env["XDG_CONFIG_HOME"] = path.join(dir, "config")
-process.env["XDG_STATE_HOME"] = path.join(dir, "state")
 process.env["MAGE_EXPERIMENTAL_EVENT_SYSTEM"] = "true"
 process.env["MAGE_EXPERIMENTAL_WORKSPACES"] = "true"
 
@@ -49,9 +43,9 @@ const testManagedConfigDir = path.join(dir, "managed")
 process.env["MAGE_TEST_MANAGED_CONFIG_DIR"] = testManagedConfigDir
 
 // Write the cache version file to prevent global/index.ts from clearing the cache
-const cacheDir = path.join(dir, "cache", "mage")
+const cacheDir = path.join(testHome, ".mage", "cache")
 await fs.mkdir(cacheDir, { recursive: true })
-await fs.writeFile(path.join(cacheDir, "version"), "14")
+await fs.writeFile(path.join(cacheDir, "version"), "21")
 
 // Clear provider and server auth env vars to ensure clean test state
 delete process.env["ANTHROPIC_API_KEY"]

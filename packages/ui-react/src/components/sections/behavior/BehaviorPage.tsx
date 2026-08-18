@@ -23,7 +23,7 @@ import {
 import type { DesktopSettings } from '@/lib/desktop';
 import { runtimeFetch } from '@/lib/runtime-fetch';
 
-const AGENTS_MD_PATH = '~/.config/mage/AGENTS.md';
+const AGENTS_MD_PATH = '~/.mage/AGENTS.md';
 
 const readApiError = async (response: Response, fallback: string) => {
   const data = await response.json().catch(() => null) as { error?: unknown } | null;

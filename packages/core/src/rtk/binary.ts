@@ -1,6 +1,5 @@
 import path from "path"
 import fs from "fs"
-import os from "os"
 import { spawnSync } from "child_process"
 import { Global } from "../global"
 import { which } from "../util/which"
@@ -76,14 +75,6 @@ async function resolve() {
     return cached
   }
 
-  // postinstall targets ~/.cache/mage/bin if XDG_CACHE_HOME is unset;
-  // Global.Path.bin matches this (xdg-basedir falls back the same way),
-  // but if the env var was set differently at install time this covers it.
-  const postinstall = path.join(os.homedir(), ".cache", "mage", "bin", binary)
-  if (postinstall !== cached && fs.existsSync(postinstall)) {
-    return postinstall
-  }
-
   const config = PLATFORM[`${process.arch}-${process.platform}` as keyof typeof PLATFORM]
   if (!config) throw new Error(`unsupported platform for rtk: ${process.arch}-${process.platform}`)
 
@@ -103,7 +94,7 @@ async function resolve() {
 
 let pending: Promise<string> | undefined
 
-// Resolves the rtk binary once per process: system PATH, the mage cache dir
+// Resolves the rtk binary once per process: system PATH, the Mage bin dir
 // (seeded by postinstall), or a lazy download from GitHub releases.
 export function filepath(): Promise<string> {
   pending ??= resolve().catch((error) => {

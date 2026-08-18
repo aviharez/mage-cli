@@ -23,7 +23,7 @@ import { GOAL_OBJECTIVE_CHAR_LIMIT, readObjective } from './objectives.js';
 const MAGE_SETTINGS_FILE = path.join(
   process.env.MAGE_DATA_DIR
     ? path.resolve(process.env.MAGE_DATA_DIR)
-    : path.join(os.homedir(), '.config', 'mage'),
+    : path.join(process.env.MAGE_TEST_HOME || os.homedir(), '.mage', 'data'),
   'settings.json',
 );
 

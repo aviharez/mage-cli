@@ -1,5 +1,4 @@
 import path from "path"
-import { xdgData, xdgCache, xdgConfig, xdgState } from "xdg-basedir"
 import os from "os"
 import { Context, Effect, Layer } from "effect"
 
@@ -19,13 +18,13 @@ export namespace Global {
   export const layer = Layer.effect(
     Service,
     Effect.gen(function* () {
-      const app = "mage"
       const home = process.env.MAGE_TEST_HOME ?? os.homedir()
-      const data = path.join(xdgData!, app)
-      const cache = path.join(xdgCache!, app)
-      const cfg = path.join(xdgConfig!, app)
-      const state = path.join(xdgState!, app)
-      const bin = path.join(cache, "bin")
+      const root = path.join(home, ".mage")
+      const data = process.env.MAGE_DATA_DIR ? path.resolve(process.env.MAGE_DATA_DIR) : path.join(root, "data")
+      const cache = path.join(root, "cache")
+      const cfg = process.env.MAGE_CONFIG_DIR ? path.resolve(process.env.MAGE_CONFIG_DIR) : root
+      const state = path.join(root, "state")
+      const bin = path.join(root, "bin")
       const log = path.join(data, "log")
 
       return Service.of({

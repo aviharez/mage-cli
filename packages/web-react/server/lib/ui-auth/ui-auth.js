@@ -364,7 +364,7 @@ const isTrustedDeviceRequest = (value) => value === true;
 
 const MAGE_DATA_DIR = process.env.MAGE_DATA_DIR
   ? path.resolve(process.env.MAGE_DATA_DIR)
-  : path.join(os.homedir(), '.config', 'mage');
+  : path.join(process.env.MAGE_TEST_HOME || os.homedir(), '.mage', 'data');
 const JWT_SECRET_FILE = path.join(MAGE_DATA_DIR, 'jwt-secret');
 
 function getOrCreateJwtSecret() {

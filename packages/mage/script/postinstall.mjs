@@ -40,9 +40,9 @@ const base = `@mybcabisnis/mage-${platform}-${arch}`
 const sourceBinary = platform === "windows" ? "mage.exe" : "mage"
 const targetBinary = path.join(__dirname, "bin", "mage.exe")
 const rgBinary = platform === "windows" ? "rg.exe" : "rg"
-const targetRg = path.join(process.env.XDG_CACHE_HOME || path.join(os.homedir(), ".cache"), "mage", "bin", rgBinary)
+const targetRg = path.join(process.env.MAGE_TEST_HOME || os.homedir(), ".mage", "bin", rgBinary)
 const rtkBinary = platform === "windows" ? "rtk.exe" : "rtk"
-const targetRtk = path.join(process.env.XDG_CACHE_HOME || path.join(os.homedir(), ".cache"), "mage", "bin", rtkBinary)
+const targetRtk = path.join(process.env.MAGE_TEST_HOME || os.homedir(), ".mage", "bin", rtkBinary)
 const npmExecutable = platform === "windows" ? "npm.cmd" : "npm"
 
 function isRecord(value) {

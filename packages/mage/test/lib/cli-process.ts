@@ -63,10 +63,6 @@ function isolatedEnv(home: string, configJson: string): Record<string, string> {
   return {
     MAGE_TEST_HOME: home,
     HOME: home,
-    XDG_CONFIG_HOME: path.join(home, ".config"),
-    XDG_DATA_HOME: path.join(home, ".local/share"),
-    XDG_STATE_HOME: path.join(home, ".local/state"),
-    XDG_CACHE_HOME: path.join(home, ".cache"),
     MAGE_CONFIG_CONTENT: configJson,
     MAGE_DISABLE_PROJECT_CONFIG: "1",
     MAGE_PURE: "1",

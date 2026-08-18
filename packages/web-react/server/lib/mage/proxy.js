@@ -623,7 +623,12 @@ export const registerMageProxy = (app, deps) => {
           return null;
         });
 
-        const settingsPath = path.join(os.homedir(), '.config', 'mage', 'settings.json');
+        const settingsPath = path.join(
+          process.env.MAGE_DATA_DIR
+            ? path.resolve(process.env.MAGE_DATA_DIR)
+            : path.join(process.env.MAGE_TEST_HOME || os.homedir(), '.mage', 'data'),
+          'settings.json',
+        );
         let projectDirs = [];
         try {
           const settingsRaw = fs.readFileSync(settingsPath, 'utf8');

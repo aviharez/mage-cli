@@ -324,9 +324,9 @@ describe('createWorktree', () => {
   it('preflights fast create branch-in-use failures before creating the candidate directory', async () => {
     if (!canRunGit()) return;
 
-    const previousXdgDataHome = process.env.XDG_DATA_HOME;
+    const previousMageDataDir = process.env.MAGE_DATA_DIR;
     const dataHome = createTempDir();
-    process.env.XDG_DATA_HOME = dataHome;
+    process.env.MAGE_DATA_DIR = dataHome;
 
     try {
       const repo = createTempDir();
@@ -351,13 +351,13 @@ describe('createWorktree', () => {
         returnAfterDirectoryCreated: true,
       })).rejects.toThrow(`Branch is already checked out in ${canonicalWorktree}`);
 
-      const candidateDirectory = path.join(dataHome, 'mage', 'worktree', projectID, 'feature-in-use');
+      const candidateDirectory = path.join(dataHome, 'worktree', projectID, 'feature-in-use');
       expect(fs.existsSync(candidateDirectory)).toBe(false);
     } finally {
-      if (previousXdgDataHome === undefined) {
-        delete process.env.XDG_DATA_HOME;
+      if (previousMageDataDir === undefined) {
+        delete process.env.MAGE_DATA_DIR;
       } else {
-        process.env.XDG_DATA_HOME = previousXdgDataHome;
+        process.env.MAGE_DATA_DIR = previousMageDataDir;
       }
     }
   });
@@ -371,9 +371,9 @@ describe('removeWorktree', () => {
   it('forgets unmanaged orphan worktree entries without deleting files', async () => {
     if (!canRunGit()) return;
 
-    const previousXdgDataHome = process.env.XDG_DATA_HOME;
+    const previousMageDataDir = process.env.MAGE_DATA_DIR;
     const dataHome = createTempDir();
-    process.env.XDG_DATA_HOME = dataHome;
+    process.env.MAGE_DATA_DIR = dataHome;
 
     try {
       const repo = createTempDir();
@@ -394,10 +394,10 @@ describe('removeWorktree', () => {
       })).resolves.toBe(true);
       expect(fs.existsSync(canary)).toBe(true);
     } finally {
-      if (previousXdgDataHome === undefined) {
-        delete process.env.XDG_DATA_HOME;
+      if (previousMageDataDir === undefined) {
+        delete process.env.MAGE_DATA_DIR;
       } else {
-        process.env.XDG_DATA_HOME = previousXdgDataHome;
+        process.env.MAGE_DATA_DIR = previousMageDataDir;
       }
     }
   });

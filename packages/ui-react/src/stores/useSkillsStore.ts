@@ -72,8 +72,8 @@ export interface DiscoveredSkill {
 }
 
 /** Parse the domain group folder from a skill file path.
- *  e.g. "~/.config/mage/skills/automation-ai/ai-production/SKILL.md" → "automation-ai"
- *  e.g. "~/.config/mage/skills/theme-system/SKILL.md"                → undefined (flat)
+ *  e.g. "~/.mage/skills/automation-ai/ai-production/SKILL.md" → "automation-ai"
+ *  e.g. "~/.mage/skills/theme-system/SKILL.md"                → undefined (flat)
  */
 function parseSkillGroup(path: string): string | undefined {
   const normalizedPath = path.replace(/\\/g, '/');

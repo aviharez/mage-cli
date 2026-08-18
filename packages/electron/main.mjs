@@ -57,7 +57,7 @@ const CAPABILITIES = Object.freeze([
 ]);
 
 app.setName('Mage');
-if (isDev) app.setPath('userData', path.join(app.getPath('appData'), 'Mage Dev'));
+app.setPath('userData', path.join(os.homedir(), '.mage', 'data', isDev ? 'desktop-dev' : 'desktop'));
 app.setAppUserModelId(APP_USER_MODEL_ID);
 app.commandLine.appendSwitch('proxy-bypass-list', LOOPBACK_BYPASS);
 protocol.registerSchemesAsPrivileged([{
@@ -248,6 +248,9 @@ const startLocalServer = async () => {
   const preferred = Number(process.env.MAGE_HMR_API_PORT) || Number(settings.desktopLocalPort) || DEFAULT_PORT;
   const port = await isPortFree(preferred) ? preferred : await pickFreePort();
   process.env.MAGE_RUNTIME = 'desktop';
+  const mageHome = process.env.MAGE_TEST_HOME || os.homedir();
+  if (!process.env.MAGE_CONFIG_DIR) process.env.MAGE_CONFIG_DIR = path.join(mageHome, '.mage');
+  if (!process.env.MAGE_DATA_DIR) process.env.MAGE_DATA_DIR = path.join(mageHome, '.mage', 'data');
   delete process.env.MAGE_HOST;
   process.env.MAGE_MAGE_HOSTNAME = HOST;
   process.env.MAGE_DIST_DIR = resolveWebDistDir();
@@ -409,7 +412,7 @@ const deniedPath = (target) => {
   const normalized = target.split(path.sep).join('/').toLowerCase();
   const segments = normalized.split('/');
   if (segments.some((segment) => ['.ssh', '.aws', '.gnupg', '.gpg'].includes(segment))) return true;
-  if (normalized.includes('/.config/gh/') || normalized.includes('/.config/mage/credentials')) return true;
+  if (normalized.includes('/.config/gh/') || normalized.includes('/.mage/data/auth')) return true;
   const name = path.basename(normalized);
   return name === '.env' || name.startsWith('.env.') || name.endsWith('.pem') || name.endsWith('.key');
 };

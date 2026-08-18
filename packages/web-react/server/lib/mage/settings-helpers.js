@@ -727,7 +727,7 @@ export const createSettingsHelpers = (dependencies) => {
       }
     }
 
-    // Global behavior prompt — synced to ~/.config/mage/AGENTS.md
+    // Global behavior prompt — synced to ~/.mage/AGENTS.md
     if (typeof candidate.globalBehaviorPrompt === 'string') {
       const value = candidate.globalBehaviorPrompt;
       if (value.length <= 1024 * 1024) {

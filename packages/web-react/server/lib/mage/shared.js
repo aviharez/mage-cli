@@ -6,7 +6,10 @@ import { parse as parseJsonc } from 'jsonc-parser';
 
 // ============== PATH CONSTANTS ==============
 
-const MAGE_CONFIG_DIR = path.join(os.homedir(), '.config', 'mage');
+const MAGE_HOME = process.env.MAGE_TEST_HOME || os.homedir();
+const MAGE_CONFIG_DIR = process.env.MAGE_CONFIG_DIR
+  ? path.resolve(process.env.MAGE_CONFIG_DIR)
+  : path.join(MAGE_HOME, '.mage');
 const AGENT_DIR = path.join(MAGE_CONFIG_DIR, 'agents');
 const COMMAND_DIR = path.join(MAGE_CONFIG_DIR, 'commands');
 const SKILL_DIR = path.join(MAGE_CONFIG_DIR, 'skills');

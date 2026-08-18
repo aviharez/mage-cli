@@ -6,8 +6,14 @@ import { BUILT_IN_SKILL_LOCATION, type DiscoveredSkill, type SkillScope, type Sk
 import type { BridgeContext } from './bridge';
 
 const SETTINGS_KEY = 'mage.settings';
-const MAGE_SHARED_SETTINGS_PATH = path.join(os.homedir(), '.config', 'mage', 'settings.json');
-const MAGE_MAGIC_PROMPTS_PATH = path.join(os.homedir(), '.config', 'mage', 'magic-prompts.json');
+const MAGE_CONFIG_DIR = process.env.MAGE_CONFIG_DIR
+  ? path.resolve(process.env.MAGE_CONFIG_DIR)
+  : path.join(process.env.MAGE_TEST_HOME || os.homedir(), '.mage');
+const MAGE_DATA_DIR = process.env.MAGE_DATA_DIR
+  ? path.resolve(process.env.MAGE_DATA_DIR)
+  : path.join(process.env.MAGE_TEST_HOME || os.homedir(), '.mage', 'data');
+const MAGE_SHARED_SETTINGS_PATH = path.join(MAGE_DATA_DIR, 'settings.json');
+const MAGE_MAGIC_PROMPTS_PATH = path.join(MAGE_DATA_DIR, 'magic-prompts.json');
 const MAGIC_PROMPTS_FILE_VERSION = 1;
 const MAGIC_PROMPT_ID_PATTERN = /^[a-z0-9._-]{1,160}$/;
 const MAGIC_PROMPT_TEXT_MAX_LENGTH = 200_000;
@@ -76,7 +82,7 @@ const inferSkillScopeAndSourceFromLocation = (location: string, workingDirectory
 
   const home = os.homedir();
   const userRoots = [
-    path.join(home, '.config', 'mage'),
+    process.env.MAGE_CONFIG_DIR ? path.resolve(process.env.MAGE_CONFIG_DIR) : path.join(home, '.mage'),
     path.join(home, '.mage'),
     path.join(home, '.claude', 'skills'),
     path.join(home, '.agents', 'skills'),

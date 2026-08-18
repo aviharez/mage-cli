@@ -217,11 +217,7 @@ function discoverSkills(workingDirectory) {
   }
 
   const cacheCandidates = [];
-  if (process.env.XDG_CACHE_HOME) {
-    cacheCandidates.push(path.join(process.env.XDG_CACHE_HOME, 'mage', 'skills'));
-  }
-  cacheCandidates.push(path.join(os.homedir(), '.cache', 'mage', 'skills'));
-  cacheCandidates.push(path.join(os.homedir(), 'Library', 'Caches', 'mage', 'skills'));
+  cacheCandidates.push(path.join(process.env.MAGE_TEST_HOME || os.homedir(), '.mage', 'cache', 'skills'));
 
   for (const cacheRoot of cacheCandidates) {
     if (!fs.existsSync(cacheRoot)) continue;

@@ -2,7 +2,9 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 
-const STORAGE_DIR = path.join(os.homedir(), '.config', 'mage');
+const STORAGE_DIR = process.env.MAGE_CONFIG_DIR
+  ? path.resolve(process.env.MAGE_CONFIG_DIR)
+  : path.join(process.env.MAGE_TEST_HOME || os.homedir(), '.mage');
 const STORAGE_FILE = path.join(STORAGE_DIR, 'git-identities.json');
 
 function ensureStorageDir() {

@@ -16,8 +16,11 @@ const SKILL_NAME_PATTERN = /^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/;
 
 function normalizeUserSkillDir(userSkillDir) {
   if (!userSkillDir) return null;
-  const legacySkillDir = path.join(os.homedir(), '.config', 'mage', 'skill');
-  const pluralSkillDir = path.join(os.homedir(), '.config', 'mage', 'skills');
+  const configDir = process.env.MAGE_CONFIG_DIR
+    ? path.resolve(process.env.MAGE_CONFIG_DIR)
+    : path.join(process.env.MAGE_TEST_HOME || os.homedir(), '.mage');
+  const legacySkillDir = path.join(configDir, 'skill');
+  const pluralSkillDir = path.join(configDir, 'skills');
   if (userSkillDir === legacySkillDir) {
     if (fs.existsSync(legacySkillDir) && !fs.existsSync(pluralSkillDir)) return legacySkillDir;
     return pluralSkillDir;

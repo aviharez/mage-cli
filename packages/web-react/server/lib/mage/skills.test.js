@@ -8,7 +8,7 @@ describe('skills', () => {
   it('merges locally discovered skills missing from Mage live discovery', () => {
     const merged = mergeDiscoveredSkills(
       [
-        { name: 'existing-mage-skill', path: '/home/jkker/.config/mage/skills/existing-mage-skill/SKILL.md', source: 'mage' },
+        { name: 'existing-mage-skill', path: '/home/jkker/.mage/skills/existing-mage-skill/SKILL.md', source: 'mage' },
         { name: 'existing-agent-skill', path: '/home/jkker/.agents/skills/existing-agent-skill/SKILL.md', source: 'agents' },
       ],
       [

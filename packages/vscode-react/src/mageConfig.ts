@@ -4,7 +4,9 @@ import os from 'node:os';
 import yaml from 'yaml';
 import { parse as parseJsonc } from 'jsonc-parser';
 
-const MAGE_CONFIG_DIR = path.join(os.homedir(), '.config', 'mage');
+const MAGE_CONFIG_DIR = process.env.MAGE_CONFIG_DIR
+  ? path.resolve(process.env.MAGE_CONFIG_DIR)
+  : path.join(process.env.MAGE_TEST_HOME || os.homedir(), '.mage');
 const AGENT_DIR = path.join(MAGE_CONFIG_DIR, 'agents');
 const COMMAND_DIR = path.join(MAGE_CONFIG_DIR, 'commands');
 const GLOBAL_SNIPPET_DIR = path.join(MAGE_CONFIG_DIR, 'snippet');
@@ -680,7 +682,7 @@ const resolveSkillSearchDirectories = (workingDirectory?: string): string[] => {
     projectDirs.forEach(pushDir);
   }
 
-  pushDir(path.join(os.homedir(), '.mage'));
+  pushDir(path.join(process.env.MAGE_TEST_HOME || os.homedir(), '.mage'));
   pushDir(process.env.MAGE_CONFIG_DIR ? path.resolve(process.env.MAGE_CONFIG_DIR) : null);
 
   return directories;
@@ -2487,7 +2489,7 @@ export const discoverSkills = (workingDirectory?: string): DiscoveredSkill[] => 
 
   // 3) Config directories: {skill,skills}/**/SKILL.md
   const configDirectories = resolveSkillSearchDirectories(workingDirectory);
-  const homeMageDir = path.resolve(path.join(os.homedir(), '.mage'));
+  const homeMageDir = path.resolve(path.join(process.env.MAGE_TEST_HOME || os.homedir(), '.mage'));
   const customConfigDir = process.env.MAGE_CONFIG_DIR
     ? path.resolve(process.env.MAGE_CONFIG_DIR)
     : null;
@@ -2528,11 +2530,7 @@ export const discoverSkills = (workingDirectory?: string): DiscoveredSkill[] => 
 
   // 5) Cached skills from config.skills.urls pulls (best-effort, no network)
   const cacheCandidates: string[] = [];
-  if (process.env.XDG_CACHE_HOME) {
-    cacheCandidates.push(path.join(process.env.XDG_CACHE_HOME, 'mage', 'skills'));
-  }
-  cacheCandidates.push(path.join(os.homedir(), '.cache', 'mage', 'skills'));
-  cacheCandidates.push(path.join(os.homedir(), 'Library', 'Caches', 'mage', 'skills'));
+  cacheCandidates.push(path.join(process.env.MAGE_TEST_HOME || os.homedir(), '.mage', 'cache', 'skills'));
 
   for (const cacheRoot of cacheCandidates) {
     if (!fs.existsSync(cacheRoot)) continue;

@@ -122,8 +122,13 @@ export type ProviderResult = {
   error?: string;
 };
 
-const MAGE_CONFIG_DIR = path.join(os.homedir(), '.config', 'mage');
-const MAGE_DATA_DIR = path.join(os.homedir(), '.local', 'share', 'mage');
+const MAGE_HOME = process.env.MAGE_TEST_HOME || os.homedir();
+const MAGE_CONFIG_DIR = process.env.MAGE_CONFIG_DIR
+  ? path.resolve(process.env.MAGE_CONFIG_DIR)
+  : path.join(MAGE_HOME, '.mage');
+const MAGE_DATA_DIR = process.env.MAGE_DATA_DIR
+  ? path.resolve(process.env.MAGE_DATA_DIR)
+  : path.join(MAGE_HOME, '.mage', 'data');
 const AUTH_FILE = path.join(MAGE_DATA_DIR, 'auth.json');
 
 

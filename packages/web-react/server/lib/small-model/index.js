@@ -10,7 +10,7 @@ import { callSmallModel } from './call.js';
 const MAGE_SETTINGS_FILE = path.join(
   process.env.MAGE_DATA_DIR
     ? path.resolve(process.env.MAGE_DATA_DIR)
-    : path.join(os.homedir(), '.config', 'mage'),
+    : path.join(process.env.MAGE_TEST_HOME || os.homedir(), '.mage', 'data'),
   'settings.json',
 );
 

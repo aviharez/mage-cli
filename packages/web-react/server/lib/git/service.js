@@ -552,8 +552,9 @@ const MAGE_NOUNS = [
 const MAGE_WORKTREE_ATTEMPTS = 26;
 
 const getMageDataPath = () => {
-  const xdgDataHome = process.env.XDG_DATA_HOME || path.join(os.homedir(), '.local', 'share');
-  return path.join(xdgDataHome, 'mage');
+  return process.env.MAGE_DATA_DIR
+    ? path.resolve(process.env.MAGE_DATA_DIR)
+    : path.join(process.env.MAGE_TEST_HOME || os.homedir(), '.mage', 'data');
 };
 
 const pickRandom = (values) => values[Math.floor(Math.random() * values.length)];
@@ -1070,7 +1071,12 @@ export async function computeIntegratePlan(input = {}) {
 }
 
 const createIntegrateTempWorktree = async (repoRoot, targetBranch) => {
-  const tmpParent = path.join(os.homedir(), '.config', 'mage', 'tmp');
+  const tmpParent = path.join(
+    process.env.MAGE_DATA_DIR
+      ? path.resolve(process.env.MAGE_DATA_DIR)
+      : path.join(process.env.MAGE_TEST_HOME || os.homedir(), '.mage', 'data'),
+    'tmp',
+  );
   await fsp.mkdir(tmpParent, { recursive: true });
   const tmpDir = await fsp.mkdtemp(path.join(tmpParent, 'oc-integrate-'));
   try {

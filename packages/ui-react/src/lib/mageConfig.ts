@@ -1,6 +1,6 @@
 /**
  * Mage project-level configuration service.
- * Stores per-project settings in ~/.config/mage/<projectId>.json.
+ * Stores per-project settings in ~/.mage/<projectId>.json.
  * Migrates from legacy <project>/.mage/mage.json.
  */
 
@@ -17,7 +17,7 @@ type ProjectRef = { id: string; path: string };
 const CONFIG_FILENAME = 'mage.json';
 // LEGACY_PROJECT_CONFIG: legacy per-project config root inside repo.
 const LEGACY_CONFIG_DIR = '.mage';
-const USER_PROJECTS_DIR_SEGMENTS = ['.config', 'mage', 'projects'];
+const USER_PROJECTS_DIR_SEGMENTS = ['.mage', 'projects'];
 
 /**
  * Get the runtime Files API if available (Desktop/VSCode).
@@ -597,7 +597,7 @@ async function readMageConfig(project: ProjectRef): Promise<MageConfig | null> {
   }
 
   // 2) Migrate legacy <project>/.mage/mage.json.
-  // LEGACY_PROJECT_CONFIG: migrate project-local mage.json -> ~/.config/mage/projects/<projectId>.json
+  // LEGACY_PROJECT_CONFIG: migrate project-local mage.json -> ~/.mage/projects/<projectId>.json
   const legacyPath = getLegacyConfigPath(projectDirectory);
   const legacyConfig = parseConfig(await readText(legacyPath));
   if (!legacyConfig) {

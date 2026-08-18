@@ -152,7 +152,7 @@ export const MageCliSettings: React.FC = () => {
             {' '}
             {t('settings.mage.mageCli.tipMiddle')}
             {' '}
-            <span className="font-mono">~/.config/mage/settings.json</span>
+            <span className="font-mono">~/.mage/data/settings.json</span>
             {'.'}
           </div>
         </div>

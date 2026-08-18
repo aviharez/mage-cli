@@ -247,7 +247,9 @@ const sanitizeModelRefs = (...args) => settingsNormalizationRuntime.sanitizeMode
 const sanitizeSkillCatalogs = (...args) => settingsNormalizationRuntime.sanitizeSkillCatalogs(...args);
 const sanitizeProjects = (...args) => settingsNormalizationRuntime.sanitizeProjects(...args);
 
-const MAGE_USER_CONFIG_ROOT = path.join(os.homedir(), '.config', 'mage');
+const MAGE_USER_CONFIG_ROOT = process.env.MAGE_CONFIG_DIR
+  ? path.resolve(process.env.MAGE_CONFIG_DIR)
+  : path.join(process.env.MAGE_TEST_HOME || os.homedir(), '.mage');
 const MAGE_USER_THEMES_DIR = path.join(MAGE_USER_CONFIG_ROOT, 'themes');
 const MAGE_PROJECTS_CONFIG_DIR = path.join(MAGE_USER_CONFIG_ROOT, 'projects');
 
@@ -280,7 +282,7 @@ const getCachedZenModels = (...args) => notificationTemplateRuntime.getCachedZen
 
 const MAGE_DATA_DIR = process.env.MAGE_DATA_DIR
   ? path.resolve(process.env.MAGE_DATA_DIR)
-  : path.join(os.homedir(), '.config', 'mage');
+  : path.join(process.env.MAGE_TEST_HOME || os.homedir(), '.mage', 'data');
 const SETTINGS_FILE_PATH = path.join(MAGE_DATA_DIR, 'settings.json');
 const PUSH_SUBSCRIPTIONS_FILE_PATH = path.join(MAGE_DATA_DIR, 'push-subscriptions.json');
 const APNS_TOKENS_FILE_PATH = path.join(MAGE_DATA_DIR, 'apns-tokens.json');

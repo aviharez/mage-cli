@@ -15,7 +15,7 @@ const DEFAULT_RP_NAME = 'Mage';
 
 const MAGE_DATA_DIR = process.env.MAGE_DATA_DIR
   ? path.resolve(process.env.MAGE_DATA_DIR)
-  : path.join(os.homedir(), '.config', 'mage');
+  : path.join(process.env.MAGE_TEST_HOME || os.homedir(), '.mage', 'data');
 
 const PASSKEY_STORE_FILE = path.join(MAGE_DATA_DIR, 'ui-passkeys.json');
 

@@ -6,13 +6,10 @@ const preserveExerciseGlobalRoot = !!process.env.MAGE_HTTPAPI_EXERCISE_GLOBAL
 export const exerciseGlobalRoot =
   process.env.MAGE_HTTPAPI_EXERCISE_GLOBAL ??
   path.join(process.env.TMPDIR ?? "/tmp", `mage-httpapi-global-${process.pid}`)
-process.env.XDG_DATA_HOME = path.join(exerciseGlobalRoot, "data")
-process.env.XDG_CONFIG_HOME = path.join(exerciseGlobalRoot, "config")
-process.env.XDG_STATE_HOME = path.join(exerciseGlobalRoot, "state")
-process.env.XDG_CACHE_HOME = path.join(exerciseGlobalRoot, "cache")
+process.env.MAGE_TEST_HOME = exerciseGlobalRoot
 process.env.MAGE_DISABLE_SHARE = "true"
-export const exerciseConfigDirectory = path.join(exerciseGlobalRoot, "config", "mage")
-export const exerciseDataDirectory = path.join(exerciseGlobalRoot, "data", "mage")
+export const exerciseConfigDirectory = path.join(exerciseGlobalRoot, ".mage")
+export const exerciseDataDirectory = path.join(exerciseGlobalRoot, ".mage", "data")
 
 const preserveExerciseDatabase = !!process.env.MAGE_HTTPAPI_EXERCISE_DB
 export const exerciseDatabasePath =

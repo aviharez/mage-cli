@@ -43,7 +43,12 @@ import { spawnSync } from 'node:child_process';
 const resolveRegistryDir = () => {
   const override = process.env.MAGE_MANAGED_PROCESS_REGISTRY;
   if (override && override.trim()) return override.trim();
-  return path.join(os.homedir(), '.config', 'mage', 'managed-mage');
+  return path.join(
+    process.env.MAGE_DATA_DIR
+      ? path.resolve(process.env.MAGE_DATA_DIR)
+      : path.join(process.env.MAGE_TEST_HOME || os.homedir(), '.mage', 'data'),
+    'managed-mage',
+  );
 };
 
 const entryFilePath = (pid) => path.join(resolveRegistryDir(), `${pid}.json`);
