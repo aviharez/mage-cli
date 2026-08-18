@@ -1,6 +1,6 @@
 {
   "name": "@mybcabisnis/mage-electron",
-  "version": "1.2.12-alpha1",
+  "version": "1.2.13",
   "private": true,
   "description": "Electron desktop runtime for Mage",
   "author": "BCA Bisnis",

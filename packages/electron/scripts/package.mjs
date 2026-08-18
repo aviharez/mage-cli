@@ -3,6 +3,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const env = { ...process.env };
+const builderArgs = process.argv.slice(2);
+
+if (process.platform === 'win32' && !builderArgs.includes('--win')) builderArgs.push('--win');
+if (process.platform === 'win32' && !builderArgs.some((arg) => ['--x64', '--arm64', '--ia32'].includes(arg))) {
+  builderArgs.push(`--${process.arch}`);
+}
 
 if (process.platform === 'win32' && !env.CSC_LINK && !env.WINDOWS_CSC_LINK) {
   env.CSC_IDENTITY_AUTO_DISCOVERY = 'false';
@@ -22,7 +28,7 @@ const bunBinary = bunBinaryCandidates.find((candidate) => {
   return false;
 }) || (process.platform === 'win32' ? 'bun.exe' : 'bun');
 
-const child = spawn(bunBinary, ['x', 'electron-builder', ...process.argv.slice(2)], {
+const child = spawn(bunBinary, ['x', 'electron-builder', ...builderArgs], {
   env,
   stdio: 'inherit',
 });

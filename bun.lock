@@ -161,7 +161,7 @@
     },
     "packages/electron": {
       "name": "@mybcabisnis/mage-electron",
-      "version": "1.2.12-alpha1",
+      "version": "1.2.13",
       "dependencies": {
         "@mybcabisnis/mage-web-react": "workspace:*",
         "electron-context-menu": "^4.1.2",

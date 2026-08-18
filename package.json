@@ -21,7 +21,7 @@
     "electron:test": "bun --cwd packages/electron test",
     "electron:package": "bun --cwd packages/electron package",
     "electron:package:mac": "bun --cwd packages/electron package -- --mac",
-    "electron:package:win": "bun --cwd packages/electron package -- --win",
+    "electron:package:win": "bun run --cwd packages/electron package",
     "lint": "oxlint",
     "typecheck": "bun turbo typecheck",
     "postinstall": "bun run --cwd packages/core fix-node-pty",
