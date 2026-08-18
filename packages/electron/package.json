@@ -17,8 +17,8 @@
     "electron-builder": "^26.0.0"
   },
   "scripts": {
-    "dev": "node ./scripts/electron-dev.mjs",
-    "dev:bundled": "MAGE_ELECTRON_USE_BUNDLED_UI=1 node ./scripts/electron-dev.mjs",
+    "dev": "bun run prepare:mage-cli && node ./scripts/electron-dev.mjs",
+    "dev:bundled": "bun run prepare:mage-cli && MAGE_ELECTRON_USE_BUNDLED_UI=1 node ./scripts/electron-dev.mjs",
     "build:sdk": "bun ../../packages/sdk/js/script/build.ts",
     "build:web-assets": "bun run build:sdk && node ./scripts/build-web-assets.mjs",
     "prepare:mage-cli": "node ./scripts/prepare-mage-cli.mjs",

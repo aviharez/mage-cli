@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import type { Session } from '@mybcabisnis/mage-sdk/v2';
 
-import { isPathWithinProject, isSessionRelatedToProject } from './utils';
+import { findBestProjectDirectoryMatch, isPathWithinProject, isSessionRelatedToProject } from './utils';
 
 describe('isPathWithinProject', () => {
   test('matches child directories for root projects', () => {
@@ -26,6 +26,16 @@ describe('isPathWithinProject', () => {
 
   test('matches deep child directories', () => {
     expect(isPathWithinProject('/workspace/app/sub/dir', '/workspace/app')).toBe(true);
+  });
+});
+
+describe('findBestProjectDirectoryMatch', () => {
+  test('returns the most specific registered project or worktree', () => {
+    const knownDirectories = new Set(['/Users/x', '/Users/x/repo', '/Users/x/repo/worktree']);
+
+    expect(findBestProjectDirectoryMatch('/Users/x/repo/worktree/src', knownDirectories)).toBe('/Users/x/repo/worktree');
+    expect(findBestProjectDirectoryMatch('/Users/x/repo/src', knownDirectories)).toBe('/Users/x/repo');
+    expect(findBestProjectDirectoryMatch('/Users/other/src', knownDirectories)).toBe(null);
   });
 });
 

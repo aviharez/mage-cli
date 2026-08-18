@@ -67,6 +67,7 @@ import { useSessionPinnedStore } from '@/stores/useSessionPinnedStore';
 import {
   compareSessionsByPinnedAndTime,
   formatProjectLabel,
+  findBestProjectDirectoryMatch,
   normalizePath,
 } from './sidebar/utils';
 import {
@@ -144,12 +145,13 @@ const buildKnownSessionDirectories = (
 const isKnownActiveSessionDirectory = (
   session: Session,
   knownDirectories: Set<string>,
-  options?: { allowUnknownDirectory?: boolean; allowEmptyDirectorySet?: boolean },
+  options?: { allowUnknownDirectory?: boolean; allowEmptyDirectorySet?: boolean; allowDescendantDirectory?: boolean },
 ): boolean => {
   if (session.time?.archived) return true;
   const directory = normalizePath(resolveGlobalSessionDirectory(session))?.toLowerCase();
   if (!directory) return options?.allowUnknownDirectory ?? true;
   if (knownDirectories.size === 0) return options?.allowEmptyDirectorySet ?? true;
+  if (options?.allowDescendantDirectory) return Boolean(findBestProjectDirectoryMatch(directory, knownDirectories));
   return knownDirectories.has(directory);
 };
 
@@ -374,6 +376,7 @@ export const SessionSidebar: React.FC<SessionSidebarProps> = ({
     return merged.filter((session) => isKnownActiveSessionDirectory(session, knownSessionDirectories, {
       allowUnknownDirectory: !isVSCode,
       allowEmptyDirectorySet: !isVSCode,
+      allowDescendantDirectory: !isVSCode,
     }));
   }, [globalActiveSessions, isVSCode, knownSessionDirectories, liveSessions]);
 

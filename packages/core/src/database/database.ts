@@ -11,21 +11,27 @@ import { isAbsolute, join } from "path"
 import { DatabaseMigration } from "./migration"
 import { InstallationChannel } from "../installation/version"
 import { makeGlobalNode } from "../effect/app-node"
+import { xdgData } from "xdg-basedir"
 
 const makeDatabase = EffectDrizzleSqlite.makeWithDefaults()
 type DatabaseShape = Effect.Success<typeof makeDatabase>
 
 const quoteIdentifier = (value: string) => `"${value.replaceAll('"', '""')}"`
 
+const legacyDatabaseFiles = (directory: string) => {
+  if (!existsSync(directory)) return []
+  return readdirSync(directory, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && /^(mage|opencode)(?:-.*)?\.db$/.test(entry.name))
+    .map((entry) => join(directory, entry.name))
+    .toSorted()
+}
+
 const legacyDatabasePaths = () => {
   const legacyData = join(Global.Path.home, ".mage", "data")
   return [
-    join(legacyData, "mage.db"),
-    ...(existsSync(legacyData)
-      ? readdirSync(legacyData, { withFileTypes: true })
-          .filter((entry) => entry.isFile() && /^mage-.*\.db$/.test(entry.name))
-          .map((entry) => join(legacyData, entry.name))
-      : []),
+    ...legacyDatabaseFiles(legacyData),
+    ...(xdgData ? legacyDatabaseFiles(join(xdgData, "mage")) : []),
+    ...(xdgData ? legacyDatabaseFiles(join(xdgData, "opencode")) : []),
     join(Global.Path.data, "mage.db"),
   ]
 }

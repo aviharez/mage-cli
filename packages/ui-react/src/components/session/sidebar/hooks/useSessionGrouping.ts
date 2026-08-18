@@ -5,7 +5,9 @@ import type { SessionGroup, SessionNode } from '../types';
 import {
   compareSessionsByPinnedAndTime,
   dedupeSessionsById,
+  findBestProjectDirectoryMatch,
   getArchivedScopeKey,
+  isPathWithinProject,
   normalizeForBranchComparison,
   normalizePath,
 } from '../utils';
@@ -132,8 +134,11 @@ export const useSessionGrouping = (args: Args) => {
         const metadataPath = normalizePath(args.worktreeMetadata.get(session.id)?.path ?? null);
         const normalizedDir = metadataPath ?? resolveGlobalSessionDirectory(session);
         if (!normalizedDir) return archivedKey;
-        if (normalizedDir !== normalizedProjectRoot && worktreeByPath.has(normalizedDir)) return normalizedDir;
-        if (normalizedDir === normalizedProjectRoot) return normalizedProjectRoot ?? '__project_root__';
+        const worktreeDirectory = findBestProjectDirectoryMatch(normalizedDir, worktreeByPath.keys());
+        if (worktreeDirectory && worktreeDirectory !== normalizedProjectRoot) return worktreeDirectory;
+        if (normalizedDir === normalizedProjectRoot || isPathWithinProject(normalizedDir, normalizedProjectRoot)) {
+          return normalizedProjectRoot ?? '__project_root__';
+        }
         return archivedKey;
       };
 

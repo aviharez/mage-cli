@@ -1,7 +1,13 @@
 import React from 'react';
 import type { Session } from '@mybcabisnis/mage-sdk/v2';
 import { resolveGlobalSessionDirectory } from '@/stores/useGlobalSessionsStore';
-import { collectKnownProjectDirectories, dedupeSessionsById, isSessionRelatedToProject, normalizePath } from '../utils';
+import {
+  collectKnownProjectDirectories,
+  dedupeSessionsById,
+  findBestProjectDirectoryMatch,
+  isSessionRelatedToProject,
+  normalizePath,
+} from '../utils';
 
 type WorktreeMeta = { path: string };
 
@@ -45,7 +51,7 @@ export const useProjectSessionLists = (args: Args) => {
   const sessionsByDirectory = React.useMemo(() => {
     const next = new Map<string, Session[]>();
     sessions.forEach((session) => {
-      const directory = resolveGlobalSessionDirectory(session);
+      const directory = normalizePath(resolveGlobalSessionDirectory(session));
       if (!directory) {
         return;
       }
@@ -54,16 +60,19 @@ export const useProjectSessionLists = (args: Args) => {
       // every session the server has ever seen, even ones for
       // long-removed worktrees; the sidebar's downstream filters
       // would then drop them anyway.
-      if (!knownProjectDirectories.has(directory)) {
+      const projectDirectory = isVSCode
+        ? (knownProjectDirectories.has(directory) ? directory : null)
+        : findBestProjectDirectoryMatch(directory, knownProjectDirectories);
+      if (!projectDirectory) {
         return;
       }
 
-      const collection = next.get(directory) ?? [];
+      const collection = next.get(projectDirectory) ?? [];
       collection.push(session);
-      next.set(directory, collection);
+      next.set(projectDirectory, collection);
     });
     return next;
-  }, [sessions, knownProjectDirectories]);
+  }, [isVSCode, sessions, knownProjectDirectories]);
 
   const getSessionsForProject = React.useCallback(
     (project: { normalizedPath: string }) => {

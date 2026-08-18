@@ -9,13 +9,15 @@ const home = path.join(root, "home")
 process.env.MAGE_TEST_HOME = home
 process.env.MAGE_DATA_DIR = path.join(root, "current")
 process.env.MAGE_DISABLE_CHANNEL_DB = "true"
+const xdgData = path.join(home, ".local", "share")
+process.env.XDG_DATA_HOME = xdgData
 
 const { Database } = await import("../src/database/database")
 const { sql } = await import("drizzle-orm")
 
-await mkdir(path.join(home, ".mage", "data"), { recursive: true })
-const legacy = new BunDatabase(path.join(home, ".mage", "data", "mage.db"))
-legacy.exec(`
+const createLegacyDatabase = (filename: string, projectId: string, sessionId: string, slug: string, title: string) => {
+  const database = new BunDatabase(filename)
+  database.exec(`
   CREATE TABLE project (
     id TEXT PRIMARY KEY,
     worktree TEXT NOT NULL,
@@ -35,46 +37,54 @@ legacy.exec(`
     time_updated INTEGER NOT NULL
   );
 `)
-legacy
-  .query("INSERT INTO project (id, worktree, vcs, time_created, time_updated, sandboxes) VALUES (?, ?, ?, ?, ?, ?)")
-  .run("legacy-project", "/tmp/project", "git", 1, 1, "[]")
-legacy
-  .query(
+  database
+    .query("INSERT INTO project (id, worktree, vcs, time_created, time_updated, sandboxes) VALUES (?, ?, ?, ?, ?, ?)")
+    .run(projectId, `/tmp/${projectId}`, "git", 1, 1, "[]")
+  database
+    .query(
     "INSERT INTO session (id, project_id, slug, directory, title, version, time_created, time_updated) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-  )
-  .run("legacy-session", "legacy-project", "legacy", "/tmp/project", "Legacy session", "1", 1, 1)
-legacy.close()
+    )
+    .run(sessionId, projectId, slug, `/tmp/${projectId}`, title, "1", 1, 1)
+  database.close()
+}
 
-const channelLegacy = new BunDatabase(path.join(home, ".mage", "data", "mage-local.db"))
-channelLegacy.exec(`
-  CREATE TABLE project (
-    id TEXT PRIMARY KEY,
-    worktree TEXT NOT NULL,
-    vcs TEXT,
-    time_created INTEGER NOT NULL,
-    time_updated INTEGER NOT NULL,
-    sandboxes TEXT NOT NULL
-  );
-  CREATE TABLE session (
-    id TEXT PRIMARY KEY,
-    project_id TEXT NOT NULL,
-    slug TEXT NOT NULL,
-    directory TEXT NOT NULL,
-    title TEXT NOT NULL,
-    version TEXT NOT NULL,
-    time_created INTEGER NOT NULL,
-    time_updated INTEGER NOT NULL
-  );
-`)
-channelLegacy
-  .query("INSERT INTO project (id, worktree, vcs, time_created, time_updated, sandboxes) VALUES (?, ?, ?, ?, ?, ?)")
-  .run("channel-project", "/tmp/channel-project", "git", 1, 1, "[]")
-channelLegacy
-  .query(
-    "INSERT INTO session (id, project_id, slug, directory, title, version, time_created, time_updated) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-  )
-  .run("channel-session", "channel-project", "channel", "/tmp/channel-project", "Channel session", "1", 1, 1)
-channelLegacy.close()
+await Promise.all([
+  mkdir(path.join(home, ".mage", "data"), { recursive: true }),
+  mkdir(path.join(xdgData, "mage"), { recursive: true }),
+  mkdir(path.join(xdgData, "opencode"), { recursive: true }),
+])
+
+createLegacyDatabase(path.join(home, ".mage", "data", "mage.db"), "legacy-project", "legacy-session", "legacy", "Legacy session")
+createLegacyDatabase(
+  path.join(home, ".mage", "data", "mage-local.db"),
+  "channel-project",
+  "channel-session",
+  "channel",
+  "Channel session",
+)
+createLegacyDatabase(path.join(xdgData, "mage", "mage.db"), "xdg-mage-project", "xdg-mage-session", "xdg-mage", "XDG Mage session")
+createLegacyDatabase(
+  path.join(xdgData, "mage", "mage-beta.db"),
+  "xdg-mage-channel-project",
+  "xdg-mage-channel-session",
+  "xdg-mage-channel",
+  "XDG Mage channel session",
+)
+createLegacyDatabase(
+  path.join(xdgData, "mage", "opencode.db"),
+  "xdg-mage-opencode-project",
+  "xdg-mage-opencode-session",
+  "xdg-mage-opencode",
+  "XDG Mage OpenCode session",
+)
+createLegacyDatabase(path.join(xdgData, "opencode", "opencode.db"), "xdg-opencode-project", "xdg-opencode-session", "xdg-opencode", "XDG OpenCode session")
+createLegacyDatabase(
+  path.join(xdgData, "opencode", "opencode-local.db"),
+  "xdg-opencode-channel-project",
+  "xdg-opencode-channel-session",
+  "xdg-opencode-channel",
+  "XDG OpenCode channel session",
+)
 
 const rows = await Effect.runPromise(
   Effect.scoped(
@@ -85,9 +95,14 @@ const rows = await Effect.runPromise(
   ),
 )
 
-test("imports sessions from the pre-rebase Mage database", () => {
+test("imports sessions from legacy Mage and OpenCode databases", () => {
   expect(rows.map((row) => row.id)).toContain("legacy-session")
   expect(rows.map((row) => row.id)).toContain("channel-session")
+  expect(rows.map((row) => row.id)).toContain("xdg-mage-session")
+  expect(rows.map((row) => row.id)).toContain("xdg-mage-channel-session")
+  expect(rows.map((row) => row.id)).toContain("xdg-mage-opencode-session")
+  expect(rows.map((row) => row.id)).toContain("xdg-opencode-session")
+  expect(rows.map((row) => row.id)).toContain("xdg-opencode-channel-session")
 })
 
 afterAll(() => rm(root, { recursive: true, force: true }))

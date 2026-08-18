@@ -126,7 +126,7 @@ export const collectKnownProjectDirectories = (
   return knownDirectories;
 };
 
-const findBestProjectDirectoryMatch = (
+export const findBestProjectDirectoryMatch = (
   value: string | null,
   knownDirectories?: Iterable<string>,
 ): string | null => {
