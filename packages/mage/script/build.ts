@@ -5,6 +5,7 @@ import fs from "fs"
 import path from "path"
 import { fileURLToPath } from "url"
 import { createSolidTransformPlugin } from "@opentui/solid/bun-plugin"
+import { extractZip } from "../src/util/archive"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -123,7 +124,7 @@ async function downloadRtk(os: string, arch: string, destDir: string) {
     if (!response.ok) throw new Error(`Failed to download rtk for ${os}-${arch}: ${response.status}`)
     await Bun.write(archivePath, await response.arrayBuffer())
     if (config.extension === "tar.gz") await $`tar -xzf ${archivePath} -C ${extractDir}`
-    if (config.extension === "zip") await $`unzip -o ${archivePath} -d ${extractDir}`
+    if (config.extension === "zip") await extractZip(archivePath, extractDir)
     // rtk archives contain the bare binary at the root (unlike ripgrep's nested folder)
     fs.copyFileSync(path.join(extractDir, config.binary), cachedBin)
     if (os !== "win32") fs.chmodSync(cachedBin, 0o755)
@@ -149,7 +150,7 @@ async function downloadRg(os: string, arch: string, destDir: string) {
     if (!response.ok) throw new Error(`Failed to download ripgrep for ${os}-${arch}: ${response.status}`)
     await Bun.write(archivePath, await response.arrayBuffer())
     if (config.extension === "tar.gz") await $`tar -xzf ${archivePath} -C ${extractDir}`
-    if (config.extension === "zip") await $`unzip -o ${archivePath} -d ${extractDir}`
+    if (config.extension === "zip") await extractZip(archivePath, extractDir)
     fs.copyFileSync(path.join(extractDir, `ripgrep-${RG_VERSION}-${config.platform}`, config.binary), cachedBin)
     if (os !== "win32") fs.chmodSync(cachedBin, 0o755)
   }

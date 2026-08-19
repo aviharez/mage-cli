@@ -12,7 +12,9 @@ const __dirname = path.dirname(__filename);
 
 const electronDir = path.resolve(__dirname, '..');
 const repoRoot = path.resolve(electronDir, '..', '..');
+const webReactDir = path.join(repoRoot, 'packages', 'web-react');
 const require = createRequire(import.meta.url);
+const webReactRequire = createRequire(path.join(webReactDir, 'package.json'));
 
 const electronPkg = require('electron/package.json');
 const electronVersion = electronPkg.version;
@@ -107,10 +109,10 @@ module.exports = {
 const ensureWindowsNodeAddonApiForNodePty = async (rebuildRootPath) => {
   if (process.platform !== 'win32') return async () => {};
 
-  const nodePtyPackagePath = require.resolve('node-pty/package.json');
+  const nodePtyPackagePath = webReactRequire.resolve('node-pty/package.json');
   const nodePtyDir = path.dirname(nodePtyPackagePath);
-  const rootNodeAddonApiDir = path.dirname(require.resolve('node-addon-api/package.json'));
-  const tempNodeAddonApiDir = path.join(repoRoot, 'node_modules', '.mage-node-addon-api-7.1.1');
+  const rootNodeAddonApiDir = path.dirname(webReactRequire.resolve('node-addon-api/package.json'));
+  const tempNodeAddonApiDir = path.join(rebuildRootPath, 'node_modules', '.mage-node-addon-api-7.1.1');
   const exportedTempNodeAddonApiDir = path.join(rebuildRootPath, 'node_modules', '.mage-node-addon-api-7.1.1');
   const localNodeAddonApiDir = path.join(nodePtyDir, 'node_modules', 'node-addon-api');
 
@@ -131,10 +133,10 @@ const ensureWindowsNodeAddonApiForNodePty = async (rebuildRootPath) => {
 
 console.log(`[electron] rebuilding native modules against Electron ${electronVersion}...`);
 
-// Rebuild against the hoisted root node_modules (bun workspace layout).
+// Rebuild from the web-react package so ModuleWalker sees its native deps.
 // force=true re-links regardless of cached state; prebuild-install lookup is
 // bypassed by @electron/rebuild in favor of direct node-gyp builds.
-const rebuildPath = createWindowsRebuildPath(repoRoot);
+const rebuildPath = createWindowsRebuildPath(webReactDir);
 let cleanupNodeAddonApi = async () => {};
 try {
   cleanupNodeAddonApi = await ensureWindowsNodeAddonApiForNodePty(rebuildPath.buildPath);

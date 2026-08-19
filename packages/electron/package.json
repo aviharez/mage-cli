@@ -32,7 +32,7 @@
     "generate:macos-icon": "node ./scripts/generate-macos-icon-assets.cjs"
   },
   "build": {
-    "appId": "co.id.bca.mage.desktop",
+    "appId": "id.co.bca.mage.desktop",
     "productName": "Mage",
     "files": ["dist-bundle/main.mjs", "preload.mjs"],
     "extraResources": [
