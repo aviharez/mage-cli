@@ -57,17 +57,14 @@
       "target": ["dmg", "zip"]
     },
     "win": {
-      "icon": "resources/icons/icon.ico",
+      "icon": "resources/icons/icon.png",
       "target": ["nsis"],
       "verifyUpdateCodeSignature": false,
       "artifactName": "${productName}-${version}-win-${arch}.${ext}"
     },
     "nsis": {
       "oneClick": true,
-      "perMachine": false,
-      "installerIcon": "resources/icons/icon.ico",
-      "uninstallerIcon": "resources/icons/icon.ico",
-      "installerHeaderIcon": "resources/icons/icon.ico"
+      "perMachine": false
     },
     "dmg": {
       "sign": false,

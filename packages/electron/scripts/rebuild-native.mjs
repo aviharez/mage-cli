@@ -1,11 +1,14 @@
 #!/usr/bin/env node
 import path from 'node:path';
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import fsp from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { rebuild } from '@electron/rebuild';
+import semver from 'semver';
+import { isCrossBuild, targetArch, targetPlatform } from './target.mjs';
+import { validateNativeTree } from './validate-native.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,6 +21,7 @@ const webReactRequire = createRequire(path.join(webReactDir, 'package.json'));
 
 const electronPkg = require('electron/package.json');
 const electronVersion = electronPkg.version;
+const nativeRoot = path.join(electronDir, 'resources', 'native');
 
 const copyDirectory = async (src, dst) => {
   await fsp.mkdir(dst, { recursive: true });
@@ -102,8 +106,33 @@ module.exports = {
   isNodeApiBuiltin: true,
   needsFlag: false
 };
+
 `,
   );
+};
+
+const resolveOptionalPackageDir = (packageName, versionRange) => {
+  const candidates = [];
+  try {
+    candidates.push(path.dirname(webReactRequire.resolve(`${packageName}/package.json`)));
+  } catch {}
+  const storeRoot = path.join(repoRoot, 'node_modules', '.bun');
+  if (existsSync(storeRoot)) {
+    candidates.push(...readdirSync(storeRoot)
+      .filter((entry) => entry.startsWith(`${packageName}@`))
+      .map((entry) => path.join(storeRoot, entry, 'node_modules', packageName))
+      .filter((candidate) => existsSync(path.join(candidate, 'package.json'))));
+  }
+  const versions = candidates.map((candidate) => JSON.parse(
+    readFileSync(path.join(candidate, 'package.json'), 'utf8'),
+  ).version);
+  const selectedVersion = semver.maxSatisfying(versions, versionRange);
+  if (!selectedVersion) {
+    throw new Error(`No installed ${packageName} satisfies optional dependency range ${versionRange}`);
+  }
+  return candidates.find((candidate) => JSON.parse(
+    readFileSync(path.join(candidate, 'package.json'), 'utf8'),
+  ).version === selectedVersion);
 };
 
 const ensureWindowsNodeAddonApiForNodePty = async (rebuildRootPath) => {
@@ -131,6 +160,71 @@ const ensureWindowsNodeAddonApiForNodePty = async (rebuildRootPath) => {
   };
 };
 
+const stageCrossNativeDependencies = async () => {
+  await fsp.rm(nativeRoot, { recursive: true, force: true });
+  await fsp.mkdir(nativeRoot, { recursive: true });
+
+  const betterPackagePath = webReactRequire.resolve('better-sqlite3/package.json');
+  const betterPackage = JSON.parse(await fsp.readFile(betterPackagePath, 'utf8'));
+  const betterRequire = createRequire(betterPackagePath);
+  const betterStage = path.join(nativeRoot, 'better-sqlite3');
+  await fsp.mkdir(betterStage, { recursive: true });
+  await fsp.writeFile(path.join(betterStage, 'package.json'), JSON.stringify(betterPackage));
+
+  if (isCrossBuild) {
+    const prebuildInstall = betterRequire.resolve('prebuild-install/bin.js');
+    execFileSync(process.execPath, [
+      prebuildInstall,
+      '--runtime',
+      'electron',
+      '--target',
+      electronVersion,
+      '--platform',
+      targetPlatform,
+      '--arch',
+      targetArch,
+      '--force',
+      '--path',
+      betterStage,
+    ], { cwd: betterStage, stdio: 'inherit', windowsHide: true });
+  }
+
+  const betterBinary = path.join(betterStage, 'build', 'Release', 'better_sqlite3.node');
+  const betterSource = isCrossBuild
+    ? betterBinary
+    : path.join(path.dirname(betterPackagePath), 'build', 'Release', 'better_sqlite3.node');
+  if (!existsSync(betterSource)) throw new Error(`No Electron ${targetPlatform}-${targetArch} better-sqlite3 binary at ${betterSource}`);
+  await fsp.mkdir(path.join(nativeRoot, 'better-sqlite3', 'build', 'Release'), { recursive: true });
+  await fsp.copyFile(
+    betterSource,
+    path.join(nativeRoot, 'better-sqlite3', 'build', 'Release', 'better_sqlite3.node'),
+  );
+
+  const nodePtyDir = path.dirname(webReactRequire.resolve('node-pty/package.json'));
+  await copyDirectory(
+    path.join(nodePtyDir, 'prebuilds', `${targetPlatform}-${targetArch}`),
+    path.join(nativeRoot, 'node-pty', 'prebuilds', `${targetPlatform}-${targetArch}`),
+  );
+
+  const sherpaName = `sherpa-onnx-${targetPlatform === 'win32' ? 'win' : targetPlatform}-${targetArch}`;
+  const sherpaNodePackage = JSON.parse(await fsp.readFile(
+    webReactRequire.resolve('sherpa-onnx-node/package.json'),
+    'utf8',
+  ));
+  const sherpaRange = sherpaNodePackage.optionalDependencies?.[sherpaName];
+  if (!sherpaRange) throw new Error(`sherpa-onnx-node declares no optional dependency for ${sherpaName}`);
+  const sherpaDir = resolveOptionalPackageDir(sherpaName, sherpaRange);
+  await copyDirectory(sherpaDir, path.join(nativeRoot, sherpaName));
+  const files = validateNativeTree(nativeRoot, targetPlatform);
+  console.log(`[electron] staged ${files.length} ${targetPlatform}-${targetArch} native files`);
+};
+
+if (isCrossBuild) {
+  console.log(`[electron] staging ${targetPlatform}-${targetArch} native prebuilts for Electron ${electronVersion}...`);
+  await stageCrossNativeDependencies();
+  process.exit(0);
+}
+
 console.log(`[electron] rebuilding native modules against Electron ${electronVersion}...`);
 
 // Rebuild from the web-react package so ModuleWalker sees its native deps.
@@ -156,3 +250,5 @@ try {
 }
 
 console.log('[electron] native modules rebuilt successfully');
+
+await stageCrossNativeDependencies();

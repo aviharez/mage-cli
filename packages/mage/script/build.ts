@@ -20,6 +20,12 @@ const singleFlag = process.argv.includes("--single")
 const baselineFlag = process.argv.includes("--baseline")
 const skipInstall = process.argv.includes("--skip-install")
 const sourcemapsFlag = process.argv.includes("--sourcemaps")
+const readArg = (flag: string) => {
+  const index = process.argv.indexOf(flag)
+  return index === -1 ? undefined : process.argv[index + 1]
+}
+const requestedOs = readArg("--target-os") ?? process.platform
+const requestedArch = readArg("--target-arch") ?? process.arch
 const plugin = createSolidTransformPlugin()
 
 // Mage's web UI is served by the separate @mybcabisnis/mage-web-react
@@ -68,7 +74,7 @@ const allTargets: {
 
 const targets = singleFlag
   ? allTargets.filter((item) => {
-      if (item.os !== process.platform || item.arch !== process.arch) {
+      if (item.os !== requestedOs || item.arch !== requestedArch) {
         return false
       }
 
@@ -86,6 +92,10 @@ const targets = singleFlag
       return true
     })
   : allTargets
+
+if (singleFlag && targets.length === 0) {
+  throw new Error(`Unsupported Mage target: ${requestedOs}-${requestedArch}`)
+}
 
 const RG_VERSION = "15.1.0"
 const RG_PLATFORMS: Record<string, { platform: string; binary: string; extension: "tar.gz" | "zip" }> = {
@@ -217,7 +227,7 @@ for (const item of targets) {
       autoloadTsconfig: true,
       autoloadPackageJson: true,
       target: name.replace(pkg.name, "bun") as any,
-      outfile: `dist/${name}/bin/mage`,
+      outfile: `dist/${name}/bin/${item.os === "win32" ? "mage.exe" : "mage"}`,
       execArgv: [`--user-agent=mage/${Script.version}`, "--use-system-ca", "--"],
       windows: {},
     },
@@ -237,7 +247,7 @@ for (const item of targets) {
 
   // Smoke test: only run if binary is for current platform
   if (item.os === process.platform && item.arch === process.arch && !item.abi) {
-    const binaryPath = `dist/${name}/bin/mage`
+    const binaryPath = `dist/${name}/bin/${item.os === "win32" ? "mage.exe" : "mage"}`
     console.log(`Running smoke test: ${binaryPath} --version`)
     try {
       const versionOutput = await $`${binaryPath} --version`.text()

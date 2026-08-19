@@ -9,6 +9,7 @@ dist-bundle/
 resources/web-dist/
 resources/mage-cli/*
 !resources/mage-cli/.gitkeep
+resources/native/
 .cache/
 
 # OS-specific
