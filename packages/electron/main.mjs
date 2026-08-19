@@ -32,6 +32,7 @@ import {
   normalizeProxyDraft,
 } from './desktop-proxy.mjs';
 import { checkForUpdate } from './desktop-update.mjs';
+import { getWindowsTitleBarOverlay } from './windows-overlay.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isDev = process.env.MAGE_ELECTRON_DEV === '1' || !app.isPackaged;
@@ -91,6 +92,18 @@ const state = {
   pendingDeepLinks: [],
   windowState: null,
 };
+
+const updateWindowsTitleBarOverlay = () => {
+  if (process.platform !== 'win32') return;
+  const overlay = getWindowsTitleBarOverlay(nativeTheme.shouldUseDarkColors);
+  state.windows.forEach((window) => {
+    if (!window.isDestroyed() && typeof window.setTitleBarOverlay === 'function') {
+      window.setTitleBarOverlay(overlay);
+    }
+  });
+};
+
+nativeTheme.on('updated', updateWindowsTitleBarOverlay);
 
 const readSettings = () => {
   try {
@@ -309,7 +322,7 @@ const createWindow = () => {
     title: 'Mage',
     show: false,
     ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset', vibrancy: vibrancy ? 'under-window' : undefined, transparent: vibrancy } : {}),
-    ...(process.platform === 'win32' ? { titleBarStyle: 'hidden', titleBarOverlay: true } : {}),
+    ...(process.platform === 'win32' ? { titleBarStyle: 'hidden', titleBarOverlay: getWindowsTitleBarOverlay(nativeTheme.shouldUseDarkColors) } : {}),
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
       contextIsolation: true,
@@ -466,6 +479,7 @@ const handleInvoke = async (browserWindow, command, args = {}) => {
     case 'desktop_set_window_title': browserWindow?.setTitle(typeof args.title === 'string' ? args.title : 'Mage'); return null;
     case 'desktop_set_window_theme':
       nativeTheme.themeSource = ['system', 'light', 'dark'].includes(args.themeMode) ? args.themeMode : 'system';
+      updateWindowsTitleBarOverlay();
       return null;
     case 'desktop_set_vibrancy':
       await writeSettings({ desktopVibrancy: args.enabled === true });

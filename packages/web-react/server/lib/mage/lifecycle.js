@@ -784,7 +784,8 @@ export const createMageLifecycleRuntime = (deps) => {
     return { reloaded: !external, external };
   };
 
-  const bootstrapMageAtStartup = async () => {
+  const bootstrapMageAtStartup = async (options = {}) => {
+    const propagateErrors = options.propagateErrors === true;
     try {
       // Before doing anything, reap any Mage process WE spawned in a prior
       // run that was orphaned by a crash/hard-exit. Verified + scoped to our own
@@ -860,11 +861,13 @@ export const createMageLifecycleRuntime = (deps) => {
         await waitForMageReady();
       } catch (error) {
         console.error(`Mage readiness check failed: ${error.message}`);
+        if (propagateErrors) throw error;
       }
     } catch (error) {
       console.error(`Failed to start Mage: ${error.message}`);
-      console.log('Continuing without Mage integration...');
       state.lastMageError = error.message;
+      if (propagateErrors) throw error;
+      console.log('Continuing without Mage integration...');
     }
   };
 

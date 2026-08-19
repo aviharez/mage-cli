@@ -99,7 +99,11 @@ export const createStartupPipelineRuntime = (dependencies) => {
 
     setupProxy(app);
     scheduleMageApiDetection();
-    void bootstrapMageAtStartup();
+    if (process.env.MAGE_RUNTIME === 'desktop') {
+      await bootstrapMageAtStartup({ propagateErrors: true });
+    } else {
+      void bootstrapMageAtStartup();
+    }
 
     if (apiOnly) {
       staticRoutesRuntime.registerApiOnlyFallbackRoutes(app);

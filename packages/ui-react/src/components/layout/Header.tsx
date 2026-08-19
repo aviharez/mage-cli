@@ -31,7 +31,6 @@ import { useFeatureFlagsStore } from '@/stores/useFeatureFlagsStore';
 import { useGitLabAuthStore } from '@/stores/useGitLabAuthStore';
 import { useRuntimeAPIs } from '@/hooks/useRuntimeAPIs';
 import { ContextUsageDisplay } from '@/components/ui/ContextUsageDisplay';
-import { WindowsWindowControls } from '@/components/desktop/WindowsWindowControls';
 import { UpdateDialog } from '@/components/ui/UpdateDialog';
 import { useDeviceInfo, useTabletStandalonePwaRuntime } from '@/lib/device';
 import { cn, hasModifier } from '@/lib/utils';
@@ -2084,7 +2083,6 @@ export const Header: React.FC<HeaderProps> = ({
             Icon={'picture-in-picture-2'}
           />
           {desktopSidebarActions}
-          <WindowsWindowControls visible={isWindowsElectronDesktop} />
         </div>
       </div>
     </div>

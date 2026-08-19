@@ -3,7 +3,6 @@ import { Button } from '@/components/ui/button';
 import { ChatContainer } from '@/components/chat/ChatContainer';
 import { ChatSurfaceProvider } from '@/components/chat/ChatSurfaceContext';
 import { ContextUsageDisplay } from '@/components/ui/ContextUsageDisplay';
-import { WindowsWindowControls } from '@/components/desktop/WindowsWindowControls';
 import { SessionSwitcherDropdown } from '@/components/session/SessionSwitcherDropdown';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n';
@@ -258,7 +257,10 @@ const MiniChatHeader: React.FC<{ mode: MiniChatMode }> = ({ mode }) => {
         hasMacTrafficLights ? 'pl-[5.5rem]' : 'pl-3',
         isWindowsElectronDesktop ? 'h-12' : macosHeaderSizeClass || 'min-h-14',
       )}
-      style={dragRegionStyle}
+      style={{
+        ...dragRegionStyle,
+        paddingRight: 'calc(0.75rem + var(--oc-wco-right-inset, 0px))',
+      }}
     >
       <SessionSwitcherDropdown>
         <button
@@ -318,7 +320,6 @@ const MiniChatHeader: React.FC<{ mode: MiniChatMode }> = ({ mode }) => {
       >
         <Icon name="external-link" className="h-4 w-4" />
       </Button>
-      <WindowsWindowControls visible={isWindowsElectronDesktop} />
     </header>
   );
 };

@@ -235,4 +235,26 @@ describe('Mage lifecycle', () => {
     expect(spawnMock).toHaveBeenCalledTimes(2);
     await server.close();
   });
+
+  it('propagates startup failures when requested by desktop startup', async () => {
+    const runtime = createRuntime({
+      env: {
+        ENV_EFFECTIVE_PORT: null,
+        ENV_SKIP_MAGE_START: true,
+      },
+    });
+
+    await expect(runtime.bootstrapMageAtStartup({ propagateErrors: true })).rejects.toThrow('MAGE_SKIP_START is set');
+  });
+
+  it('keeps startup failures non-fatal for web startup', async () => {
+    const runtime = createRuntime({
+      env: {
+        ENV_EFFECTIVE_PORT: null,
+        ENV_SKIP_MAGE_START: true,
+      },
+    });
+
+    await expect(runtime.bootstrapMageAtStartup()).resolves.toBeUndefined();
+  });
 });
