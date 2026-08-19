@@ -309,10 +309,7 @@ const writeText = Effect.fn("test.writeText")(function* (file: string, text: str
 })
 
 const writeConfig = Effect.fn("test.writeConfig")(function* (dir: string, config: Partial<ConfigV1.Info>) {
-  yield* writeText(
-    path.join(dir, "mage.json"),
-    JSON.stringify({ $schema: "https://mage.ai/config.json", ...config }),
-  )
+  yield* writeText(path.join(dir, "mage.json"), JSON.stringify({ $schema: "https://mage.ai/config.json", ...config }))
 })
 
 const useServerConfig = Effect.fn("test.useServerConfig")(function* (config: (url: string) => Partial<ConfigV1.Info>) {
@@ -872,6 +869,35 @@ it.instance("loop continues when finish is stop but assistant has tool parts", (
     expect(result.info.role).toBe("assistant")
     if (result.info.role === "assistant") {
       expect(result.parts.some((part) => part.type === "text" && part.text === "second")).toBe(true)
+      expect(result.info.finish).toBe("stop")
+    }
+  }),
+)
+
+it.instance("loop retries one empty stop after tool output", () =>
+  Effect.gen(function* () {
+    const { llm } = yield* useServerConfig(providerCfg)
+    const prompt = yield* SessionPrompt.Service
+    const sessions = yield* Session.Service
+    const session = yield* sessions.create({
+      title: "Pinned",
+      permission: [{ permission: "*", pattern: "*", action: "allow" }],
+    })
+    yield* prompt.prompt({
+      sessionID: session.id,
+      agent: "build",
+      noReply: true,
+      parts: [{ type: "text", text: "hello" }],
+    })
+    yield* llm.push(reply().tool("first", { value: "first" }).stop())
+    yield* llm.push(reply().stop())
+    yield* llm.text("resumed")
+
+    const result = yield* prompt.loop({ sessionID: session.id })
+    expect(yield* llm.calls).toBe(3)
+    expect(result.info.role).toBe("assistant")
+    if (result.info.role === "assistant") {
+      expect(result.parts.some((part) => part.type === "text" && part.text === "resumed")).toBe(true)
       expect(result.info.finish).toBe("stop")
     }
   }),

@@ -1306,6 +1306,35 @@ const layer = Layer.effect(
                 yield* events.publish(Session.Event.Error, { sessionID, error: handle.message.error })
                 return "break" as const
               }
+              const retriedEmptyStop = lastUserMsg?.parts.some(
+                (part) => part.type === "text" && part.metadata?.empty_stop_retry === true,
+              )
+              const completedTool = lastAssistantMsg?.parts.some(
+                (part) => part.type === "tool" && part.state.status === "completed",
+              )
+              const emptyTerminalStop = handle.message.finish === "stop" && !handle.hasVisibleOutput()
+              if (emptyTerminalStop && completedTool && !retriedEmptyStop && format.type === "text") {
+                const continueMsg: SessionV1.User = {
+                  id: MessageID.ascending(),
+                  role: "user",
+                  sessionID,
+                  time: { created: Date.now() },
+                  agent: lastUser.agent,
+                  model: lastUser.model,
+                }
+                yield* sessions.updateMessage(continueMsg)
+                yield* sessions.updatePart({
+                  id: PartID.ascending(),
+                  messageID: continueMsg.id,
+                  sessionID,
+                  type: "text",
+                  text: "Tool execution completed. Continue the original task; do not end with an empty response.",
+                  metadata: { empty_stop_retry: true },
+                  synthetic: true,
+                } satisfies SessionV1.TextPart)
+                yield* Effect.logWarning("retrying empty terminal stop", { "session.id": sessionID })
+                return "continue" as const
+              }
               if (format.type === "json_schema") {
                 handle.message.error = new SessionV1.StructuredOutputError({
                   message: "Model did not produce structured output",

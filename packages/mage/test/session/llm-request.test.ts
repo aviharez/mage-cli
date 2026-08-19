@@ -15,4 +15,10 @@ describe("LLMRequestPrep.splitSystemPrompt", () => {
       injected: ["\n\nplugin"],
     })
   })
+
+  test("keeps the Qwen prompt before an agent prompt", () => {
+    expect(LLMRequestPrep.buildSystemPrompt(["qwen policy"], "agent policy", ["runtime"], "user policy")).toEqual([
+      "qwen policy\nagent policy\nruntime\nuser policy",
+    ])
+  })
 })

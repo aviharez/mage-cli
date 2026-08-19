@@ -31,6 +31,7 @@ export type Result = "compact" | "stop" | "continue"
 
 export interface Handle {
   readonly message: SessionV1.Assistant
+  readonly hasVisibleOutput: () => boolean
   readonly updateToolCall: (
     toolCallID: string,
     update: (part: SessionV1.ToolPart) => SessionV1.ToolPart,
@@ -72,6 +73,7 @@ interface ProcessorContext extends Input {
   needsCompaction: boolean
   currentText: SessionV1.TextPart | undefined
   reasoningMap: Record<string, SessionV1.ReasoningPart>
+  hasVisibleOutput: boolean
 }
 
 type StreamEvent = LLMEvent
@@ -111,6 +113,7 @@ const layer = Layer.effect(
         needsCompaction: false,
         currentText: undefined,
         reasoningMap: {},
+        hasVisibleOutput: false,
       }
       let aborted = false
 
@@ -499,6 +502,7 @@ const layer = Layer.effect(
           case "text-delta":
             if (!ctx.currentText) return
             ctx.currentText.text += value.text
+            if (value.text.trim().length > 0) ctx.hasVisibleOutput = true
             if (value.providerMetadata) ctx.currentText.metadata = value.providerMetadata
             yield* session.updatePartDelta({
               sessionID: ctx.currentText.sessionID,
@@ -636,6 +640,7 @@ const layer = Layer.effect(
           yield* Effect.gen(function* () {
             ctx.currentText = undefined
             ctx.reasoningMap = {}
+            ctx.hasVisibleOutput = false
             yield* status.set(ctx.sessionID, { type: "busy" })
             const stream = llm.stream(streamInput)
 
@@ -686,6 +691,7 @@ const layer = Layer.effect(
         get message() {
           return ctx.assistantMessage
         },
+        hasVisibleOutput: () => ctx.hasVisibleOutput,
         updateToolCall,
         completeToolCall,
         process,
