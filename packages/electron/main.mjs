@@ -612,9 +612,9 @@ const buildMenu = () => {
   const action = (type) => ({ label: type.replaceAll('-', ' '), click: () => dispatchMenuAction(type) });
   return Menu.buildFromTemplate([
     { label: 'Mage', submenu: [{ role: 'about', label: 'About Mage' }, action('settings'), action('clear-cache'), action('restart'), { type: 'separator' }, { role: 'quit', label: 'Quit' }] },
-    { label: 'File', submenu: [action('new-window'), action('new-session'), action('new-worktree'), action('add-workspace')] },
+    { label: 'File', submenu: [action('new-session')/*, action('new-window'), action('new-worktree'), action('add-workspace')*/] },
     { label: 'View', submenu: [action('reload'), ...(isDev ? [{ role: 'toggleDevTools', label: 'Developer Tools' }] : []), action('toggle-sidebar'), action('toggle-terminal'), action('toggle-theme'), action('navigation-back'), action('navigation-forward')] },
-    { label: 'Help', submenu: [action('keyboard-shortcuts'), action('show-diagnostics'), { label: 'Check for updates', click: () => emit('mage:check-for-updates') }, action('clear-cache')] },
+    { label: 'Help', submenu: [action('keyboard-shortcuts'), action('show-diagnostics'), /*{ label: 'Check for updates', click: () => emit('mage:check-for-updates') },*/ action('clear-cache')] },
   ]);
 };
 
