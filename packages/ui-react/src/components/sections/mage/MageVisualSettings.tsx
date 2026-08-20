@@ -541,6 +541,7 @@ export const MageVisualSettings: React.FC<MageVisualSettingsProps> = ({ visibleS
     }, []);
 
     const shouldShow = (setting: VisibleSetting): boolean => {
+        if (setting === 'chatRenderMode' || setting === 'messageTransport') return false;
         if (!visibleSettings) return true;
         return visibleSettings.includes(setting);
     };
