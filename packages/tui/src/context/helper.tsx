@@ -2,6 +2,10 @@ import { createContext, Show, useContext, type ParentProps } from "solid-js"
 
 export function createSimpleContext<T, Props extends Record<string, any>>(input: {
   name: string
+  // When false, children mount immediately with the context value even while
+  // `init.ready === false`. Default (undefined) keeps the historic behavior of
+  // suspending children until ready.
+  suspendUntilReady?: boolean
   init: ((input: Props) => T) | (() => T)
 }) {
   const ctx = createContext<T>()
@@ -12,7 +16,7 @@ export function createSimpleContext<T, Props extends Record<string, any>>(input:
       const init = input.init(props)
       return (
         // @ts-expect-error
-        <Show when={init.ready === undefined || init.ready === true}>
+        <Show when={input.suspendUntilReady === false || init.ready === undefined || init.ready === true}>
           <ctx.Provider value={init}>{props.children}</ctx.Provider>
         </Show>
       )

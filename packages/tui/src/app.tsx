@@ -4,6 +4,7 @@ import { createDefaultOpenTuiKeymap } from "@opentui/keymap/opentui"
 import { Deferred, Effect } from "effect"
 import { Global } from "@mybcabisnis/mage-core/global"
 import { Flag } from "@mybcabisnis/mage-core/flag/flag"
+import { StartupDebug } from "@mybcabisnis/mage-core/util/startup-debug"
 import { InstallationVersion } from "@mybcabisnis/mage-core/installation/version"
 import { ClipboardProvider, useClipboard } from "./context/clipboard"
 import { ExitProvider, useExit } from "./context/exit"
@@ -199,6 +200,7 @@ export const run = Effect.fn("Tui.run")(function* (input: TuiInput) {
           }),
       )
       win32DisableProcessedInput()
+      StartupDebug.mark("renderer")
       const keymap = createDefaultOpenTuiKeymap(renderer)
       yield* Effect.acquireRelease(
         Effect.sync(() => registerMageKeymap(keymap, renderer, input.config)),
@@ -227,6 +229,7 @@ export const run = Effect.fn("Tui.run")(function* (input: TuiInput) {
         // Prewarm palette before ThemeProvider mounts so `system` theme avoids a first-paint fallback flash.
         void renderer.getPalette({ size: 16 }).catch(() => undefined)
         const mode = (await renderer.waitForThemeMode(1000)) ?? "dark"
+        StartupDebug.mark("waitForThemeMode")
         if (renderer.isDestroyed) return
 
         await render(() => {
@@ -336,6 +339,7 @@ export const run = Effect.fn("Tui.run")(function* (input: TuiInput) {
             </ExitProvider>
           )
         }, renderer)
+        StartupDebug.mark("solid render")
       })
       yield* Deferred.await(shutdown)
       return { epilogue: exit.epilogue, reason: exit.reason }
@@ -404,7 +408,13 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
     })
     .finally(() => {
       setReady(true)
+      StartupDebug.mark("plugin host start")
     })
+
+  // Effective interactive readiness: prompt/commands stay disabled until both
+  // the TUI plugin host and the Sync bootstrap are ready. Home still paints
+  // before this flips true.
+  const interactive = () => ready() && sync.ready
 
   // Let selection copy/dismiss win ahead of normal bindings when explicit copy is required.
   const offSelectionKeys = keymap.intercept(
@@ -1014,11 +1024,13 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
       <Show when={Flag.MAGE_SHOW_TTFD}>
         <TimeToFirstDraw />
       </Show>
-      <Show when={ready() || route.data.type === "home"}>
+      {/* Home paints before startup finishes (route-aware: session/plugin routes
+          still wait for full readiness); the prompt stays disabled until interactive. */}
+      <Show when={route.data.type === "home" || interactive()}>
         <box flexGrow={1} minHeight={0} flexDirection="column">
           <Switch>
             <Match when={route.data.type === "home"}>
-              <Home disabled={!ready()} />
+              <Home disabled={!interactive()} />
             </Match>
             <Match when={route.data.type === "session"}>
               <Show when={route.data.type === "session" ? route.data.sessionID : undefined} keyed>
@@ -1034,7 +1046,7 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
         <pluginRuntime.Slot name="app" />
       </Show>
       <Show when={!startup.skipInitialLoading}>
-        <StartupLoading ready={ready} />
+        <StartupLoading ready={interactive} />
       </Show>
     </box>
   )

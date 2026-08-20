@@ -35,6 +35,7 @@ import { Filesystem } from "@/util/filesystem"
 import { Process } from "@/util/process"
 import { Flock } from "@mybcabisnis/mage-core/util/flock"
 import { Flag } from "@mybcabisnis/mage-core/flag/flag"
+import { StartupDebug } from "@mybcabisnis/mage-core/util/startup-debug"
 import { internalTuiPlugins, type InternalTuiPlugin } from "./internal"
 import type { HostPluginApi, HostSlots } from "@mybcabisnis/mage-tui/plugin/slots"
 import { ConfigPlugin } from "@/config/plugin"
@@ -1103,7 +1104,10 @@ async function load(input: {
       })
     }
 
-    const ready = await resolveExternalPlugins(records, () => TuiConfig.waitForDependencies())
+    const ready = await StartupDebug.time(
+      "tui external plugins resolve (incl. dependency install)",
+      resolveExternalPlugins(records, () => TuiConfig.waitForDependencies()),
+    )
     await addExternalPluginEntries(next, ready)
 
     applyInitialPluginEnabledState(next, config)
@@ -1115,6 +1119,7 @@ async function load(input: {
       // and hook chains rely on stable plugin ordering.
       await activatePluginEntry(next, plugin, false)
     }
+    StartupDebug.mark("tui plugins activated")
     next.view.update({ status: listPluginStatus(next) })
   } catch (error) {
     fail("failed to load tui plugins", { directory: cwd, error })

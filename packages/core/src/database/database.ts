@@ -11,6 +11,7 @@ import { isAbsolute, join } from "path"
 import { DatabaseMigration } from "./migration"
 import { InstallationChannel } from "../installation/version"
 import { makeGlobalNode } from "../effect/app-node"
+import { StartupDebug } from "../util/startup-debug"
 import { xdgData } from "xdg-basedir"
 
 const makeDatabase = EffectDrizzleSqlite.makeWithDefaults()
@@ -54,7 +55,9 @@ const layer = Layer.effect(
     yield* db.run("PRAGMA foreign_keys = ON")
     yield* db.run("PRAGMA wal_checkpoint(PASSIVE)")
     yield* DatabaseMigration.apply(db)
+    StartupDebug.mark("db migration")
     yield* importLegacyDatabases(db)
+    StartupDebug.mark("legacy db import")
 
     return { db }
   }).pipe(Effect.orDie),
@@ -82,9 +85,21 @@ function importLegacyDatabases(db: DatabaseShape) {
   if (Flag.MAGE_DB) return Effect.void
   const target = path()
   return Effect.gen(function* () {
+    // Persisted import marker so already-imported legacy databases are not
+    // rescanned and re-copied (INSERT OR IGNORE over every table) on every
+    // startup. A source imported once is never revisited; new legacy files
+    // still get imported because they are not in the marker table yet.
+    yield* db.run(sql`CREATE TABLE IF NOT EXISTS main.legacy_import (source TEXT PRIMARY KEY)`)
+    const imported = new Set(
+      (yield* db.all<{ source: string }>(sql`SELECT source FROM main.legacy_import`)).map((row) => row.source),
+    )
+    const started = performance.now()
+    let copied = 0
     for (const source of new Set(legacyDatabasePaths())) {
       if (source === target || !existsSync(source)) continue
+      if (imported.has(source)) continue
 
+      let ok = true
       yield* Effect.gen(function* () {
         yield* db.run(sql`ATTACH DATABASE ${source} AS legacy`)
         const tables = yield* db.all<{ name: string }>(sql`
@@ -133,8 +148,18 @@ function importLegacyDatabases(db: DatabaseShape) {
         }
       })
         .pipe(Effect.ensuring(db.run("DETACH DATABASE legacy").pipe(Effect.ignore)))
-        .pipe(Effect.catch((error) => Effect.logWarning("legacy database import skipped", { source, error })))
+        .pipe(
+          Effect.catch((error) => {
+            ok = false
+            return Effect.logWarning("legacy database import skipped", { source, error })
+          }),
+        )
+      // Only persist the marker when the import succeeded, so a failed run is retried next startup.
+      if (!ok) continue
+      yield* db.run(sql`INSERT OR IGNORE INTO main.legacy_import (source) VALUES (${source})`)
+      copied++
     }
+    if (copied) StartupDebug.duration(`legacy db import (${copied} source(s))`, started)
   })
 }
 

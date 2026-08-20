@@ -31,6 +31,7 @@ import { batch, onMount } from "solid-js"
 import path from "path"
 import { useKV } from "./kv"
 import { usePermission } from "./permission"
+import { StartupDebug } from "@mybcabisnis/mage-core/util/startup-debug"
 
 function search<T>(items: T[], target: string, key: (item: T) => string) {
   let left = 0
@@ -51,6 +52,10 @@ export const {
   provider: SyncProvider,
 } = createSimpleContext({
   name: "Sync",
+  // Children (incl. App/Home) mount immediately while the bootstrap is still
+  // "loading" so first paint is not blocked on the blocking sync phase.
+  // Route-aware readiness gating lives in app.tsx instead.
+  suspendUntilReady: false,
   init: () => {
     const startup = useTuiStartup()
     const kv = useKV()
@@ -437,18 +442,27 @@ export const {
     async function bootstrap(input: { fatal?: boolean } = {}) {
       const fatal = input.fatal ?? true
       const workspace = project.workspace.current()
-      const projectPromise = project.sync()
-      const sessionListPromise = projectPromise.then(() => listSessions())
+      const projectPromise = StartupDebug.time("project.sync", project.sync())
+      const sessionListPromise = StartupDebug.time("session.list", projectPromise.then(() => listSessions()))
 
       // blocking - include session.list when continuing a session
-      const providersPromise = sdk.client.config.providers({ workspace }, { throwOnError: true })
-      const providerListPromise = sdk.client.provider.list({ workspace }, { throwOnError: true })
-      const capabilitiesPromise = sdk.client.experimental.capabilities
-        .get({ workspace }, { throwOnError: true })
-        .then((x) => x.data)
-        .catch(() => undefined)
-      const agentsPromise = sdk.client.app.agents({ workspace }, { throwOnError: true })
-      const configPromise = sdk.client.config.get({ workspace }, { throwOnError: true })
+      const providersPromise = StartupDebug.time(
+        "config.providers",
+        sdk.client.config.providers({ workspace }, { throwOnError: true }),
+      )
+      const providerListPromise = StartupDebug.time(
+        "provider.list",
+        sdk.client.provider.list({ workspace }, { throwOnError: true }),
+      )
+      const capabilitiesPromise = StartupDebug.time(
+        "experimental.capabilities.get",
+        sdk.client.experimental.capabilities
+          .get({ workspace }, { throwOnError: true })
+          .then((x) => x.data)
+          .catch(() => undefined),
+      )
+      const agentsPromise = StartupDebug.time("app.agents", sdk.client.app.agents({ workspace }, { throwOnError: true }))
+      const configPromise = StartupDebug.time("config.get", sdk.client.config.get({ workspace }, { throwOnError: true }))
       await Promise.all([
         providersPromise,
         providerListPromise,
@@ -494,6 +508,7 @@ export const {
         })
         .then(() => {
           if (store.status !== "complete") setStore("status", "partial")
+          StartupDebug.mark("sync partial")
           // non-blocking
           void Promise.all([
             ...(args.continue ? [] : [sessionListPromise.then((sessions) => setStore("session", reconcile(sessions)))]),
@@ -512,6 +527,7 @@ export const {
             project.workspace.sync(),
           ]).then(() => {
             setStore("status", "complete")
+            StartupDebug.mark("sync complete")
           })
         })
         .catch(async (e) => {

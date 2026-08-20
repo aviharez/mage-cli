@@ -15,6 +15,7 @@ import { HomeSessionDestinationProvider } from "./home/session-destination"
 import { TextAttributes } from "@opentui/core"
 import { useTheme } from "../context/theme"
 import { useProject } from "../context/project"
+import { StartupDebug } from "@mybcabisnis/mage-core/util/startup-debug"
 import path from "path"
 
 let once = false
@@ -52,6 +53,7 @@ export function Home(props: { disabled?: boolean }) {
 
   onMount(() => {
     editor.clearSelection()
+    StartupDebug.mark("home first draw")
   })
 
   const bind = (r: PromptRef | undefined) => {
@@ -99,11 +101,11 @@ export function Home(props: { disabled?: boolean }) {
             <box flexDirection="row" paddingLeft={wide() ? 4 : 0} paddingTop={wide() ? 0 : 2}>
               <box width={1} backgroundColor={theme.primary} marginRight={2} />
               <box flexDirection="column" flexShrink={1}>
-                <text fg={theme.textMuted} attributes={TextAttributes.BOLD}>
-                  MAGE / LOCAL WORKBENCH
-                </text>
                 <text fg={theme.text} attributes={TextAttributes.BOLD} wrapMode="word">
                   Good to see you, {displayName()}.
+                </text>
+                <text fg={theme.textMuted} attributes={TextAttributes.BOLD}>
+                  What are we building today?
                 </text>
                 <text wrapMode="word">
                   <span style={{ fg: theme.textMuted }}>Working on: </span>

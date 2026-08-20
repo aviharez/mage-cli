@@ -21,6 +21,7 @@ import { makeRuntime } from "@mybcabisnis/mage-core/effect/runtime"
 import { Filesystem } from "@/util/filesystem"
 import { ConfigVariable } from "@/config/variable"
 import { Npm } from "@mybcabisnis/mage-core/npm"
+import { StartupDebug } from "@mybcabisnis/mage-core/util/startup-debug"
 import { FormatError, FormatUnknownError } from "@/cli/error"
 import { TuiConfig } from "@mybcabisnis/mage-tui/config"
 
@@ -252,9 +253,11 @@ const layer = Layer.effect(
     const get = Effect.fn("TuiConfig.get")(() => Effect.succeed(data.config))
     const pluginOrigins = Effect.fn("TuiConfig.pluginOrigins")(() => Effect.succeed(data.pluginOrigins))
 
-    const waitForDependencies = Effect.fn("TuiConfig.waitForDependencies")(() =>
-      Effect.forEach(deps, Fiber.join, { concurrency: "unbounded" }).pipe(Effect.ignore(), Effect.asVoid),
-    )
+    const waitForDependencies = Effect.fn("TuiConfig.waitForDependencies")(function* () {
+      const started = performance.now()
+      yield* Effect.forEach(deps, Fiber.join, { concurrency: "unbounded" }).pipe(Effect.ignore(), Effect.asVoid())
+      StartupDebug.duration("tui plugin deps install", started)
+    })
     return Service.of({ get, pluginOrigins, waitForDependencies })
   }).pipe(Effect.withSpan("TuiConfig.layer")),
 )
