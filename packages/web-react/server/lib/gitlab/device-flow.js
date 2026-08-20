@@ -1,7 +1,9 @@
+import { insecureFetch } from './fetch.js';
+
 const DEVICE_CODE_URL = 'https://bcagitlab/oauth/authorize_device';
 const ACCESS_TOKEN_URL = 'https://bcagitlab/oauth/token';
 
-const postForm = async (url, params, fetchImpl = globalThis.fetch, allowOAuthError = false) => {
+const postForm = async (url, params, fetchImpl = insecureFetch, allowOAuthError = false) => {
   const response = await fetchImpl(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },

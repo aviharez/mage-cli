@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { insecureFetch } from './fetch.js';
 
 const MAGE_DATA_DIR = process.env.MAGE_DATA_DIR
   ? path.resolve(process.env.MAGE_DATA_DIR)
@@ -141,7 +142,7 @@ export const getGitLabScopes = () => DEFAULT_GITLAB_SCOPES;
 export const isGitLabOAuthConfigured = () => Boolean(getGitLabClientId());
 export const GITLAB_AUTH_FILE = STORAGE_FILE;
 
-export const refreshGitLabAuth = async ({ fetchImpl = globalThis.fetch } = {}) => {
+export const refreshGitLabAuth = async ({ fetchImpl = insecureFetch } = {}) => {
   const current = getGitLabAuth();
   if (!current?.refreshToken) return null;
   const response = await fetchImpl(TOKEN_URL, {

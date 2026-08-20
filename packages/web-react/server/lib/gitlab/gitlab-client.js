@@ -1,4 +1,5 @@
 import { clearGitLabAuth, getGitLabAuth, refreshGitLabAuth } from './auth.js';
+import { insecureFetch } from './fetch.js';
 import { GITLAB_HOST } from './repo/index.js';
 
 export const GITLAB_API_ROOT = `https://${GITLAB_HOST}/api/v4`;
@@ -91,7 +92,7 @@ const createRequest = ({ token, allowRefresh }) => async (path, options = {}, re
     ? await refreshGitLabAuth()
     : null;
   const activeToken = refreshed?.accessToken || token;
-  const response = await fetch(`${GITLAB_API_ROOT}${path}`, {
+  const response = await insecureFetch(`${GITLAB_API_ROOT}${path}`, {
     ...options,
     headers: {
       Accept: 'application/json',
