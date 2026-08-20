@@ -84,7 +84,6 @@ const pageOrder: SettingsPageSlug[] = [
   'sessions',
   'shortcuts',
   'git',
-  'gitlab',
   'magic-prompts',
   'snippets',
   'projects',
@@ -389,7 +388,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile
     chat: 'chat',
     shortcuts: 'shortcuts',
     sessions: 'sessions',
-    gitlab: 'gitlab',
+    // gitlab: 'gitlab',
     notifications: 'notifications',
     tunnel: 'tunnel',
   }), []);
@@ -416,8 +415,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose, forceMobile
         return t('settings.page.skillsCatalog.title');
       case 'git':
         return t('settings.page.git.title');
-      case 'gitlab':
-        return 'GitLab';
       case 'appearance':
         return t('settings.page.appearance.title');
       case 'chat':
