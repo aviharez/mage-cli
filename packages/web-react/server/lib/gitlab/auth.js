@@ -6,7 +6,7 @@ const MAGE_DATA_DIR = process.env.MAGE_DATA_DIR
   ? path.resolve(process.env.MAGE_DATA_DIR)
   : path.join(process.env.MAGE_TEST_HOME || os.homedir(), '.mage', 'data');
 const STORAGE_FILE = path.join(MAGE_DATA_DIR, 'gitlab-auth.json');
-const DEFAULT_GITLAB_CLIENT_ID = 'REPLACE_WITH_BCA_GITLAB_OAUTH_CLIENT_ID';
+const DEFAULT_GITLAB_CLIENT_ID = 'c8241494e6c7e43304f427455506be32b31958e851c2911eb39275a32396894b';
 const DEFAULT_GITLAB_SCOPES = 'api';
 const TOKEN_URL = 'https://bcagitlab/oauth/token';
 
@@ -138,7 +138,7 @@ export const getGitLabClientId = () => {
 };
 
 export const getGitLabScopes = () => DEFAULT_GITLAB_SCOPES;
-export const isGitLabOAuthConfigured = () => getGitLabClientId() !== DEFAULT_GITLAB_CLIENT_ID;
+export const isGitLabOAuthConfigured = () => Boolean(getGitLabClientId());
 export const GITLAB_AUTH_FILE = STORAGE_FILE;
 
 export const refreshGitLabAuth = async ({ fetchImpl = globalThis.fetch } = {}) => {

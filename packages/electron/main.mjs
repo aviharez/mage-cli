@@ -32,6 +32,7 @@ import {
   normalizeProxyDraft,
 } from './desktop-proxy.mjs';
 import { checkForUpdate } from './desktop-update.mjs';
+import { installedApps } from './installed-apps.mjs';
 import { getWindowsTitleBarOverlay } from './windows-overlay.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -468,8 +469,6 @@ const openPath = async (target, appId) => {
   const error = await shell.openPath(filePath);
   if (error) throw new Error(error);
 };
-const installedApps = (names) => (Array.isArray(names) ? names : []).filter((name) => typeof name === 'string' && name.trim()).map((name) => ({ name: name.trim(), iconDataUrl: null }));
-
 const handleInvoke = async (browserWindow, command, args = {}) => {
   switch (command) {
     case 'desktop_start_window_drag':
