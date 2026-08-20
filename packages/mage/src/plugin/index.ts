@@ -22,6 +22,7 @@ import { registerAdapter } from "@/control-plane/adapters"
 import type { WorkspaceAdapter } from "@/control-plane/types"
 import { RuntimeFlags } from "@/effect/runtime-flags"
 import { EventV2Bridge } from "@/event-v2-bridge"
+import { StartupDebug } from "@mybcabisnis/mage-core/util/startup-debug"
 
 type State = {
   hooks: Hooks[]
@@ -276,7 +277,9 @@ const layer = Layer.effect(
     })
 
     const init = Effect.fn("Plugin.init")(function* () {
+      const started = performance.now()
       yield* InstanceState.get(state)
+      StartupDebug.duration("server plugin initialization", started)
     })
 
     return Service.of({ trigger, list, init })

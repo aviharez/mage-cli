@@ -46,7 +46,9 @@ export class Service extends Context.Service<Service, Interface>()("@mage/v2/sto
 const layer = Layer.effect(
   Service,
   Effect.gen(function* () {
+    const databaseStarted = performance.now()
     const db = yield* makeDatabase
+    StartupDebug.duration("database initialization", databaseStarted)
 
     yield* db.run("PRAGMA journal_mode = WAL")
     yield* db.run("PRAGMA synchronous = NORMAL")
@@ -54,10 +56,12 @@ const layer = Layer.effect(
     yield* db.run("PRAGMA cache_size = -64000")
     yield* db.run("PRAGMA foreign_keys = ON")
     yield* db.run("PRAGMA wal_checkpoint(PASSIVE)")
+    const migrationStarted = performance.now()
     yield* DatabaseMigration.apply(db)
-    StartupDebug.mark("db migration")
+    StartupDebug.duration("database migration", migrationStarted)
+    const legacyImportStarted = performance.now()
     yield* importLegacyDatabases(db)
-    StartupDebug.mark("legacy db import")
+    StartupDebug.duration("legacy db import", legacyImportStarted)
 
     return { db }
   }).pipe(Effect.orDie),

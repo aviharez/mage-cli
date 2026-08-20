@@ -1056,6 +1056,7 @@ async function load(input: {
   dispose?: () => void
   disposeTimeoutMs?: number
 }) {
+  const started = performance.now()
   const { api, config } = input
   const cwd = process.cwd()
   const slots = input.runtime.setupSlots(api)
@@ -1124,6 +1125,7 @@ async function load(input: {
   } catch (error) {
     fail("failed to load tui plugins", { directory: cwd, error })
   }
+  StartupDebug.duration("tui plugin initialization", started)
 }
 
 export function createLegacyTuiPluginHost(): TuiPluginHost {

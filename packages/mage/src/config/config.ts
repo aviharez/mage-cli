@@ -32,6 +32,7 @@ import { ConfigVariable } from "./variable"
 import { withTransientReadRetry } from "@/util/effect-http-client"
 import { Npm } from "@mybcabisnis/mage-core/npm"
 import { InstallationLocal, InstallationVersion } from "@mybcabisnis/mage-core/installation/version"
+import { StartupDebug } from "@mybcabisnis/mage-core/util/startup-debug"
 
 // Custom merge function that concatenates array fields instead of replacing them
 // Keep remeda's deep conditional merge type out of hot config-loading paths; TS profiling showed it dominates here.
@@ -563,7 +564,10 @@ const layer = Layer.effect(
 
     const state = yield* InstanceState.make<State>(
       Effect.fn("Config.state")(function* (ctx) {
-        return yield* loadInstanceState(ctx).pipe(Effect.orDie)
+        const started = performance.now()
+        const result = yield* loadInstanceState(ctx).pipe(Effect.orDie)
+        StartupDebug.duration("config initialization", started)
+        return result
       }),
     )
 
@@ -576,7 +580,9 @@ const layer = Layer.effect(
     })
 
     const waitForDependencies = Effect.fn("Config.waitForDependencies")(function* () {
+      const started = performance.now()
       yield* InstanceState.useEffect(state, (s) => Effect.forEach(s.deps, Fiber.join, { concurrency: "unbounded" }))
+      StartupDebug.duration("config plugin deps install", started)
     })
 
     const update = Effect.fn("Config.update")(function* (config: Info) {

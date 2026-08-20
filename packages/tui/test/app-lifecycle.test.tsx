@@ -98,7 +98,7 @@ test("renders home while plugins are loading", async () => {
 
     await started
     await setup.renderOnce()
-    expect(setup.captureCharFrame()).toContain("MAGE / LOCAL WORKBENCH")
+    expect(setup.captureCharFrame()).toContain("What are we building today?")
 
     await new Promise((resolve) => setTimeout(resolve, 550))
     await setup.renderOnce()
@@ -158,7 +158,7 @@ test("renders home while sync is loading", async () => {
 
     await ready
     await setup.renderOnce()
-    expect(setup.captureCharFrame()).toContain("MAGE / LOCAL WORKBENCH")
+    expect(setup.captureCharFrame()).toContain("What are we building today?")
 
     releaseSync()
     await Promise.resolve()
@@ -224,7 +224,7 @@ test("prompt stays disabled until sync and plugins are ready", async () => {
 
     await ready
     await setup.renderOnce()
-    expect(setup.captureCharFrame()).toContain("MAGE / LOCAL WORKBENCH")
+    expect(setup.captureCharFrame()).toContain("What are we building today?")
     // Give the (buggy) auto-submit path every chance to fire while disabled.
     await new Promise((resolve) => setTimeout(resolve, 700))
     expect(posts.filter((path) => path === "/session")).toHaveLength(0)
@@ -333,7 +333,7 @@ test("--continue waits for sync before navigating to session", async () => {
     await ready
     await setup.renderOnce()
     // Session routes must not paint while sync is still loading.
-    expect(setup.captureCharFrame()).not.toContain("MAGE / LOCAL WORKBENCH")
+    expect(setup.captureCharFrame()).not.toContain("What are we building today?")
     await new Promise((resolve) => setTimeout(resolve, 550))
     await setup.renderOnce()
     // App is mounted (startup spinner visible) but session content is gated.

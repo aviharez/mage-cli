@@ -1,6 +1,6 @@
 export * as StartupDebug from "./startup-debug"
 
-const enabled = Boolean(process.env.MAGE_STARTUP_DEBUG)
+const enabled = process.env.MAGE_STARTUP_DEBUG === "1"
 
 export function mark(label: string) {
   if (!enabled) return

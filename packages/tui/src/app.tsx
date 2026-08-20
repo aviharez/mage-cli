@@ -176,6 +176,7 @@ export const run = Effect.fn("Tui.run")(function* (input: TuiInput) {
   const exit = { epilogue: undefined as string | undefined, reason: undefined as unknown }
   const result = yield* Effect.scoped(
     Effect.gen(function* () {
+      const rendererStarted = performance.now()
       const renderer = yield* Effect.acquireRelease(
         Effect.tryPromise({
           try: () =>
@@ -200,7 +201,7 @@ export const run = Effect.fn("Tui.run")(function* (input: TuiInput) {
           }),
       )
       win32DisableProcessedInput()
-      StartupDebug.mark("renderer")
+      StartupDebug.duration("renderer creation", rendererStarted)
       const keymap = createDefaultOpenTuiKeymap(renderer)
       yield* Effect.acquireRelease(
         Effect.sync(() => registerMageKeymap(keymap, renderer, input.config)),
@@ -228,10 +229,10 @@ export const run = Effect.fn("Tui.run")(function* (input: TuiInput) {
       yield* Effect.tryPromise(async () => {
         // Prewarm palette before ThemeProvider mounts so `system` theme avoids a first-paint fallback flash.
         void renderer.getPalette({ size: 16 }).catch(() => undefined)
-        const mode = (await renderer.waitForThemeMode(1000)) ?? "dark"
-        StartupDebug.mark("waitForThemeMode")
+        const mode = (await StartupDebug.time("waitForThemeMode", renderer.waitForThemeMode(1000))) ?? "dark"
         if (renderer.isDestroyed) return
 
+        const solidStarted = performance.now()
         await render(() => {
           return (
             <ExitProvider
@@ -339,7 +340,7 @@ export const run = Effect.fn("Tui.run")(function* (input: TuiInput) {
             </ExitProvider>
           )
         }, renderer)
-        StartupDebug.mark("solid render")
+        StartupDebug.duration("initial Solid render", solidStarted)
       })
       yield* Deferred.await(shutdown)
       return { epilogue: exit.epilogue, reason: exit.reason }
@@ -396,6 +397,7 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
     }),
   )
   const [ready, setReady] = createSignal(false)
+  const pluginStarted = performance.now()
   props.pluginHost
     .start({
       api,
@@ -408,7 +410,7 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
     })
     .finally(() => {
       setReady(true)
-      StartupDebug.mark("plugin host start")
+      StartupDebug.duration("plugin host start", pluginStarted)
     })
 
   // Effective interactive readiness: prompt/commands stay disabled until both
