@@ -4,6 +4,7 @@ import './styles/fonts'
 import './index.css'
 import App from './App.tsx'
 import { SessionAuthGate } from './components/auth/SessionAuthGate'
+import { MageIdentityGate } from './components/auth/MageIdentityGate'
 import { ThemeSystemProvider } from './contexts/ThemeSystemContext'
 import { ThemeProvider } from './components/providers/ThemeProvider'
 import './lib/debug'
@@ -59,7 +60,9 @@ createRoot(rootElement).render(
       <ThemeSystemProvider>
         <ThemeProvider>
           <SessionAuthGate>
-            <App apis={runtimeAPIs} />
+            <MageIdentityGate>
+              <App apis={runtimeAPIs} />
+            </MageIdentityGate>
           </SessionAuthGate>
         </ThemeProvider>
       </ThemeSystemProvider>

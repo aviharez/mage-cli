@@ -32,6 +32,7 @@ import {
   normalizeProxyDraft,
 } from './desktop-proxy.mjs';
 import { checkForUpdate } from './desktop-update.mjs';
+import { getMageAuthStatus, startMageOAuth } from './desktop-oauth.mjs';
 import { installedApps } from './installed-apps.mjs';
 import { getWindowsTitleBarOverlay } from './windows-overlay.mjs';
 
@@ -56,6 +57,7 @@ const CAPABILITIES = Object.freeze([
   'deep-links',
   'proxy',
   'updates',
+  'rune-auth',
 ]);
 
 app.setName('Mage');
@@ -486,6 +488,12 @@ const handleInvoke = async (browserWindow, command, args = {}) => {
       app.exit(0);
       return { enabled: args.enabled === true, requiresRestart: true };
     case 'desktop_get_app_version': return app.getVersion();
+    case 'desktop_get_mage_auth_status': return getMageAuthStatus({ env: process.env, homedir: os.homedir });
+    case 'desktop_start_mage_oauth': {
+      const status = await startMageOAuth({ mageBinary: resolveMageBinary(), env: process.env, homedir: os.homedir });
+      emit('mage:rune-auth-changed', status);
+      return status;
+    }
     case 'desktop_get_proxy_settings': return formatProxySettings(readDesktopProxy());
     case 'desktop_set_proxy_settings': {
       const existing = readDesktopProxy();

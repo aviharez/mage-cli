@@ -8,7 +8,8 @@ type MageDesktopCapability =
   | 'open-in-app'
   | 'launch-at-login'
   | 'vibrancy'
-  | 'deep-links';
+  | 'deep-links'
+  | 'rune-auth';
 
 declare global {
   interface Window {

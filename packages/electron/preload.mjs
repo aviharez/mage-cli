@@ -21,6 +21,7 @@ contextBridge.exposeInMainWorld('__MAGE_ELECTRON__', {
     'deep-links',
     'proxy',
     'updates',
+    'rune-auth',
   ],
   macVibrancy,
   macVibrancySupported,

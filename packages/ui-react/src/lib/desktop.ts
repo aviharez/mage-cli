@@ -221,7 +221,14 @@ export type MageDesktopCapability =
   | 'vibrancy'
   | 'deep-links'
   | 'proxy'
-  | 'updates';
+  | 'updates'
+  | 'rune-auth';
+
+export type MageAuthStatus = {
+  authenticated: boolean;
+  displayName?: string;
+  udomain?: string;
+};
 
 type ElectronRuntimeGlobal = {
   runtime?: string;
@@ -257,6 +264,35 @@ export const invokeDesktop = async <T = unknown>(command: string, args?: Record<
   const bridge = getDesktopBridge();
   if (typeof bridge?.invoke !== 'function') return null;
   return bridge.invoke(command, args ?? {}) as Promise<T>;
+};
+
+const parseMageAuthStatus = (value: unknown): MageAuthStatus | null => {
+  if (!value || typeof value !== 'object' || Array.isArray(value) || typeof (value as { authenticated?: unknown }).authenticated !== 'boolean') {
+    return null;
+  }
+  const raw = value as { authenticated: boolean; displayName?: unknown; udomain?: unknown };
+  if (raw.displayName !== undefined && (typeof raw.displayName !== 'string' || !raw.displayName.trim())) return null;
+  if (raw.udomain !== undefined && (typeof raw.udomain !== 'string' || !raw.udomain.trim())) return null;
+  return {
+    authenticated: raw.authenticated,
+    ...(typeof raw.displayName === 'string' ? { displayName: raw.displayName.trim() } : {}),
+    ...(typeof raw.udomain === 'string' ? { udomain: raw.udomain.trim() } : {}),
+  };
+};
+
+export const getDesktopMageAuthStatus = async (): Promise<MageAuthStatus | null> => {
+  if (!hasElectronCapability('rune-auth') || !canUseElectronDesktopIPC() || !isDesktopLocalOriginActive()) return null;
+  try {
+    return parseMageAuthStatus(await invokeDesktop('desktop_get_mage_auth_status'));
+  } catch {
+    return null;
+  }
+};
+
+export const startDesktopMageOAuth = async (): Promise<MageAuthStatus | null> => {
+  if (!hasElectronCapability('rune-auth') || !canUseElectronDesktopIPC() || !isDesktopLocalOriginActive()) return null;
+  const result = await invokeDesktop('desktop_start_mage_oauth');
+  return parseMageAuthStatus(result);
 };
 
 type LaunchAtLoginStatus = {
