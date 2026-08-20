@@ -52,6 +52,17 @@ export type Prepared = {
 const mergeOptions = (target: Record<string, any>, source: Record<string, any> | undefined): Record<string, any> =>
   mergeDeep(target, source ?? {}) as Record<string, any>
 
+export const buildSystemPrompt = (
+  base: readonly string[],
+  agentPrompt: string | undefined,
+  system: readonly string[],
+  userSystem: string | undefined,
+) => [
+  [...base, ...(agentPrompt ? [agentPrompt] : []), ...system, ...(userSystem ? [userSystem] : [])]
+    .filter((x) => x)
+    .join("\n"),
+]
+
 export const splitSystemPrompt = (system: readonly string[], base: string | undefined) => {
   if (base === undefined) return { system: [], injected: [] }
 
@@ -77,15 +88,12 @@ export const splitSystemPrompt = (system: readonly string[], base: string | unde
 
 export const prepare = Effect.fn("LLMRequestPrep.prepare")(function* (input: PrepareInput) {
   const isOpenaiOauth = input.provider.id === "openai" && input.auth?.type === "oauth"
-  const system = [
-    [
-      ...(input.agent.prompt ? [input.agent.prompt] : SystemPrompt.provider(input.model)),
-      ...input.system,
-      ...(input.user.system ? [input.user.system] : []),
-    ]
-      .filter((x) => x)
-      .join("\n"),
-  ]
+  const system = buildSystemPrompt(
+    SystemPrompt.provider(input.model),
+    input.agent.prompt,
+    input.system,
+    input.user.system,
+  )
   const baseSystem = system[0]
 
   yield* input.plugin.trigger(

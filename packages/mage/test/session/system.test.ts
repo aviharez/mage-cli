@@ -90,6 +90,7 @@ describe("session.system", () => {
 
     expect(fallbackModelPrompt).toBe(prompt)
     expect(prompt).toContain("You are Mage")
+    expect(prompt).toContain("# Continuation policy")
     expect(prompt).not.toContain("Qwen Code")
     expect(prompt).not.toContain("OpenCode")
     expect(prompt).not.toContain("Alibaba")
