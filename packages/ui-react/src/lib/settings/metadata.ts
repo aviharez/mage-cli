@@ -2,7 +2,7 @@ import type { SidebarSection } from '@/constants/sidebar';
 
 export type SettingsPageSlug =
   | 'projects'
-  | 'remote-instances'
+  // | 'remote-instances'
   | 'agents'
   | 'behavior'
   | 'commands'
@@ -11,7 +11,6 @@ export type SettingsPageSlug =
   | 'skills.installed'
   | 'skills.catalog'
   | 'git'
-  | 'gitlab'
   | 'appearance'
   | 'chat'
   | 'shortcuts'
@@ -20,7 +19,7 @@ export type SettingsPageSlug =
   | 'snippets'
   | 'notifications'
   | 'proxy'
-  | 'tunnel'
+  // | 'tunnel'
   | 'about';
 
 type SettingsPageGroup =
@@ -58,14 +57,14 @@ export const SETTINGS_PAGE_METADATA: readonly SettingsPageMeta[] = [
     kind: 'split',
     keywords: ['project', 'projects', 'worktree', 'worktrees', 'repo', 'repository', 'directory'],
   },
-  {
-    slug: 'remote-instances',
-    title: 'Remote Instances',
-    group: 'projects',
-    kind: 'single',
-    keywords: ['ssh', 'remote', 'instances', 'tunnels', 'forwarding', 'connection'],
-    isAvailable: (ctx) => !ctx.isVSCode && !ctx.isDesktop,
-  },
+  // {
+  //   slug: 'remote-instances',
+  //   title: 'Remote Instances',
+  //   group: 'projects',
+  //   kind: 'single',
+  //   keywords: ['ssh', 'remote', 'instances', 'tunnels', 'forwarding', 'connection'],
+  //   isAvailable: (ctx) => !ctx.isVSCode && !ctx.isDesktop,
+  // },
   {
     slug: 'agents',
     title: 'Agents',
@@ -124,14 +123,14 @@ export const SETTINGS_PAGE_METADATA: readonly SettingsPageMeta[] = [
     keywords: ['git', 'gitlab', 'identity', 'identities', 'ssh', 'profiles', 'credentials', 'keys', 'commit', 'gitmoji', 'oauth', 'merge requests', 'issues'],
     isAvailable: (ctx) => !ctx.isVSCode,
   },
-  {
-    slug: 'gitlab',
-    title: 'GitLab',
-    group: 'git',
-    kind: 'single',
-    keywords: ['gitlab', 'merge requests', 'issues', 'oauth', 'account'],
-    isAvailable: (ctx) => !ctx.isVSCode,
-  },
+  // {
+  //   slug: 'gitlab',
+  //   title: 'GitLab',
+  //   group: 'git',
+  //   kind: 'single',
+  //   keywords: ['gitlab', 'merge requests', 'issues', 'oauth', 'account'],
+  //   isAvailable: (ctx) => !ctx.isVSCode,
+  // },
   {
     slug: 'appearance',
     title: 'Appearance',
@@ -180,7 +179,7 @@ export const SETTINGS_PAGE_METADATA: readonly SettingsPageMeta[] = [
 
   { slug: 'notifications', title: 'Notifications', group: 'general', kind: 'single', keywords: ['alerts', 'native', 'summary', 'summarization'], },
   { slug: 'proxy', title: 'Proxy', group: 'advanced', kind: 'single', keywords: ['proxy', 'http', 'https', 'network', 'password'], isAvailable: (ctx) => ctx.isDesktop },
-  { slug: 'tunnel', title: 'Remote Tunnel', group: 'advanced', kind: 'single', keywords: ['tunnel', 'cloudflare', 'qr', 'remote', 'mobile', 'share'], isAvailable: (ctx) => !ctx.isVSCode && !ctx.isDesktop },
+  // { slug: 'tunnel', title: 'Remote Tunnel', group: 'advanced', kind: 'single', keywords: ['tunnel', 'cloudflare', 'qr', 'remote', 'mobile', 'share'], isAvailable: (ctx) => !ctx.isVSCode && !ctx.isDesktop },
   { slug: 'about', title: 'About', group: 'advanced', kind: 'single', keywords: ['about', 'version', 'updates', 'release', 'changelog'], isAvailable: (ctx) => ctx.isMobile },
 ] as const;
 
