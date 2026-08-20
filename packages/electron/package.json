@@ -3,7 +3,7 @@
   "version": "1.2.13",
   "private": true,
   "description": "Electron desktop runtime for Mage",
-  "author": "BCA Bisnis",
+  "author": "SQI RND MDZ TCP",
   "type": "module",
   "main": "./dist-bundle/main.mjs",
   "dependencies": {

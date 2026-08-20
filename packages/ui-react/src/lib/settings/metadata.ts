@@ -210,6 +210,10 @@ export function resolveSettingsSlug(value: string | null | undefined): SettingsP
     return legacy;
   }
 
+  if (normalized === 'gitlab') {
+    return 'git';
+  }
+
   const direct = getSettingsPageMeta(normalized);
   if (direct) {
     return direct.slug;
