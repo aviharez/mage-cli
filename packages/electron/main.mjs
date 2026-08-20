@@ -324,7 +324,7 @@ const createWindow = () => {
     ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset', vibrancy: vibrancy ? 'under-window' : undefined, transparent: vibrancy } : {}),
     ...(process.platform === 'win32' ? { titleBarStyle: 'hidden', titleBarOverlay: getWindowsTitleBarOverlay(nativeTheme.shouldUseDarkColors) } : {}),
     webPreferences: {
-      preload: path.join(__dirname, 'preload.mjs'),
+      preload: path.join(app.getAppPath(), 'preload.mjs'),
       contextIsolation: true,
       nodeIntegration: false,
       webviewTag: true,

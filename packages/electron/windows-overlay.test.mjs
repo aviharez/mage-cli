@@ -3,6 +3,7 @@ import { describe, expect, test } from 'bun:test';
 import { getWindowsTitleBarOverlay, WINDOWS_TITLEBAR_HEIGHT } from './windows-overlay.mjs';
 
 const mainSource = readFileSync(new URL('./main.mjs', import.meta.url), 'utf8');
+const packageJson = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
 
 describe('Windows titlebar overlay', () => {
   test('uses a transparent 48px overlay with light symbols for dark themes', () => {
@@ -30,5 +31,15 @@ describe('Windows titlebar overlay', () => {
     const themeCommand = mainSource.slice(mainSource.indexOf("case 'desktop_set_window_theme'"));
     expect(themeCommand).toContain('nativeTheme.themeSource =');
     expect(themeCommand).toContain('updateWindowsTitleBarOverlay();');
+  });
+});
+
+describe('Packaged Electron runtime', () => {
+  test('loads the root preload included beside the bundled main entrypoint', () => {
+    expect(packageJson.main).toBe('./dist-bundle/main.mjs');
+    expect(packageJson.build.files).toContain('dist-bundle/main.mjs');
+    expect(packageJson.build.files).toContain('preload.mjs');
+    expect(mainSource).toContain("preload: path.join(app.getAppPath(), 'preload.mjs')");
+    expect(mainSource).not.toContain("preload: path.join(__dirname, 'preload.mjs')");
   });
 });
