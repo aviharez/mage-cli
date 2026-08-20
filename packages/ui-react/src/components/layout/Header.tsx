@@ -701,7 +701,6 @@ export const Header: React.FC<HeaderProps> = ({
   const toggleRightSidebar = useUIStore((state) => state.toggleRightSidebar);
   const openContextOverview = useUIStore((state) => state.openContextOverview);
   const openContextPlan = useUIStore((state) => state.openContextPlan);
-  const openContextBrowser = useUIStore((state) => state.openContextBrowser);
   const openContextPanelTab = useUIStore((state) => state.openContextPanelTab);
   const closeContextPanel = useUIStore((state) => state.closeContextPanel);
   const contextPanelByDirectory = useUIStore((state) => state.contextPanelByDirectory);
@@ -1385,21 +1384,6 @@ export const Header: React.FC<HeaderProps> = ({
     openContextPanelTab(directory, { mode: 'diff', stagedDiff: false });
   }, [closeContextPanel, contextPanelByDirectory, openContextPanelTab, openDirectory]);
 
-  const handleOpenContextBrowser = React.useCallback(() => {
-    const directory = normalize(openDirectory || '');
-    if (!directory) {
-      return;
-    }
-
-    const panelState = contextPanelByDirectory[directory];
-    if (getActiveContextMode(panelState) === 'browser') {
-      closeContextPanel(directory);
-      return;
-    }
-
-    openContextBrowser(directory);
-  }, [closeContextPanel, contextPanelByDirectory, openContextBrowser, openDirectory]);
-
   const isContextPlanActive = React.useMemo(() => {
     const directory = normalize(openDirectory || '');
     if (!directory) {
@@ -1416,15 +1400,6 @@ export const Header: React.FC<HeaderProps> = ({
     }
     const panelState = contextPanelByDirectory[directory];
     return getActiveContextMode(panelState) === 'diff';
-  }, [contextPanelByDirectory, openDirectory]);
-
-  const isContextBrowserActive = React.useMemo(() => {
-    const directory = normalize(openDirectory || '');
-    if (!directory) {
-      return false;
-    }
-    const panelState = contextPanelByDirectory[directory];
-    return getActiveContextMode(panelState) === 'browser';
   }, [contextPanelByDirectory, openDirectory]);
 
   const desktopHeaderIconButtonClass = DESKTOP_HEADER_ICON_BUTTON_CLASS;
@@ -1956,15 +1931,6 @@ export const Header: React.FC<HeaderProps> = ({
         onClick={toggleBottomTerminal}
         Icon={'terminal-box'}
       />
-      {!isMobile ? (
-        <HeaderIconActionButton
-          title={t('contextPanel.browser.open')}
-          ariaLabel={t('contextPanel.browser.open')}
-          onClick={handleOpenContextBrowser}
-          pressed={isContextBrowserActive}
-          Icon={'global'}
-        />
-      ) : null}
       <HeaderIconActionButton
         title={t('header.actions.rightSidebarWithShortcut', { shortcut: shortcutLabel('toggle_right_sidebar') })}
         ariaLabel={t('header.actions.toggleRightSidebarAria')}

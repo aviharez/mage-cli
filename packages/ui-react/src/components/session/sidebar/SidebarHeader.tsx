@@ -8,7 +8,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { ArrowsMerge } from '@/components/icons/ArrowsMerge';
 import { Icon } from "@/components/icon/Icon";
 import { useSessionDisplayStore } from '@/stores/useSessionDisplayStore';
 import { isVSCodeRuntime } from '@/lib/desktop';
@@ -19,8 +18,6 @@ type Props = {
   showRecentControls: boolean;
   handleOpenDirectoryDialog: () => void;
   openNewSessionDraft: () => void;
-  canOpenMultiRun: boolean;
-  openMultiRunLauncher: () => void;
   headerActionIconClass: string;
   headerActionButtonClass: string;
   isSessionSearchOpen: boolean;
@@ -32,7 +29,6 @@ type Props = {
   searchMatchCount: number;
   collapseAllProjects: () => void;
   expandAllProjects: () => void;
-  openScheduledTasksDialog: () => void;
   selectionModeEnabled: boolean;
   onToggleSelectionMode: () => void;
 };
@@ -44,8 +40,6 @@ export function SidebarHeader(props: Props): React.ReactNode {
     showRecentControls,
     handleOpenDirectoryDialog,
     openNewSessionDraft,
-    canOpenMultiRun,
-    openMultiRunLauncher,
     headerActionIconClass,
     headerActionButtonClass,
     isSessionSearchOpen,
@@ -57,7 +51,6 @@ export function SidebarHeader(props: Props): React.ReactNode {
     searchMatchCount,
     collapseAllProjects,
     expandAllProjects,
-    openScheduledTasksDialog,
     selectionModeEnabled,
     onToggleSelectionMode,
   } = props;
@@ -110,34 +103,6 @@ export function SidebarHeader(props: Props): React.ReactNode {
               <TooltipContent side="bottom" sideOffset={4}><p>{t('sessions.sidebar.header.actions.newSession')}</p></TooltipContent>
             </Tooltip>
 
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={openMultiRunLauncher}
-                  className={headerActionButtonClass}
-                  aria-label={t('sessions.sidebar.header.actions.newMultiRun')}
-                  disabled={!canOpenMultiRun}
-                >
-                  <ArrowsMerge className={headerActionIconClass} />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" sideOffset={4}><p>{t('sessions.sidebar.header.actions.newMultiRun')}</p></TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={openScheduledTasksDialog}
-                  className={headerActionButtonClass}
-                  aria-label={t('sessions.sidebar.header.actions.scheduledTasks')}
-                >
-                  <Icon name="calendar-schedule" className={headerActionIconClass} />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" sideOffset={4}><p>{t('sessions.sidebar.header.actions.scheduledTasks')}</p></TooltipContent>
-            </Tooltip>
           </div>
 
           <div className="flex items-center gap-1.5">

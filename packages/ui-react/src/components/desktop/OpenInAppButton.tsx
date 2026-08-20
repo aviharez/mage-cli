@@ -11,7 +11,7 @@ import { Icon } from "@/components/icon/Icon";
 import { copyTextToClipboard } from '@/lib/clipboard';
 import { cn } from '@/lib/utils';
 import { isDesktopLocalOriginActive, isDesktopShell, openDesktopPath, openDesktopProjectInApp } from '@/lib/desktop';
-import { DEFAULT_OPEN_IN_APP_ID, OPEN_IN_APPS } from '@/lib/openInApps';
+import { DEFAULT_OPEN_IN_APP_ID } from '@/lib/openInApps';
 import { useOpenInAppsStore, type OpenInAppOption } from '@/stores/useOpenInAppsStore';
 import { useI18n } from '@/lib/i18n';
 
@@ -88,23 +88,19 @@ export const OpenInAppButton = ({ directory, className }: OpenInAppButtonProps) 
   }, [initialize]);
 
   const isDesktopLocal = isDesktopShell() && isDesktopLocalOriginActive();
+  const visibleApps = React.useMemo(
+    () => availableApps.filter((app) => !['terminal', 'iterm2', 'ghostty'].includes(app.id)),
+    [availableApps],
+  );
 
   const selectedApp = React.useMemo(() => {
-    const known = availableApps.find((app) => app.id === selectedAppId)
-      ?? availableApps.find((app) => app.id === DEFAULT_OPEN_IN_APP_ID)
-      ?? availableApps[0]
-      ?? OPEN_IN_APPS[0];
-    if (known) {
-      return withFallbackIcon(known);
-    }
-    return withFallbackIcon(OPEN_IN_APPS[0]);
-  }, [availableApps, selectedAppId]);
+    const known = visibleApps.find((app) => app.id === selectedAppId)
+      ?? visibleApps.find((app) => app.id === DEFAULT_OPEN_IN_APP_ID)
+      ?? visibleApps[0];
+    return known ? withFallbackIcon(known) : null;
+  }, [selectedAppId, visibleApps]);
 
-  if (!isDesktopLocal || !directory) {
-    return null;
-  }
-
-  if (availableApps.length === 0) {
+  if (!isDesktopLocal || !directory || !selectedApp) {
     return null;
   }
 
@@ -177,7 +173,7 @@ export const OpenInAppButton = ({ directory, className }: OpenInAppButtonProps) 
             <span className="typography-ui-label text-foreground">{t('openInApp.actions.copyPath')}</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          {availableApps.map((app) => {
+          {visibleApps.map((app) => {
             const appWithFallback = withFallbackIcon(app);
             return (
               <DropdownMenuItem
